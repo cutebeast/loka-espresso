@@ -1,7 +1,6 @@
-/**
- * Translations — Tab Navigation (shared)
- */
 "use client";
+
+import { useTranslation } from "@/lib/i18n";
 
 interface TranslationTabsProps {
   active: string;
@@ -9,12 +8,13 @@ interface TranslationTabsProps {
 }
 
 const TABS = [
-  { id: "pwa", label: "Customer PWA", desc: "UI labels for customer-facing mobile app" },
-  { id: "admin", label: "Admin Portal", desc: "UI labels for admin dashboard" },
-  { id: "staff", label: "Staff Portal", desc: "UI labels for staff POS & operations" },
+  { id: "pwa", labelKey: "admin.translations.tab.pwa", descKey: "admin.translations.tab.pwaDesc" },
+  { id: "admin", labelKey: "admin.translations.tab.admin", descKey: "admin.translations.tab.adminDesc" },
+  { id: "staff", labelKey: "admin.translations.tab.staff", descKey: "admin.translations.tab.staffDesc" },
 ];
 
 export default function TranslationTabs({ active, onChange }: TranslationTabsProps) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "2px solid var(--color-border-light, #e5e7eb)" }}>
       {TABS.map((tab) => (
@@ -34,10 +34,10 @@ export default function TranslationTabs({ active, onChange }: TranslationTabsPro
             marginBottom: -2,
             transition: "all 0.15s",
           }}
-          aria-label={tab.label}
+          aria-label={t(tab.labelKey)}
         >
-          <div>{tab.label}</div>
-          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>{tab.desc}</div>
+          <div>{t(tab.labelKey)}</div>
+          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>{t(tab.descKey)}</div>
         </button>
       ))}
     </div>

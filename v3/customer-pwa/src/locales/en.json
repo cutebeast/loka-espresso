@@ -436,6 +436,7 @@
     "profileSaved": "Welcome to LOKA Espresso!",
     "profileFailed": "Failed to save profile. Please try again.",
     "orderPlaced": "Order placed successfully",
+    "orderQueued": "Order saved. We'll send it when you're back online.",
     "orderFailed": "Order failed",
     "orderCancelled": "Order cancelled",
     "cancelFailed": "Failed to cancel",

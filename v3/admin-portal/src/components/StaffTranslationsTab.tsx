@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface Translation {
   id: number;
@@ -16,6 +17,7 @@ const FLAGS: Record<string, string> = { ms: "🇲🇾", zh: "🇨🇳", ta: "�
 const NAMES: Record<string, string> = { ms: "BM", zh: "中文", ta: "தமிழ்", tr: "TR" };
 
 export default function StaffTranslationsTab() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Translation[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
@@ -63,7 +65,7 @@ export default function StaffTranslationsTab() {
         locale,
         namespace: "staff-ui",
         translated_text,
-        source_text: (existing as Translation | undefined)?.source_text || key,
+        source_text: "",
         table_name: "staff_ui",
         record_id: 0,
         column_name: "label",
@@ -111,21 +113,21 @@ export default function StaffTranslationsTab() {
       setTranslateProgress(`${Math.min(batchIndex, total)} / ${total}`);
     }
 
-    setMsg(`Auto-translated ${count} keys for ${locale}`);
+    setMsg(t("admin.translations.autoTranslatedDone", { count, locale }));
     setTimeout(() => setMsg(""), 3000);
     fetchAll();
     setRegenerating(false);
     setTranslateProgress("");
   };
 
-  if (loading) return <div style={{ padding: 24, opacity: 0.5 }}>Loading staff translations...</div>;
+  if (loading) return <div style={{ padding: 24, opacity: 0.5 }}>{t("admin.translations.loading")}</div>;
 
   if (items.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: "center" }}>
-        <h2>No staff portal translations in database</h2>
+        <h2>{t("admin.translations.noTranslations")}</h2>
         <p style={{ color: "var(--color-text-muted)", marginBottom: 16 }}>
-          Staff portal labels need to be seeded first.
+          {t("admin.translations.noTranslationsDesc")}
         </p>
       </div>
     );
@@ -134,11 +136,11 @@ export default function StaffTranslationsTab() {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginRight: 4 }}>Translate All:</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginRight: 4 }}>{t("admin.translations.translateAll")}:</span>
         {LOCALES.map((loc) => (
           <button key={loc} type="button" onClick={() => autoTranslateAll(loc)} disabled={!!regenerating}
             className="btn btn-sm btn-primary" style={{ fontSize: 12 }}>
-            {FLAGS[loc]} {regenerating === loc ? "..." : `All ${NAMES[loc]}`}
+            {FLAGS[loc]} {regenerating === loc ? "..." : t("admin.translations.allLocale", { locale: NAMES[loc]! })}
           </button>
         ))}
         {msg && <span style={{ fontSize: 12, color: "var(--color-success)", marginLeft: 8 }}>{msg}</span>}
@@ -149,8 +151,8 @@ export default function StaffTranslationsTab() {
         <table className="data-table" style={{ fontSize: 12 }}>
           <thead>
             <tr>
-              <th style={{ width: 200 }}>Key</th>
-              <th style={{ width: 200 }}>EN (source)</th>
+              <th style={{ width: 200 }}>{t("admin.translations.key")}</th>
+              <th style={{ width: 200 }}>{t("admin.translations.englishSource")}</th>
               {LOCALES.map((loc) => (
                 <th key={loc} style={{ textAlign: "center", minWidth: 160 }}>{FLAGS[loc]} {NAMES[loc]}</th>
               ))}
@@ -178,7 +180,7 @@ export default function StaffTranslationsTab() {
                             if (newVal && newVal !== (value || "")) {
                               try {
                                 await upsertTranslation(key, loc, newVal, existing);
-                                setMsg("Saved");
+                                setMsg(t("admin.translations.saved"));
                                 setTimeout(() => setMsg(""), 2000);
                               } catch (err) { console.error(err); }
                             }
@@ -189,7 +191,7 @@ export default function StaffTranslationsTab() {
                               if (newVal && newVal !== (value || "")) {
                                 try {
                                   await upsertTranslation(key, loc, newVal, existing);
-                                  setMsg("Saved");
+                                  setMsg(t("admin.translations.saved"));
                                   setTimeout(() => setMsg(""), 2000);
                                 } catch (err) { console.error(err); }
                               }
@@ -211,7 +213,7 @@ export default function StaffTranslationsTab() {
         </table>
       </div>
       <div style={{ marginTop: 8, fontSize: 11, color: "var(--color-text-muted)" }}>
-        {keys.length} keys · {items.length} records (en + {LOCALES.length} locales)
+        {t("admin.translations.keyCount", { count: keys.length })}
       </div>
     </div>
   );

@@ -2,11 +2,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface Refund { id: number; payment_id: number; order_id: number; order_number?: string; store_id?: number; amount: number; reason: string; status: string; created_at: string; }
 interface Store { id: number; store_name: string; }
 
 export default function RefundsPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,7 +42,7 @@ export default function RefundsPage() {
       {error && <div className="alert alert-error">{error}</div>}
       <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+          <option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
         <span style={{ fontSize: 12, opacity: 0.5 }}>{items.length} refunds</span>
       </div>

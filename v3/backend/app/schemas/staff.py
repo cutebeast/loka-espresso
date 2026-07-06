@@ -2,6 +2,8 @@
 
 from datetime import date, datetime, time
 
+from pydantic import Field
+
 from app.schemas.base import BaseSchema, TimestampedSchema
 
 
@@ -160,3 +162,31 @@ class ShiftTemplateCreate(BaseSchema):
 
 class StaffRolesUpdateRequest(BaseSchema):
     role_ids: list[int] = []
+
+
+class StaffTaskBase(BaseSchema):
+    store_id: int
+    staff_id: int
+    title: str = Field(..., max_length=200)
+    description: str | None = None
+    status: str = "pending"
+    priority: str = "normal"
+    due_date: date | None = None
+
+
+class StaffTaskCreate(StaffTaskBase):
+    pass
+
+
+class StaffTaskUpdate(BaseSchema):
+    title: str | None = Field(None, max_length=200)
+    description: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    due_date: date | None = None
+
+
+class StaffTaskOut(StaffTaskBase, TimestampedSchema):
+    id: int
+    completed_at: datetime | None = None
+    completed_by: int | None = None

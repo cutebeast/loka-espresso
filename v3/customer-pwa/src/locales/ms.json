@@ -855,6 +855,7 @@
     "orderCancelled": "Pesanan dibatalkan",
     "orderFailed": "Pesanan gagal",
     "orderPlaced": "Pesanan telah diletakkan dengan jayanya",
+    "orderQueued": "Pesanan disimpan. Kami akan menghantarnya apabila anda semula dalam talian.",
     "otpResendFailed": "Gagal menghantar semula OTP",
     "otpResent": "OTP telah dihantar semula dengan jayanya",
     "outOfRange": "Alamat penghantaran berada di luar kawasan perkhidmatan kedai.",

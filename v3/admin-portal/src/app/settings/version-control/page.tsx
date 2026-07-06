@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, Server, Monitor, Smartphone, Globe } from "lucide-react";
 import { VERSION_URLS, STORAGE_KEYS } from "@/lib/constants";
+import { useTranslation } from "@/lib/i18n";
 
 interface VersionInfo {
   app: string;
@@ -40,6 +41,7 @@ function timeAgo(ts: number | null): string {
 }
 
 export default function VersionControlPage() {
+  const { t } = useTranslation();
   const [versions, setVersions] = useState<Record<string, VersionInfo | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -79,11 +81,11 @@ export default function VersionControlPage() {
     <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h1 className="page-title" style={{ marginBottom: 4 }}>Version Control</h1>
-          <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0 }}>Build and deployment versions across all services</p>
+          <h1 className="page-title" style={{ marginBottom: 4 }}>{t("admin.versionControl.title")}</h1>
+          <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0 }}>{t("admin.versionControl.subtitle")}</p>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={fetchAll} disabled={loading}>
-          <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} /> Refresh
+          <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} /> {t("admin.common.refresh")}
         </button>
       </div>
 
@@ -120,25 +122,25 @@ export default function VersionControlPage() {
               {info ? (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Version</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("admin.versionControl.version")}</div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{info.version}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Commit</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("admin.versionControl.commit")}</div>
                     <div style={{ fontWeight: 600, fontSize: 14, fontFamily: "monospace" }}>{info.commit}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Built</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("admin.versionControl.built")}</div>
                     <div style={{ fontWeight: 600, fontSize: 14 }} title={formatDate(info.builtAt)}>{timeAgo(info.builtAt)}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Commit Date</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("admin.versionControl.commitDate")}</div>
                     <div style={{ fontWeight: 600, fontSize: 14 }} title={formatDate(info.commitAt)}>{timeAgo(info.commitAt)}</div>
                   </div>
                 </div>
               ) : (
                 <div style={{ padding: "12px 0", color: "var(--color-text-muted)", fontSize: 13 }}>
-                  {loading ? "Loading..." : "Unable to fetch version — service may be down or version.json missing"}
+                  {loading ? t("admin.versionControl.loading") : t("admin.versionControl.unableToFetch")}
                 </div>
               )}
             </div>

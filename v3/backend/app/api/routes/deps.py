@@ -8,6 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth_cookies import get_admin_access_token, get_customer_access_token, get_staff_access_token
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import decode_token
@@ -80,18 +81,24 @@ DBDependency = Annotated[AsyncSession, Depends(get_async_db)]
 
 
 async def get_current_customer(
+    request: Request,
     db: DBDependency,
     credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ) -> Customer:
-    """Dependency to get the currently authenticated customer."""
-    if credentials is None:
+    """Dependency to get the currently authenticated customer.
+
+    Prefers the HttpOnly access_token cookie, falling back to the
+    Authorization header for backward compatibility.
+    """
+    token = get_customer_access_token(request)
+    if not token and credentials is not None:
+        token = credentials.credentials
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    token = credentials.credentials
     try:
         payload = decode_token(token)
     except Exception as exc:
@@ -155,18 +162,25 @@ ActiveCustomer = Annotated[Customer, Depends(get_current_active_customer)]
 
 
 async def get_current_admin(
+    request: Request,
     db: DBDependency,
     credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ) -> AdminAccount:
-    """Dependency to get the currently authenticated admin."""
-    if credentials is None:
+    """Dependency to get the currently authenticated admin.
+
+    Prefers the HttpOnly admin_token cookie, falling back to the
+    Authorization header for backward compatibility.
+    """
+    token = get_admin_access_token(request)
+    if not token and credentials is not None:
+        token = credentials.credentials
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = credentials.credentials
     try:
         payload = decode_token(token)
     except Exception as exc:
@@ -289,8 +303,10 @@ CurrentAdmin = Annotated[AdminAccount, Depends(get_current_admin)]
 
 
 async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
-    """Extract staff JWT from header and return StaffProfile."""
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    """Extract staff JWT from cookie or header and return StaffProfile."""
+    token = get_staff_access_token(request)
+    if not token:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -343,6 +359,27 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
 
 
 CurrentStaff = Annotated[StaffProfile, Depends(get_current_staff)]
+
+
+class RequireStaffRole:
+    """Dependency factory that restricts an endpoint to staff with one of the allowed roles.
+
+    Admin users acting in a staff context are allowed through (admin override).
+    """
+
+    def __init__(self, *allowed_roles: str):
+        self.allowed_roles = set(allowed_roles)
+
+    def __call__(self, staff: CurrentStaff) -> StaffProfile:
+        # Admin override in staff context
+        if getattr(staff, "is_staff_context", False):
+            return staff
+        if not hasattr(staff, "role") or staff.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient staff role for this operation",
+            )
+        return staff
 
 
 async def _get_admin_role_keys(db: AsyncSession, admin_id: int, admin_obj: Any = None) -> set[str]:

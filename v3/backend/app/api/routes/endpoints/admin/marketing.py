@@ -49,14 +49,26 @@ async def _get_twilio_creds(db) -> tuple[str, str, str, str]:
     )
 
 
+async def _get_resend_api_url(db) -> str:
+    """Get Resend API URL from platform_config."""
+    result = await db.execute(
+        select(PlatformConfig).where(PlatformConfig.config_key == "integration.resend_api_url")
+    )
+    row = result.scalar_one_or_none()
+    if row and row.config_value:
+        return str(row.config_value).strip().strip('"')
+    return "https://api.resend.com/emails"
+
+
 async def _send_email_via_resend(
     api_key: str, from_email: str, to_email: str,
     subject: str, body: str,
+    db = None,
 ) -> bool:
     """Send an email via Resend API. Returns True on success."""
     if not api_key or not from_email or not to_email:
         return False
-    url = "https://api.resend.com/emails"
+    url = await _get_resend_api_url(db) if db else "https://api.resend.com/emails"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "from": from_email,
@@ -71,14 +83,27 @@ async def _send_email_via_resend(
     except Exception:
         logger.error("Marketing email delivery failed via Resend", exc_info=True)
         return False
+async def _get_twilio_api_url(db, account_sid: str) -> str:
+    """Get Twilio API URL from platform_config."""
+    result = await db.execute(
+        select(PlatformConfig).where(PlatformConfig.config_key == "integration.twilio_api_url")
+    )
+    row = result.scalar_one_or_none()
+    if row and row.config_value:
+        template = str(row.config_value).strip().strip('"')
+        return template.format(account_sid=account_sid)
+    return f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+
+
 async def _send_sms_via_twilio(
     account_sid: str, auth_token: str, from_number: str,
     to_number: str, body: str,
+    db = None,
 ) -> bool:
     """Send an SMS via Twilio REST API. Returns True on success."""
     if not account_sid or not auth_token or not from_number:
         return False
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+    url = await _get_twilio_api_url(db, account_sid) if db else f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
     data = {"From": from_number, "To": to_number, "Body": body}
     auth = (account_sid, auth_token)
     try:
@@ -308,7 +333,7 @@ async def send_campaign(
             sem = asyncio.Semaphore(50)
             async def _send_sms(phone: str, cid: int) -> bool:
                 async with sem:
-                    return await _send_sms_via_twilio(sid, token, sms_from, phone, body)
+                    return await _send_sms_via_twilio(sid, token, sms_from, phone, body, db=db)
             tasks = [_send_sms(phone, cid) for cid in customer_ids if (phone := phone_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
@@ -329,7 +354,7 @@ async def send_campaign(
             async def _send_wa(phone: str, cid: int) -> bool:
                 async with sem:
                     wa_to = f"whatsapp:{phone}" if not phone.startswith("whatsapp:") else phone
-                    return await _send_sms_via_twilio(sid, token, wa_from, wa_to, body)
+                    return await _send_sms_via_twilio(sid, token, wa_from, wa_to, body, db=db)
             tasks = [_send_wa(phone, cid) for cid in customer_ids if (phone := phone_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
@@ -361,6 +386,7 @@ async def send_campaign(
                     return await _send_email_via_resend(
                         api_key, from_email, addr,
                         campaign.campaign_name, campaign.body_content or "",
+                        db=db,
                     )
             tasks = [_send_email(addr, cid) for cid in customer_ids if (addr := email_map.get(cid))]
             if tasks:

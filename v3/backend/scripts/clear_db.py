@@ -52,6 +52,7 @@ MODULE_TABLES: dict[str, list[str]] = {
         "payment_methods",
         "loyalty_points_ledger",
         "wallet_ledger_entries",
+        "wallet_topup_sessions",
         "wallets",
         "customers",
     ],

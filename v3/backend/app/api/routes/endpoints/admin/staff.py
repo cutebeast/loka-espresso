@@ -10,7 +10,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.core.security import hash_password
 from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
 from app.models.platform import AuditLog
-from app.models.staff import StaffProfile, StaffShift, ShiftTemplate
+from app.models.staff import StaffProfile, StaffShift, StaffTask, ShiftTemplate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.staff import (
     StaffCreateRequest,
@@ -24,6 +24,9 @@ from app.schemas.staff import (
     StaffShiftCreate,
     StaffShiftOut,
     StaffShiftUpdate,
+    StaffTaskCreate,
+    StaffTaskOut,
+    StaffTaskUpdate,
 )
 
 router = APIRouter(prefix="/admin/staff", tags=["admin — staff"])
@@ -152,18 +155,7 @@ async def list_staff_roles(
     )
     staff_list = result.unique().scalars().all()
 
-    # Batch-load roles for all staff in one query
-    principal_ids = [sp.principal_id for sp in staff_list]
-    role_map: dict[int, list[dict]] = {}
-    if principal_ids:
-        role_result = await db.execute(
-            select(RoleAssignment.assignee_id, IAMRole.id, IAMRole.display_name)
-            .join(IAMRole, RoleAssignment.role_id == IAMRole.id)
-            .where(RoleAssignment.assignee_id.in_(principal_ids))
-        )
-        for assignee_id, rid, rname in role_result.all():
-            role_map.setdefault(assignee_id, []).append({"id": rid, "name": rname})
-
+    # staff_profiles.role is the canonical staff role; RoleAssignment is for admin accounts only.
     items = []
     for sp in staff_list:
         items.append({
@@ -175,7 +167,7 @@ async def list_staff_roles(
             "store_name": sp.store.store_name if sp.store else None,
             "has_pin": bool(sp.pin_hash),
             "is_active": sp.is_active,
-            "roles": role_map.get(sp.principal_id, []),
+            "role": sp.role,
         })
     return APIResponse(
         data=PaginatedResponse(
@@ -473,6 +465,110 @@ async def get_staff(
     return APIResponse(data=StaffProfileDetailOut.model_validate(profile_dict))
 
 
+# ── Staff Tasks (admin management) ──
+
+@router.get("/tasks", response_model=APIResponse[PaginatedResponse[StaffTaskOut]])
+async def list_staff_tasks(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    staff_id: int | None = Query(None),
+    store_id: int | None = Query(None),
+    status: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """List staff tasks with optional filters."""
+    base_stmt = select(StaffTask)
+    count_stmt = select(func.count(StaffTask.id))
+    if staff_id is not None:
+        base_stmt = base_stmt.where(StaffTask.staff_id == staff_id)
+        count_stmt = count_stmt.where(StaffTask.staff_id == staff_id)
+    if store_id is not None:
+        base_stmt = base_stmt.where(StaffTask.store_id == store_id)
+        count_stmt = count_stmt.where(StaffTask.store_id == store_id)
+    if status is not None:
+        base_stmt = base_stmt.where(StaffTask.status == status)
+        count_stmt = count_stmt.where(StaffTask.status == status)
+
+    total = (await db.execute(count_stmt)).scalar() or 0
+    stmt = (
+        base_stmt.order_by(StaffTask.due_date.asc().nulls_last(), StaffTask.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    items = [StaffTaskOut.model_validate(r) for r in result.scalars().all()]
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
+
+
+@router.post("/tasks", response_model=APIResponse[StaffTaskOut], status_code=status.HTTP_201_CREATED)
+async def create_staff_task(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    data: StaffTaskCreate,
+):
+    """Create a task assigned to a staff member."""
+    profile_result = await db.execute(
+        select(StaffProfile).where(
+            StaffProfile.id == data.staff_id,
+            StaffProfile.deleted_at.is_(None),
+        )
+    )
+    if profile_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    task = StaffTask(**data.model_dump())
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return APIResponse(data=StaffTaskOut.model_validate(task))
+
+
+@router.patch("/tasks/{task_id}", response_model=APIResponse[StaffTaskOut])
+async def update_staff_task(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    task_id: int,
+    data: StaffTaskUpdate,
+):
+    """Update a staff task."""
+    result = await db.execute(select(StaffTask).where(StaffTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(task, field, value)
+    await db.commit()
+    await db.refresh(task)
+    return APIResponse(data=StaffTaskOut.model_validate(task))
+
+
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_staff_task(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    task_id: int,
+):
+    """Delete a staff task."""
+    result = await db.execute(select(StaffTask).where(StaffTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await db.delete(task)
+    await db.commit()
+    return APIResponse(data={"id": task_id, "deleted": True})
+
+
 @router.patch("/{staff_id}", response_model=APIResponse[StaffProfileOut])
 async def update_staff(
     db: DBDependency,
@@ -525,23 +621,28 @@ async def delete_staff(
 
 
 
-@router.post("/{staff_id}/roles", response_model=APIResponse[dict])
-async def update_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: StaffRolesUpdateRequest):
-    """Replace role assignments for a staff member."""
-    result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
+@router.patch("/{staff_id}/role", response_model=APIResponse[dict])
+async def update_staff_role(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    staff_id: int,
+    data: StaffProfileUpdate,
+):
+    """Update the canonical role of a staff member.
+
+    Staff roles are stored directly on staff_profiles.role. RoleAssignment is
+    reserved for admin accounts.
+    """
+    if data.role is None:
+        raise HTTPException(status_code=400, detail="role is required")
+    result = await db.execute(
+        select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None))
+    )
     sp = result.scalar_one_or_none()
     if not sp:
         raise HTTPException(status_code=404, detail="Staff not found")
 
-    # Remove existing role assignments
-    existing = await db.execute(
-        select(RoleAssignment).where(RoleAssignment.assignee_id == sp.principal_id)
-    )
-    for ra in existing.scalars().all():
-        ra.is_active = False
-
-    # Add new
-    for rid in data.role_ids:
-        db.add(RoleAssignment(assignee_id=sp.principal_id, role_id=rid, effective_from=datetime.now(timezone.utc), is_active=True))
+    sp.role = data.role
+    sp.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    return APIResponse(data={"staff_id": staff_id, "updated": True})
+    return APIResponse(data={"staff_id": staff_id, "role": sp.role, "updated": True})

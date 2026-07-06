@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface ReportEntry {
   id: number;
@@ -19,6 +20,7 @@ interface ReportEntry {
 }
 
 export default function EquipmentReportsPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<ReportEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -74,7 +76,7 @@ export default function EquipmentReportsPage() {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <select value={storeFilter} onChange={e => { setStoreFilter(e.target.value); setPage(1); }} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="">All Stores</option>
+          <option value="">{t("admin.common.allStores")}</option>
           {stores.map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
         <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>

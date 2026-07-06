@@ -21,6 +21,7 @@ import OfflineBanner from '@/components/shared/OfflineBanner';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useA2HS } from '@/hooks/useA2HS';
+import { useWebPush } from '@/hooks/useWebPush';
 import PromotionPopup from '@/components/PromotionPopup';
 import StorePickerModal from '@/components/StorePickerModal';
 import { LoginModal } from '@/components/auth/LoginModal';
@@ -108,6 +109,7 @@ export default function AppShell() {
   const a2hs = useA2HS();
 
   const { authDone, handleAuthDone } = useAuthFlow();
+  useWebPush({ enabled: !isGuest && authDone });
   const { handleNavClick } = usePageRouter();
   const { unreadCount, fetchUnreadCount } = useNotifications();
 

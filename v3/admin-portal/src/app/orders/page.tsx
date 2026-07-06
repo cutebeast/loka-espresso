@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePagination } from "@/hooks/usePagination";
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface Order { id: number; order_number: string; status: string; order_type: string; total_amount: number; customer_name?: string; created_at: string; }
 interface Store { id: number; store_name: string; }
@@ -12,6 +13,7 @@ interface Store { id: number; store_name: string; }
 const PAGE_SIZE = 20;
 
 export default function OrdersPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [items, setItems] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export default function OrdersPage() {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "end" }}>
         <div><label htmlFor="order-store-filter" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
-          <select id="order-store-filter" value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+          <select id="order-store-filter" value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
         <div><label htmlFor="order-status-filter" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Status</label>
           <select id="order-status-filter" value={status} onChange={e => setStatus(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="preparing">Preparing</option><option value="ready_for_pickup">Ready</option><option value="out_for_delivery">Out for Delivery</option><option value="delivered">Delivered</option><option value="cancelled_by_customer">Cancelled by Customer</option><option value="cancelled_by_merchant">Cancelled by Merchant</option><option value="refunded">Refunded</option></select></div>
         <div><label htmlFor="order-type-filter" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Type</label>

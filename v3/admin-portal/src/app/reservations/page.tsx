@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface Res { id: number; customer_name?: string; customer_phone?: string; party_size: number; guest_count: number; reservation_date: string; reservation_time?: string; status: string; store_name?: string; }
 
 export default function ReservationsPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Res[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ export default function ReservationsPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
         <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="requested">Requested</option><option value="confirmed">Confirmed</option><option value="seated">Seated</option><option value="completed">Completed</option><option value="cancelled_by_guest">Cancelled by Guest</option><option value="cancelled_by_merchant">Cancelled by Merchant</option><option value="no_show">No Show</option></select>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
       </div>

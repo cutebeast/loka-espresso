@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { ShoppingBag, DollarSign, Flame, Users, TrendingUp } from "lucide-react";
 
 interface DashboardData {
@@ -17,6 +18,7 @@ interface Store { id: number; store_name: string; }
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
@@ -55,10 +57,10 @@ export default function DashboardPage() {
   }
 
   const kpis = [
-    { label: "Total Orders", value: data?.total_orders, icon: ShoppingBag, color: "#3B4A1A" },
-    { label: "Total Revenue", value: formatRM(data?.total_revenue || 0), icon: DollarSign, color: "#9B6625" },
-    { label: "Active Orders", value: data?.active_orders, icon: Flame, color: "#D97706" },
-    { label: "Total Customers", value: data?.customers, icon: Users, color: "#2563EB" },
+    { label: t("admin.dashboard.totalOrders"), value: data?.total_orders, icon: ShoppingBag, color: "#3B4A1A" },
+    { label: t("admin.dashboard.totalRevenue"), value: formatRM(data?.total_revenue || 0), icon: DollarSign, color: "#9B6625" },
+    { label: t("admin.dashboard.activeOrders"), value: data?.active_orders, icon: Flame, color: "#D97706" },
+    { label: t("admin.dashboard.totalCustomers"), value: data?.customers, icon: Users, color: "#2563EB" },
   ];
 
   const maxBar = Math.max(...(data?.monthly_data.map(d => d.orders) || [0]), 1);
@@ -67,16 +69,16 @@ export default function DashboardPage() {
     <div style={{ padding: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Business overview</p>
+          <h1 className="page-title">{t("admin.dashboard.title")}</h1>
+          <p className="page-subtitle">{t("admin.dashboard.subtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
           <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
-            <option value="">All Stores</option>
+            <option value="">{t("admin.dashboard.allStores")}</option>
             {stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
           </select>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }} />
-          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>to</span>
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>{t("admin.dashboard.to")}</span>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }} />
         </div>
       </div>
@@ -106,15 +108,15 @@ export default function DashboardPage() {
         <div className="card">
           <h3 style={{ marginBottom: 16, fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>
             <TrendingUp size={14} style={{ display: "inline", marginRight: 8, color: "var(--color-accent-copper)" }} />
-            Orders by Type
+            {t("admin.dashboard.ordersByType")}
           </h3>
           {!data?.orders_by_type || Object.keys(data.orders_by_type).length === 0 ? (
-            <p style={{ color: "var(--color-text-muted)", fontSize: 14 }}>No orders in this period</p>
+            <p style={{ color: "var(--color-text-muted)", fontSize: 14 }}>{t("admin.dashboard.noOrders")}</p>
           ) : (
             Object.entries(data.orders_by_type).map(([type, info]) => (
               <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border-light)" }}>
                 <span style={{ textTransform: "capitalize", color: "var(--color-text-secondary)", fontSize: 14 }}>{type.replace(/_/g, " ")}</span>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{info.count} orders · {formatRM(info.revenue)}</span>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>{info.count} {t("admin.dashboard.orders")} · {formatRM(info.revenue)}</span>
               </div>
             ))
           )}
@@ -123,17 +125,17 @@ export default function DashboardPage() {
         <div className="card">
           <h3 style={{ marginBottom: 16, fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>
             <DollarSign size={14} style={{ display: "inline", marginRight: 8, color: "var(--color-accent-copper)" }} />
-            Revenue
+            {t("admin.dashboard.revenue")}
           </h3>
           <div style={{ fontSize: 36, fontWeight: 700, color: "var(--color-accent-copper)" }}>{formatRM(data?.total_revenue || 0)}</div>
-          <p style={{ color: "var(--color-text-muted)", marginTop: 8, fontSize: 13 }}>Revenue for selected period</p>
+          <p style={{ color: "var(--color-text-muted)", marginTop: 8, fontSize: 13 }}>{t("admin.dashboard.revenueForPeriod")}</p>
         </div>
       </div>
 
       {/* Bar Chart */}
       {data?.monthly_data && data.monthly_data.length > 0 && (
         <div className="card" style={{ marginTop: 24 }}>
-          <h3 style={{ marginBottom: 16, fontSize: 15, fontWeight: 600 }}>Monthly Orders</h3>
+          <h3 style={{ marginBottom: 16, fontSize: 15, fontWeight: 600 }}>{t("admin.dashboard.monthlyOrders")}</h3>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 160 }}>
             {data.monthly_data.map((d, i) => {
               const h = Math.max((d.orders / maxBar) * 140, 2);

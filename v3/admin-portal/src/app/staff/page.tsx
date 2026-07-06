@@ -3,11 +3,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Trash2, Edit2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface Staff { id: number; principal_id: number; display_name: string; email_address?: string; phone_number?: string; store_id: number; store_name?: string; has_pin: boolean; is_active: boolean; roles: { id: number; name: string }[]; }
 interface Store { id: number; store_name: string; }
 
 export default function StaffPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [items, setItems] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export default function StaffPage() {
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="">All Stores</option>
+          <option value="">{t("admin.common.allStores")}</option>
           {stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
       </div>

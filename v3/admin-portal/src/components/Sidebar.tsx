@@ -13,151 +13,146 @@ import {
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
+import { useTranslation } from "@/lib/i18n";
+import LanguageSelector from "./LanguageSelector";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 
 type NavItem = {
   type?: "section";
-  label: string;
+  id: string;
+  labelKey: string;
   href?: string;
   icon?: React.ElementType;
-  children?: { label: string; href: string }[];
+  children?: { id: string; labelKey: string; href: string }[];
 };
 
 const navItems: NavItem[] = [
-  // ═══════════════════════════════════
-  // COMPANY
-  // ═══════════════════════════════════
-  { type: "section", label: "Company" },
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { type: "section", id: "company", labelKey: "admin.nav.section.company" },
+  { id: "dashboard", labelKey: "admin.nav.dashboard", href: "/", icon: LayoutDashboard },
   {
-    label: "Stores", href: "/stores", icon: Store,
+    id: "stores", labelKey: "admin.nav.stores", href: "/stores", icon: Store,
     children: [
-      { label: "Store Locations", href: "/stores" },
-      { label: "Store Settings", href: "/stores/settings" },
+      { id: "storeLocations", labelKey: "admin.nav.stores.locations", href: "/stores" },
+      { id: "storeSettings", labelKey: "admin.nav.stores.settings", href: "/stores/settings" },
     ],
   },
   {
-    label: "Menu", href: "/menu", icon: UtensilsCrossed,
+    id: "menu", labelKey: "admin.nav.menu", href: "/menu", icon: UtensilsCrossed,
     children: [
-      { label: "Categories", href: "/menu/categories" },
-      { label: "Items", href: "/menu/items" },
-      { label: "Bundle Products", href: "/menu/bundle-products" },
-      { label: "Allergens", href: "/menu/allergens" },
-      { label: "Dietary Tags", href: "/menu/dietary-tags" },
-      { label: "Tax Categories", href: "/menu/tax-categories" },
+      { id: "menuCategories", labelKey: "admin.nav.menu.categories", href: "/menu/categories" },
+      { id: "menuItems", labelKey: "admin.nav.menu.items", href: "/menu/items" },
+      { id: "menuBundles", labelKey: "admin.nav.menu.bundleProducts", href: "/menu/bundle-products" },
+      { id: "menuAllergens", labelKey: "admin.nav.menu.allergens", href: "/menu/allergens" },
+      { id: "menuDietary", labelKey: "admin.nav.menu.dietaryTags", href: "/menu/dietary-tags" },
+      { id: "menuTax", labelKey: "admin.nav.menu.taxCategories", href: "/menu/tax-categories" },
     ],
   },
   {
-    label: "Loyalty", href: "/loyalty", icon: Award,
+    id: "loyalty", labelKey: "admin.nav.loyalty", href: "/loyalty", icon: Award,
     children: [
-      { label: "Tiers", href: "/loyalty/tiers" },
-      { label: "Accounts", href: "/loyalty/accounts" },
-      { label: "Ledger", href: "/loyalty/ledger" },
-      { label: "Loyalty Settings", href: "/loyalty/settings" },
+      { id: "loyaltyTiers", labelKey: "admin.nav.loyalty.tiers", href: "/loyalty/tiers" },
+      { id: "loyaltyAccounts", labelKey: "admin.nav.loyalty.accounts", href: "/loyalty/accounts" },
+      { id: "loyaltyLedger", labelKey: "admin.nav.loyalty.ledger", href: "/loyalty/ledger" },
+      { id: "loyaltySettings", labelKey: "admin.nav.loyalty.settings", href: "/loyalty/settings" },
     ],
   },
   {
-    label: "Marketing", href: "/marketing", icon: TrendingUp,
+    id: "marketing", labelKey: "admin.nav.marketing", href: "/marketing", icon: TrendingUp,
     children: [
-      { label: "Rewards", href: "/rewards" },
-      { label: "Promotions", href: "/promotions" },
-      { label: "Vouchers", href: "/vouchers" },
-      { label: "Voucher Report", href: "/vouchers/report" },
-      { label: "Surveys", href: "/surveys" },
-      { label: "Survey Report", href: "/surveys/report" },
-      { label: "Referrals", href: "/referrals" },
-      { label: "Referral Settings", href: "/referrals/settings" },
-      { label: "Check-ins", href: "/checkins" },
-      { label: "Check-in Settings", href: "/checkins/settings" },
-      { label: "Campaigns", href: "/marketing/campaigns" },
-      { label: "Campaign Settings", href: "/marketing/campaigns/settings" },
+      { id: "marketingRewards", labelKey: "admin.nav.marketing.rewards", href: "/rewards" },
+      { id: "marketingPromotions", labelKey: "admin.nav.marketing.promotions", href: "/promotions" },
+      { id: "marketingVouchers", labelKey: "admin.nav.marketing.vouchers", href: "/vouchers" },
+      { id: "marketingVoucherReport", labelKey: "admin.nav.marketing.voucherReport", href: "/vouchers/report" },
+      { id: "marketingSurveys", labelKey: "admin.nav.marketing.surveys", href: "/surveys" },
+      { id: "marketingSurveyReport", labelKey: "admin.nav.marketing.surveyReport", href: "/surveys/report" },
+      { id: "marketingReferrals", labelKey: "admin.nav.marketing.referrals", href: "/referrals" },
+      { id: "marketingReferralSettings", labelKey: "admin.nav.marketing.referralSettings", href: "/referrals/settings" },
+      { id: "marketingCheckins", labelKey: "admin.nav.marketing.checkins", href: "/checkins" },
+      { id: "marketingCheckinSettings", labelKey: "admin.nav.marketing.checkinSettings", href: "/checkins/settings" },
+      { id: "marketingCampaigns", labelKey: "admin.nav.marketing.campaigns", href: "/marketing/campaigns" },
+      { id: "marketingCampaignSettings", labelKey: "admin.nav.marketing.campaignSettings", href: "/marketing/campaigns/settings" },
     ],
   },
   {
-    label: "Content", href: "/content", icon: LayoutTemplate,
+    id: "content", labelKey: "admin.nav.content", href: "/content", icon: LayoutTemplate,
     children: [
-      { label: "Info Cards", href: "/content/info-cards" },
-      { label: "Products", href: "/content/products" },
-      { label: "Events", href: "/content/events" },
-      { label: "Event RSVP Report", href: "/content/events/report" },
-      { label: "System Pages", href: "/content/system" },
-      { label: "PWA Splash", href: "/content/pwa-splash" },
+      { id: "contentInfoCards", labelKey: "admin.nav.content.infoCards", href: "/content/info-cards" },
+      { id: "contentProducts", labelKey: "admin.nav.content.products", href: "/content/products" },
+      { id: "contentEvents", labelKey: "admin.nav.content.events", href: "/content/events" },
+      { id: "contentEventReport", labelKey: "admin.nav.content.eventReport", href: "/content/events/report" },
+      { id: "contentSystem", labelKey: "admin.nav.content.systemPages", href: "/content/system" },
+      { id: "contentPwaSplash", labelKey: "admin.nav.content.pwaSplash", href: "/content/pwa-splash" },
     ],
   },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
-  { label: "Audit Log", href: "/audit-log", icon: FileText },
+  { id: "reports", labelKey: "admin.nav.reports", href: "/reports", icon: BarChart3 },
+  { id: "auditLog", labelKey: "admin.nav.auditLog", href: "/audit-log", icon: FileText },
   {
-    label: "Settings", href: "/settings", icon: Settings,
+    id: "settings", labelKey: "admin.nav.settings", href: "/settings", icon: Settings,
     children: [
-      { label: "App Settings", href: "/settings" },
-      { label: "Payment Gateway", href: "/settings/payment-gateway" },
-      { label: "Version Control", href: "/settings/version-control" },
+      { id: "settingsApp", labelKey: "admin.nav.settings.app", href: "/settings" },
+      { id: "settingsPayment", labelKey: "admin.nav.settings.paymentGateway", href: "/settings/payment-gateway" },
+      { id: "settingsTwilioVerify", labelKey: "admin.nav.settings.twilioVerify", href: "/settings/twilio-verify" },
+      { id: "settingsVersion", labelKey: "admin.nav.settings.versionControl", href: "/settings/version-control" },
     ],
   },
   {
-    label: "Admin User", href: "/admins", icon: Shield,
+    id: "adminUser", labelKey: "admin.nav.adminUser", href: "/admins", icon: Shield,
     children: [
-      { label: "Admin Listing", href: "/admins" },
-      { label: "Admin Roles", href: "/admins/roles" },
-      { label: "My Profile", href: "/profile" },
+      { id: "adminListing", labelKey: "admin.nav.adminUser.listing", href: "/admins" },
+      { id: "adminRoles", labelKey: "admin.nav.adminUser.roles", href: "/admins/roles" },
+      { id: "adminProfile", labelKey: "admin.nav.adminUser.profile", href: "/profile" },
     ],
   },
-  { label: "Translations", href: "/translations", icon: Languages },
+  { id: "translations", labelKey: "admin.nav.translations", href: "/translations", icon: Languages },
 
-  // ═══════════════════════════════════
-  // SUPPORT
-  // ═══════════════════════════════════
-  { type: "section", label: "Support" },
-  { label: "Customers List", href: "/customers", icon: UserCircle },
-  { label: "Customer Consents", href: "/customers/consents", icon: FileText },
-  { label: "Customer Devices", href: "/customers/devices", icon: BarChart3 },
+  { type: "section", id: "support", labelKey: "admin.nav.section.support" },
+  { id: "customers", labelKey: "admin.nav.customers", href: "/customers", icon: UserCircle },
+  { id: "customerConsents", labelKey: "admin.nav.customers.consents", href: "/customers/consents", icon: FileText },
+  { id: "customerDevices", labelKey: "admin.nav.customers.devices", href: "/customers/devices", icon: BarChart3 },
   {
-    label: "Notifications", href: "/notifications", icon: Bell,
+    id: "notifications", labelKey: "admin.nav.notifications", href: "/notifications", icon: Bell,
     children: [
-      { label: "Notifications List", href: "/notifications" },
-      { label: "Templates", href: "/notifications/templates" },
-      { label: "Report", href: "/notifications/report" },
+      { id: "notificationsList", labelKey: "admin.nav.notifications.list", href: "/notifications" },
+      { id: "notificationsTemplates", labelKey: "admin.nav.notifications.templates", href: "/notifications/templates" },
+      { id: "notificationsReport", labelKey: "admin.nav.notifications.report", href: "/notifications/report" },
     ],
   },
-  { label: "Feedback", href: "/feedback", icon: Star },
+  { id: "feedback", labelKey: "admin.nav.feedback", href: "/feedback", icon: Star },
 
-  // ═══════════════════════════════════
-  // STORE OPERATIONS
-  // ═══════════════════════════════════
-  { type: "section", label: "Store Operations" },
-  { label: "Orders", href: "/orders", icon: ShoppingBag },
-  { label: "Refunds", href: "/refunds", icon: Wallet },
+  { type: "section", id: "storeOps", labelKey: "admin.nav.section.storeOps" },
+  { id: "orders", labelKey: "admin.nav.orders", href: "/orders", icon: ShoppingBag },
+  { id: "refunds", labelKey: "admin.nav.refunds", href: "/refunds", icon: Wallet },
   {
-    label: "Reservations", href: "/reservations", icon: Calendar,
+    id: "reservations", labelKey: "admin.nav.reservations", href: "/reservations", icon: Calendar,
     children: [
-      { label: "Reservation List", href: "/reservations" },
+      { id: "reservationsList", labelKey: "admin.nav.reservations.list", href: "/reservations" },
     ],
   },
-  { label: "Tables", href: "/tables", icon: Grid3X3 },
+  { id: "tables", labelKey: "admin.nav.tables", href: "/tables", icon: Grid3X3 },
   {
-    label: "Inventory", href: "/inventory", icon: Package,
+    id: "inventory", labelKey: "admin.nav.inventory", href: "/inventory", icon: Package,
     children: [
-      { label: "Categories", href: "/inventory/categories" },
-      { label: "Items", href: "/inventory/items" },
-      { label: "Stock Levels", href: "/inventory/stocks" },
-      { label: "Suppliers", href: "/inventory/suppliers" },
-      { label: "Movements", href: "/inventory/movements" },
-      { label: "Purchase Orders", href: "/inventory/purchase-orders" },
+      { id: "inventoryCategories", labelKey: "admin.nav.inventory.categories", href: "/inventory/categories" },
+      { id: "inventoryItems", labelKey: "admin.nav.inventory.items", href: "/inventory/items" },
+      { id: "inventoryStock", labelKey: "admin.nav.inventory.stockLevels", href: "/inventory/stocks" },
+      { id: "inventorySuppliers", labelKey: "admin.nav.inventory.suppliers", href: "/inventory/suppliers" },
+      { id: "inventoryMovements", labelKey: "admin.nav.inventory.movements", href: "/inventory/movements" },
+      { id: "inventoryPurchase", labelKey: "admin.nav.inventory.purchaseOrders", href: "/inventory/purchase-orders" },
     ],
   },
-  { label: "Equipment", href: "/equipment", icon: Wrench, children: [
-      { label: "Equipment List", href: "/equipment" },
-      { label: "Reports Ledger", href: "/equipment/reports" },
+  { id: "equipment", labelKey: "admin.nav.equipment", href: "/equipment", icon: Wrench, children: [
+      { id: "equipmentList", labelKey: "admin.nav.equipment.list", href: "/equipment" },
+      { id: "equipmentReports", labelKey: "admin.nav.equipment.reports", href: "/equipment/reports" },
     ] },
-  { label: "Hygiene", href: "/hygiene", icon: ClipboardCheck },
+  { id: "hygiene", labelKey: "admin.nav.hygiene", href: "/hygiene", icon: ClipboardCheck },
   {
-    label: "Staff", href: "/staff", icon: Users,
+    id: "staff", labelKey: "admin.nav.staff", href: "/staff", icon: Users,
     children: [
-      { label: "Staff List", href: "/staff" },
-      { label: "Staff Roles", href: "/staff/roles" },
-      { label: "Staff Shifts", href: "/staff/shifts" },
-      { label: "Attendance", href: "/staff/attendance" },
-      { label: "Tips", href: "/staff/tips" },
+      { id: "staffList", labelKey: "admin.nav.staff.list", href: "/staff" },
+      { id: "staffRoles", labelKey: "admin.nav.staff.roles", href: "/staff/roles" },
+      { id: "staffShifts", labelKey: "admin.nav.staff.shifts", href: "/staff/shifts" },
+      { id: "staffAttendance", labelKey: "admin.nav.staff.attendance", href: "/staff/attendance" },
+      { id: "staffTips", labelKey: "admin.nav.staff.tips", href: "/staff/tips" },
     ],
   },
 ];
@@ -166,21 +161,22 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { brandName } = useBrand();
+  const { t } = useTranslation();
   const computeOpenMenus = useCallback(() => ({
-    Stores: pathname.startsWith("/stores"),
-    Menu: pathname.startsWith("/menu"),
-    Loyalty: pathname.startsWith("/loyalty"),
-    Marketing: pathname.startsWith("/marketing") || pathname.startsWith("/rewards") || pathname.startsWith("/vouchers") || pathname.startsWith("/surveys") || pathname.startsWith("/promotions") || pathname.startsWith("/referrals") || pathname.startsWith("/checkins"),
-    Content: pathname.startsWith("/content"),
-    Inventory: pathname.startsWith("/inventory"),
-    Equipment: pathname.startsWith("/equipment"),
-    Hygiene: pathname.startsWith("/hygiene"),
-    Staff: pathname.startsWith("/staff"),
-    Reservations: pathname.startsWith("/reservations"),
-    "Customers List": pathname.startsWith("/customers"),
-    Notifications: pathname.startsWith("/notifications"),
-    "Admin User": pathname.startsWith("/admins"),
-    Settings: pathname.startsWith("/settings"),
+    stores: pathname.startsWith("/stores"),
+    menu: pathname.startsWith("/menu"),
+    loyalty: pathname.startsWith("/loyalty"),
+    marketing: pathname.startsWith("/marketing") || pathname.startsWith("/rewards") || pathname.startsWith("/vouchers") || pathname.startsWith("/surveys") || pathname.startsWith("/promotions") || pathname.startsWith("/referrals") || pathname.startsWith("/checkins"),
+    content: pathname.startsWith("/content"),
+    inventory: pathname.startsWith("/inventory"),
+    equipment: pathname.startsWith("/equipment"),
+    hygiene: pathname.startsWith("/hygiene"),
+    staff: pathname.startsWith("/staff"),
+    reservations: pathname.startsWith("/reservations"),
+    customers: pathname.startsWith("/customers"),
+    notifications: pathname.startsWith("/notifications"),
+    adminUser: pathname.startsWith("/admins"),
+    settings: pathname.startsWith("/settings"),
   }), [pathname]);
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(computeOpenMenus);
@@ -188,7 +184,7 @@ export default function Sidebar() {
 
   useEffect(() => { setOpenMenus(prev => ({ ...prev, ...computeOpenMenus() })); }, [pathname, computeOpenMenus]);
 
-  const toggleMenu = (label: string) => setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
+  const toggleMenu = (id: string) => setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
   const handleLogout = () => { adminLogout(); router.push(ROUTES.LOGIN); };
   const isActive = (href: string) => pathname === href;
 
@@ -213,35 +209,35 @@ export default function Sidebar() {
       <aside className={`sb-aside ${mobileOpen ? "mobile-open" : "mobile-closed"}`}>
         <div className="sb-brand">
           <div className="sb-brand-icon"><Store size={18} /></div>
-          <div><div className="sb-brand-name">{brandName}</div><div className="sb-brand-sub">Admin Portal</div></div>
+          <div><div className="sb-brand-name">{brandName}</div><div className="sb-brand-sub">{t("admin.app.adminPortal")}</div></div>
         </div>
         <nav className="sb-nav">
           <ul className="sb-nav-list">
             {navItems.map(item => {
-              if (item.type === "section") return <li key={item.label} className="sb-section-label">{item.label}</li>;
+              if (item.type === "section") return <li key={item.id} className="sb-section-label">{t(item.labelKey)}</li>;
               const Icon = item.icon;
               const hasChildren = !!item.children;
               const active = isActive(item.href!) || (hasChildren && pathname.startsWith(item.href!));
-              const isOpen = openMenus[item.label] || false;
+              const isOpen = openMenus[item.id] || false;
               return (
-                <li key={item.label}>
+                <li key={item.id}>
                   {hasChildren ? (
                     <>
-                      <button type="button" className={`sb-nav-link ${active ? "active" : ""}`} onClick={() => toggleMenu(item.label)}>
-                        <span className="sb-nav-icon">{Icon && <Icon size={17} />}</span><span>{item.label}</span>
+                      <button type="button" className={`sb-nav-link ${active ? "active" : ""}`} onClick={() => toggleMenu(item.id)}>
+                        <span className="sb-nav-icon">{Icon && <Icon size={17} />}</span><span>{t(item.labelKey)}</span>
                         <ChevronRight size={14} className={`sb-chevron ${isOpen ? "open" : ""}`} />
                       </button>
                       {isOpen && (
                         <div className="sb-subnav">
                           {item.children!.map(child => (
-                            <Link key={child.href} href={child.href} className={`sb-subnav-link ${isActive(child.href) ? "active" : ""}`} onClick={() => setMobileOpen(false)}>{child.label}</Link>
+                            <Link key={child.href} href={child.href} className={`sb-subnav-link ${isActive(child.href) ? "active" : ""}`} onClick={() => setMobileOpen(false)}>{t(child.labelKey)}</Link>
                           ))}
                         </div>
                       )}
                     </>
                   ) : (
                     <Link href={item.href!} className={`sb-nav-link ${active ? "active" : ""}`} onClick={() => setMobileOpen(false)}>
-                      <span className="sb-nav-icon">{Icon && <Icon size={17} />}</span><span>{item.label}</span>
+                      <span className="sb-nav-icon">{Icon && <Icon size={17} />}</span><span>{t(item.labelKey)}</span>
                     </Link>
                   )}
                 </li>
@@ -251,7 +247,8 @@ export default function Sidebar() {
         </nav>
         <div className="sb-footer">
           <div className="sb-footer-email">{adminEmail}</div>
-          <button type="button" className="sb-logout-btn" onClick={handleLogout}><LogOut size={14} className="sb-logout-icon" /> Logout</button>
+          <div style={{ marginBottom: 10 }}><LanguageSelector /></div>
+          <button type="button" className="sb-logout-btn" onClick={handleLogout}><LogOut size={14} className="sb-logout-icon" /> {t("admin.common.logout")}</button>
         </div>
       </aside>
     </>

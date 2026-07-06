@@ -4,17 +4,18 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
-from app.api.routes.deps import CurrentAdmin, CurrentStaff, DBDependency
+from app.api.routes.deps import CurrentAdmin, CurrentStaff, DBDependency, RequireStaffRole
 from app.models.customer import Customer
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.iam import AdminAccount, IAMRole, RoleAssignment, RolePermission, StoreAssignment, TokenBlacklist
@@ -22,7 +23,7 @@ from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryS
 from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption
 from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
-from app.models.staff import StaffProfile, StaffTimeEvent, TipAllocation
+from app.models.staff import StaffProfile, StaffShift, StaffTask, StaffTimeEvent, TipAllocation
 from app.models.platform import PlatformConfig
 from app.models.store import Store, DiningTable, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -34,11 +35,21 @@ from app.schemas.staff import (
     StaffChangePasswordRequest,
     StaffChangePinRequest,
     POSOrderCreateRequest,
+    StaffShiftOut,
+    StaffTaskCreate,
+    StaffTaskOut,
+    StaffTaskUpdate,
 )
 from app.services.auth import blacklist_refresh_token
 from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
 from app.services.payment import PaymentError, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
+from app.core.auth_cookies import (
+    clear_staff_auth_cookies,
+    get_staff_access_token,
+    get_staff_refresh_token,
+    set_staff_auth_cookies,
+)
 from app.core.money import money_round, to_decimal
 from app.core.config import get_settings
 from app.core.rate_limiter import limiter
@@ -76,7 +87,7 @@ async def staff_name_list(request: Request, db: DBDependency, store_id: int):
 
 @router.post("/staff/auth/login")
 @limiter.limit("5/minute")
-async def staff_login(request: Request, db: DBDependency, data: StaffLoginRequest):
+async def staff_login(request: Request, response: Response, db: DBDependency, data: StaffLoginRequest):
     """Login: store selection → email+password/PIN or name+PIN."""
     email = (data.email or "").strip()
     password = (data.password or "").strip()
@@ -111,7 +122,9 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
         staff.failed_login_count = 0
         staff.locked_until = None
         await db.commit()
-        return _make_token(staff)
+        token_data = _make_token(staff)
+        set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
+        return token_data
 
     # ── Mode 2: Email + password/PIN ──
     if not email or not password:
@@ -144,7 +157,9 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
                 staff.failed_login_count = 0
                 staff.locked_until = None
                 await db.commit()
-                return _make_token(staff)
+                token_data = _make_token(staff)
+                set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
+                return token_data
         # Fallback: try PIN (but reject default 000000)
         if staff.pin_hash:
             if not _pin_allowed(staff.pin_hash, password):
@@ -152,7 +167,9 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
             staff.failed_login_count = 0
             staff.locked_until = None
             await db.commit()
-            return _make_token(staff)
+            token_data = _make_token(staff)
+            set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
+            return token_data
 
         # Increment failed login count on failure
         staff.failed_login_count = (staff.failed_login_count or 0) + 1
@@ -206,6 +223,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
             admin.id,
             extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id}
         )
+        set_staff_auth_cookies(response, access_token, refresh_token)
         return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id), "is_admin": True}}
     # No store_id — return admin token with store list for store selection
     store_list = await db.execute(select(Store).where(Store.deleted_at.is_(None), Store.is_active.is_(True)))
@@ -219,6 +237,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
         admin.id,
         extra_claims={"admin_id": admin.id}
     )
+    set_staff_auth_cookies(response, access_token, refresh_token)
     return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "is_admin": True, "stores": stores}}
 
 
@@ -226,7 +245,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
 
 @router.post("/staff/auth/admin-store")
 @limiter.limit("5/minute")
-async def admin_select_store(request: Request, db: DBDependency, data: StaffAdminStoreRequest):
+async def admin_select_store(request: Request, response: Response, db: DBDependency, data: StaffAdminStoreRequest):
     """Admin selects a store — returns a staff token scoped to that store."""
     token = (data.token or "").strip()
     store_id = data.store_id
@@ -277,6 +296,8 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
         token_type="staff",
         extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name}
     )
+    # Preserve existing refresh cookie; only set access cookie for the new scope.
+    set_staff_auth_cookies(response, access_token, "")
     return {"tokens": {"access_token": access_token}, "profile": {
         "email": admin.email, "display_name": admin.display_name, "store_id": int(store_id),
         "staff_id": 0,
@@ -334,9 +355,13 @@ def _pin_allowed(pin_hash, attempted_pin):
 
 @router.post("/staff/auth/refresh")
 @limiter.limit("10/minute")
-async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRefreshRequest):
-    """Refresh staff access token using a refresh token."""
-    token = (data.refresh_token or "").strip()
+async def staff_refresh_token(request: Request, response: Response, db: DBDependency, data: StaffRefreshRequest | None = None):
+    """Refresh staff access token using a refresh token.
+
+    Accepts refresh_token from HttpOnly cookie or request body.
+    """
+    token = get_staff_refresh_token(request) or (data.refresh_token if data else "")
+    token = (token or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="refresh_token required")
     try:
@@ -357,7 +382,9 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
         # Revoke this refresh token so it cannot be reused (atomic)
         await blacklist_refresh_token(db, jti, staff.principal_id, payload)
-        return _make_token(staff)
+        token_data = _make_token(staff)
+        set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
+        return token_data
 
     # Admin refresh (staff_id == 0)
     admin_id = payload.get("admin_id")
@@ -373,6 +400,7 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
         )
         # Revoke this refresh token so it cannot be reused (atomic)
         await blacklist_refresh_token(db, jti, admin.principal_id, payload)
+        set_staff_auth_cookies(response, access_token, "")
         return {"tokens": {"access_token": access_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
 
     raise HTTPException(status_code=401, detail="Invalid token")
@@ -392,7 +420,7 @@ async def staff_profile_me(db: DBDependency, request: Request):
     Manual decode lets us handle both token types in one endpoint without
     duplicating routes.
     """
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    token = get_staff_access_token(request) or request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -427,17 +455,10 @@ async def staff_profile_me(db: DBDependency, request: Request):
         staff = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
         sp = staff.scalar_one_or_none()
         if sp:
-            # Staff roles are linked via admin_accounts (staff have admin account linkage)
-            role_result = await db.execute(
-                select(IAMRole.display_name)
-                .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
-                .join(AdminAccount, AdminAccount.id == RoleAssignment.assignee_id)
-                .where(AdminAccount.email == sp.email_address, RoleAssignment.is_active.is_(True))
-            )
-            roles = [r[0] for r in role_result.all()]
+            # staff_profiles.role is the canonical staff role.
             return APIResponse(data={
                 "display_name": sp.display_name, "email": sp.email_address,
-                "is_admin": False, "roles": roles or [sp.role.replace("_", " ").title()],
+                "is_admin": False, "roles": [sp.role.replace("_", " ").title()],
                 "store_id": sp.store_id, "staff_role": sp.role,
             })
 
@@ -456,6 +477,21 @@ async def staff_profile_me(db: DBDependency, request: Request):
             })
 
     return APIResponse(data={"display_name": payload.get("admin_name", "User"), "roles": ["Staff Portal"]})
+
+
+@router.post("/staff/auth/logout")
+async def staff_logout(request: Request, response: Response, db: DBDependency):
+    """Logout staff/admin from staff portal. Blacklists refresh token if available."""
+    refresh_token = get_staff_refresh_token(request)
+    if refresh_token:
+        try:
+            payload = decode_token(refresh_token)
+            if payload.get("type") == "refresh":
+                await blacklist_refresh_token(db, payload.get("jti"), None, payload)
+        except Exception as exc:
+            logger.warning("Staff logout failed to blacklist refresh token: %s", exc)
+    clear_staff_auth_cookies(response)
+    return APIResponse(data={"success": True, "message": "Logged out successfully"})
 
 
 # ── Helper ──
@@ -709,7 +745,11 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
 
 
 @router.post("/staff/pos/orders", status_code=status.HTTP_201_CREATED)
-async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: POSOrderCreateRequest):
+async def staff_pos_create_order(
+    db: DBDependency,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    data: POSOrderCreateRequest,
+):
     store_id = data.store_id or staff.store_id
 
     # Validate store
@@ -1506,6 +1546,108 @@ async def staff_report_waste(
         })
 
     raise HTTPException(status_code=400, detail="Either menu_item_id or inventory_item_id is required")
+
+
+# ── Staff Shifts ──
+
+@router.get("/staff/shifts/me", response_model=APIResponse[PaginatedResponse[StaffShiftOut]])
+async def list_my_shifts(
+    db: DBDependency,
+    staff: CurrentStaff,
+    from_date: date | None = Query(None),
+    to_date: date | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """List shifts for the currently logged-in staff member."""
+    staff_id = staff.id if isinstance(staff, StaffProfile) else int(getattr(staff, "id", 0))
+    base_stmt = select(StaffShift).where(StaffShift.staff_id == staff_id)
+    count_stmt = select(func.count(StaffShift.id)).where(StaffShift.staff_id == staff_id)
+    if from_date is not None:
+        base_stmt = base_stmt.where(StaffShift.shift_date >= from_date)
+        count_stmt = count_stmt.where(StaffShift.shift_date >= from_date)
+    if to_date is not None:
+        base_stmt = base_stmt.where(StaffShift.shift_date <= to_date)
+        count_stmt = count_stmt.where(StaffShift.shift_date <= to_date)
+
+    total = (await db.execute(count_stmt)).scalar() or 0
+    stmt = (
+        base_stmt.order_by(StaffShift.shift_date.desc(), StaffShift.planned_start.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    items = [StaffShiftOut.model_validate(r) for r in result.scalars().all()]
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
+
+
+# ── Staff Tasks ──
+
+@router.get("/staff/tasks/me", response_model=APIResponse[PaginatedResponse[StaffTaskOut]])
+async def list_my_tasks(
+    db: DBDependency,
+    staff: CurrentStaff,
+    status: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """List tasks assigned to the currently logged-in staff member."""
+    staff_id = staff.id if isinstance(staff, StaffProfile) else int(getattr(staff, "id", 0))
+    base_stmt = select(StaffTask).where(StaffTask.staff_id == staff_id)
+    count_stmt = select(func.count(StaffTask.id)).where(StaffTask.staff_id == staff_id)
+    if status is not None:
+        base_stmt = base_stmt.where(StaffTask.status == status)
+        count_stmt = count_stmt.where(StaffTask.status == status)
+
+    total = (await db.execute(count_stmt)).scalar() or 0
+    stmt = (
+        base_stmt.order_by(StaffTask.due_date.asc().nulls_last(), StaffTask.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    items = [StaffTaskOut.model_validate(r) for r in result.scalars().all()]
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
+
+
+@router.post("/staff/tasks/{task_id}/complete", response_model=APIResponse[StaffTaskOut])
+async def complete_my_task(
+    db: DBDependency,
+    staff: CurrentStaff,
+    task_id: int,
+):
+    """Mark a task assigned to the current staff member as completed."""
+    staff_id = staff.id if isinstance(staff, StaffProfile) else int(getattr(staff, "id", 0))
+    result = await db.execute(
+        select(StaffTask).where(StaffTask.id == task_id, StaffTask.staff_id == staff_id)
+    )
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.status == "completed":
+        raise HTTPException(status_code=400, detail="Task already completed")
+    task.status = "completed"
+    task.completed_at = datetime.now(timezone.utc)
+    task.completed_by = staff_id
+    await db.commit()
+    await db.refresh(task)
+    return APIResponse(data=StaffTaskOut.model_validate(task))
 
 
 # ── Public Branding Config ──

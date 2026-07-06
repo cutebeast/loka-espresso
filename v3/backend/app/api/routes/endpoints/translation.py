@@ -43,6 +43,7 @@ async def _get_translation_or_404(db, translation_id: int) -> Translation:
 @router.get("", response_model=APIResponse[PaginatedResponse[TranslationOut]])
 async def list_translations(
     db: DBDependency,
+    admin: CurrentAdmin,
     namespace: str | None = Query(None),
     locale: str | None = Query(None),
     table_name: str | None = Query(None),
@@ -159,6 +160,20 @@ async def translate_text(
     )
 
 
+@router.get("/namespaces", response_model=APIResponse[list[str]])
+async def list_namespaces(db: DBDependency, admin: CurrentAdmin):
+    """List all distinct translation namespaces."""
+    result = await db.execute(select(Translation.namespace).distinct())
+    return APIResponse(data=sorted(r[0] for r in result.all() if r[0]))
+
+
+@router.get("/locales", response_model=APIResponse[list[str]])
+async def list_locales(db: DBDependency, admin: CurrentAdmin):
+    """List all distinct translation locales."""
+    result = await db.execute(select(Translation.locale).distinct())
+    return APIResponse(data=sorted(r[0] for r in result.all() if r[0]))
+
+
 @router.get("/cache/stats", response_model=APIResponse[CacheStatsOut])
 async def cache_stats(
     db: DBDependency,
@@ -183,6 +198,7 @@ async def clear_cache(
 @router.get("/{translation_id}", response_model=APIResponse[TranslationOut])
 async def get_translation(
     db: DBDependency,
+    admin: CurrentAdmin,
     translation_id: int,
 ):
     """Get a single translation by ID."""

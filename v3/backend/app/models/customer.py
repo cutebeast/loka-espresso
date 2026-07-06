@@ -240,6 +240,7 @@ class CustomerDevice(Base, SoftDeleteMixin):
     )
     device_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     push_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    web_push_subscription: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
     app_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     os_version: Mapped[str | None] = mapped_column(String(20), nullable=True)

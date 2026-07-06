@@ -55,7 +55,7 @@ services:
       APP_NAME: ${APP_NAME:-FNB Enterprise v3}
       DEBUG: ${DEBUG:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.com,https://admin.lokaespresso.com,https://staff.lokaespresso.com}
-      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-app.lokaespresso.com,admin.lokaespresso.com,staff.lokaespresso.com}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-localhost,127.0.0.1,app.lokaespresso.com,admin.lokaespresso.com,staff.lokaespresso.com}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
       WEBHOOK_API_KEY: ${WEBHOOK_API_KEY:-}
@@ -154,7 +154,7 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-app.lokaespresso.com}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.lokaespresso.com}
       STAFF_DOMAIN: ${STAFF_DOMAIN:-staff.lokaespresso.com}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.com,https://admin.lokaespresso.com,https://staff.lokaespresso.com}
     depends_on:
       backend:
         condition: service_healthy

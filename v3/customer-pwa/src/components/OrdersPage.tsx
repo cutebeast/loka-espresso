@@ -52,7 +52,8 @@ export default function OrdersPage() {
     if (!useAuthStore.getState().isAuthenticated) return;
     setIsLoading(true);
     try {
-      const res = await api.get('/orders', { params: { per_page: 20 } });
+      const activeStatuses = ['pending', 'preparing', 'in_progress', 'ready', 'awaiting_payment'];
+      const res = await api.get('/orders', { params: { status: activeStatuses.join(','), per_page: 20 } });
       const raw = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
       setOrders(raw);
     } catch (err) { console.error('[OrdersPage] fetch failed:', err); showToast(t('toast.loadOrdersFailed'), 'error'); }

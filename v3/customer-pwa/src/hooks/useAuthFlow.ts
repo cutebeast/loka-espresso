@@ -11,7 +11,7 @@ import { autoDetectStore } from '@/lib/geolocation';
 import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
-  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings',
+  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events',
 ];
 
 function isPublicPage(page: PageId): boolean {
@@ -108,16 +108,13 @@ export function useAuthFlow() {
     const validate = async () => {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          const userRes = await api.get('/me', { signal: abortCtrl.signal });
-          if (!cancelled) {
-            const raw = userRes.data as { profile?: UserProfile; addresses?: UserProfile['addresses']; referral_code?: string } | UserProfile;
-            const profile = ('profile' in raw && raw.profile) ? raw.profile : raw as UserProfile;
-            const addresses = ('addresses' in raw && raw.addresses) ? raw.addresses : profile.addresses;
-            setUser({ ...profile, addresses: addresses || [], referral_code: ('referral_code' in raw && raw.referral_code) ? raw.referral_code : (profile.referral_code || '') });
-            setAuthDone(true);
-          }
+        const userRes = await api.get('/me', { signal: abortCtrl.signal });
+        if (!cancelled) {
+          const raw = userRes.data as { profile?: UserProfile; addresses?: UserProfile['addresses']; referral_code?: string } | UserProfile;
+          const profile = ('profile' in raw && raw.profile) ? raw.profile : raw as UserProfile;
+          const addresses = ('addresses' in raw && raw.addresses) ? raw.addresses : profile.addresses;
+          setUser({ ...profile, addresses: addresses || [], referral_code: ('referral_code' in raw && raw.referral_code) ? raw.referral_code : (profile.referral_code || '') });
+          setAuthDone(true);
         }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;

@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const API_PROXY = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:13800/api";
+const API_PROXY = process.env.API_PROXY_URL || "http://127.0.0.1:13800/api";
 
 const nextConfig: NextConfig = {
   // output: 'standalone', // disabled for 'next start' compatibility

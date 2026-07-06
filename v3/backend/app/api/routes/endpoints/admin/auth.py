@@ -1,7 +1,7 @@
 """Admin authentication endpoints."""
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
 
 from app.api.routes.deps import DBDependency, CurrentAdmin
@@ -14,6 +14,7 @@ from app.services.auth import (
     login_admin,
     refresh_admin_tokens,
 )
+from app.core.auth_cookies import clear_admin_auth_cookies, get_admin_refresh_token, set_admin_auth_cookies
 from app.core.rate_limiter import limiter
 from app.core.security import hash_password, verify_password
 
@@ -143,7 +144,7 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
 
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
-async def admin_login(request: Request, db: DBDependency, data: AdminLoginRequest):
+async def admin_login(request: Request, response: Response, db: DBDependency, data: AdminLoginRequest):
     """Admin portal login with email and password."""
     try:
         admin = await login_admin(db, data)
@@ -170,6 +171,8 @@ async def admin_login(request: Request, db: DBDependency, data: AdminLoginReques
     )
     store_ids = [row[0] for row in store_result.all()]
 
+    set_admin_auth_cookies(response, tokens.access_token, tokens.refresh_token)
+
     return AuthResponse(
         user_type="admin",
         user_id=admin.id,
@@ -188,16 +191,27 @@ async def admin_login(request: Request, db: DBDependency, data: AdminLoginReques
 
 @router.post("/refresh", response_model=TokenPair)
 @limiter.limit("10/minute")
-async def admin_refresh(request: Request, db: DBDependency, data: RefreshTokenRequest):
+async def admin_refresh(request: Request, response: Response, db: DBDependency, data: RefreshTokenRequest | None = None):
     """Refresh admin access token."""
+    refresh_token = get_admin_refresh_token(request) or (data.refresh_token if data else "")
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token required")
     try:
-        return await refresh_admin_tokens(db, data)
+        tokens = await refresh_admin_tokens(db, RefreshTokenRequest(refresh_token=refresh_token))
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    set_admin_auth_cookies(response, tokens.access_token, tokens.refresh_token)
+    return tokens
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_logout(response: Response):
+    """Log out the current admin by clearing auth cookies."""
+    clear_admin_auth_cookies(response)
 
 
 @router.get("/me", response_model=AdminMeOut)
-async def admin_me(db: DBDependency, admin: CurrentAdmin):
+async def admin_me(db: DBDependency, request: Request, admin: CurrentAdmin):
     """Get current admin profile with roles and store assignments."""
     role_result = await db.execute(
         select(IAMRole.role_key)

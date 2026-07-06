@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -44,8 +45,7 @@ export function useVersionCheck() {
   }, []);
 
   const checkNotifications = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return [];
+    if (!useAuthStore.getState().isAuthenticated) return [];
     try {
       // Fetch unread count only — lightweight check
       const res = await api.get('/notifications/me?per_page=1&is_read=false');

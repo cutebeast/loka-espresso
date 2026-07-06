@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface Equipment {
   id: number;
@@ -28,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function EquipmentPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [items, setItems] = useState<Equipment[]>([]);
   const [stores, setStores] = useState<any[]>([]);
@@ -89,7 +91,7 @@ export default function EquipmentPage() {
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <select className="border rounded px-3 py-2 text-sm" value={storeFilter} onChange={e => { setStoreFilter(e.target.value); setPage(1); }}>
-          <option value="">All Stores</option>
+          <option value="">{t("admin.common.allStores")}</option>
           {stores.map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
         <select className="border rounded px-3 py-2 text-sm" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>

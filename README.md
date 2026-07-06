@@ -17,7 +17,7 @@ Full-stack F&B ordering and loyalty platform. The active codebase is in `v3/`.
 See [`v3/docs/000-project-status.md`](v3/docs/000-project-status.md) for the full project status, deployment notes, domain setup, upload handling, test results, and recent cleanup.
 
 Highlights:
-- **182 passed, 17 skipped, 0 failed** in the E2E suite.
+- **207 passed, 8 skipped, 0 failed** in the E2E suite (browser tests enabled).
 - TypeScript strict: 0 errors across all 3 portals.
 - Root repository has been cleaned of legacy v1/v2 files; all active code stays in `v3/`.
 - Upload endpoints (avatars, item images, equipment photos) are verified and served correctly through the backend.
@@ -37,7 +37,11 @@ cd staff-portal && npm run dev    # localhost:13820
 cd customer-pwa && npm run dev    # localhost:13810
 
 # Tests
-cd e2e-tests && pytest -q
+cd e2e-tests
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium
+pytest -q
 ```
 
 ## Full-Docker deployment

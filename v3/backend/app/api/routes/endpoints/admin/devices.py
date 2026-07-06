@@ -74,6 +74,7 @@ public_router = APIRouter(prefix="/me", tags=["customer"])
 class DeviceRegister(BaseModel):
     device_fingerprint: str = Field(..., max_length=64)
     push_token: str | None = Field(None, max_length=255)
+    web_push_subscription: dict | None = Field(None)
     platform: str = Field(..., max_length=20)
     app_version: str | None = Field(None, max_length=20)
     os_version: str | None = Field(None, max_length=20)
@@ -100,6 +101,7 @@ async def register_device(
 
     if existing is not None:
         existing.push_token = data.push_token
+        existing.web_push_subscription = data.web_push_subscription
         existing.platform = data.platform
         existing.app_version = data.app_version
         existing.os_version = data.os_version
@@ -115,6 +117,7 @@ async def register_device(
         customer_id=customer.id,
         device_fingerprint=data.device_fingerprint,
         push_token=data.push_token,
+        web_push_subscription=data.web_push_subscription,
         platform=data.platform,
         app_version=data.app_version,
         os_version=data.os_version,

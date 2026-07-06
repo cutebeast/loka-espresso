@@ -1,5 +1,6 @@
 import api from './api';
 import type { CartItem, Cart, CartLineItem } from './api';
+import { queueOrder, replayOrders, isNetworkError } from './orderQueue';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 
@@ -36,8 +37,6 @@ export class CartSyncError extends Error {
 
 export async function syncCartToServer(items: CartItem[]): Promise<void> {
   if (typeof window === 'undefined') return;
-  const token = localStorage.getItem('token');
-  if (!token) return;
 
   while (_syncPromise) {
     try { await _syncPromise; } catch { /* ignore previous failure */ }
@@ -148,6 +147,14 @@ export async function placeOrder(params: {
 }) {
   const { items, clearCart } = useCartStore.getState();
 
+  // Wallet/gateway payments require an immediate online confirmation flow and
+  // cannot be safely queued offline.
+  const canQueueOffline = params.paymentMethod === 'cash' || params.paymentMethod === 'pay_at_store' || params.paymentMethod === 'cod';
+  const isOffline = typeof window !== 'undefined' && !navigator.onLine;
+  if (isOffline && !canQueueOffline) {
+    throw new Error('This payment method requires an internet connection. Please connect and try again.');
+  }
+
   await syncCartToServer(items);
 
   // The backend enum uses 'takeaway' for customer-collected orders; UI labels it 'pickup'.
@@ -194,9 +201,19 @@ export async function placeOrder(params: {
     orderPayload.delivery_instructions = params.deliveryInstructions;
   }
 
-  const orderRes = await api.post('/orders', orderPayload, {
-    headers: { 'Idempotency-Key': createIdempotencyKey('order') },
-  });
+  let orderRes;
+  try {
+    orderRes = await api.post('/orders', orderPayload, {
+      headers: { 'Idempotency-Key': createIdempotencyKey('order') },
+    });
+  } catch (err: unknown) {
+    if ((isOffline || isNetworkError(err)) && canQueueOffline) {
+      const queued = await queueOrder(orderPayload);
+      return { queued: true as const, queuedOrder: queued };
+    }
+    throw err;
+  }
+
   const newOrder = orderRes.data;
 
   try {
@@ -251,6 +268,7 @@ export function registerCartSyncListeners(): () => void {
         if (items.length > 0) {
           syncCartToServer(items).catch((err) => console.error('[CartSync] Background sync failed:', err));
         }
+        replayOrders().catch((err) => console.error('[CartSync] Order replay failed:', err));
       }, 500);
     }
   };

@@ -30,6 +30,7 @@ from app.api.routes.endpoints.admin import purchase_orders as admin_purchase_ord
 from app.api.routes.endpoints.admin import tips as admin_tips
 from app.api.routes.endpoints.admin import consents as admin_consents
 from app.api.routes.endpoints.admin import devices as admin_devices
+from app.api.routes.endpoints import push as push_endpoints
 from app.api.routes.endpoints.admin import marketing as admin_marketing
 from app.api.routes.endpoints.admin import referrals as admin_referrals
 from app.api.routes.endpoints.admin import refunds as admin_refunds
@@ -130,6 +131,7 @@ api_router.include_router(admin_consents.public_router, tags=["customer"])
 # Devices
 api_router.include_router(admin_devices.admin_router, tags=["admin — customers"])
 api_router.include_router(admin_devices.public_router, tags=["customer"])
+api_router.include_router(push_endpoints.public_router, tags=["push"])
 
 # Content
 

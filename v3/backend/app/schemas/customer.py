@@ -58,6 +58,7 @@ class CustomerAddressOut(CustomerAddressBase, TimestampedSchema):
 class CustomerDeviceBase(BaseSchema):
     device_fingerprint: str = Field(..., max_length=64)
     push_token: str | None = Field(None, max_length=255)
+    web_push_subscription: dict | None = None
     platform: Literal["ios", "android", "web", "pwa"] = "web"
     app_version: str | None = Field(None, max_length=20)
     os_version: str | None = Field(None, max_length=20)

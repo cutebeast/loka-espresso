@@ -3,19 +3,16 @@ import axios from 'axios';
 function resolveApiBase(): string {
   const envUrl =
     typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined;
-  // In local dev/test the Next.js app is served on a different port than the
-  // backend, so a relative /api path resolves back to the PWA itself. Use the
-  // known backend port when running on localhost unless an absolute URL is set.
-  if (
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ) {
-    if (!envUrl || envUrl.startsWith('/')) {
-      return 'http://127.0.0.1:13800/api';
-    }
+  // Use the same-origin /api proxy so that HttpOnly cookies are sent
+  // automatically. The Next.js rewrite forwards /api/* to the backend.
+  // Server-side callers (Node/SSR) still need an absolute URL.
+  if (typeof window !== 'undefined') {
+    return '/api';
+  }
+  if (envUrl && envUrl.startsWith('http')) {
     return envUrl;
   }
-  return envUrl && envUrl.startsWith('http') ? envUrl : '/api';
+  return 'http://127.0.0.1:13800/api';
 }
 
 export const API_BASE = resolveApiBase();
@@ -24,14 +21,11 @@ const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
+  withCredentials: true,
 });
 
-// Inject auth token and locale into every request
+// Inject locale into every request. Auth is handled by HttpOnly cookies.
 api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
   const rawLocale = typeof window !== 'undefined' ? localStorage.getItem('loka-locale') : null;
   if (rawLocale) {
     try {
@@ -48,6 +42,16 @@ api.interceptors.request.use((config) => {
 });
 
 let _refreshPromise: Promise<{ access_token?: string; refresh_token?: string }> | null = null;
+
+function clearStoredTokens() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+  } catch {
+    // ignore
+  }
+}
 
 api.interceptors.response.use(
   (res) => {
@@ -74,19 +78,9 @@ api.interceptors.response.use(
       let currentPromise: Promise<any>;
       try {
         if (!_refreshPromise) {
-          currentPromise = axios.post(`${API_BASE}/auth/refresh`, {
-            refresh_token: typeof window !== 'undefined' ? (localStorage.getItem('refreshToken') || '') : '',
-          }).then((res) => {
+          currentPromise = axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true }).then((res) => {
             const data = res.data;
             const t = data?.tokens || data;
-            if (t?.access_token) {
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('token', t.access_token);
-                if (t.refresh_token) {
-                  localStorage.setItem('refreshToken', t.refresh_token);
-                }
-              }
-            }
             return t;
           });
           _refreshPromise = currentPromise;
@@ -100,6 +94,7 @@ api.interceptors.response.use(
         }
       } catch (refreshError: any) {
         if (_refreshPromise && typeof window !== 'undefined') {
+          clearStoredTokens();
           window.dispatchEvent(new CustomEvent('auth:expired'));
         }
         _refreshPromise = null;
@@ -731,4 +726,33 @@ export function cacheBust(url: string, ts?: number): string {
   if (!url) return url;
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}v=${ts ?? Date.now()}`;
+}
+
+export interface PushSubscriptionJSON {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+export interface RegisterDevicePayload {
+  device_fingerprint: string;
+  platform: 'web' | 'pwa';
+  push_token?: string | null;
+  web_push_subscription?: PushSubscriptionJSON | null;
+  app_version?: string;
+  os_version?: string;
+  device_model?: string;
+}
+
+export async function getVapidPublicKey(): Promise<string> {
+  const res = await api.get('/push/vapid-public-key');
+  return res.data?.public_key as string;
+}
+
+export async function registerDevice(payload: RegisterDevicePayload): Promise<unknown> {
+  const res = await api.post('/me/devices', payload);
+  return res.data;
 }

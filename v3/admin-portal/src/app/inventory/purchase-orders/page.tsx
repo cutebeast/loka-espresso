@@ -2,12 +2,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, type PurchaseOrder } from "@/lib/api";
 import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface Supplier { id: number; supplier_name: string; }
 interface InvItem { id: number; item_name: string; unit_of_measure: string; }
 interface Store { id: number; store_name: string; }
 
 export default function PurchaseOrdersPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -68,7 +70,7 @@ export default function PurchaseOrdersPage() {
 
       <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
         <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
-          <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+          <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
         <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Status</label>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="ordered">Ordered</option><option value="partially_received">Partially Received</option><option value="received">Received</option><option value="cancelled">Cancelled</option></select></div>
       </div>

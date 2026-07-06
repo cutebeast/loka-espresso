@@ -389,9 +389,11 @@ async def create_wallet_topup_checkout_session(
     """Create a Stripe Checkout Session for a wallet top-up."""
     if not await _stripe_enabled(db):
         fake_id = f"cs_test_{uuid4().hex}"
+        settings = get_settings()
+        checkout_url = (settings.stripe_simulator_checkout_url or "https://checkout.stripe.com/test-session/{session_id}").format(session_id=fake_id)
         return {
             "id": fake_id,
-            "url": f"https://checkout.stripe.com/test-session/{fake_id}",
+            "url": checkout_url,
             "payment_intent": f"pi_test_{uuid4().hex}",
         }
     api_key = await _get_stripe_secret_key(db)
@@ -476,9 +478,11 @@ async def create_stripe_checkout_session(
 
     # Simulator fallback: produce a fake session URL so staff/client UIs can be tested.
     session_id = f"cs_test_{uuid4().hex}"
+    settings = get_settings()
+    checkout_url = (settings.stripe_simulator_checkout_url or "https://checkout.stripe.com/test-session/{session_id}").format(session_id=session_id)
     return {
         "id": session_id,
-        "url": f"https://checkout.stripe.com/test-session/{session_id}",
+        "url": checkout_url,
         "payment_intent": f"pi_test_{uuid4().hex}",
     }
 
@@ -500,9 +504,11 @@ def _simulate_grabpay_intent(payment: Payment, return_url: str | None) -> dict:
     """Simulate a GrabPay session creation response."""
     session_id = uuid4().hex
     redirect = return_url or "https://example.com/payment/complete"
+    settings = get_settings()
+    template = settings.grabpay_simulator_session_url or "https://partner-api.grab.com/payments/v1/session/{session_id}?return_url={return_url}"
     return {
         "session_id": session_id,
-        "redirect_url": f"https://partner-api.grab.com/payments/v1/session/{session_id}?return_url={redirect}",
+        "redirect_url": template.format(session_id=session_id, return_url=redirect),
         "status": "pending",
         "amount": float(payment.amount),
         "currency": payment.currency_code,

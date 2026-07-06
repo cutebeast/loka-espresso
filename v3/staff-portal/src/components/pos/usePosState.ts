@@ -433,14 +433,20 @@ export function usePosState() {
       const discountBase = (checkoutHook.checkoutOrder as any)?.items_subtotal ?? orderBase;
       const manualDisc = discountType === "percentage" ? discountBase * (discountAmount / 100) : discountAmount;
       const checkoutTotal = Math.max(0, orderBase - manualDisc + tipAmount - walletPaid);
-      // If wallet (or a 100% discount) covers the whole bill, record the wallet payment.
+      // If wallet (or a 100% discount) covers the whole bill, record the wallet payment once.
       if (checkoutTotal <= 0) {
         try {
-          const walletRes = await payWithWallet(checkoutOrderId, walletPaid);
+          let walletRes: Record<string, unknown>;
+          if (walletPaid > 0) {
+            // Wallet payment already applied via handleCheckoutWalletPayment; just finalize.
+            walletRes = { message: "Paid with wallet", payment_status: "paid" };
+          } else {
+            walletRes = await payWithWallet(checkoutOrderId, walletPaid);
+          }
           setResult({
             order_id: checkoutOrderId,
             total: 0,
-            message: walletRes.message || "Paid with wallet",
+            message: (walletRes.message as string) || "Paid with wallet",
             payment_status: walletRes.payment_status,
           });
         } catch (e: unknown) {

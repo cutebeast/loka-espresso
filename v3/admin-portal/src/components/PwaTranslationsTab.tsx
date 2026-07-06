@@ -7,6 +7,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface Translation {
   id: number;
@@ -35,6 +36,7 @@ function sectionFor(key: string): string {
 }
 
 export default function PwaTranslationsTab() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Translation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>("");
@@ -114,7 +116,7 @@ export default function PwaTranslationsTab() {
     setSaving(Date.now());
     try {
       await upsertTranslation(key, locale, value.trim(), existing);
-      setMsg("Saved");
+      setMsg(t("admin.translations.saved"));
       setTimeout(() => setMsg(""), 2000);
       fetchAll(); // Refresh
     } catch (e) { console.error(e); }
@@ -170,7 +172,7 @@ export default function PwaTranslationsTab() {
       setTranslateProgress(`${Math.min(batchIndex, total)} / ${total}`);
     }
 
-    setMsg(`Auto-translated ${count} keys for ${locale}`);
+    setMsg(t("admin.translations.autoTranslatedDone", { count, locale }));
     setTimeout(() => setMsg(""), 3000);
     fetchAll();
     setRegenerating(false);
@@ -218,7 +220,7 @@ export default function PwaTranslationsTab() {
       setTranslateProgress(`${Math.min(batchIndex, total)} / ${total}`);
     }
 
-    setMsg(`Auto-translated ${count} keys for ${locale}`);
+    setMsg(t("admin.translations.autoTranslatedDone", { count, locale }));
     setTimeout(() => setMsg(""), 3000);
     fetchAll();
     setRegenerating(false);
@@ -226,15 +228,15 @@ export default function PwaTranslationsTab() {
   };
 
   if (loading) {
-    return <div style={{ padding: 24, opacity: 0.5 }}>Loading PWA translations...</div>;
+    return <div style={{ padding: 24, opacity: 0.5 }}>{t("admin.translations.loading")}</div>;
   }
 
   if (items.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: "center" }}>
-        <h2>No PWA translations in database</h2>
+        <h2>{t("admin.translations.noTranslations")}</h2>
         <p style={{ color: "var(--color-text-muted)", marginBottom: 16 }}>
-          Use the Auto-Translate button per locale above to generate translations, or add them manually.
+          {t("admin.translations.noTranslationsDesc")}
         </p>
       </div>
     );
@@ -243,7 +245,7 @@ export default function PwaTranslationsTab() {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginRight: 4 }}>Translate All:</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginRight: 4 }}>{t("admin.translations.translateAll")}:</span>
         {LOCALES.map((loc) => (
           <button
             key={loc}
@@ -254,7 +256,7 @@ export default function PwaTranslationsTab() {
             style={{ fontSize: 12 }}
             aria-label={`Batch translate all to ${loc}`}
           >
-            {FLAGS[loc]} {regenerating === loc ? "..." : `All ${NAMES[loc]}`}
+            {FLAGS[loc]} {regenerating === loc ? "..." : t("admin.translations.allLocale", { locale: NAMES[loc]! })}
           </button>
         ))}
         {msg && <span style={{ fontSize: 12, color: "var(--color-success, #16a34a)", marginLeft: 8 }}>{msg}</span>}
@@ -265,12 +267,12 @@ export default function PwaTranslationsTab() {
       <div style={{ width: 200, flexShrink: 0, borderRight: "1px solid var(--color-border-light, #e5e7eb)", paddingRight: 12 }}>
         <input
           type="text"
-          placeholder="Search keys..."
+          placeholder={t("admin.translations.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="form-input"
           style={{ marginBottom: 12, fontSize: 12 }}
-          aria-label="Search translation keys"
+          aria-label={t("admin.translations.searchAriaLabel")}
         />
         {sections.map((s) => (
           <button
@@ -319,20 +321,20 @@ export default function PwaTranslationsTab() {
                     style={{ fontSize: 12 }}
                     aria-label={`Auto-translate to ${loc}`}
                   >
-                    {FLAGS[loc]} {regenerating === loc ? "..." : "Auto"} {NAMES[loc]}
+                    {FLAGS[loc]} {regenerating === loc ? "..." : t("admin.translations.autoLocale", { locale: NAMES[loc]! })}
                   </button>
                 ))}
               </div>
             </div>
             {keys.length === 0 ? (
-              <p style={{ opacity: 0.5 }}>No keys match your search.</p>
+              <p style={{ opacity: 0.5 }}>{t("admin.translations.noKeys")}</p>
             ) : (
               <div className="table-container">
                 <table className="data-table" style={{ fontSize: 12 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 200 }}>Key</th>
-                      <th style={{ width: 200 }}>EN (source)</th>
+                      <th style={{ width: 200 }}>{t("admin.translations.key")}</th>
+                      <th style={{ width: 200 }}>{t("admin.translations.englishSource")}</th>
                       {LOCALES.map((loc) => (
                         <th key={loc} style={{ textAlign: "center", minWidth: 160 }}>
                           {FLAGS[loc]} {NAMES[loc]}
@@ -396,12 +398,12 @@ export default function PwaTranslationsTab() {
               </div>
             )}
             <div style={{ marginTop: 8, fontSize: 11, color: "var(--color-text-muted)" }}>
-              {keys.length} key{keys.length !== 1 ? "s" : ""} in this section
+              {t("admin.translations.keyCount", { count: keys.length })}
             </div>
           </>
         ) : (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", opacity: 0.5 }}>
-            Select a section from the left to view translations
+            {t("admin.translations.selectSection")}
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@ Environment variables:
 import asyncio
 import os
 import sys
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -81,10 +82,10 @@ async def seed_admin(db, role_map: dict[str, int]):
     db.add(admin)
     await db.flush()
 
-    # Assign system_admin role
+    # Assign system_admin role (RoleAssignment targets admin_accounts.id)
     sys_admin_role = role_map.get("system_admin")
     if sys_admin_role:
-        db.add(RoleAssignment(principal_id=principal.id, role_id=sys_admin_role))
+        db.add(RoleAssignment(assignee_id=admin.id, role_id=sys_admin_role, effective_from=datetime.now(timezone.utc), is_active=True))
 
     await db.commit()
     print(f"  Created admin '{ADMIN_EMAIL}' (principal_id={principal.id})")

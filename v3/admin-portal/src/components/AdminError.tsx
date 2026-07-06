@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslation } from "@/lib/i18n";
 
 export default function AdminError({
   error,
@@ -9,6 +10,7 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     console.error("Admin page error:", error);
   }, [error]);
@@ -31,10 +33,10 @@ export default function AdminError({
         !
       </div>
       <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: "var(--color-text-primary, #111)" }}>
-        Something went wrong
+        {t("admin.error.title")}
       </h2>
       <p style={{ fontSize: 14, color: "var(--color-text-muted, #6b7280)", marginBottom: 24, maxWidth: 400 }}>
-        {error.message || "An unexpected error occurred while loading this page."}
+        {error.message || t("admin.error.generic")}
       </p>
       <div style={{ display: "flex", gap: 12 }}>
         <button
@@ -43,7 +45,7 @@ export default function AdminError({
           className="btn btn-primary"
           style={{ padding: "8px 20px" }}
         >
-          Try again
+          {t("admin.error.tryAgain")}
         </button>
         <button
           type="button"
@@ -51,7 +53,7 @@ export default function AdminError({
           className="btn btn-outline"
           style={{ padding: "8px 20px" }}
         >
-          Go to Dashboard
+          {t("admin.error.goToDashboard")}
         </button>
       </div>
     </div>

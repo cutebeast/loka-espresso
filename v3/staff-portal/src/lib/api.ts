@@ -1,27 +1,30 @@
-import { setAuthCookie, clearAuthCookie } from "@/lib/cookies";
 
 function resolveApiBase(): string {
   const envUrl = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_API_URL : undefined;
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-  ) {
-    if (!envUrl || envUrl.startsWith("/")) {
-      return "http://127.0.0.1:13800/api";
-    }
+  // Use the same-origin /api proxy so HttpOnly cookies are sent automatically.
+  // Server-side callers still need an absolute URL.
+  if (typeof window !== "undefined") {
+    return "/api";
+  }
+  if (envUrl && envUrl.startsWith("http")) {
     return envUrl;
   }
-  return envUrl && envUrl.startsWith("http") ? envUrl : "/api";
+  return "http://127.0.0.1:13800/api";
 }
 
 const BASE_URL = resolveApiBase();
 
 function getAuthHeaders(): HeadersInit {
-  if (typeof window === "undefined") return { "Content-Type": "application/json" };
-  const token = localStorage.getItem("token");
+  // Auth is handled by the HttpOnly staff_token cookie.
+  return { "Content-Type": "application/json" };
+}
+
+function fetchOptions(body?: unknown, signal?: AbortSignal): RequestInit {
   return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    headers: getAuthHeaders(),
+    credentials: "include",
+    signal,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   };
 }
 
@@ -41,7 +44,16 @@ function clearAuthStorage(): void {
   localStorage.removeItem("isAdmin");
   localStorage.removeItem("pos_active_cart");
   localStorage.removeItem("pos_held_orders");
-  clearAuthCookie();
+}
+
+/** @deprecated Token is no longer stored client-side; kept for compatibility. */
+export function getToken(): string | null {
+  return null;
+}
+
+/** @deprecated Auth state is server-side; kept for compatibility. */
+export function isLoggedIn(): boolean {
+  return false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -56,23 +68,12 @@ export async function refreshToken(): Promise<boolean> {
   _refreshPromise = (async () => {
     try {
       if (typeof window === "undefined") return false;
-      const refresh = localStorage.getItem("refreshToken");
-      if (!refresh) return false;
-      const res = await fetch(`${BASE_URL}/staff/auth/refresh`, {
+      const res = await fetch("/auth/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refresh }),
+        credentials: "include",
       });
-      if (!res.ok) return false;
-      const json = await res.json();
-      const data = json.data || json;
-      if (data.tokens?.access_token) {
-        localStorage.setItem("token", data.tokens.access_token);
-        setAuthCookie(data.tokens.access_token);
-        if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
-        return true;
-      }
-      return false;
+      return res.ok;
     } catch (err) {
       console.error("refreshToken failed:", err);
       return false;
@@ -103,9 +104,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   const makeRequest = async () => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: getAuthHeaders(),
-      signal,
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...fetchOptions(body, signal),
     });
     if (res.status === 401) {
       if (signal?.aborted) throw new Error("Request aborted");
@@ -113,9 +112,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
       if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
-          headers: getAuthHeaders(),
-          signal,
-          ...(body ? { body: JSON.stringify(body) } : {}),
+          ...fetchOptions(body, signal),
         });
         if (retry.ok) return retry;
       }
@@ -156,9 +153,7 @@ async function requestPaginated<T>(method: string, path: string, body?: unknown,
   const makeRequest = async () => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: getAuthHeaders(),
-      signal,
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...fetchOptions(body, signal),
     });
     if (res.status === 401) {
       if (signal?.aborted) throw new Error("Request aborted");
@@ -166,9 +161,7 @@ async function requestPaginated<T>(method: string, path: string, body?: unknown,
       if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
-          headers: getAuthHeaders(),
-          signal,
-          ...(body ? { body: JSON.stringify(body) } : {}),
+          ...fetchOptions(body, signal),
         });
         if (retry.ok) return retry;
       }
@@ -208,9 +201,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, signa
   const makeRequest = async () => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: getAuthHeaders(),
-      signal,
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...fetchOptions(body, signal),
     });
     if (res.status === 401) {
       if (signal?.aborted) throw new Error("Request aborted");
@@ -218,9 +209,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, signa
       if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
-          headers: getAuthHeaders(),
-          signal,
-          ...(body ? { body: JSON.stringify(body) } : {}),
+          ...fetchOptions(body, signal),
         });
         if (retry.ok) return retry;
       }
@@ -260,15 +249,13 @@ export const api = {
   del: <T>(path: string) => request<T>("DELETE", path),
   upload: async <T = { url: string; filename: string }>(path: string, formData: FormData): Promise<T> => {
     if (typeof window === "undefined") throw new Error("Cannot upload during SSR");
-    const token = localStorage.getItem("token");
-    const doFetch = (headers: HeadersInit) =>
-      fetch(`${BASE_URL}${path}`, { method: "POST", headers, body: formData });
-    let res = await doFetch(token ? { Authorization: `Bearer ${token}` } : {});
+    const doFetch = () =>
+      fetch(`${BASE_URL}${path}`, { method: "POST", credentials: "include", body: formData });
+    let res = await doFetch();
     if (res.status === 401) {
       const refreshed = await refreshToken();
       if (refreshed) {
-        const _freshToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        res = await doFetch(_freshToken ? { Authorization: `Bearer ${_freshToken}` } : {});
+        res = await doFetch();
         if (res.status === 401) {
           clearAuthStorage();
           window.location.replace("/login");
@@ -283,10 +270,10 @@ export const api = {
   },
   fetchRaw: async (method: string, path: string, body?: unknown, signal?: AbortSignal) => {
     const makeRequest = async () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const res = await fetch(`${BASE_URL}${path}`, {
         method,
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+        headers: { ...(body ? { "Content-Type": "application/json" } : {}) },
+        credentials: "include",
         signal,
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
@@ -296,8 +283,7 @@ export const api = {
       if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
-          headers: getAuthHeaders(),
-          ...(body ? { body: JSON.stringify(body) } : {}),
+          ...fetchOptions(body, signal),
           });
           if (retry.ok) return retry;
         }
@@ -322,21 +308,14 @@ export async function staffLogin(email: string, password: string, storeId?: numb
   const data = await api.post<{
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
-  }>("/staff/auth/login", { email, password, store_id: storeId });
-  const token = data.tokens?.access_token;
-  const refresh = data.tokens?.refresh_token;
-  if (token) {
-    localStorage.setItem("token", token);
-    setAuthCookie(token);
-    if (refresh) localStorage.setItem("refreshToken", refresh);
-    if (data.profile) {
-      localStorage.setItem("staffProfile", JSON.stringify(data.profile));
-      if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
-      if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
-      if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
-      if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
-      if (data.profile.is_admin) localStorage.setItem("isAdmin", String(data.profile.is_admin));
-    }
+  }>("/auth/login", { email, password, store_id: storeId });
+  if (data.profile) {
+    localStorage.setItem("staffProfile", JSON.stringify(data.profile));
+    if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
+    if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
+    if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
+    if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
+    if (data.profile.is_admin) localStorage.setItem("isAdmin", String(data.profile.is_admin));
   }
   return data;
 }
@@ -346,38 +325,27 @@ export async function staffLoginByName(name: string, pin: string, storeId: numbe
   const data = await api.post<{
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
-  }>("/staff/auth/login", { display_name: name, password: pin, store_id: storeId });
-  const token = data.tokens?.access_token;
-  const refresh = data.tokens?.refresh_token;
-  if (token) {
-    localStorage.setItem("token", token);
-    setAuthCookie(token);
-    if (refresh) localStorage.setItem("refreshToken", refresh);
-    if (data.profile) {
-      localStorage.setItem("staffProfile", JSON.stringify(data.profile));
-      if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
-      if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
-      if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
-      if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
-      if (data.profile.is_admin) localStorage.setItem("isAdmin", String(data.profile.is_admin));
-    }
+  }>("/auth/login", { display_name: name, password: pin, store_id: storeId });
+  if (data.profile) {
+    localStorage.setItem("staffProfile", JSON.stringify(data.profile));
+    if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
+    if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
+    if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
+    if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
+    if (data.profile.is_admin) localStorage.setItem("isAdmin", String(data.profile.is_admin));
   }
   return data;
 }
 
-export function staffLogout() {
+export async function staffLogout() {
+  try {
+    await fetch("/auth/logout", { method: "POST" });
+  } catch (err) {
+    console.error("staffLogout failed:", err);
+  }
   clearAuthStorage();
 }
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
-}
-
-export function isLoggedIn(): boolean {
-  if (typeof window === "undefined") return false;
-  return !!getToken();
-}
 
 /* ------------------------------------------------------------------ */
 /*  Core Types                                                        */
@@ -671,6 +639,54 @@ export function getMyTimeEvents(date?: string) {
   if (date) { qs.set("date_from", date); qs.set("date_to", date); }
   qs.set("per_page", "100");
   return api.get<TimeEvent[]>(`/staff/time-events/me?${qs.toString()}`);
+}
+
+export interface StaffShift {
+  id: number;
+  store_id: number;
+  staff_id: number;
+  shift_template_id?: number | null;
+  shift_date: string;
+  planned_start: string;
+  planned_end: string;
+  actual_start?: string | null;
+  actual_end?: string | null;
+  status: string;
+  notes?: string | null;
+}
+
+export function getMyShifts(fromDate?: string, toDate?: string) {
+  const qs = new URLSearchParams();
+  qs.set("per_page", "100");
+  if (fromDate) qs.set("from_date", fromDate);
+  if (toDate) qs.set("to_date", toDate);
+  return api.get<StaffShift[]>(`/staff/shifts/me?${qs.toString()}`);
+}
+
+export interface StaffTask {
+  id: number;
+  store_id: number;
+  staff_id: number;
+  title: string;
+  description?: string | null;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "low" | "normal" | "high" | "urgent";
+  due_date?: string | null;
+  completed_at?: string | null;
+  completed_by?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getMyTasks(status?: string) {
+  const qs = new URLSearchParams();
+  qs.set("per_page", "100");
+  if (status) qs.set("status", status);
+  return api.get<StaffTask[]>(`/staff/tasks/me?${qs.toString()}`);
+}
+
+export function completeMyTask(taskId: number) {
+  return api.post<StaffTask>(`/staff/tasks/${taskId}/complete`);
 }
 
 /* ------------------------------------------------------------------ */

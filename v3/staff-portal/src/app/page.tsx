@@ -2,11 +2,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePolling } from "@/hooks/usePolling";
+import { useStaffRole, canUsePOS, canUseKitchen, canUseOps, type StaffRole } from "@/hooks/useStaffRole";
 import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
 import Alert from "@/components/Alert";
 import {
-  Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
+  Armchair, CreditCard, CalendarCheck, CalendarDays, Clock, UserCircle, Wallet,
   ChefHat, ClipboardList, Wrench, Package, AlertTriangle, Droplets, Trash2
 } from "lucide-react";
 
@@ -20,25 +21,27 @@ interface DashboardData {
 }
 
 const ORDER_BUTTONS = [
-  { key: "pos", label: "New Order", icon: CreditCard, badge: null, route: "/pos", cls: "home-btn--primary", desc: "POS" },
-  { key: "orders", label: "Orders", icon: ClipboardList, badge: null, route: "/orders", cls: "", desc: "Queue & History" },
-  { key: "kitchen", label: "Kitchen", icon: ChefHat, badge: "pending_orders", route: "/kitchen", cls: "", desc: "KDS" },
-  { key: "tables", label: "Tables", icon: Armchair, badge: "occupied_tables", route: "/tables", cls: "", desc: "Floor" },
-  { key: "reservations", label: "Bookings", icon: CalendarCheck, badge: "today_reservations", route: "/reservations", cls: "", desc: "Reservations" },
-  { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet & Rewards" },
+  { key: "pos", label: "New Order", icon: CreditCard, badge: null, route: "/pos", cls: "home-btn--primary", desc: "POS", allowed: (role: string | null, isAdmin: boolean) => canUsePOS(role as StaffRole | null, isAdmin) },
+  { key: "orders", label: "Orders", icon: ClipboardList, badge: null, route: "/orders", cls: "", desc: "Queue & History", allowed: () => true },
+  { key: "kitchen", label: "Kitchen", icon: ChefHat, badge: "pending_orders", route: "/kitchen", cls: "", desc: "KDS", allowed: (role: string | null, isAdmin: boolean) => canUseKitchen(role as StaffRole | null, isAdmin) },
+  { key: "tables", label: "Tables", icon: Armchair, badge: "occupied_tables", route: "/tables", cls: "", desc: "Floor", allowed: () => true },
+  { key: "reservations", label: "Bookings", icon: CalendarCheck, badge: "today_reservations", route: "/reservations", cls: "", desc: "Reservations", allowed: () => true },
+  { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet & Rewards", allowed: () => true },
 ];
 
 const OPS_BUTTONS = [
-  { key: "equipment", label: "Equipment", icon: Wrench, badge: null, route: "/equipment", cls: "", desc: "Maintenance" },
-  { key: "grease-trap", label: "Grease Trap", icon: Droplets, badge: null, route: "/grease-trap", cls: "", desc: "Cleaning" },
-  { key: "garbage", label: "Garbage", icon: Trash2, badge: null, route: "/garbage", cls: "", desc: "Disposal" },
-  { key: "inventory", label: "Inventory", icon: Package, badge: null, route: "/inventory", cls: "", desc: "Stock Count" },
-  { key: "wastage", label: "Wastage", icon: AlertTriangle, badge: null, route: "/wastage", cls: "", desc: "Report Waste" },
+  { key: "equipment", label: "Equipment", icon: Wrench, badge: null, route: "/equipment", cls: "", desc: "Maintenance", allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin) },
+  { key: "grease-trap", label: "Grease Trap", icon: Droplets, badge: null, route: "/grease-trap", cls: "", desc: "Cleaning", allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin) },
+  { key: "garbage", label: "Garbage", icon: Trash2, badge: null, route: "/garbage", cls: "", desc: "Disposal", allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin) },
+  { key: "inventory", label: "Inventory", icon: Package, badge: null, route: "/inventory", cls: "", desc: "Stock Count", allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin) },
+  { key: "wastage", label: "Wastage", icon: AlertTriangle, badge: null, route: "/wastage", cls: "", desc: "Report Waste", allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin) },
 ];
 
 const SELF_BUTTONS = [
-  { key: "clock", label: "Clock In", icon: Clock, badge: "clock_status", route: "/time-clock", cls: "", desc: "Time Clock" },
-  { key: "profile", label: "Me", icon: UserCircle, badge: null, route: "/profile", cls: "", desc: "Profile" },
+  { key: "clock", label: "Clock In", icon: Clock, badge: "clock_status", route: "/time-clock", cls: "", desc: "Time Clock", allowed: () => true },
+  { key: "shifts", label: "Shifts", icon: CalendarDays, badge: null, route: "/shifts", cls: "", desc: "My Schedule", allowed: () => true },
+  { key: "tasks", label: "Tasks", icon: ClipboardList, badge: null, route: "/tasks", cls: "", desc: "To-do", allowed: () => true },
+  { key: "profile", label: "Me", icon: UserCircle, badge: null, route: "/profile", cls: "", desc: "Profile", allowed: () => true },
 ];
 
 export default function HomePage() {
@@ -46,6 +49,7 @@ export default function HomePage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { role, isAdmin } = useStaffRole();
 
   const fetchData = async () => {
     try {
@@ -79,7 +83,7 @@ export default function HomePage() {
           <div style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px 4px" }}>Order Management</h2>
             <div className="home-grid">
-              {ORDER_BUTTONS.map((btn) => {
+              {ORDER_BUTTONS.filter((btn) => btn.allowed(role, isAdmin)).map((btn) => {
                 const badge = getBadge(btn.badge);
                 return (
                   <button key={btn.key} onClick={() => router.push(btn.route)} className={`home-btn ${btn.cls}`}>
@@ -97,7 +101,7 @@ export default function HomePage() {
           <div style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px 4px" }}>Reporting & Checks</h2>
             <div className="home-grid">
-              {OPS_BUTTONS.map((btn) => {
+              {OPS_BUTTONS.filter((btn) => btn.allowed(role, isAdmin)).map((btn) => {
                 const badge = getBadge(btn.badge);
                 return (
                   <button key={btn.key} onClick={() => router.push(btn.route)} className="home-btn">

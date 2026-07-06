@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const { t, locale } = useTranslation();
   const [showLangSheet, setShowLangSheet] = useState(false);
   const [aboutText, setAboutText] = useState('');
+  const [appVersion, setAppVersion] = useState('0.1.0');
 
   useEffect(() => {
     api.get('/content/legal/about')
@@ -31,6 +32,11 @@ export default function SettingsPage() {
         else setAboutText(t('settings.aboutFallback'));
       })
       .catch((err) => { console.error('[Settings] About fetch failed:', err); setAboutText(t('settings.aboutFallback')); });
+
+    fetch('/version.json')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.version) setAppVersion(data.version); })
+      .catch((err) => { console.error('[Settings] Version fetch failed:', err); });
   }, [t]);
 
   return (
@@ -96,7 +102,7 @@ export default function SettingsPage() {
 
         {/* App Info */}
         <div className="settings-app-info">
-          <div className="settings-version">{t('settings.version')} 1.0.0</div>
+          <div className="settings-version">{t('settings.version')} {appVersion}</div>
           <div className="settings-attribution">{t('settings.attribution')}</div>
         </div>
       </div>

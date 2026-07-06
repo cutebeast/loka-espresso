@@ -3,16 +3,16 @@ import { STORAGE_KEYS, API as API_CONST } from "./constants";
 
 function resolveApiBase(): string {
   const envUrl = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_API_URL : undefined;
+  if (envUrl) {
+    return envUrl;
+  }
   if (
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ) {
-    if (!envUrl || envUrl.startsWith("/")) {
-      return "http://127.0.0.1:13800/api";
-    }
-    return envUrl;
+    return "http://127.0.0.1:13800/api";
   }
-  return envUrl && envUrl.startsWith("http") ? envUrl : "/api";
+  return "/api";
 }
 
 export const BASE_URL = resolveApiBase();
@@ -25,9 +25,8 @@ function createAbortController(timeoutMs = API_CONST.DEFAULT_TIMEOUT_MS): { sign
 }
 
 function getAuthHeaders(): HeadersInit {
-  if (typeof window === "undefined") return { "Content-Type": "application/json" };
-  const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-  return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  // Auth is handled by the HttpOnly admin_token cookie.
+  return { "Content-Type": "application/json" };
 }
 
 let _refreshPromise: Promise<boolean> | null = null;
@@ -38,24 +37,15 @@ export async function refreshToken(): Promise<boolean> {
   _refreshPromise = (async () => {
     try {
       if (typeof window === "undefined") return false;
-      const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-      if (!refresh) return false;
       const { signal, clear } = createAbortController();
       try {
-        const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, signal,
-          body: JSON.stringify({ refresh_token: refresh }),
+        const res = await fetch("/auth/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          signal,
         });
-        if (!res.ok) return false;
-        const json = await res.json();
-        const data = json.data || json;
-        if (data.tokens?.access_token) {
-          localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
-          if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
-          setAuthCookie();
-          return true;
-        }
-        return false;
+        return res.ok;
       } finally { clear(); }
     } catch (e) { console.error("Token refresh failed:", e); return false; }
   })();
@@ -67,23 +57,18 @@ export async function refreshToken(): Promise<boolean> {
   }
 }
 
-function setAuthCookie() {
-  if (typeof window === "undefined") return;
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${STORAGE_KEYS.AUTH_COOKIE}=1; Path=/; SameSite=Strict; Max-Age=604800${secure}`;
-}
-
-function clearAuthCookie() {
-  if (typeof window === "undefined") return;
-  document.cookie = `${STORAGE_KEYS.AUTH_COOKIE}=; Path=/; SameSite=Strict; Max-Age=0`;
-}
-
 function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
-  clearAuthCookie();
+}
+
+function fetchWithCredentials(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  return fetch(input, { ...init, credentials: "include" });
 }
 
 // NOTE: Bearer token auth is used — CSRF tokens are NOT needed.
@@ -95,7 +80,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
   const doFetch = async (retrySignal?: AbortSignal): Promise<Response> => {
     const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
     try {
-      const res = await fetch(`${BASE_URL}${path}`, {
+      const res = await fetchWithCredentials(`${BASE_URL}${path}`, {
         method, headers: getAuthHeaders(),
         ...(body ? { body: JSON.stringify(body) } : {}),
         signal: retrySignal || signal,
@@ -110,7 +95,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
     if (refreshed) {
       const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
       try {
-        const retry = await fetch(`${BASE_URL}${path}`, {
+        const retry = await fetchWithCredentials(`${BASE_URL}${path}`, {
           method, headers: getAuthHeaders(),
           ...(body ? { body: JSON.stringify(body) } : {}),
           signal,
@@ -161,7 +146,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, timeo
   const doFetch = async (retrySignal?: AbortSignal): Promise<Response> => {
     const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
     try {
-      const res = await fetch(`${BASE_URL}${path}`, {
+      const res = await fetchWithCredentials(`${BASE_URL}${path}`, {
         method, headers: getAuthHeaders(),
         ...(body ? { body: JSON.stringify(body) } : {}),
         signal: retrySignal || signal,
@@ -176,7 +161,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, timeo
     if (refreshed) {
       const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
       try {
-        const retry = await fetch(`${BASE_URL}${path}`, {
+        const retry = await fetchWithCredentials(`${BASE_URL}${path}`, {
           method, headers: getAuthHeaders(),
           ...(body ? { body: JSON.stringify(body) } : {}),
           signal,
@@ -227,19 +212,17 @@ export const api = {
   put: <T>(path: string, body?: unknown, timeoutMs?: number) => request<T>("PUT", path, body, timeoutMs),
   del: <T>(path: string, timeoutMs?: number) => request<T>("DELETE", path, undefined, timeoutMs),
   upload: async <T = { url: string; filename: string }>(path: string, formData: FormData, timeoutMs?: number): Promise<T> => {
-    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : null;
-    const doFetch = (headers: HeadersInit, signal: AbortSignal) =>
-      fetch(`${BASE_URL}${path}`, { method: "POST", headers, body: formData, signal });
+    const doFetch = (signal: AbortSignal) =>
+      fetchWithCredentials(`${BASE_URL}${path}`, { method: "POST", body: formData, signal });
     const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
     try {
-      let res = await doFetch(token ? { Authorization: `Bearer ${token}` } : {}, signal);
+      let res = await doFetch(signal);
       if (res.status === 401) {
         const refreshed = await refreshToken();
         if (refreshed) {
-          const freshToken = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : null;
           const { signal: rSignal, clear: rClear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
           try {
-            res = await doFetch(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}, rSignal);
+            res = await doFetch(rSignal);
           } finally { rClear(); }
           if (res.status === 401) {
             clearSession();
@@ -260,10 +243,9 @@ export const api = {
   fetchRaw: async (method: string, path: string, body?: unknown, timeoutMs?: number): Promise<Response> => {
     if (typeof window === "undefined") throw new Error("fetchRaw cannot be used during SSR");
     const doFetch = (signal: AbortSignal) => {
-      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      return fetch(`${BASE_URL}${path}`, {
+      return fetchWithCredentials(`${BASE_URL}${path}`, {
         method,
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+        headers: { ...(body ? { "Content-Type": "application/json" } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
         signal,
       });
@@ -289,19 +271,31 @@ export const api = {
 };
 
 export async function adminLogin(email: string, password: string) {
-  const data = await api.post<{ tokens?: { access_token?: string; refresh_token?: string }; profile?: { email?: string } }>("/admin/auth/login", { email, password });
-  const token = data.tokens?.access_token;
-  if (token) {
-    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-    if (data.tokens?.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
-    if (data.profile?.email) localStorage.setItem(STORAGE_KEYS.ADMIN_EMAIL, data.profile.email);
-    setAuthCookie();
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || data.message || "Invalid email or password");
+  }
+  if (data.profile?.email) {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_EMAIL, data.profile.email);
   }
   return data;
 }
-export function adminLogout() { clearSession(); }
-export function isLoggedIn(): boolean { if (typeof window === "undefined") return false; return !!localStorage.getItem(STORAGE_KEYS.TOKEN); }
-export function setAuthCookieManual() { setAuthCookie(); }
+export async function adminLogout() {
+  try {
+    await fetch("/auth/logout", { method: "POST" });
+  } catch (e) {
+    console.error("Logout proxy failed:", e);
+  }
+  clearSession();
+}
+/** @deprecated Auth state is server-side; kept for compatibility. */
+export function isLoggedIn(): boolean { return false; }
 
 export interface Reservation { id: number; store_id: number; customer_id: number | null; dining_table_id?: number; party_size: number; reservation_date: string; reservation_time: string; duration_minutes?: number; status: string; }
 

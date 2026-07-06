@@ -59,19 +59,9 @@ export function usePhoneAuth() {
     setError('');
     let success = false;
     try {
-      let sendFailed = false;
-      try {
-        await api.post('/auth/send-otp', { phone_number: normalized });
-      } catch (err: unknown) {
-        if ((err as { response?: { status?: number } })?.response?.status !== 404) {
-          showToast(getApiErrorMessage(err, t('auth.sendOtpFailed')), 'error');
-          sendFailed = true;
-        }
-      }
-      if (!sendFailed) {
-        setStep('otp');
-        success = true;
-      }
+      await api.post('/auth/send-otp', { phone_number: normalized });
+      setStep('otp');
+      success = true;
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err, t('auth.sendOtpFailed')), 'error');
     } finally {
@@ -85,11 +75,6 @@ export function usePhoneAuth() {
     setError('');
     try {
       const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
-      const tokens = res.data?.tokens as { access_token?: string; refresh_token?: string } | undefined;
-      if (tokens?.access_token) {
-        localStorage.setItem('token', tokens.access_token);
-        if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
-      }
       await fetchAndSetUser();
       const isNew = res.data?.is_new_user ?? false;
       if (isNew) {
@@ -111,16 +96,11 @@ export function usePhoneAuth() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/auth/register', {
+      await api.post('/auth/register', {
         phone_number: phoneNumber,
         display_name: name,
         email_address: email || undefined,
       });
-      const tokens = res.data?.tokens;
-      if (tokens?.access_token) {
-        localStorage.setItem('token', tokens.access_token);
-        if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
-      }
       await fetchAndSetUser();
       setIsNewUser(false);
       return true;

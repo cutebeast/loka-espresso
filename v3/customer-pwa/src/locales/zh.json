@@ -855,6 +855,7 @@
     "orderCancelled": "订单取消",
     "orderFailed": "订单失败",
     "orderPlaced": "订单提交成功",
+    "orderQueued": "订单已保存。当您重新联网时我们将提交。",
     "otpResendFailed": "无法重新发送一次性密码",
     "otpResent": "一次性密码已成功重新发送",
     "outOfRange": "送货地址位于门店服务范围之外",

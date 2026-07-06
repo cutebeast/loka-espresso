@@ -855,6 +855,7 @@
     "orderCancelled": "Sipariş iptal edildi",
     "orderFailed": "Sipariş başarısız",
     "orderPlaced": "Sipariş başarıyla verildi",
+    "orderQueued": "Sipariş kaydedildi. İnternete döndüğünüzde göndereceğiz.",
     "otpResendFailed": "Tek kullanımlık şifre yeniden gönderilemedi",
     "otpResent": "OTP başarıyla yeniden gönderildi",
     "outOfRange": "Teslimat adresi mağaza hizmet alanı dışında",

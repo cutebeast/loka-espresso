@@ -29,6 +29,15 @@ from app.schemas.payment import (
     RefundOut,
 )
 from app.services.hitpay import verify_hitpay_signature
+from app.core.rate_limiter import limiter
+from app.services.webhook import (
+    extract_event_id,
+    get_provider_secret,
+    is_event_processed,
+    mark_event_processed,
+    mask_header,
+    verify_webhook_api_key,
+)
 from app.services.payment import (
     PaymentError,
     cancel_payment,
@@ -485,15 +494,9 @@ async def list_payments(
     )
 
 
-def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
+def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str | None) -> bool:
     if not secret:
-        from app.core.config import get_settings
-        settings = get_settings()
-        if settings.is_production or settings.webhook_verify_in_dev:
-            import logging
-            logger.critical("GrabPay webhook signing secret not configured")
-            return False
-        return True
+        return False
     try:
         expected = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, sig_header)
@@ -501,19 +504,33 @@ def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str
         return False
 
 
+def _require_webhook_api_key(request: Request) -> None:
+    api_key = request.headers.get("X-Webhook-API-Key")
+    if not verify_webhook_api_key(api_key):
+        logger.warning(
+            "Webhook rejected: invalid or missing X-Webhook-API-Key (received %s)",
+            mask_header(api_key),
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing webhook API key")
+
+
 # ---------------------------------------------------------------------------
-# Webhooks (unprotected)
+# Webhooks
 # ---------------------------------------------------------------------------
 
 
 @webhook_router.post("/stripe", response_model=APIResponse[dict])
+@limiter.limit("100/minute")
 async def stripe_webhook(
-    db: DBDependency,
     request: Request,
+    db: DBDependency,
 ):
-    """Stripe webhook handler."""
-    from app.core.config import get_settings
-    settings = get_settings()
+    """Stripe webhook handler.
+
+    Fails closed: a configured signing secret is required in every environment.
+    Set stripe.webhook_secret in platform_config or STRIPE_WEBHOOK_SECRET.
+    """
+    _require_webhook_api_key(request)
 
     sig_header = request.headers.get("Stripe-Signature")
     if not sig_header:
@@ -521,78 +538,62 @@ async def stripe_webhook(
 
     payload_bytes = await request.body()
     webhook_secret = await get_stripe_webhook_secret(db)
+    if not webhook_secret:
+        logger.error("Stripe webhook rejected: signing secret not configured")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Stripe webhook signing secret not configured",
+        )
 
-    if webhook_secret:
-        try:
-            event = await anyio.to_thread.run_sync(
-                stripe.Webhook.construct_event,
-                payload_bytes,
-                sig_header,
-                webhook_secret,
-            )
-        except (ValueError, SignatureVerificationError) as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
-        payload = {"type": event.type, "data": {"object": event.data.object.to_dict()}}
-    else:
-        if settings.is_production or settings.webhook_verify_in_dev:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Stripe webhook signing secret not configured",
-            )
-        stripe_secret = settings.stripe_webhook_secret
-        if not stripe_secret:
-            # In dev, without a signing secret, still require a syntactically valid header.
-            if settings.is_production or settings.webhook_verify_in_dev:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Stripe webhook signing secret not configured",
-                )
-            # Development-only: accept the event but log a warning.
-            logger.warning("Stripe webhook accepted in dev without signature verification")
-        else:
-            try:
-                event = await anyio.to_thread.run_sync(
-                    stripe.Webhook.construct_event,
-                    payload_bytes,
-                    sig_header,
-                    stripe_secret,
-                )
-            except (ValueError, SignatureVerificationError) as exc:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
-            payload = {"type": event.type, "data": {"object": event.data.object.to_dict()}}
-            try:
-                payment = await process_webhook_event(db, "stripe", payload)
-            except PaymentError as exc:
-                raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-            return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
-        try:
-            payload = json.loads(payload_bytes)
-        except Exception as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
+    try:
+        event = await anyio.to_thread.run_sync(
+            stripe.Webhook.construct_event,
+            payload_bytes,
+            sig_header,
+            webhook_secret,
+        )
+    except (ValueError, SignatureVerificationError) as exc:
+        logger.warning("Stripe webhook rejected: invalid signature")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
+
+    payload = {"type": event.type, "data": {"object": event.data.object.to_dict()}}
+    event_id = extract_event_id("stripe", payload)
+    if event_id and await is_event_processed("stripe", event_id):
+        logger.info("Stripe webhook duplicate event ignored: %s", event_id)
+        return APIResponse(data={"received": True, "duplicate": True, "payment_id": None})
 
     try:
         payment = await process_webhook_event(db, "stripe", payload)
     except PaymentError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
+    if event_id:
+        await mark_event_processed("stripe", event_id)
+    logger.info("Stripe webhook processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
     return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
 
 
 @webhook_router.post("/grabpay", response_model=APIResponse[dict])
+@limiter.limit("100/minute")
 async def grabpay_webhook(
-    db: DBDependency,
     request: Request,
+    db: DBDependency,
 ):
     """GrabPay webhook handler."""
-    from app.core.config import get_settings
-    settings = get_settings()
+    _require_webhook_api_key(request)
 
     sig_header = request.headers.get("X-GrabPay-Signature") or request.headers.get("Authorization")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing GrabPay signature header")
 
     payload_bytes = await request.body()
-    if not _verify_grabpay_signature(payload_bytes, sig_header, settings.webhook_signing_secret):
+    secret = await get_provider_secret(db, "grabpay", "grabpay_webhook_secret", "grabpay.webhook_secret")
+    if not secret:
+        logger.error("GrabPay webhook rejected: signing secret not configured")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GrabPay webhook signing secret not configured")
+
+    if not _verify_grabpay_signature(payload_bytes, sig_header, secret):
+        logger.warning("GrabPay webhook rejected: invalid signature")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GrabPay signature")
 
     try:
@@ -600,20 +601,31 @@ async def grabpay_webhook(
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
 
+    event_id = extract_event_id("grabpay", payload)
+    if event_id and await is_event_processed("grabpay", event_id):
+        logger.info("GrabPay webhook duplicate event ignored: %s", event_id)
+        return APIResponse(data={"received": True, "duplicate": True, "payment_id": None})
+
     try:
         payment = await process_webhook_event(db, "grabpay", payload)
     except PaymentError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
+    if event_id:
+        await mark_event_processed("grabpay", event_id)
+    logger.info("GrabPay webhook processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
     return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
 
 
 @webhook_router.post("/hitpay", response_model=APIResponse[dict])
+@limiter.limit("200/minute")
 async def hitpay_webhook(
-    db: DBDependency,
     request: Request,
+    db: DBDependency,
 ):
     """HitPay v2 webhook handler."""
+    _require_webhook_api_key(request)
+
     sig_header = request.headers.get("Hitpay-Signature")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Hitpay-Signature header")
@@ -625,12 +637,14 @@ async def hitpay_webhook(
         or await config_service.get_str("hitpay.webhook_secret", default="")
     )
     if not salt:
+        logger.error("HitPay webhook rejected: salt/webhook_secret not configured")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="HitPay salt/webhook_secret not configured",
         )
 
     if not verify_hitpay_signature(payload_bytes, sig_header, salt):
+        logger.warning("HitPay webhook rejected: invalid signature")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid HitPay signature")
 
     try:
@@ -644,10 +658,17 @@ async def hitpay_webhook(
         event_type = f"{event_object}.{event_type}"
 
     payload = {"type": event_type, "data": {"object": body}}
+    event_id = extract_event_id("hitpay", payload)
+    if event_id and await is_event_processed("hitpay", event_id):
+        logger.info("HitPay webhook duplicate event ignored: %s", event_id)
+        return APIResponse(data={"received": True, "duplicate": True, "payment_id": None})
 
     try:
         payment = await process_webhook_event(db, "hitpay", payload)
     except PaymentError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
+    if event_id:
+        await mark_event_processed("hitpay", event_id)
+    logger.info("HitPay webhook processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
     return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})

@@ -5,20 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import StoreHeader from "@/components/StoreHeader";
 import { staffLogout, refreshToken as apiRefreshToken } from "@/lib/api";
 
-function parseJwtExp(token: string): number | null {
-  try {
-    const parts = token.split(".");
-    const payload = parts[1];
-    if (!payload) return null;
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const json = JSON.parse(atob(base64));
-    return json.exp ? json.exp * 1000 : null;
-  } catch (e) {
-    console.error("Failed to parse JWT:", e);
-    return null;
-  }
-}
-
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -32,9 +18,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   // Branding favicon
   useEffect(() => {
     let injectedLink: HTMLLinkElement | null = null;
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     fetch("/api/staff/config/branding", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
     })
       .then((r) => { if (!r.ok) throw new Error('branding fetch failed'); return r.json(); })
       .then((d) => {
@@ -119,10 +104,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const verify = async () => {
-      const token = localStorage.getItem("token");
       const storeId = localStorage.getItem("staffStoreId");
 
-      if (!token || !storeId) {
+      if (!storeId) {
         if (!cancelled) {
           staffLogout();
           router.replace("/login");
@@ -130,35 +114,19 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      // Check client-side token expiry first
-      const exp = parseJwtExp(token);
-      if (exp && Date.now() >= exp - 30000) {
-        // Token expired (or within 30s of expiry) — try refresh
-        const refreshed = await apiRefreshToken();
-        if (!refreshed) {
-          if (!cancelled) {
-            staffLogout();
-            router.replace("/login");
-          }
-          return;
-        }
-      }
-
-      const currentToken = localStorage.getItem("token") || token;
-
       try {
         const res = await fetch("/api/staff/auth/me", {
-          headers: { Authorization: `Bearer ${currentToken}` },
+          credentials: "include",
         });
 
         if (cancelled) return;
 
         if (res.status === 401) {
-          // Try refresh once more
+          // Try refresh once
           const refreshed = await apiRefreshToken();
           if (refreshed) {
             const retry = await fetch("/api/staff/auth/me", {
-              headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+              credentials: "include",
             });
             if (cancelled) return;
             if (retry.status === 401 || retry.status === 403) {

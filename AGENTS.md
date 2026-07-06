@@ -1,54 +1,39 @@
-# FNB Super App v3 — Loka Espresso
+# FNB Super App v3 — Agent Notes
 
-**Status**: Live | **E2E**: 182 passed, 17 skipped, 0 failed  
-**Active code**: `v3/` | **Project status**: [`v3/docs/000-project-status.md`](v3/docs/000-project-status.md)
+## Active code
 
-## Services
+All application code lives in `/root/fnb-super-app/v3`. Do not move files to the repository root.
 
-| Component | Dir | Dev URL | Port |
-|-----------|-----|---------|------|
-| Backend | `v3/backend/` | https://admin.loyaltysystem.uk/api/v1 | 13800 |
-| Admin Portal | `v3/admin-portal/` | https://admin.loyaltysystem.uk | 13830 |
-| Staff Portal | `v3/staff-portal/` | https://staff.loyaltysystem.uk | 13820 |
-| Customer PWA | `v3/customer-pwa/` | https://app.loyaltysystem.uk | 13810 |
-| Database | Docker `fnb-v3-postgres` | localhost:13334 | 5432 |
-| Redis | Docker `fnb-v3-redis` | localhost:13335 | 6379 |
-
-## Quick Start
+## Test & seed workflow
 
 ```bash
-# Backend
-cd v3/backend && uvicorn app.main:app --host 0.0.0.0 --port 13800
+# Re-seed baseline (dev server runs ENVIRONMENT=production)
+cd /root/fnb-super-app/v3/backend
+source .venv/bin/activate
+python3 scripts/clear_db.py --all --yes --force-prod
+python3 scripts/seed_all.py --yes --force-prod
 
-# Frontends
-cd v3/admin-portal && npm run dev    # → localhost:13830
-cd v3/staff-portal && npm run dev    # → localhost:13820
-cd v3/customer-pwa && npm run dev    # → localhost:13810
-
-# Tests
-cd v3/e2e-tests && pytest -q
+# Run full E2E suite (including browser tests)
+cd /root/fnb-super-app/v3/e2e-tests
+source .venv/bin/activate
+pytest -q
 ```
 
-## Production (PM2)
+## TypeScript
 
-```bash
-pm2 restart v3-backend admin-portal-v3 staff-portal-v3 customer-pwa-v3
-```
+Run `npx tsc --noEmit` from each portal directory (`admin-portal`, `staff-portal`, `customer-pwa`).
 
-## Full-Docker deployment
+## Domain migration checklist (loyaltysystem.uk → lokaespresso.com)
 
-```bash
-cd v3/infra/docker
-cp .env.example .env
-# edit .env with target-server domains and secrets
-docker compose up -d --build
-```
+- Update `v3/backend/.env`: `CORS_ORIGINS`, `TRUSTED_HOSTS`.
+- Set host-Caddy env vars (`APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`) or use Docker Caddy.
+- Issue/obtain TLS certificates for `*.lokaespresso.com`.
+- On real production, keep `otp.bypass_enabled=false` in `platform_config`.
 
-See [`v3/docs/000-project-status.md`](v3/docs/000-project-status.md) for domains, secrets, uploads, troubleshooting, and operational commands.
+## Known quirks
 
-## Notes for agents
-
-- Do **not** move `v3/` contents to the repository root. The root is intentionally clean; active code lives under `v3/`.
-- Secrets are in untracked `.env` files only.
-- Uploads are served through the backend (`/uploads` → backend StaticFiles). Caddy proxies to the backend.
-- Run the full E2E suite after any backend/portal change.
+- Backend `ENVIRONMENT=production` on the dev server disables OpenAPI docs, so `scripts/validate-routes.py` cannot fetch `/openapi.json` here; run it against a dev-mode backend.
+- The dev server has `otp.bypass_enabled=true` in the DB so the E2E suite can log in.
+- Legacy v1/v2 containers and images have been removed. Only `fnb-v3-postgres` and `fnb-v3-redis` remain.
+- Admin portal auth uses HttpOnly `admin_token` cookie + server-side `/auth/login` route; do not call `/api/auth/login` from Caddy-proxied domains because `/api/*` is proxied to the backend.
+- Backend unit tests live in `v3/backend/tests/` and run with `pytest tests/` from the backend venv.

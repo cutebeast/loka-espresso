@@ -3,10 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { BarChart3, TrendingUp } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface Store { id: number; store_name: string; }
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -78,7 +80,7 @@ export default function ReportsPage() {
       {activeTab === "sales" && (
       <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "end" }}>
         <div><label htmlFor="report-store-filter" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
-          <select id="report-store-filter" value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 13 }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+          <select id="report-store-filter" value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 13 }}><option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
         <div><label htmlFor="report-date-from" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>From</label><input id="report-date-from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
         <div><label htmlFor="report-date-to" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>To</label><input id="report-date-to" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
       </div>

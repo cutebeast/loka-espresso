@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { adminLogin, isLoggedIn } from "@/lib/api";
+import { adminLogin } from "@/lib/api";
 import { Store, Lock, Mail } from "lucide-react";
 import { useBrand } from "@/components/BrandProvider";
+import { useTranslation } from "@/lib/i18n";
 import { ROUTES } from "@/lib/constants";
 import LanguageSelector from "@/components/LanguageSelector";
 
 export default function LoginPage() {
   const router = useRouter();
   const { brandName } = useBrand();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,13 +24,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await adminLogin(email, password);
-      if (!isLoggedIn()) {
-        setError("Login failed — no token received. Please try again.");
-        return;
-      }
       router.push(ROUTES.HOME);
     } catch (err: any) {
-      setError(err.message || "Invalid email or password");
+      setError(err.message || t("admin.login.invalidCredentials"));
     } finally {
       setLoading(false);
     }
@@ -40,7 +38,7 @@ export default function LoginPage() {
         <div className="login-brand">
           <div className="login-brand-icon"><Store size={28} /></div>
           <div className="login-brand-name">{brandName}</div>
-          <div className="login-brand-sub">Admin Portal</div>
+          <div className="login-brand-sub">{t("admin.app.adminPortal")}</div>
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
@@ -51,23 +49,23 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="login-field">
-            <label><Mail size={15} /> Email</label>
+            <label><Mail size={15} /> {t("admin.login.email")}</label>
             <input
               type="email" required autoComplete="email"
               value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email address"
+              placeholder={t("admin.login.emailPlaceholder")}
             />
           </div>
           <div className="login-field">
-            <label><Lock size={15} /> Password</label>
+            <label><Lock size={15} /> {t("admin.login.password")}</label>
             <input
               type="password" required autoComplete="current-password"
               value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder={t("admin.login.passwordPlaceholder")}
             />
           </div>
           <button type="submit" disabled={loading} className="login-submit">
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? t("admin.login.signingIn") : t("admin.login.signIn")}
           </button>
         </form>
       </div>

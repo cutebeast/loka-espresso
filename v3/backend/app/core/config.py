@@ -127,8 +127,14 @@ class Settings(BaseSettings):
 
     # Webhooks
     webhook_api_key: str | None = None
-    webhook_signing_secret: str | None = None
+    webhook_signing_secret: str | None = None  # generic fallback secret
+    grabpay_webhook_secret: str | None = None
     webhook_verify_in_dev: bool = False  # If true, webhook signatures are required even in development
+
+    # Web Push (VAPID)
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str = "mailto:admin@example.com"
 
     # MaxMind
     maxmind_account_id: str | None = None
@@ -140,6 +146,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str | None = None
     stripe_checkout_success_url: str | None = None
     stripe_checkout_cancel_url: str | None = None
+    stripe_simulator_checkout_url: str | None = "https://checkout.stripe.com/test-session/{session_id}"
+    grabpay_simulator_session_url: str | None = "https://partner-api.grab.com/payments/v1/session/{session_id}?return_url={return_url}"
 
     @property
     def is_production(self) -> bool:

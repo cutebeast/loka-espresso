@@ -1,8 +1,9 @@
 "use client";
 
 import { Globe } from "lucide-react";
+import { useTranslation, SUPPORTED_LOCALES, DEFAULT_LOCALE } from "@/lib/i18n";
 
-const LOCALES: Record<string, string> = {
+const LOCALE_LABELS: Record<string, string> = {
   en: "English",
   ms: "Bahasa Melayu",
   zh: "中文",
@@ -10,36 +11,21 @@ const LOCALES: Record<string, string> = {
   tr: "Türkçe",
 };
 
-function getStoredLocale(): string {
-  if (typeof window === "undefined") return "en";
-  return localStorage.getItem("locale") || navigator.language?.split("-")[0] || "en";
-}
-
-function storeLocale(locale: string) {
-  if (typeof window !== "undefined") localStorage.setItem("locale", locale);
-}
-
-export function useLocale() {
-  return getStoredLocale();
-}
-
 export default function LanguageSelector() {
-  const locale = getStoredLocale();
+  const { locale, setLocale, t } = useTranslation();
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <Globe size={14} style={{ opacity: 0.5 }} />
+    <div className="language-selector">
+      <Globe size={14} className="language-selector-icon" />
       <select
-        className="form-input"
-        defaultValue={locale}
-        onChange={(e) => {
-          storeLocale(e.target.value);
-          window.location.reload();
-        }}
-        style={{ padding: "4px 8px", fontSize: 12, width: "auto", background: "transparent", border: "1px solid var(--color-border-light)", borderRadius: 6 }}
+        value={locale || DEFAULT_LOCALE}
+        onChange={(e) => setLocale(e.target.value)}
+        aria-label={t("admin.common.selectLanguage")}
       >
-        {Object.entries(LOCALES).map(([code, label]) => (
-          <option key={code} value={code}>{label}</option>
+        {SUPPORTED_LOCALES.map((loc) => (
+          <option key={loc} value={loc}>
+            {LOCALE_LABELS[loc] || loc}
+          </option>
         ))}
       </select>
     </div>

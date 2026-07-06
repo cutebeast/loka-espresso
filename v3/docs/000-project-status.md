@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Status
 
-> Last updated: 2026-06-28
+> Last updated: 2026-07-04
 > Active codebase: `/root/fnb-super-app/v3`
 > Repository: `https://github.com/cutebeast/loka-espresso`
 
@@ -119,9 +119,19 @@ cd /root/fnb-super-app/v3/e2e-tests
 pytest -q
 ```
 
-Latest run: **182 passed, 17 skipped, 0 failed**.
+Latest run: **207 passed, 8 skipped, 0 failed** (with browser tests enabled via `e2e-tests/.venv`).
+
+```bash
+cd /root/fnb-super-app/v3/e2e-tests
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium
+pytest -q
+```
 
 TypeScript strict: 0 errors across all 3 portals.
+Runtime API audit: 43/43 admin/staff/customer checks passed after full re-seed.
 
 ---
 
@@ -137,6 +147,29 @@ TypeScript strict: 0 errors across all 3 portals.
 - Cleaned root-level legacy `infra/`, `scripts/`, `.github/workflows/ci.yml`, `.env.example`, and `uploads/`.
 - Removed duplicate customer-PWA CSS (`events-v2.css`) and archived `docs/_archive/`.
 - Untracked generated files (`public/version.json`, `next-env.d.ts`) and added them to `.gitignore`.
+
+---
+
+## 7b. Round 25 audit fixes (2026-07-04)
+
+- Removed legacy v1/v2 Docker containers and images (`fnb-backend`, `fnb-db`, `fnb-redis`).
+- Fixed `clear_db.py` missing `wallet_topup_sessions` table.
+- Fixed payment method schema/enum mismatch (`PaymentMethodBase.method_type` and `provider`).
+- Moved hardcoded payment/provider URLs (Stripe/GrabPay simulators, Resend/Twilio/DeepL) to `platform_config` or environment settings.
+- Hardened admin portal auth:
+  - Added server-side `/auth/login`, `/auth/logout`, `/auth/refresh` API routes.
+  - Login now sets an `HttpOnly` `admin_token` cookie.
+  - Middleware validates the cookie against the backend before serving any protected page.
+- Fixed staff portal double wallet charge when checkout total is <= 0.
+- Fixed customer PWA:
+  - Added `events` to public/guest page whitelist.
+  - Settings page version now reads from `version.json` instead of hardcoded `1.0.0`.
+  - OTP send no longer silently swallows HTTP 404.
+  - Orders page no longer fetches active and past orders with overlapping queries on mount.
+- Added backend unit tests (`tests/test_schemas_payment.py`, `tests/test_config.py`).
+- Added `scripts/purge_retention.py` for data-retention cleanup (delete strategy only; archive/anonymize still require custom logic).
+- Fixed Docker Compose defaults for `TRUSTED_HOSTS` and `CORS_ORIGINS`.
+- Made `scripts/validate-routes.py` gracefully handle production mode where OpenAPI docs are disabled.
 
 ---
 
@@ -165,9 +198,11 @@ Key values to set per deployment:
 
 | Item | Status | Recommendation |
 |------|--------|----------------|
-| Disk usage 88% | Monitor | Clean PM2 logs and `.next/cache` periodically. Do not delete running `.next/` builds. |
+| Disk usage 76% | Monitor | Clean PM2 logs and `.next/cache` periodically. Do not delete running `.next/` builds. |
 | Python environment | Backend now uses `v3/backend/.venv` | For full-Docker deployments the backend Dockerfile uses its own venv. |
 | Full-Docker switch | Ready | Validate on staging before replacing PM2 on production. |
+| Legacy v1/v2 artifacts | Cleaned | Legacy containers (`fnb-backend`, `fnb-db`, `fnb-redis`) and old images removed. Only `fnb-v3-postgres` and `fnb-v3-redis` remain. |
+| Dev OTP bypass | Enabled in DB | `otp.bypass_enabled=true` set in `platform_config` so E2E can run against `ENVIRONMENT=production` dev server. Disable on real production. |
 
 ---
 
@@ -187,13 +222,15 @@ pm2 restart v3-backend admin-portal-v3 staff-portal-v3 customer-pwa-v3
 cd /root/fnb-super-app/v3/infra/docker
 docker compose up -d --force-recreate postgres redis
 
-# Re-seed baseline data
+# Re-seed baseline data (dev server uses ENVIRONMENT=production)
 cd /root/fnb-super-app/v3/backend
-python3 scripts/clear_db.py --yes
-python3 scripts/seed_all.py --yes
+source .venv/bin/activate
+python3 scripts/clear_db.py --all --yes --force-prod
+python3 scripts/seed_all.py --yes --force-prod
 
 # Run E2E tests
 cd /root/fnb-super-app/v3/e2e-tests
+source .venv/bin/activate
 pytest -q
 
 # Reload host Caddy after config edits

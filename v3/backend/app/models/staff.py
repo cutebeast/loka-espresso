@@ -107,6 +107,41 @@ class StaffShift(Base, TimestampMixin):
     )
 
 
+class StaffTask(Base, TimestampMixin):
+    __tablename__ = "staff_tasks"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    store_id: Mapped[int] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    staff_id: Mapped[int] = mapped_column(
+        ForeignKey("staff_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+
+    store: Mapped["Store"] = relationship("Store")
+    staff: Mapped["StaffProfile"] = relationship("StaffProfile", foreign_keys=[staff_id])
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','in_progress','completed','cancelled')",
+            name="ck_staff_tasks_status",
+        ),
+        CheckConstraint(
+            "priority IN ('low','normal','high','urgent')",
+            name="ck_staff_tasks_priority",
+        ),
+    )
+
+
 class ShiftTemplate(Base):
     __tablename__ = "shift_templates"
 

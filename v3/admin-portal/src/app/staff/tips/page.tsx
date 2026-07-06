@@ -3,10 +3,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { getTipAllocations, type TipAllocation } from "@/lib/api";
 import { api } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface Store { id: number; store_name: string; }
 
 export default function StaffTipsPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<TipAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,7 +38,7 @@ export default function StaffTipsPage() {
       {error && <div className="alert alert-error">{error}</div>}
       <div style={{ marginBottom: 12 }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+          <option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
       </div>
       <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} allocations</span></div>

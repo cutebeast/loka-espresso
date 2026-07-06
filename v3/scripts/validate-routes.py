@@ -27,15 +27,63 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:13800")
 
 # -- 1. Collect backend routes from OpenAPI -----------------------------------
 
+def _python_executable() -> str:
+    venv_python = BACKEND_DIR / ".venv" / "bin" / "python"
+    if venv_python.exists():
+        return str(venv_python)
+    return sys.executable
+
+
+def generate_openapi_from_code() -> dict:
+    """Generate OpenAPI schema directly from the backend codebase.
+
+    This works even when the running backend is in production mode and has
+    disabled the /openapi.json endpoint.
+    """
+    script = (
+        "import json, os; "
+        "os.environ['ENVIRONMENT'] = 'development'; "
+        "from app.main import app; "
+        "print(json.dumps(app.openapi()))"
+    )
+    result = subprocess.run(
+        [_python_executable(), "-c", script],
+        cwd=BACKEND_DIR,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to generate OpenAPI from code:\n{result.stderr}")
+    return json.loads(result.stdout)
+
+
 def fetch_backend_routes() -> set[str]:
-    """Fetch all registered API routes from the running backend's OpenAPI schema."""
-    try:
-        resp = urlopen(f"{BACKEND_URL}/openapi.json", timeout=10)
-        schema = json.load(resp)
-    except Exception as e:
-        print(f"ERROR: Cannot reach backend at {BACKEND_URL} — {e}")
-        print("Start the backend first or set BACKEND_URL env var.")
-        sys.exit(1)
+    """Fetch all registered API routes from the backend OpenAPI schema.
+
+    Tries the running backend first (/openapi.json and /api/openapi.json). If
+    the backend is running in production mode, OpenAPI docs are disabled, so we
+    fall back to generating the schema directly from the codebase.
+    """
+    schema: dict = {}
+    for path in ("/openapi.json", "/api/openapi.json"):
+        try:
+            resp = urlopen(f"{BACKEND_URL}{path}", timeout=10)
+            loaded = json.load(resp)
+            if "paths" in loaded:
+                schema = loaded
+                break
+        except Exception:
+            continue
+
+    if not schema:
+        print(f"INFO: OpenAPI schema is not available at {BACKEND_URL} (production mode disables docs).")
+        print("        Falling back to generating OpenAPI schema from backend code...")
+        try:
+            schema = generate_openapi_from_code()
+        except Exception as e:
+            print(f"ERROR: Could not generate OpenAPI schema: {e}")
+            return set()
 
     paths = schema.get("paths", {})
     routes: set[str] = set()
@@ -55,7 +103,7 @@ def fetch_backend_routes() -> set[str]:
 # Only match paths that appear as arguments to actual API call functions
 API_FN = r"(?:api\.(?:get|post|patch|del|put|upload|getRaw|fetchRaw|getPaginated)\s*\(\s*|fetch\s*\(\s*)"
 API_CALL_PATTERN = re.compile(
-    API_FN + r"""["'`](/api)?(/[^"'` ]+)""",
+    API_FN + r"[""'`](/api)?(/[^""'` ]+)",
 )
 
 def collect_frontend_calls(directory: Path) -> set[str]:

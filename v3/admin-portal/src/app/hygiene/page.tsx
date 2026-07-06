@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { CheckCircle, XCircle, AlertTriangle, Eye } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 interface HygieneEntry {
   id: number;
@@ -19,6 +20,7 @@ interface HygieneEntry {
 }
 
 export default function HygienePage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<HygieneEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,7 +100,7 @@ export default function HygienePage() {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <select value={storeFilter} onChange={e => { setStoreFilter(e.target.value); setPage(1); }} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="">All Stores</option>
+          <option value="">{t("admin.common.allStores")}</option>
           {stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
         <select value={reportType} onChange={e => { setReportType(e.target.value); setPage(1); }} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>

@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { STORAGE_KEYS, BRANDING } from "@/lib/constants";
-import { api } from "@/lib/api";
+import { BRANDING } from "@/lib/constants";
 
 interface BrandConfig {
   brandName: string;
@@ -26,12 +25,16 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const loadedRef = useRef(false);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : "";
-    if (!token) return;
+    if (typeof window === "undefined") return;
     if (loadedRef.current) return;
 
-    api.getRaw<any>("/admin/config?prefix=branding")
-      .then((items) => {
+    fetch("/api/admin/config?prefix=branding", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((json) => {
+        const items = json && typeof json === "object" && "data" in json ? json.data : json;
         if (!Array.isArray(items)) return;
         const nameItem = items.find((i: { config_key: string }) => i.config_key === "branding.brand_name");
         const favItem = items.find((i: { config_key: string }) => i.config_key === "branding.admin_favicon_url");

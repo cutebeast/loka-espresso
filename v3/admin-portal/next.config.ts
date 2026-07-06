@@ -7,6 +7,8 @@ const domains = [
   ...(process.env.NEXT_PUBLIC_IMAGE_DOMAINS?.split(",").map((d) => d.trim()).filter(Boolean) || []),
 ].filter(Boolean) as string[];
 
+const backendUrl = process.env.API_URL || "http://127.0.0.1:13800/api";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -15,6 +17,14 @@ const nextConfig: NextConfig = {
         ? [{ protocol: "http" as const, hostname: "localhost" }]
         : []),
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/:path*`,
+      },
+    ];
   },
 };
 

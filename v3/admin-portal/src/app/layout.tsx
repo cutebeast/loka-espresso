@@ -4,30 +4,16 @@ import { usePathname, useRouter } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
+import { TranslationProvider, useTranslation } from "@/lib/i18n";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 import { refreshToken, BASE_URL } from "@/lib/api";
-
-function isAdminLoggedIn(): boolean {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem(STORAGE_KEYS.TOKEN);
-}
-
-function parseJwtExp(token: string): number | null {
-  try {
-    const parts = token.split(".");
-    const payload = parts[1];
-    if (!payload) return null;
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const json = JSON.parse(atob(base64));
-    return json.exp ? json.exp * 1000 : null;
-  } catch (e) { console.error("Failed to parse JWT:", e); return null; }
-}
 
 function clearSession() {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
-  document.cookie = `${STORAGE_KEYS.AUTH_COOKIE}=; Path=/; SameSite=Strict; Max-Age=0`;
+  document.cookie = `admin_token=; Path=/; SameSite=Strict; Max-Age=0`;
+  document.cookie = `admin_refresh_token=; Path=/; SameSite=Strict; Max-Age=0`;
 }
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
@@ -37,6 +23,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const { faviconUrl } = useBrand();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!faviconUrl) return;
@@ -88,31 +75,19 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLogin) { setChecked(true); return; }
-    if (!isAdminLoggedIn()) { clearSession(); router.replace(ROUTES.LOGIN); return; }
 
     let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const verify = async () => {
-      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      if (!token) { if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); } return; }
-
-      const exp = parseJwtExp(token);
-      if (exp && Date.now() >= exp - 30000) {
-        const refreshed = await refreshToken();
-        if (!refreshed) { if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); } return; }
-      }
-
-      const currentToken = localStorage.getItem(STORAGE_KEYS.TOKEN) || token;
-
       try {
-        const res = await fetch(`${BASE_URL}/admin/auth/me`, { headers: { Authorization: `Bearer ${currentToken}` } });
+        const res = await fetch(`${BASE_URL}/admin/auth/me`, { credentials: "include" });
         if (cancelled) return;
 
         if (res.status === 401) {
           const refreshed = await refreshToken();
           if (refreshed) {
-            const retry = await fetch(`${BASE_URL}/admin/auth/me`, { headers: { Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.TOKEN) || ""}` } });
+            const retry = await fetch(`${BASE_URL}/admin/auth/me`, { credentials: "include" });
             if (cancelled) return;
             if (retry.status === 401) {
               clearSession();
@@ -142,6 +117,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        if (!res.ok) {
+          clearSession();
+          router.replace(ROUTES.LOGIN);
+          return;
+        }
+
         setChecked(true);
       } catch (err) {
         console.error("Auth verification failed:", err);
@@ -159,11 +140,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
       {forbidden ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center" }}>
-          <div><p style={{ fontSize: 18, fontWeight: 700, color: "#991B1B" }}>Access Denied</p><p style={{ fontSize: 13, opacity: 0.6 }}>Staff accounts cannot access the admin portal.<br />Redirecting to login...</p></div>
+          <div><p style={{ fontSize: 18, fontWeight: 700, color: "#991B1B" }}>{t("admin.common.accessDenied")}</p><p style={{ fontSize: 13, opacity: 0.6 }}>{t("admin.layout.staffForbidden")}</p></div>
         </div>
       ) : checked ? children : (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-          <div style={{ color: "var(--color-text-muted)" }}>Loading...</div>
+          <div style={{ color: "var(--color-text-muted)" }}>{t("admin.common.loading")}</div>
         </div>
       )}
       </main>
@@ -174,7 +155,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <BrandProvider>
-      <LayoutInner>{children}</LayoutInner>
+      <TranslationProvider>
+        <LayoutInner>{children}</LayoutInner>
+      </TranslationProvider>
     </BrandProvider>
   );
 }

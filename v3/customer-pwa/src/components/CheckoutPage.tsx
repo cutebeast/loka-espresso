@@ -146,7 +146,7 @@ export default function CheckoutPage() {
     setFieldErrors(new Set());
     setPlacing(true);
     try {
-      const result: Order = await placeOrder({
+      const result = await placeOrder({
         storeId: storeId!, orderType: orderMode,
         deliveryAddress: deliveryAddress || undefined, pickupTime: pickupTime || undefined,
         paymentMethod, notes: notes || orderNote,
@@ -156,12 +156,20 @@ export default function CheckoutPage() {
         rewardRedemptionCode: discountType === 'reward' ? discountCode : undefined,
         tableId: dineInSession?.tableId,
       });
+      if ('queued' in result && result.queued) {
+        clearCheckoutDraft();
+        haptic('success');
+        showToast(t('toast.orderQueued'), 'success');
+        setPage('orders');
+        return;
+      }
+      const orderResult = result as Order;
       if (paymentMethod === 'gateway') {
         if (!stripeReady || !stripePublishableKey) {
           throw new Error('Online payment is not ready');
         }
         const intentRes = await api.post('/payments/intent', {
-          order_id: result.id,
+          order_id: orderResult.id,
           provider: 'stripe',
           payment_method: 'gateway',
         });
@@ -179,7 +187,7 @@ export default function CheckoutPage() {
           throw new Error('HitPay is not available');
         }
         const intentRes = await api.post('/payments/intent', {
-          order_id: result.id,
+          order_id: orderResult.id,
           provider: 'hitpay',
           payment_method: 'hitpay',
         });
@@ -194,7 +202,7 @@ export default function CheckoutPage() {
       }
       clearCheckoutDraft();
       haptic('success');
-      setPage('order-detail', { orderId: result.id });
+      setPage('order-detail', { orderId: orderResult.id });
     } catch (e: unknown) { showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.orderFailed'), 'error'); }
     finally { setPlacing(false); }
   };

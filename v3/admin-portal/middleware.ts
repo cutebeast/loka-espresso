@@ -1,18 +1,45 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const AUTH_COOKIE = "admin_auth";
+const AUTH_COOKIE = "admin_token";
 
-export function middleware(request: NextRequest) {
+function getBackendUrl(): string {
+  const direct = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (direct && direct.startsWith("http")) return direct;
+  return "http://127.0.0.1:13800/api";
+}
+
+async function validateAdminToken(token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${getBackendUrl()}/admin/auth/me`, {
+      method: "GET",
+      headers: { Cookie: `${AUTH_COOKIE}=${token}` },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthenticated = request.cookies.get(AUTH_COOKIE)?.value === "1";
 
   // Allow the login page and public assets through without auth.
-  const isPublic = pathname === "/login" || pathname.startsWith("/_next/") || pathname.startsWith("/favicon.ico");
+  const isPublic =
+    pathname === "/login" ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/api/");
 
-  if (!isAuthenticated && !isPublic) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+  if (!isPublic) {
+    const token = request.cookies.get(AUTH_COOKIE)?.value;
+    const isAuthenticated = token ? await validateAdminToken(token) : false;
+
+    if (!isAuthenticated) {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   const response = NextResponse.next();

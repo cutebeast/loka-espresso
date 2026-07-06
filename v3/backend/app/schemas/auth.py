@@ -51,6 +51,7 @@ class CustomerLoginRequest(BaseSchema):
 
     email_address: EmailStr | None = None
     phone_number: str | None = Field(None, pattern=r"^\+?[1-9]\d{7,14}$")
+    otp_code: str | None = Field(None, pattern=r"^\d{6}$")
     device_fingerprint: str | None = Field(None, max_length=64)
 
 
