@@ -104,16 +104,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const verify = async () => {
-      const storeId = localStorage.getItem("staffStoreId");
-
-      if (!storeId) {
-        if (!cancelled) {
-          staffLogout();
-          router.replace("/login");
-        }
-        return;
-      }
-
       try {
         const res = await fetch("/api/staff/auth/me", {
           credentials: "include",

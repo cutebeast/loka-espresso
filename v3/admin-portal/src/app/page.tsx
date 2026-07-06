@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { ShoppingBag, DollarSign, Flame, Users, TrendingUp } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface DashboardData {
   stores: number; customers: number;
@@ -19,6 +20,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const { format } = useCurrency();
   const [data, setData] = useState<DashboardData | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
@@ -50,15 +52,13 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [selectedStore, fromDate, toDate]);
 
-  const formatRM = (v: number) => `RM ${(v || 0).toFixed(2)}`;
-
   if (loading && !data) {
     return <div style={{ padding: 32 }}><div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} /></div>;
   }
 
   const kpis = [
     { label: t("admin.dashboard.totalOrders"), value: data?.total_orders, icon: ShoppingBag, color: "#3B4A1A" },
-    { label: t("admin.dashboard.totalRevenue"), value: formatRM(data?.total_revenue || 0), icon: DollarSign, color: "#9B6625" },
+    { label: t("admin.dashboard.totalRevenue"), value: format(data?.total_revenue || 0), icon: DollarSign, color: "#9B6625" },
     { label: t("admin.dashboard.activeOrders"), value: data?.active_orders, icon: Flame, color: "#D97706" },
     { label: t("admin.dashboard.totalCustomers"), value: data?.customers, icon: Users, color: "#2563EB" },
   ];
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             Object.entries(data.orders_by_type).map(([type, info]) => (
               <div key={type} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border-light)" }}>
                 <span style={{ textTransform: "capitalize", color: "var(--color-text-secondary)", fontSize: 14 }}>{type.replace(/_/g, " ")}</span>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{info.count} {t("admin.dashboard.orders")} · {formatRM(info.revenue)}</span>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>{info.count} {t("admin.dashboard.orders")} · {format(info.revenue)}</span>
               </div>
             ))
           )}
@@ -127,7 +127,7 @@ export default function DashboardPage() {
             <DollarSign size={14} style={{ display: "inline", marginRight: 8, color: "var(--color-accent-copper)" }} />
             {t("admin.dashboard.revenue")}
           </h3>
-          <div style={{ fontSize: 36, fontWeight: 700, color: "var(--color-accent-copper)" }}>{formatRM(data?.total_revenue || 0)}</div>
+          <div style={{ fontSize: 36, fontWeight: 700, color: "var(--color-accent-copper)" }}>{format(data?.total_revenue || 0)}</div>
           <p style={{ color: "var(--color-text-muted)", marginTop: 8, fontSize: 13 }}>{t("admin.dashboard.revenueForPeriod")}</p>
         </div>
       </div>

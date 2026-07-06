@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api, type OrderDetail } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, RotateCcw } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Payment {
   id: number;
@@ -25,6 +26,7 @@ const STATUS_FLOW: Record<string, string[]> = {
 };
 
 export default function OrderDetailPage() {
+  const { format } = useCurrency();
   const p = useParams(); const r = useRouter(); const id = Number(p.id);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export default function OrderDetailPage() {
     const amount = parseFloat(refundAmounts[payment.id] || "0");
     if (!amount || amount <= 0) { setError("Refund amount must be greater than 0"); return; }
     const available = (payment.captured_amount || 0) - (payment.refunded_amount || 0);
-    if (amount > available + 0.001) { setError(`Refund amount cannot exceed ${fmt(available)}`); return; }
+    if (amount > available + 0.001) { setError(`Refund amount cannot exceed ${format(available)}`); return; }
     setRefundLoading(payment.id);
     setError("");
     try {
@@ -75,7 +77,7 @@ export default function OrderDetailPage() {
         reason: refundReasons[payment.id] || "Refund from admin",
         reason_category: "customer_request",
       });
-      setMsg(`Refund of ${fmt(amount)} processed`);
+      setMsg(`Refund of ${format(amount)} processed`);
       setRefundAmounts((prev) => ({ ...prev, [payment.id]: "" }));
       setRefundReasons((prev) => ({ ...prev, [payment.id]: "" }));
       await loadPayments();
@@ -87,7 +89,6 @@ export default function OrderDetailPage() {
     }
   };
 
-  const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
   const dt = (s: string | null) => s ? new Date(s).toLocaleString() : "—";
   const sb = (s: string) => {
     const m: Record<string, string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-orange", ready_for_pickup: "badge-green", out_for_delivery: "badge-blue", delivered: "badge-green", cancelled_by_customer: "badge-red", cancelled_by_merchant: "badge-red", refunded: "badge-gray", partially_refunded: "badge-gray" };
@@ -118,7 +119,7 @@ export default function OrderDetailPage() {
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 20 }}>
-          {[["Order Type", order.order_type?.replace(/_/g, " ")], ["Payment", order.payment_method || "—"], ["Subtotal", fmt(order.items_subtotal || 0)], ["Tax", fmt(order.tax_amount)], ["Delivery Fee", fmt(order.delivery_fee)], ["Discount", fmt(order.discount_amount)], ["Total", fmt(order.total_amount)]].map(([l, v]) => (
+          {[["Order Type", order.order_type?.replace(/_/g, " ")], ["Payment", order.payment_method || "—"], ["Subtotal", format(order.items_subtotal || 0)], ["Tax", format(order.tax_amount)], ["Delivery Fee", format(order.delivery_fee)], ["Discount", format(order.discount_amount)], ["Total", format(order.total_amount)]].map(([l, v]) => (
           <div key={l} className="card" style={{ padding: 12, textAlign: "center" }}>
             <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{l}</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: l === "Total" ? "var(--color-primary)" : "inherit" }}>{v}</div>
@@ -134,8 +135,8 @@ export default function OrderDetailPage() {
             <tr key={li.id ?? i}>
               <td style={{ fontWeight: 600 }}>{li.item_name || "—"}</td>
               <td style={{ textAlign: "center" }}>{li.quantity}</td>
-              <td style={{ textAlign: "right" }}>{fmt(li.unit_price)}</td>
-              <td style={{ textAlign: "right" }}>{fmt(li.total_price)}</td>
+              <td style={{ textAlign: "right" }}>{format(li.unit_price)}</td>
+              <td style={{ textAlign: "right" }}>{format(li.total_price)}</td>
             </tr>
           ))}
         </tbody>
@@ -149,7 +150,7 @@ export default function OrderDetailPage() {
             {(order.adjustments || []).map((adj: any, i: number) => (
               <tr key={adj.id ?? i}>
                 <td style={{ textTransform: "capitalize" }}>{adj.adjustment_type?.replace(/_/g, " ")}</td>
-                <td style={{ textAlign: "right", color: Number(adj.amount_delta || 0) < 0 ? "var(--color-error)" : "var(--color-success)", fontWeight: 600 }}>{fmt(adj.amount_delta)}</td>
+                <td style={{ textAlign: "right", color: Number(adj.amount_delta || 0) < 0 ? "var(--color-error)" : "var(--color-success)", fontWeight: 600 }}>{format(adj.amount_delta)}</td>
                 <td style={{ fontSize: 12 }}>{adj.reason || "—"}</td>
                 <td style={{ fontSize: 12 }}>{dt(adj.created_at)}</td>
               </tr>
@@ -172,9 +173,9 @@ export default function OrderDetailPage() {
                     <tr key={p.id}>
                       <td style={{ textTransform: "capitalize", fontSize: 12 }}>{p.provider}</td>
                       <td>{sb(p.status)}</td>
-                      <td style={{ textAlign: "right" }}>{fmt(p.amount)}</td>
-                      <td style={{ textAlign: "right" }}>{fmt(p.captured_amount)}</td>
-                      <td style={{ textAlign: "right" }}>{fmt(p.refunded_amount)}</td>
+                      <td style={{ textAlign: "right" }}>{format(p.amount)}</td>
+                      <td style={{ textAlign: "right" }}>{format(p.captured_amount)}</td>
+                      <td style={{ textAlign: "right" }}>{format(p.refunded_amount)}</td>
                       <td>
                         {canRefund ? (
                           <div style={{ display: "flex", gap: 6, flexDirection: "column" }}>
@@ -184,7 +185,7 @@ export default function OrderDetailPage() {
                                 min={0.01}
                                 step={0.01}
                                 max={available}
-                                placeholder={`Max ${fmt(available)}`}
+                                placeholder={`Max ${format(available)}`}
                                 value={refundAmounts[p.id] || ""}
                                 onChange={(e) => setRefundAmounts((prev) => ({ ...prev, [p.id]: e.target.value }))}
                                 style={{ width: 90, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}

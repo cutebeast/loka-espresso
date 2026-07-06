@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw, Server, Monitor, Smartphone, Globe } from "lucide-react";
-import { VERSION_URLS, STORAGE_KEYS } from "@/lib/constants";
+import { VERSION_URLS } from "@/lib/constants";
 import { useTranslation } from "@/lib/i18n";
 
 interface VersionInfo {
@@ -53,12 +53,11 @@ export default function VersionControlPage() {
 
     for (const svc of SERVICES) {
       try {
-        const headers: Record<string, string> = {};
+        const init: RequestInit = { cache: "no-store" };
         if (svc.key === "backend") {
-          const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : null;
-          if (token) headers["Authorization"] = `Bearer ${token}`;
+          init.credentials = "include";
         }
-        const res = await fetch(svc.url, { cache: "no-store", headers });
+        const res = await fetch(svc.url, init);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const info = data.data || data;

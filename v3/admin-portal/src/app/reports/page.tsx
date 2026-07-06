@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { BarChart3, TrendingUp } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Store { id: number; store_name: string; }
 
@@ -19,6 +20,7 @@ export default function ReportsPage() {
   const [data, setData] = useState({ revenue: 0, orders: 0, avgOrder: 0, customers: 0, stores: 0 });
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const { format } = useCurrency();
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function ReportsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
+
 
   return (
     <div style={{ padding: 32 }}>
@@ -90,9 +92,9 @@ export default function ReportsPage() {
       : activeTab === "sales" ? (
         <>
           <div className="kpi-grid" style={{ marginBottom: 24 }}>
-            <div className="kpi-card"><div className="kpi-label">Total Revenue</div><div className="kpi-value">{fmt(data.revenue)}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Total Revenue</div><div className="kpi-value">{format(data.revenue)}</div></div>
             <div className="kpi-card"><div className="kpi-label">Total Orders</div><div className="kpi-value">{data.orders}</div></div>
-            <div className="kpi-card"><div className="kpi-label">Avg Order Value</div><div className="kpi-value">{fmt(data.avgOrder)}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Avg Order Value</div><div className="kpi-value">{format(data.avgOrder)}</div></div>
             <div className="kpi-card"><div className="kpi-label">New Customers</div><div className="kpi-value">{data.customers}</div></div>
             <div className="kpi-card"><div className="kpi-label">Active Stores</div><div className="kpi-value">{data.stores}</div></div>
           </div>
@@ -116,7 +118,7 @@ export default function ReportsPage() {
                     <td style={{ textAlign: "center" }}>{a.messages_sent}</td>
                     <td style={{ textAlign: "center" }}>{a.opens_count}</td>
                     <td style={{ textAlign: "center" }}>{a.clicks_count}</td>
-                    <td style={{ textAlign: "center", fontWeight: 600, color: "var(--color-success)" }}>{a.conversion_revenue ? `RM ${(Number(a.conversion_revenue) || 0).toFixed(2)}` : "—"}</td>
+                    <td style={{ textAlign: "center", fontWeight: 600, color: "var(--color-success)" }}>{a.conversion_revenue ? format(a.conversion_revenue) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

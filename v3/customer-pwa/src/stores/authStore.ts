@@ -5,16 +5,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useOrderStore } from '@/stores/orderStore';
-
-function clearLegacyTokens() {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-  } catch {
-    // ignore
-  }
-}
+import { unsubscribeAndDeregisterWebPush } from '@/hooks/useWebPush';
 
 interface AuthState {
   user: UserProfile | null;
@@ -42,7 +33,11 @@ export const useAuthStore = create<AuthState>()(
     setPhone: (phone) => set({ phone }),
     setAuthDone: (authDone) => set({ authDone }),
     logout: async () => {
-      clearLegacyTokens();
+      try {
+        await unsubscribeAndDeregisterWebPush();
+      } catch (err) {
+        console.error('[AuthStore] Web push deregister failed:', err);
+      }
       try {
         await api.post('/auth/logout');
       } catch (err) {
@@ -56,7 +51,6 @@ export const useAuthStore = create<AuthState>()(
       set({ user: null, isAuthenticated: false, isNewUser: false, phone: '', authDone: false });
     },
     resetAllExceptCart: () => {
-      clearLegacyTokens();
       useUIStore.getState().setIsGuest(false);
       useWalletStore.getState().resetAll();
       useOrderStore.getState().resetAll();

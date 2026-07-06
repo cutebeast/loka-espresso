@@ -3,12 +3,14 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Refund { id: number; payment_id: number; order_id: number; order_number?: string; store_id?: number; amount: number; reason: string; status: string; created_at: string; }
 interface Store { id: number; store_name: string; }
 
 export default function RefundsPage() {
   const { t } = useTranslation();
+  const { format } = useCurrency();
   const [items, setItems] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,7 +55,7 @@ export default function RefundsPage() {
           : items.map(r => (
             <tr key={r.id}>
               <td style={{ fontWeight: 600 }}>{r.order_number || `#${r.order_id}`}</td>
-              <td style={{ fontWeight: 600, color: "var(--color-error)" }}>RM {Number(r.amount || 0).toFixed(2)}</td>
+              <td style={{ fontWeight: 600, color: "var(--color-error)" }}>{format(r.amount)}</td>
               <td style={{ fontSize: 12 }}>{r.reason || "—"}</td>
               <td>{sb(r.status)}</td>
               <td style={{ fontSize: 12 }}>{r.created_at?.slice(0, 10)}</td>

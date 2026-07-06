@@ -74,6 +74,7 @@ export default function CheckoutPage() {
   const [gatewayIntent, setGatewayIntent] = useState<{ paymentId: number; clientSecret: string } | null>(null);
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [stripeReady, setStripeReady] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
   useEffect(() => {
@@ -135,17 +136,20 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
-    const missing = new Set<string>();
-    const storeId = selectedStore?.id ?? dineInSession?.storeId ?? null;
-    if (!storeId || storeId === 0) missing.add('store');
-    if (orderMode === 'delivery' && !deliveryAddress?.address) missing.add('address');
-    if (orderMode === 'pickup' && !selectedStore) missing.add('store');
-    if (orderMode !== 'dine_in' && !pickupTime) missing.add('time');
-    if (missing.size > 0) { setFieldErrors(missing); showToast(t('checkout.fieldErrors'), 'error'); return; }
-    if (deliveryOutOfRange) { showToast(t('toast.outOfRange'), 'error'); return; }
-    setFieldErrors(new Set());
-    setPlacing(true);
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     try {
+      const missing = new Set<string>();
+      const storeId = selectedStore?.id ?? dineInSession?.storeId ?? null;
+      if (!storeId || storeId === 0) missing.add('store');
+      if (orderMode === 'delivery' && !deliveryAddress?.address) missing.add('address');
+      if (orderMode === 'pickup' && !selectedStore) missing.add('store');
+      if (orderMode !== 'dine_in' && !pickupTime) missing.add('time');
+      if (missing.size > 0) { setFieldErrors(missing); showToast(t('checkout.fieldErrors'), 'error'); return; }
+      if (deliveryOutOfRange) { showToast(t('toast.outOfRange'), 'error'); return; }
+      setFieldErrors(new Set());
+      setPlacing(true);
+      try {
       const result = await placeOrder({
         storeId: storeId!, orderType: orderMode,
         deliveryAddress: deliveryAddress || undefined, pickupTime: pickupTime || undefined,
@@ -203,8 +207,11 @@ export default function CheckoutPage() {
       clearCheckoutDraft();
       haptic('success');
       setPage('order-detail', { orderId: orderResult.id });
-    } catch (e: unknown) { showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.orderFailed'), 'error'); }
-    finally { setPlacing(false); }
+      } catch (e: unknown) { showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.orderFailed'), 'error'); }
+      finally { setPlacing(false); }
+    } finally {
+      isSubmittingRef.current = false;
+    }
   };
 
   return (

@@ -2,25 +2,26 @@
 
 Full-stack F&B ordering and loyalty platform. The active codebase is in `v3/`.
 
-| Component | Stack | Dev URL |
-|-----------|-------|---------|
-| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api/v1 |
-| Admin Portal | Next.js 16 | https://admin.loyaltysystem.uk |
-| Staff Portal | Next.js 16 | https://staff.loyaltysystem.uk |
-| Customer PWA | Next.js 16 | https://app.loyaltysystem.uk |
-| Database | PostgreSQL 16 | Docker `fnb-v3-postgres` |
-| Cache / Rate limit | Redis 7 | Docker `fnb-v3-redis` |
-| Reverse Proxy | Caddy 2 | Host Caddy + Docker-ready Caddyfile |
+| Component | Stack | Dev URL | Live URL (target) |
+|-----------|-------|---------|-------------------|
+| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api | https://admin.lokaespresso.com/api |
+| Admin Portal | Next.js 16 | https://admin.loyaltysystem.uk | https://admin.lokaespresso.com |
+| Staff Portal | Next.js 16 | https://staff.loyaltysystem.uk | https://staff.lokaespresso.com |
+| Customer PWA | Next.js 16 | https://app.loyaltysystem.uk | https://app.lokaespresso.com |
+| Database | PostgreSQL 16 | Docker `fnb-v3-postgres` | Docker `fnb-v3-postgres` |
+| Cache / Rate limit | Redis 7 | Docker `fnb-v3-redis` | Docker `fnb-v3-redis` |
+| Reverse Proxy | Caddy 2 | Host Caddy + Docker-ready Caddyfile | Host Caddy or Docker Caddy |
 
 ## Current status
 
 See [`v3/docs/000-project-status.md`](v3/docs/000-project-status.md) for the full project status, deployment notes, domain setup, upload handling, test results, and recent cleanup.
 
 Highlights:
-- **207 passed, 8 skipped, 0 failed** in the E2E suite (browser tests enabled).
+- **189 passed, 26 skipped, 0 failed** in the E2E suite (browser tests enabled).
+- **24 passed, 0 failed** in the backend unit-test suite.
 - TypeScript strict: 0 errors across all 3 portals.
 - Root repository has been cleaned of legacy v1/v2 files; all active code stays in `v3/`.
-- Upload endpoints (avatars, item images, equipment photos) are verified and served correctly through the backend.
+- Round 26 security/auth fixes applied across backend, admin, staff, and customer PWA.
 - Docker Compose stack is domain-agnostic and ready for dev (`loyaltysystem.uk`), production (`lokaespresso.com`), and future brand servers.
 
 ## Quick start

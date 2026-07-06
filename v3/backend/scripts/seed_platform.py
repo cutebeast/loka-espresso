@@ -17,10 +17,11 @@ from scripts._db_utils import confirm, get_db, guard_production
 
 CONFIGS = [
     ("app.name", '"LOKA Espresso"', "string", "all", False, False),
-    ("app.currency", '"MYR"', "string", "all", False, False),
+    ("app.currency", '"MYR"', "string", "all", False, True),
+    ("app.currency_symbol", '"RM"', "string", "all", False, True),
     ("app.support_phone", '"+60123456789"', "string", "all", False, True),
     ("app.support_email", '"support@lokaespresso.my"', "string", "all", False, True),
-    ("otp.bypass_enabled", "false", "boolean", "all", True, True),
+    ("otp.bypass_enabled", "true", "boolean", "all", True, True),
     ("otp.bypass_code", '"000000"', "string", "all", True, True),
     ("otp.expiry_minutes", "5", "integer", "all", False, True),
     ("otp.max_send_per_hour", "5", "integer", "all", False, True),

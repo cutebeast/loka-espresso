@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Cake, Truck, Crown, Star, Coffee, Ticket, Sparkles } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const L = [{code:"en",label:"English",flag:"🇬🇧"},{code:"ms",label:"BM",flag:"🇲🇾"},{code:"zh",label:"中文",flag:"🇨🇳"},{code:"ta",label:"தமிழ்",flag:"🇮🇳"},{code:"tr",label:"TR",flag:"🇹🇷"}];
 const F = [{key:"display_name",label:"Tier Name"}];
@@ -49,6 +50,7 @@ function BenefitNumber({ label, value, onChange, suffix, min = 0, max, step = 1 
 }
 
 export default function TierEditPage() {
+  const { symbol } = useCurrency();
   const p = useParams(); const r = useRouter(); const id = p.id as string;
   const [form,setForm]=useState<Record<string,any>>({});
   const [benefits,setBenefits]=useState<Record<string,any>>({ ...DEFAULT_BENEFITS });
@@ -156,7 +158,7 @@ export default function TierEditPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10, marginBottom: 16 }}>
               <BenefitNumber label="Order Discount %" value={benefits.order_discount_percent} onChange={v => updateBenefit("order_discount_percent", v)} suffix="%" max={100} />
-              <BenefitNumber label="Order Discount Fixed" value={benefits.order_discount_fixed} onChange={v => updateBenefit("order_discount_fixed", v)} suffix="RM" step={0.5} />
+              <BenefitNumber label="Order Discount Fixed" value={benefits.order_discount_fixed} onChange={v => updateBenefit("order_discount_fixed", v)} suffix={symbol} step={0.5} />
               <BenefitNumber label="Welcome Bonus Points" value={benefits.welcome_bonus_points} onChange={v => updateBenefit("welcome_bonus_points", v)} suffix="pts" />
             </div>
 

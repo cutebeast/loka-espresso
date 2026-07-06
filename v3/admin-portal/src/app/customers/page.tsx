@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePagination } from "@/hooks/usePagination";
 import { Search, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface CustomerSummary {
   id: number; display_name: string; phone_number: string; email_address: string | null;
@@ -16,6 +17,7 @@ interface CustomerSummary {
 
 export default function CustomersPage() {
   const router = useRouter();
+  const { format } = useCurrency();
   const [items, setItems] = useState<CustomerSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,7 +72,7 @@ export default function CustomersPage() {
               <td style={{ fontSize: 11 }} className="font-mono">{c.phone_number || "—"}</td>
               <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{c.email_address || "—"}</td>
               <td style={{ textAlign: "center" }}>{c.order_count}</td>
-              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {(Number(c.lifetime_value) || 0).toFixed(2)}</td>
+              <td style={{ textAlign: "right", fontWeight: 600 }}>{format(c.lifetime_value)}</td>
               <td style={{ fontSize: 12 }}>{formatDate(c.created_at)}</td>
               <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${c.is_active ? "badge-green" : "badge-gray"}`}>{c.is_active ? "Active" : "Inactive"}</span></td>
               <td onClick={e => e.stopPropagation()}><Link href={`/customers/${c.id}`} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><ExternalLink size={12} /> View</Link></td>

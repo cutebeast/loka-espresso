@@ -143,41 +143,37 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
     staff = result.scalars().first()
 
     if staff and (staff.password_hash or staff.pin_hash):
-        # Check lockout
+        # Check lockout before attempting credentials
         if staff.locked_until and staff.locked_until > datetime.now(timezone.utc):
             raise HTTPException(status_code=423, detail="Account temporarily locked. Try again later.")
 
         # Try password first, then PIN
+        authenticated = False
         if staff.password_hash:
             try:
                 pw_ok = verify_password_staff(password, staff.password_hash if isinstance(staff.password_hash, str) else staff.password_hash.decode())
             except Exception:
                 pw_ok = False
             if pw_ok:
-                staff.failed_login_count = 0
-                staff.locked_until = None
-                await db.commit()
-                token_data = _make_token(staff)
-                set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
-                return token_data
-        # Fallback: try PIN (but reject default 000000)
-        if staff.pin_hash:
-            if not _pin_allowed(staff.pin_hash, password):
-                raise HTTPException(status_code=401, detail="Invalid PIN or default PIN not allowed")
-            staff.failed_login_count = 0
-            staff.locked_until = None
-            await db.commit()
-            token_data = _make_token(staff)
-            set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
-            return token_data
+                authenticated = True
+        if not authenticated and staff.pin_hash:
+            if _pin_allowed(staff.pin_hash, password):
+                authenticated = True
 
-        # Increment failed login count on failure
-        staff.failed_login_count = (staff.failed_login_count or 0) + 1
-        if staff.failed_login_count >= 5:
-            staff.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
-            staff.failed_login_count = 0
+        if not authenticated:
+            staff.failed_login_count = (staff.failed_login_count or 0) + 1
+            if staff.failed_login_count >= 5:
+                staff.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+                staff.failed_login_count = 0
+            await db.commit()
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        staff.failed_login_count = 0
+        staff.locked_until = None
         await db.commit()
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        token_data = _make_token(staff)
+        set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
+        return token_data
 
     # ── Mode 3: Admin login (email + password, no staff profile) ──
     from app.models.iam import AdminAccount, RoleAssignment, RolePermission

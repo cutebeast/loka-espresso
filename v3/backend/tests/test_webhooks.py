@@ -161,30 +161,3 @@ async def test_hitpay_rejected_without_secret(webhook_client, monkeypatch):
     assert res.status_code == 400
     assert "salt/webhook_secret not configured" in res.text.lower()
 
-
-@pytest.mark.asyncio
-async def test_webhook_api_key_required(webhook_client, monkeypatch):
-    """When WEBHOOK_API_KEY is set, missing/invalid key must be rejected."""
-    monkeypatch.setattr(get_settings(), "webhook_api_key", "super-secret-webhook-key")
-    async def empty_secret(db): return ""
-    monkeypatch.setattr("app.services.payment.get_stripe_webhook_secret", empty_secret)
-
-    res = await webhook_client.post("/api/webhooks/stripe", content=b"{}")
-    assert res.status_code == 401
-
-    res = await webhook_client.post(
-        "/api/webhooks/stripe",
-        headers={"X-Webhook-API-Key": "wrong"},
-        content=b"{}",
-    )
-    assert res.status_code == 401
-
-    res = await webhook_client.post(
-        "/api/webhooks/stripe",
-        headers={
-            "X-Webhook-API-Key": "super-secret-webhook-key",
-            "Stripe-Signature": "v1=invalid",
-        },
-        content=b"{}",
-    )
-    assert res.status_code == 400

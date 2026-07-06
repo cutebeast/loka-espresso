@@ -4,11 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { getTipAllocations, type TipAllocation } from "@/lib/api";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Store { id: number; store_name: string; }
 
 export default function StaffTipsPage() {
   const { t } = useTranslation();
+  const { format } = useCurrency();
   const [items, setItems] = useState<TipAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -50,7 +52,7 @@ export default function StaffTipsPage() {
           : items.map(t => (<tr key={t.id}>
             <td className="font-mono" style={{ fontSize: 11 }}>#{t.order_id}</td>
             <td>{t.store_name || `Store #${t.store_id}`}</td>
-            <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(t.total_tip || 0).toFixed(2)}</td>
+            <td style={{ textAlign: "right", fontWeight: 600 }}>{format(t.total_tip)}</td>
             <td style={{ textTransform: "capitalize", fontSize: 12 }}>{t.payment_method || "—"}</td>
             <td>{t.distributed_by_name || "—"}</td>
             <td style={{ fontSize: 12 }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>

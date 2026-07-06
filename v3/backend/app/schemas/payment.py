@@ -24,7 +24,6 @@ class PaymentMethodBase(BaseSchema):
 class PaymentMethodOut(PaymentMethodBase):
     id: int
     customer_id: int
-    provider_token_encrypted: bytes | None
     verified_at: datetime | None
     created_at: datetime
     updated_at: datetime

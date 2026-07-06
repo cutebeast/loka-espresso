@@ -96,6 +96,7 @@ MODULE_TABLES: dict[str, list[str]] = {
         "shift_templates",
         "staff_shifts",
         "staff_time_events",
+        "staff_tasks",
         "staff_profiles",
     ],
     "stores": [

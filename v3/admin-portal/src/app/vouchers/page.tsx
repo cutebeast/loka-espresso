@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { usePagination } from "@/hooks/usePagination";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Voucher {
@@ -20,6 +21,7 @@ export default function VouchersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const pagination = usePagination({ defaultPage: 1, defaultPerPage: PAGE_SIZE });
+  const { symbol } = useCurrency();
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = useCallback(async (p: number = 1) => {
@@ -57,8 +59,8 @@ export default function VouchersPage() {
 
   const discountLabel = (v: Voucher) => {
     if (v.voucher_type === "percentage_off") return `${(v.discount_value * 100).toFixed(0)}% off`;
-    if (v.voucher_type === "free_item") return `Free (up to RM ${v.discount_value})`;
-    return `RM ${v.discount_value} off`;
+    if (v.voucher_type === "free_item") return `Free (up to ${symbol} ${v.discount_value})`;
+    return `${symbol} ${v.discount_value} off`;
   };
 
   const typeBadge = (t: string) => {

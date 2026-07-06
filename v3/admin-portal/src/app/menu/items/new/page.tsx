@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, Upload, Plus, Trash2 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface MenuCategory { id: number; category_name: string; }
 interface Allergen { id: number; allergen_key: string; display_name: string; }
@@ -13,6 +14,7 @@ interface Store { id: number; store_name: string; }
 
 export default function NewItemPage() {
   const router = useRouter();
+  const { symbol } = useCurrency();
   const [form, setForm] = useState<Record<string,any>>({ item_name:"", item_code:"", base_price:"", description:"", long_description:"", category_id:"", tax_category_id:"", allergen_ids:[] as number[], dietary_tag_ids:[] as number[], is_available:true, is_featured:false, is_bundle_eligible:false, is_addon_deal_eligible:false, addon_discount_type:"percentage", addon_discount_value:"", eligible_bundle_ids:[] as number[], calories:"", prep_time_minutes:"10", minimum_tier_id:"", modifier_groups:[] as any[], recipes:[] as any[] });
   const [bundleProducts, setBundleProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -151,10 +153,10 @@ export default function NewItemPage() {
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <select value={form.addon_discount_type||"percentage"} onChange={e=>setForm({...form,addon_discount_type:e.target.value})} style={{padding:"6px 12px",fontSize:12,borderRadius:"var(--radius-sm)",border:"1px solid var(--color-border-light)",minWidth:90}}>
                       <option value="percentage">% off</option>
-                      <option value="fixed">RM off</option>
+                      <option value="fixed">{symbol} off</option>
                     </select>
                     <input type="number" min={0} step="any" placeholder="e.g. 50" value={form.addon_discount_value||""} onChange={e=>setForm({...form,addon_discount_value:e.target.value})} style={{width:80,padding:"6px 10px",fontSize:13,borderRadius:"var(--radius-sm)",border:"1px solid var(--color-border-light)"}} />
-                    <span style={{fontSize:12,color:"var(--color-text-muted)"}}>{form.addon_discount_type==="fixed"?"RM":"%"}</span>
+                    <span style={{fontSize:12,color:"var(--color-text-muted)"}}>{form.addon_discount_type==="fixed"?symbol:"%"}</span>
                   </div>
                   {bundleProducts.length > 0 && (
                     <div>
@@ -184,7 +186,7 @@ export default function NewItemPage() {
               {form.modifier_groups.map((g:any,gi:number)=>(
                 <div key={gi} style={{background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",padding:12,marginBottom:12,border:"1px solid var(--color-border-light)"}}>
                   <div style={{display:"flex",gap:8,marginBottom:8}}><input placeholder="Group name" value={g.group_name} onChange={e=>updateGroup(gi,{group_name:e.target.value})} style={{flex:1}}/><select value={g.selection_type} onChange={e=>updateGroup(gi,{selection_type:e.target.value})} style={{width:100}}><option value="single">Single</option><option value="multiple">Multiple</option></select><label style={{fontSize:12,display:"flex",alignItems:"center",gap:4}}><input type="checkbox" checked={g.is_required} onChange={e=>updateGroup(gi,{is_required:e.target.checked})}/>Req</label><button type="button" onClick={()=>removeGroup(gi)} className="btn btn-icon btn-ghost" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button></div>
-                  {g.options.map((o:any,oi:number)=>(<div key={oi} style={{display:"flex",gap:6,marginBottom:4,paddingLeft:8}}><input placeholder="Option" value={o.option_name} onChange={e=>updateOpt(gi,oi,{option_name:e.target.value})} style={{flex:1}}/><span style={{fontSize:12,color:"var(--color-text-muted)"}}>+RM</span><input type="number" step="0.5" value={o.price_adjustment} onChange={e=>updateOpt(gi,oi,{price_adjustment:Number(e.target.value)})} style={{width:70}}/><button type="button" onClick={()=>removeOpt(gi,oi)} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}>✕</button></div>))}
+                  {g.options.map((o:any,oi:number)=>(<div key={oi} style={{display:"flex",gap:6,marginBottom:4,paddingLeft:8}}><input placeholder="Option" value={o.option_name} onChange={e=>updateOpt(gi,oi,{option_name:e.target.value})} style={{flex:1}}/><span style={{fontSize:12,color:"var(--color-text-muted)"}}>+{symbol}</span><input type="number" step="0.5" value={o.price_adjustment} onChange={e=>updateOpt(gi,oi,{price_adjustment:Number(e.target.value)})} style={{width:70}}/><button type="button" onClick={()=>removeOpt(gi,oi)} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}>✕</button></div>))}
                   <button type="button" onClick={()=>addOpt(gi)} className="btn btn-ghost btn-sm" style={{fontSize:12,paddingLeft:8}}>+ Add Option</button>
                 </div>
               ))}

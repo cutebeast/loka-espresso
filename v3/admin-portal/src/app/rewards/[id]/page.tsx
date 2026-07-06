@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import GalleryUpload from "@/components/GalleryUpload";
+import { useCurrency } from "@/hooks/useCurrency";
 
 type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
 const LOCALES: { code: LocaleTab; label: string; flag: string }[] = [
@@ -38,6 +39,7 @@ export default function RewardEditPage() {
   const router = useRouter();
   const rewardId = params.id as string;
   const { allSegments } = useAudienceSegments();
+  const { symbol } = useCurrency();
 
   const [reward, setReward] = useState<Reward | null>(null);
   const [loading, setLoading] = useState(true);
@@ -253,18 +255,18 @@ export default function RewardEditPage() {
             </div>
             {(form.reward_type === "percentage_discount" || form.reward_type === "fixed_discount") && (<>
               <div className="df-field">
-                <label className="df-label">{form.reward_type === "percentage_discount" ? "Discount %" : "Discount (RM)"}</label>
+                <label className="df-label">{form.reward_type === "percentage_discount" ? "Discount %" : `Discount (${symbol})`}</label>
                 <input type="number" step={form.reward_type === "percentage_discount" ? "1" : "0.01"} min="0" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} />
                 {form.reward_type === "percentage_discount" && <div className="df-hint">e.g. enter 10 for 10% off</div>}
               </div>
               <div className="df-field">
-                <label className="df-label">Max Discount Cap (RM)</label>
+                <label className="df-label">{`Max Discount Cap (${symbol})`}</label>
                 <input type="number" step="0.01" min="0" value={form.discount_max_amount} onChange={e => setForm({ ...form, discount_max_amount: Number(e.target.value) })} />
                 <div className="df-hint">Optional — cap the total discount</div>
               </div>
             </>)}
             <div className="df-field">
-              <label className="df-label">Min Order Value (RM)</label>
+              <label className="df-label">{`Min Order Value (${symbol})`}</label>
               <input type="number" step="0.01" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} />
             </div>
             <div className="df-field">

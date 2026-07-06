@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function MenuItemsPage() {
   const router = useRouter();
+  const { symbol, format } = useCurrency();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState("");
@@ -49,7 +51,7 @@ export default function MenuItemsPage() {
               <tr key={item.id}>
                 <td><div style={{ fontWeight: 600 }}>{item.item_name}</div>{item.description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.description?.slice(0, 60)}</div>}</td>
                 <td className="font-mono" style={{ fontSize: 12 }}>{item.item_code}</td>
-                <td>RM {(Number(item.base_price) || 0).toFixed(2)}</td>
+                <td>{format(item.base_price)}</td>
                 <td style={{ fontSize: 13 }}>{item.category?.category_name || "—"}</td>
                 <td style={{ fontSize: 11 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
@@ -60,7 +62,7 @@ export default function MenuItemsPage() {
                 <td style={{ fontSize: 12 }}>
                   {item.is_addon_deal_eligible && (
                     <span className="badge badge-sm badge-amber" style={{ fontSize: 10, marginBottom: 4 }}>
-                      {item.addon_discount_type === "percentage" ? `-${Number(item.addon_discount_value || 0)}%` : `-RM${Number(item.addon_discount_value || 0).toFixed(2)}`} Add-on
+                      {item.addon_discount_type === "percentage" ? `-${Number(item.addon_discount_value || 0)}%` : `-${symbol}${Number(item.addon_discount_value || 0).toFixed(2)}`} Add-on
                     </span>
                   )}
                   {(item.modifier_groups || []).length ? <div>{item.modifier_groups.length} groups</div> : "—"}

@@ -4,11 +4,13 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const LOCALES = [{code:"en",label:"English",flag:"🇬🇧"},{code:"ms",label:"BM",flag:"🇲🇾"},{code:"zh",label:"中文",flag:"🇨🇳"},{code:"ta",label:"தமிழ்",flag:"🇮🇳"},{code:"tr",label:"TR",flag:"🇹🇷"}];
 const TR_FIELDS = [{key:"title",label:"Title"},{key:"short_description",label:"Short Description"},{key:"long_description",label:"Full Description"}];
 
 export default function ProductEditPage() {
+  const { symbol } = useCurrency();
   const p = useParams(); const r = useRouter(); const id = p.id as string;
   const [loading,setLoading] = useState(true); const [loc,setLoc] = useState("en");
   const [saving,setSaving] = useState(false); const [savingTr,setSavingTr] = useState(false);
@@ -65,7 +67,7 @@ load();
           <h3 style={{marginBottom:20}}>English (Source Content)</h3>
           <div className="df-grid">
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Title *</label><input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
-            <div className="df-field"><label className="df-label">Price (RM)</label><input type="number" step="0.01" value={form.price} onChange={e=>setForm({...form,price:e.target.value})}/></div>
+            <div className="df-field"><label className="df-label">{`Price (${symbol})`}</label><input type="number" step="0.01" value={form.price} onChange={e=>setForm({...form,price:e.target.value})}/></div>
             <div className="df-field"><label className="df-label">Position</label><input type="number" value={form.position} onChange={e=>setForm({...form,position:Number(e.target.value)})}/></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Short Description</label><input value={form.short_description} onChange={e=>setForm({...form,short_description:e.target.value})}/></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Full Description</label><textarea rows={3} value={form.long_description} onChange={e=>setForm({...form,long_description:e.target.value})}/></div>

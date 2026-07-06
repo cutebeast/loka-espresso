@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Plus, Trash2, Upload, Save, ChevronUp, ChevronDown, Users, Shuffle, LayoutGrid } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible?: boolean; }
 interface CategoryOption { id: number; category_name: string; }
@@ -12,6 +13,7 @@ type BundleMode = "fixed" | "pick_n" | "multi_course";
 
 export default function BundleProductNewPage() {
   const router = useRouter();
+  const { symbol, format } = useCurrency();
   const [mode, setMode] = useState<BundleMode | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -208,9 +210,9 @@ export default function BundleProductNewPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
           {([
-            { mode: "fixed" as BundleMode, icon: <LayoutGrid size={32} />, title: "Fixed Set", desc: "All items included at a set price. No choices.", example: "Snack Plate = burger + fries + drink for RM15" },
-            { mode: "pick_n" as BundleMode, icon: <Shuffle size={32} />, title: "Pick & Choose", desc: "Customer picks N items from a single pool.", example: "Pick any 2 for RM12" },
-            { mode: "multi_course" as BundleMode, icon: <Users size={32} />, title: "Multi-Course", desc: "Multiple groups, each with its own pick count.", example: "3 mains + 2 sides + 1 drink = RM45" },
+            { mode: "fixed" as BundleMode, icon: <LayoutGrid size={32} />, title: "Fixed Set", desc: "All items included at a set price. No choices.", example: `Snack Plate = burger + fries + drink for ${symbol}15` },
+            { mode: "pick_n" as BundleMode, icon: <Shuffle size={32} />, title: "Pick & Choose", desc: "Customer picks N items from a single pool.", example: `Pick any 2 for ${symbol}12` },
+            { mode: "multi_course" as BundleMode, icon: <Users size={32} />, title: "Multi-Course", desc: "Multiple groups, each with its own pick count.", example: `3 mains + 2 sides + 1 drink = ${symbol}45` },
           ]).map(opt => (
             <div
               key={opt.mode}
@@ -252,7 +254,7 @@ export default function BundleProductNewPage() {
         <form onSubmit={handleSubmit}>
           <div className="df-grid">
             <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Snack Plate Combo" /></div>
-            <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} placeholder="0.00" /></div>
+            <div className="df-field"><label className="df-label">Bundle Price ({symbol}) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} placeholder="0.00" /></div>
             <div className="df-field"><label className="df-label">Marketing Label</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option>{mode === "pick_n" && <option value="pick_x">Pick & Choose</option>}{mode === "multi_course" && <option value="multi_course">Multi-Course</option>}</select></div>
 
             {mode === "pick_n" && (
@@ -303,7 +305,7 @@ export default function BundleProductNewPage() {
                         </select>
                         <select value={c.menu_item_id} onChange={e => updateComponent(components.indexOf(c), "menu_item_id", e.target.value)} style={{ flex: 1, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
                           <option value="">— Select item —</option>
-                          {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                          {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} ({format(m.base_price)})</option>)}
                         </select>
                         <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(components.indexOf(c), "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
                         <button type="button" onClick={() => removeComponent(components.indexOf(c))} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
@@ -329,7 +331,7 @@ export default function BundleProductNewPage() {
                   </select>
                   <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
                     <option value="">— Select item —</option>
-                    {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                    {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} ({format(m.base_price)})</option>)}
                   </select>
                   <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
                   <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>

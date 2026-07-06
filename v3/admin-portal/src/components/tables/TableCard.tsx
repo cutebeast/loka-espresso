@@ -2,6 +2,7 @@
 
 import { QrCode, Download, RefreshCw, ToggleLeft, ToggleRight, Edit2, Trash2, Users, Circle, Receipt } from "lucide-react";
 import { QRCodeDisplay } from "./QRCodeGenerator";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export interface TableItem {
   id: number;
@@ -55,6 +56,7 @@ export default function TableCard({
   onToggle, onEdit, onDelete, onViewOrder,
   confirmDelete, onConfirmDelete,
 }: TableCardProps) {
+  const { format } = useCurrency();
   const hasQr = !!(table.qr_code_url || table.qr_code_token) && !expiry.expired;
 
   const getStatusBadge = () => {
@@ -105,7 +107,7 @@ export default function TableCard({
               {table.active_order.status.replace(/_/g, " ")}
             </span>
           </div>
-          <div className="tp-order-total">RM {Number(table.active_order.total_amount).toFixed(2)}</div>
+          <div className="tp-order-total">{format(table.active_order.total_amount)}</div>
           {table.active_order.payment_status !== "paid" && (
             <div className="tp-order-unpaid-warn">
               <Circle size={6} fill="currentColor" /> Unpaid

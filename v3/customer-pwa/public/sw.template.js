@@ -257,14 +257,14 @@ function openDB() {
   });
 }
 
-async function queueOrder(orderPayload, authToken) {
+async function queueOrder(orderPayload, idempotencyKey) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const record = {
       payload: orderPayload,
-      authToken: authToken || null,
+      idempotencyKey: idempotencyKey || `order-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       timestamp: Date.now(),
       retryCount: 0,
       nextRetryAt: 0,
@@ -320,7 +320,7 @@ self.addEventListener('message', (event) => {
   const data = event.data;
   
   if (data && data.type === 'QUEUE_ORDER') {
-    queueOrder(data.payload, data.authToken)
+    queueOrder(data.payload, data.idempotencyKey)
       .then(() => self.registration.sync.register('orders'))
       .catch((err) => console.error('[SW] Failed to queue order:', err));
     return;
@@ -403,14 +403,12 @@ async function replayOrders() {
     try {
       const headers = {
         'Content-Type': 'application/json',
-        'Idempotency-Key': `sw-sync-${record.id}`,
+        'Idempotency-Key': record.idempotencyKey || `sw-sync-${record.id}`,
       };
-      if (record.authToken) {
-        headers['Authorization'] = `Bearer ${record.authToken}`;
-      }
       const response = await fetch(`${API_BASE}/orders`, {
         method: 'POST',
         headers,
+        credentials: 'same-origin',
         body: JSON.stringify(record.payload),
       });
 

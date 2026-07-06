@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface MaintenanceLog {
   id: number;
@@ -17,6 +18,7 @@ interface MaintenanceLog {
 }
 
 export default function EquipmentEditPage() {
+  const { format } = useCurrency();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -240,7 +242,7 @@ export default function EquipmentEditPage() {
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{log.maintenance_type} — <span style={{ textTransform: "capitalize" }}>{log.status}</span></div>
                     <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 2 }}>{log.description || "No description"}</div>
                     {log.performed_by && <div style={{ fontSize: 11, marginTop: 4 }}>By: {log.performed_by}</div>}
-                    {log.cost != null && <div style={{ fontSize: 11, marginTop: 2 }}>Cost: RM {Number(log.cost).toFixed(2)}</div>}
+                    {log.cost != null && <div style={{ fontSize: 11, marginTop: 2 }}>Cost: {format(log.cost)}</div>}
                     {log.started_at && <div style={{ fontSize: 11, marginTop: 2 }}>{new Date(log.started_at).toLocaleString()}</div>}
                   </div>
                   <button onClick={() => handleDeleteLog(log.id)} disabled={deletingLogId === log.id} className="btn btn-icon btn-ghost" style={{ color: deletingLogId === log.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button>

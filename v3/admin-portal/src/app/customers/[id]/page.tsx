@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, UserCircle, ShoppingBag, Award, Wallet, Shield, Smartphone, Settings, Gift, Save } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const TIERS = ["silver", "gold", "platinum"];
 
@@ -120,6 +121,7 @@ interface ActionResponse {
 const emptyPaginated = <T,>(): PaginatedResponse<T> => ({ items: [], total: 0, page: 1, total_pages: 0 });
 
 export default function CustomerDetailPage() {
+  const { symbol, format } = useCurrency();
   const p = useParams(); const r = useRouter();
   const paramId = Array.isArray(p.id) ? p.id[0] : p.id;
   const id = Number(paramId);
@@ -224,7 +226,6 @@ export default function CustomerDetailPage() {
     finally { setActionLoading(""); }
   };
 
-  const fmt = (v: number | null | undefined) => `RM ${Number(v || 0).toFixed(2)}`;
   const dt = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString("en-MY") : "—";
 
   if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
@@ -247,7 +248,7 @@ export default function CustomerDetailPage() {
         <button type="button" onClick={() => r.push("/customers")} className="btn btn-ghost btn-sm"><ArrowLeft size={18}/></button>
         <div style={{ flex: 1 }}>
           <h1 className="page-title" style={{ margin: 0 }}>{c.display_name || "Unknown"}</h1>
-          <p className="page-subtitle" style={{ marginTop: 2 }}>{c.phone_number || "—"} · Joined {dt(c.created_at)} · {c.loyalty?.points_balance||0} pts · {fmt(c.lifetime_value)} LTV</p>
+          <p className="page-subtitle" style={{ marginTop: 2 }}>{c.phone_number || "—"} · Joined {dt(c.created_at)} · {c.loyalty?.points_balance||0} pts · {format(c.lifetime_value)} LTV</p>
         </div>
         <span className={`badge badge-sm ${c.is_active ? "badge-green" : "badge-gray"}`}>{c.is_active ? "Active" : "Inactive"}</span>
       </div>
@@ -280,7 +281,7 @@ export default function CustomerDetailPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 13 }}>
-              {[["Phone", c.phone_number],["Email", c.email_address||"—"],["DOB", c.date_of_birth||"—"],["Language", c.preferred_language],["Referral", c.referral_code||"—"],["Referrals", c.referral_count],["Orders", c.order_count],["LTV", fmt(c.lifetime_value)]].map(([l,v])=>(
+              {[["Phone", c.phone_number],["Email", c.email_address||"—"],["DOB", c.date_of_birth||"—"],["Language", c.preferred_language],["Referral", c.referral_code||"—"],["Referrals", c.referral_count],["Orders", c.order_count],["LTV", format(c.lifetime_value)]].map(([l,v])=>(
                 <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border-light)", padding: "4px 0" }}><span style={{ color: "var(--color-text-muted)" }}>{l}</span><span style={{ fontWeight: 500 }}>{v}</span></div>
               ))}
             </div>
@@ -311,7 +312,7 @@ export default function CustomerDetailPage() {
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><h4 style={{ margin: 0 }}>Adjust Wallet Credit</h4><span style={{ fontSize: 15, color: "var(--color-text-muted)" }}>Top-up or deduct wallet balance</span></div>
             <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 100 }}><label htmlFor="cust-mgmt-wallet-amt" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Amount (+/-)</label><input id="cust-mgmt-wallet-amt" type="number" step="0.01" value={walletAmt} onChange={e => setWalletAmt(e.target.value)} placeholder="+/- RM" style={{ width: "100%" }}/></div>
+              <div style={{ flex: 1, minWidth: 100 }}><label htmlFor="cust-mgmt-wallet-amt" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Amount (+/-)</label><input id="cust-mgmt-wallet-amt" type="number" step="0.01" value={walletAmt} onChange={e => setWalletAmt(e.target.value)} placeholder={`+/- ${symbol}`} style={{ width: "100%" }}/></div>
               <div style={{ flex: 2, minWidth: 150 }}><label htmlFor="cust-mgmt-wallet-reason" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Reason</label><input id="cust-mgmt-wallet-reason" value={walletReason} onChange={e => setWalletReason(e.target.value)} placeholder="e.g. Refund" style={{ width: "100%" }}/></div>
               <button type="button" onClick={() => doAction("wallet", { amount: walletAmt, reason: walletReason })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading==="wallet"?"...":"Apply"}</button>
             </div>
@@ -340,7 +341,7 @@ export default function CustomerDetailPage() {
       {tab === "orders" && (
         <PaginatedTable<OrderItem> data={orders} cols={["Order #","Status","Total","Date"]} render={(o: OrderItem) => {
           const sm: Record<string,string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-yellow", ready_for_pickup: "badge-green", out_for_delivery: "badge-blue", delivered: "badge-green", cancelled_by_customer: "badge-red", cancelled_by_merchant: "badge-red", refunded: "badge-purple", partially_refunded: "badge-yellow", disputed: "badge-orange" };
-          return <><td style={{ fontSize: 11 }} className="font-mono">{o.order_number}</td><td><span className={`badge badge-sm ${sm[o.status ?? ""] || "badge-gray"}`}>{o.status?.replace(/_/g," ")}</span></td><td style={{ textAlign: "right" }}>{fmt(o.total_amount)}</td><td style={{ fontSize: 12 }}>{dt(o.created_at)}</td></>;
+          return <><td style={{ fontSize: 11 }} className="font-mono">{o.order_number}</td><td><span className={`badge badge-sm ${sm[o.status ?? ""] || "badge-gray"}`}>{o.status?.replace(/_/g," ")}</span></td><td style={{ textAlign: "right" }}>{format(o.total_amount)}</td><td style={{ fontSize: 12 }}>{dt(o.created_at)}</td></>;
         }} onChange={(p: number) => fetchTab("orders", p)} />
       )}
 

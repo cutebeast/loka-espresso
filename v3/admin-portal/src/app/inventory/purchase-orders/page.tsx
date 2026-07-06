@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, type PurchaseOrder } from "@/lib/api";
 import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Supplier { id: number; supplier_name: string; }
 interface InvItem { id: number; item_name: string; unit_of_measure: string; }
@@ -10,6 +11,7 @@ interface Store { id: number; store_name: string; }
 
 export default function PurchaseOrdersPage() {
   const { t } = useTranslation();
+  const { format } = useCurrency();
   const [items, setItems] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -115,7 +117,7 @@ export default function PurchaseOrdersPage() {
               <td style={{ fontWeight: 600 }}>{po.supplier_name || `#${po.supplier_id}`}</td>
               <td>{sb(po.status)}</td>
               <td style={{ fontSize: 12 }}>{po.items_count || (po.items || []).length} lines</td>
-              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(po.total_amount || 0).toFixed(2)}</td>
+              <td style={{ textAlign: "right", fontWeight: 600 }}>{format(po.total_amount)}</td>
               <td style={{ fontSize: 12 }}>{po.expected_delivery?.slice(0, 10) || "—"}</td>
               <td>
                 <div style={{ display: "flex", gap: 4 }}>

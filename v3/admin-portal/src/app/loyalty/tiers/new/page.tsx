@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, Truck, Crown, Star, Cake, Sparkles, Coffee, Ticket } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const DEFAULT_BENEFITS = {
   order_discount_percent: 0,
@@ -47,6 +48,7 @@ function BenefitNumber({ label, value, onChange, suffix, min = 0, max, step = 1 
 
 export default function NewTierPage() {
   const router = useRouter();
+  const { symbol } = useCurrency();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -113,7 +115,7 @@ export default function NewTierPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10, marginBottom: 16 }}>
             <BenefitNumber label="Order Discount %" value={benefits.order_discount_percent} onChange={v => updateBenefit("order_discount_percent", v)} suffix="%" max={100} />
-            <BenefitNumber label="Order Discount Fixed" value={benefits.order_discount_fixed} onChange={v => updateBenefit("order_discount_fixed", v)} suffix="RM" step={0.5} />
+            <BenefitNumber label="Order Discount Fixed" value={benefits.order_discount_fixed} onChange={v => updateBenefit("order_discount_fixed", v)} suffix={symbol} step={0.5} />
             <BenefitNumber label="Welcome Bonus Points" value={benefits.welcome_bonus_points} onChange={v => updateBenefit("welcome_bonus_points", v)} suffix="pts" />
           </div>
 

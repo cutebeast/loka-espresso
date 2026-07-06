@@ -40,7 +40,7 @@ async def test_public_splash_endpoint_returns_duration(client: httpx.AsyncClient
     """GET /splash returns active splash with duration_ms."""
     # Ensure at least one splash exists
     r_existing = await client.get(f"{base_url}/splash")
-    data = r_existing.json().get("data", {})
+    data = r_existing.json().get("data") or {}
     if not data:
         # Create one
         r_create = await client.post(f"{base_url}/admin/content/splash-screens", headers=admin_headers, json={

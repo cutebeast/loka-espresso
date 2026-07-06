@@ -59,8 +59,6 @@ export async function refreshToken(): Promise<boolean> {
 
 function clearSession() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
 }
 
@@ -71,10 +69,10 @@ function fetchWithCredentials(
   return fetch(input, { ...init, credentials: "include" });
 }
 
-// NOTE: Bearer token auth is used — CSRF tokens are NOT needed.
-// Modern browsers enforce same-origin policies for custom headers, and
-// Bearer auth header requires explicit JavaScript, making CSRF attacks
-// infeasible. No X-CSRF-Token header exchange is required.
+// NOTE: Auth is handled via the HttpOnly admin_token cookie sent with
+// credentials: "include". We do not store access tokens in localStorage or
+// expose them to JavaScript, which also protects against CSRF because the
+// browser sends the cookie automatically on same-site requests.
 
 async function request<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
   const doFetch = async (retrySignal?: AbortSignal): Promise<Response> => {
@@ -281,9 +279,6 @@ export async function adminLogin(email: string, password: string) {
   if (!res.ok) {
     throw new Error(data.detail || data.message || "Invalid email or password");
   }
-  if (data.profile?.email) {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_EMAIL, data.profile.email);
-  }
   return data;
 }
 export async function adminLogout() {
@@ -294,8 +289,6 @@ export async function adminLogout() {
   }
   clearSession();
 }
-/** @deprecated Auth state is server-side; kept for compatibility. */
-export function isLoggedIn(): boolean { return false; }
 
 export interface Reservation { id: number; store_id: number; customer_id: number | null; dining_table_id?: number; party_size: number; reservation_date: string; reservation_time: string; duration_minutes?: number; status: string; }
 

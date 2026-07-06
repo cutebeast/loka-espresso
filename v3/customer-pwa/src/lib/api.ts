@@ -43,16 +43,6 @@ api.interceptors.request.use((config) => {
 
 let _refreshPromise: Promise<{ access_token?: string; refresh_token?: string }> | null = null;
 
-function clearStoredTokens() {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-  } catch {
-    // ignore
-  }
-}
-
 api.interceptors.response.use(
   (res) => {
     // Unwrap standard backend wrapper: { success, message, data } -> data
@@ -94,7 +84,6 @@ api.interceptors.response.use(
         }
       } catch (refreshError: any) {
         if (_refreshPromise && typeof window !== 'undefined') {
-          clearStoredTokens();
           window.dispatchEvent(new CustomEvent('auth:expired'));
         }
         _refreshPromise = null;
@@ -754,5 +743,10 @@ export async function getVapidPublicKey(): Promise<string> {
 
 export async function registerDevice(payload: RegisterDevicePayload): Promise<unknown> {
   const res = await api.post('/me/devices', payload);
+  return res.data;
+}
+
+export async function deregisterDevice(deviceFingerprint: string): Promise<unknown> {
+  const res = await api.delete(`/me/devices/${deviceFingerprint}`);
   return res.data;
 }

@@ -9,8 +9,6 @@ import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 import { refreshToken, BASE_URL } from "@/lib/api";
 
 function clearSession() {
-  localStorage.removeItem(STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
   document.cookie = `admin_token=; Path=/; SameSite=Strict; Max-Age=0`;
   document.cookie = `admin_refresh_token=; Path=/; SameSite=Strict; Max-Age=0`;

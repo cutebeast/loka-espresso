@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
+import { useCurrency } from "@/hooks/useCurrency";
 
 type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
 const LOCALES: { code: LocaleTab; label: string; flag: string }[] = [
@@ -39,6 +40,7 @@ export default function VoucherEditPage() {
   const router = useRouter();
   const voucherId = params.id as string;
   const { allSegments } = useAudienceSegments();
+  const { symbol } = useCurrency();
 
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [loading, setLoading] = useState(true);
@@ -233,20 +235,20 @@ export default function VoucherEditPage() {
               <label className="df-label">Type</label>
               <select value={form.voucher_type} onChange={e => { setForm({ ...form, voucher_type: e.target.value, discount_value: 0 }); }}>
                 <option value="percentage_off">Percentage Off (%)</option>
-                <option value="fixed_amount_off">Fixed Amount (RM)</option>
+                <option value="fixed_amount_off">{`Fixed Amount (${symbol})`}</option>
                 <option value="free_item">Free Item</option>
                 <option value="free_delivery">Free Delivery</option>
               </select>
             </div>
             <div className="df-field">
-              <label className="df-label">{form.voucher_type === "free_item" ? "Max Value (RM)" : form.voucher_type === "percentage_off" ? "Discount %" : "Discount (RM)"}</label>
+              <label className="df-label">{form.voucher_type === "free_item" ? `Max Value (${symbol})` : form.voucher_type === "percentage_off" ? "Discount %" : `Discount (${symbol})`}</label>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <input type="number" required step={form.voucher_type === "percentage_off" ? "1" : "0.01"} min="0" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} style={{ flex: 1 }} />
                 {form.voucher_type === "percentage_off" && <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>%</span>}
               </div>
               {form.voucher_type === "percentage_off" && <div className="df-hint">Enter percentage like 50 for 50% off</div>}
             </div>
-            <div className="df-field"><label className="df-label">Min Order Value (RM)</label><input type="number" step="0.01" min="0" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} /></div>
+            <div className="df-field"><label className="df-label">{`Min Order Value (${symbol})`}</label><input type="number" step="0.01" min="0" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} /></div>
             <div className="df-field"><label className="df-label">Max Uses Per Customer</label><input type="number" min="1" value={form.max_uses_per_customer} onChange={e => setForm({ ...form, max_uses_per_customer: Number(e.target.value) })} /></div>
             <div className="df-field"><label className="df-label">Max Global Uses</label><input type="number" min="1" value={form.max_global_uses} onChange={e => setForm({ ...form, max_global_uses: e.target.value })} /></div>
             <div className="df-field"><label className="df-label">Validity (days)</label><input type="number" value={form.validity_days} onChange={e => setForm({ ...form, validity_days: e.target.value })} /></div>

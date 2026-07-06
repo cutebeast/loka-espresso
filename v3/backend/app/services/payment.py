@@ -1492,6 +1492,15 @@ async def process_webhook_event(
         elif hitpay_status in ("expired", "canceled"):
             new_status = "voided"
 
+    # Guard against late capture events reverting terminal states.
+    if new_status == "captured" and old_status in ("refunded", "partially_refunded", "chargeback", "voided"):
+        logger.warning(
+            "Ignoring late capture event for payment %s (current status: %s)",
+            payment.id,
+            old_status,
+        )
+        return payment
+
     if new_status != old_status:
         payment.status = new_status
 

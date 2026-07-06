@@ -34,14 +34,8 @@ function fetchOptions(body?: unknown, signal?: AbortSignal): RequestInit {
 
 function clearAuthStorage(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("staffEmail");
-  localStorage.removeItem("staffName");
-  localStorage.removeItem("staffStoreId");
-  localStorage.removeItem("staffProfile");
-  localStorage.removeItem("staffId");
-  localStorage.removeItem("isAdmin");
+  // Legacy token/refreshToken are no longer stored client-side.
+  // Only non-sensitive POS preferences are cleared here.
   localStorage.removeItem("pos_active_cart");
   localStorage.removeItem("pos_held_orders");
 }

@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function VoucherNewPage() {
   const router = useRouter();
+  const { symbol } = useCurrency();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [_displayPercent, setDisplayPercent] = useState("0");
@@ -45,7 +47,7 @@ export default function VoucherNewPage() {
     finally { setSaving(false); }
   };
 
-  const discountLabel = form.voucher_type === "percentage_off" ? "Discount %" : form.voucher_type === "free_item" ? "Max Value (RM)" : "Discount (RM)";
+  const discountLabel = form.voucher_type === "percentage_off" ? "Discount %" : form.voucher_type === "free_item" ? `Max Value (${symbol})` : `Discount (${symbol})`;
   const discountStep = form.voucher_type === "percentage_off" ? "1" : "0.01";
 
   return (
@@ -68,7 +70,7 @@ export default function VoucherNewPage() {
               <label className="df-label">Type</label>
               <select value={form.voucher_type} onChange={e => { setForm({ ...form, voucher_type: e.target.value, discount_value: 0 }); setDisplayPercent("0"); }}>
                 <option value="percentage_off">Percentage Off (%)</option>
-                <option value="fixed_amount_off">Fixed Amount (RM)</option>
+                <option value="fixed_amount_off">{`Fixed Amount (${symbol})`}</option>
                 <option value="free_item">Free Item</option>
                 <option value="free_delivery">Free Delivery</option>
               </select>
@@ -81,7 +83,7 @@ export default function VoucherNewPage() {
               </div>
               {form.voucher_type === "percentage_off" && <div className="df-hint">Enter percentage like 50 for 50%</div>}
             </div>
-            <div className="df-field"><label className="df-label">Min Order Value (RM)</label><input type="number" step="0.01" min="0" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} /></div>
+            <div className="df-field"><label className="df-label">{`Min Order Value (${symbol})`}</label><input type="number" step="0.01" min="0" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} /></div>
             <div className="df-field"><label className="df-label">Max Uses Per Customer</label><input type="number" min="1" value={form.max_uses_per_customer} onChange={e => setForm({ ...form, max_uses_per_customer: Number(e.target.value) })} /></div>
             <div className="df-field"><label className="df-label">Max Global Uses</label><input type="number" min="1" value={form.max_global_uses} onChange={e => setForm({ ...form, max_global_uses: e.target.value })} /><div className="df-hint">Leave empty for unlimited</div></div>
             <div className="df-field"><label className="df-label">Validity (days)</label><input type="number" value={form.validity_days} onChange={e => setForm({ ...form, validity_days: e.target.value })} /></div>

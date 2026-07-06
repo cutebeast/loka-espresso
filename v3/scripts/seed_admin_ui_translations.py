@@ -47,6 +47,8 @@ STRINGS = {
         "admin.common.close": "Close",
         "admin.common.back": "Back",
         "admin.common.refresh": "Refresh",
+        "admin.common.show": "Show",
+        "admin.common.hide": "Hide",
         "admin.common.submit": "Submit",
         "admin.common.actions": "Actions",
         "admin.common.status": "Status",

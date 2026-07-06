@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function NewItemPage() {
   const router = useRouter();
+  const { symbol } = useCurrency();
   const [categories, setCategories] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -42,7 +44,7 @@ export default function NewItemPage() {
           <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Description</label><input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
           <div className="df-field"><label className="df-label">Category</label><select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}><option value="">—</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.category_name || c.name}</option>)}</select></div>
           <div className="df-field"><label className="df-label">Supplier</label><select value={form.supplier_id} onChange={e => setForm({ ...form, supplier_id: e.target.value })}><option value="">—</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}</select></div>
-          <div className="df-field"><label className="df-label">Unit Cost (RM)</label><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: Number(e.target.value) })} /></div>
+          <div className="df-field"><label className="df-label">{`Unit Cost (${symbol})`}</label><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: Number(e.target.value) })} /></div>
           <div className="df-field"><label className="df-label" style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
         </div><div className="df-actions" style={{ marginTop: 20 }}><button type="button" onClick={() => router.push("/inventory/items")} className="btn btn-ghost">Cancel</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Creating..." : "Create Item"}</button></div></form>
       </div>

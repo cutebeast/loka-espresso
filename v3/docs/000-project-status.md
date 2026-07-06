@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Status
 
-> Last updated: 2026-07-04
+> Last updated: 2026-07-06
 > Active codebase: `/root/fnb-super-app/v3`
 > Repository: `https://github.com/cutebeast/loka-espresso`
 
@@ -10,15 +10,15 @@
 
 The **Loka Espresso FNB Super App v3** is a full-stack F&B ordering and loyalty platform.
 
-| Layer | Stack | Live URL (dev) |
-|-------|-------|----------------|
-| Admin dashboard | Next.js 16 | https://admin.lokaespresso.com |
-| Staff POS + ops | Next.js 16 | https://staff.lokaespresso.com |
-| Customer PWA | Next.js 16 | https://app.lokaespresso.com |
-| Backend API | FastAPI + SQLAlchemy async | https://admin.lokaespresso.com/api |
-| Database | PostgreSQL 16 | Docker `fnb-v3-postgres` |
-| Cache / rate limit | Redis 7 | Docker `fnb-v3-redis` |
-| Reverse proxy | Caddy 2 | Host Caddy (PM2 mode) or Docker Caddy (full-Docker mode) |
+| Layer | Stack | Dev URL (current server) | Live URL (target) |
+|-------|-------|--------------------------|-------------------|
+| Admin dashboard | Next.js 16 | https://admin.loyaltysystem.uk | https://admin.lokaespresso.com |
+| Staff POS + ops | Next.js 16 | https://staff.loyaltysystem.uk | https://staff.lokaespresso.com |
+| Customer PWA | Next.js 16 | https://app.loyaltysystem.uk | https://app.lokaespresso.com |
+| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api | https://admin.lokaespresso.com/api |
+| Database | PostgreSQL 16 | Docker `fnb-v3-postgres` | Docker `fnb-v3-postgres` |
+| Cache / rate limit | Redis 7 | Docker `fnb-v3-redis` | Docker `fnb-v3-redis` |
+| Reverse proxy | Caddy 2 | Host Caddy (PM2 mode) or Docker Caddy (full-Docker mode) | Host Caddy or Docker Caddy |
 
 ---
 
@@ -37,7 +37,7 @@ The **Loka Espresso FNB Super App v3** is a full-stack F&B ordering and loyalty 
     ├── admin-portal/         # Admin dashboard (120 pages)
     ├── staff-portal/         # Staff portal (16 pages)
     ├── customer-pwa/         # Customer PWA (26 pages)
-    ├── e2e-tests/            # pytest API E2E suite
+    ├── e2e-tests/            # pytest API + browser E2E suite
     ├── infra/                # Docker, Caddy, DB init scripts
     ├── docs/                 # Project documentation
     └── scripts/              # Seed / operational scripts
@@ -75,7 +75,7 @@ pm2 stop v3-backend admin-portal-v3 staff-portal-v3 customer-pwa-v3
 
 ## 4. Domains / multi-server support
 
-The Caddyfile is domain-agnostic. Set these variables in `v3/infra/docker/.env` per server:
+The Docker Caddyfile is domain-agnostic. Set these variables in `v3/infra/docker/.env` per server:
 
 ```bash
 APP_DOMAIN=app.lokaespresso.com
@@ -84,7 +84,9 @@ STAFF_DOMAIN=staff.lokaespresso.com
 CADDY_EMAIL=admin@lokaespresso.my
 ```
 
-The host Caddy configs (`infra/host-caddy/fnb-*.conf`) use environment variables (`APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`) with the old dev server as a fallback. For a new server, set those variables (see `infra/host-caddy/.env.example`) or switch to the Docker Caddy stack.
+The host Caddy configs (`infra/host-caddy/fnb-*.conf`) use environment variables (`APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`). For a new server, set those variables (see `infra/host-caddy/.env.example`) or switch to the Docker Caddy stack.
+
+> **Current dev server still uses `loyaltysystem.uk` in host Caddy + `.env` files.** These must be updated before cut-over to `lokaespresso.com` (see migration checklist below).
 
 ---
 
@@ -115,61 +117,70 @@ Legacy uploads from the old v1/v2 app were moved to `/root/backups/legacy-fnb-up
 ## 6. Test status
 
 ```bash
-cd /root/fnb-super-app/v3/e2e-tests
-pytest -q
+cd /root/fnb-super-app/v3/backend
+source .venv/bin/activate
+pytest tests/
 ```
 
-Latest run: **207 passed, 8 skipped, 0 failed** (with browser tests enabled via `e2e-tests/.venv`).
+**Latest run:** 24 passed, 0 failed.
 
 ```bash
 cd /root/fnb-super-app/v3/e2e-tests
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium
 pytest -q
 ```
 
+**Latest run:** **189 passed, 26 skipped, 0 failed** (with browser tests enabled).
+
 TypeScript strict: 0 errors across all 3 portals.
-Runtime API audit: 43/43 admin/staff/customer checks passed after full re-seed.
+Runtime API audit: route validator reports 0 unmatched frontend API calls.
 
 ---
 
-## 7. Recent fixes (2026-06-27 → 2026-06-28)
+## 7. Recent fixes (Round 26 audit — 2026-07-06)
 
-- Repaired admin `/stores/settings` blank page.
-- Stabilised staff and customer portals (Next.js standalone/output fixes).
-- Fixed payment list 500, equipment create/update 500, splash-screen `always` frequency.
-- Added modular seed scripts and expanded E2E coverage (content, marketing, refunds, tips, hygiene, etc.).
-- Wired backend to Docker Redis for distributed rate limiting.
-- Moved backend from system Python to a dedicated `v3/backend/.venv` virtual environment.
-- Made Docker/Caddy stack domain-agnostic for multi-server deployment.
-- Cleaned root-level legacy `infra/`, `scripts/`, `.github/workflows/ci.yml`, `.env.example`, and `uploads/`.
-- Removed duplicate customer-PWA CSS (`events-v2.css`) and archived `docs/_archive/`.
-- Untracked generated files (`public/version.json`, `next-env.d.ts`) and added them to `.gitignore`.
+### Backend
+- **Customer auth:** login now requires `phone_number`; email-only login removed. OTP bypass remains config-driven (`otp.bypass_enabled`); environment-name bypass removed.
+- **Admin/staff auth boundary:** `CurrentAdmin` no longer accepts real staff tokens (`staff_id > 0`). Admin-acting-as-staff tokens (with `admin_id`) still work.
+- **Staff login:** every failed password/PIN attempt now increments `failed_login_count` and respects lockout.
+- **Admin logout:** refresh token `jti` is blacklisted before cookies are cleared.
+- **Webhooks:** removed `X-Webhook-API-Key` gate from Stripe/GrabPay/HitPay provider-facing endpoints.
+- **Config:** empty `TRUSTED_HOSTS` in production now raises an error instead of wildcard fallback.
+- **Roles:** `readonly_analyst` can access `/admin/auth/me`; custom IAM roles are included in permission resolution.
+- **Payments:** `PaymentMethodOut` no longer exposes `provider_token_encrypted`; webhook capture events cannot revert refund/chargeback states.
+- **Platform config:** `/admin/config` PUT now accepts `key`/`value` in the JSON body (query-string still supported for backward compatibility).
+- **Seeds:** `clear_db.py` covers `staff_tasks`; `seed_platform.py` defaults `otp.bypass_enabled=true` for dev/E2E compatibility.
 
----
+### Admin portal
+- Server-side `/auth/login` and `/auth/refresh` no longer leak tokens in the response body.
+- Currency is now configurable: admin settings control `app.currency` and `app.currency_symbol`; all admin UI currency formatting uses the new `useCurrency()` hook instead of hard-coded `RM `.
+- Removed all legacy localStorage token handling.
+- Version-control page fetches the backend version via cookie credentials.
+- Twilio Verify settings page sends sensitive values in the request body.
+- `next.config.ts` no longer hard-codes localhost in production; Docker Compose and Dockerfile.admin supply `API_URL`.
+- Middleware whitelists public assets (`/version.json`, `/favicon.svg`, `/manifest.json`, `/icons/*`) and adds staff/customer version hosts to CSP.
+- HSTS only emitted in production.
+- i18n locale flash fixed; translation tab inputs are controlled.
 
-## 7b. Round 25 audit fixes (2026-07-04)
+### Staff portal
+- `staff_refresh_token` HttpOnly cookie now persisted and forwarded by `/auth/refresh`.
+- Logout calls backend `/staff/auth/logout` with credentials so the refresh token can be blacklisted.
+- `AuthProvider` no longer relies on `localStorage` for auth gating.
+- POS checkout skips zero-amount wallet calls when total ≤ 0.
+- `useStaffRole` checks the `roles` array as well as `staff_role`.
+- HSTS only emitted in production.
 
-- Removed legacy v1/v2 Docker containers and images (`fnb-backend`, `fnb-db`, `fnb-redis`).
-- Fixed `clear_db.py` missing `wallet_topup_sessions` table.
-- Fixed payment method schema/enum mismatch (`PaymentMethodBase.method_type` and `provider`).
-- Moved hardcoded payment/provider URLs (Stripe/GrabPay simulators, Resend/Twilio/DeepL) to `platform_config` or environment settings.
-- Hardened admin portal auth:
-  - Added server-side `/auth/login`, `/auth/logout`, `/auth/refresh` API routes.
-  - Login now sets an `HttpOnly` `admin_token` cookie.
-  - Middleware validates the cookie against the backend before serving any protected page.
-- Fixed staff portal double wallet charge when checkout total is <= 0.
-- Fixed customer PWA:
-  - Added `events` to public/guest page whitelist.
-  - Settings page version now reads from `version.json` instead of hardcoded `1.0.0`.
-  - OTP send no longer silently swallows HTTP 404.
-  - Orders page no longer fetches active and past orders with overlapping queries on mount.
-- Added backend unit tests (`tests/test_schemas_payment.py`, `tests/test_config.py`).
-- Added `scripts/purge_retention.py` for data-retention cleanup (delete strategy only; archive/anonymize still require custom logic).
-- Fixed Docker Compose defaults for `TRUSTED_HOSTS` and `CORS_ORIGINS`.
-- Made `scripts/validate-routes.py` gracefully handle production mode where OpenAPI docs are disabled.
+### Customer PWA
+- Middleware matcher fixed so security headers and public-prefix logic apply to all routes.
+- `OrdersPage` "Load more" pagination closure bug fixed.
+- `CheckoutPage` double-submit guard added.
+- Web push permission now requested only from a user action; subscription deregistered on logout.
+- Offline order replay in the service worker shares the same idempotency key as the app and no longer stores a separate `authToken`.
+- Missing locale keys backfilled in `ms/zh/ta/tr.json`.
+- HSTS only emitted in production.
+
+### Tooling / cleanup
+- Removed one-time scripts and unused smoke-test files: `fix_broken_jsx.py`, `translate_*.py`, `smoke_admin_*.js`, `customer-pwa-journey.js`, `debug-pwa.js`.
 
 ---
 
@@ -179,34 +190,62 @@ Secrets live in untracked `.env` files:
 
 - `v3/backend/.env`
 - `v3/infra/docker/.env`
+- `v3/admin-portal/.env.local`
+- `v3/staff-portal/.env.local`
+- `v3/customer-pwa/.env.local`
 
 Never commit these. Templates are provided:
 
 - `v3/backend/.env.example`
 - `v3/infra/docker/.env.example`
+- `v3/admin-portal/.env.example`
+- `v3/staff-portal/.env.example`
+- `v3/customer-pwa/.env.example`
 
 Key values to set per deployment:
 
 - `POSTGRES_PASSWORD`, `REDIS_PASSWORD`
 - `JWT_SECRET` (minimum 32 characters)
-- `CORS_ORIGINS`
-- Public domains (`APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`, etc.)
+- `CORS_ORIGINS` (exact production HTTPS origins)
+- `TRUSTED_HOSTS` (must not be empty in production)
+- Public domains (`APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`)
+- Server-side backend URLs for the portals:
+  - Admin portal: `API_URL`
+  - Staff portal: `API_PROXY_URL`
+  - Customer PWA: `API_PROXY_URL`
 
 ---
 
-## 9. Known issues / next steps
+## 9. Migration checklist (loyaltysystem.uk → lokaespresso.com)
+
+- [ ] Update `v3/backend/.env`: `CORS_ORIGINS`, `TRUSTED_HOSTS`.
+- [ ] Update `v3/infra/docker/.env`: domains, `CORS_ORIGINS`, `TRUSTED_HOSTS`, secrets.
+- [ ] Update `v3/admin-portal/.env.local` / `.env.example`: `API_URL`, `NEXT_PUBLIC_*_DOMAIN`.
+- [ ] Update `v3/staff-portal/.env.local` / `.env.example`: `API_PROXY_URL`, domains.
+- [ ] Update `v3/customer-pwa/.env.local` / `.env.example`: `API_PROXY_URL`, `NEXT_PUBLIC_APP_URL`.
+- [ ] Replace host Caddy configs (`/etc/caddy/sites/fnb-*.conf`) or switch to Docker Caddy with new domains.
+- [ ] Issue/obtain TLS certificates for `*.lokaespresso.com`.
+- [ ] Change the default `otp.bypass_code` from `000000` to a strong secret if keeping bypass enabled.
+- [ ] Re-seed the database on the live server so platform config matches the new brand/domain.
+- [ ] Run the full test suite after cut-over.
+
+---
+
+## 10. Known issues / next steps
 
 | Item | Status | Recommendation |
 |------|--------|----------------|
 | Disk usage 76% | Monitor | Clean PM2 logs and `.next/cache` periodically. Do not delete running `.next/` builds. |
-| Python environment | Backend now uses `v3/backend/.venv` | For full-Docker deployments the backend Dockerfile uses its own venv. |
+| Python environment | Backend uses `v3/backend/.venv` | For full-Docker deployments the backend Dockerfile uses its own venv. |
 | Full-Docker switch | Ready | Validate on staging before replacing PM2 on production. |
-| Legacy v1/v2 artifacts | Cleaned | Legacy containers (`fnb-backend`, `fnb-db`, `fnb-redis`) and old images removed. Only `fnb-v3-postgres` and `fnb-v3-redis` remain. |
-| Dev OTP bypass | Enabled in DB | `otp.bypass_enabled=true` set in `platform_config` so E2E can run against `ENVIRONMENT=production` dev server. Disable on real production. |
+| Legacy v1/v2 artifacts | Cleaned | Only `fnb-v3-postgres` and `fnb-v3-redis` remain. |
+| OTP bypass | Config-driven fallback | Default `otp.bypass_enabled=true` on dev. On live, keep only if required and rotate `otp.bypass_code`. |
+| Admin currency | Fixed — uses `app.currency` / `app.currency_symbol` via `useCurrency()` hook. | Apply the same pattern to staff portal and customer PWA (still hard-coded `RM `). |
+| E2E cleanup script | Dependency mismatch | `cleanup_e2e_test_data.py` uses `psycopg2`; install `psycopg2-binary` in the backend venv or run from the e2e-tests venv. |
 
 ---
 
-## 10. Quick commands
+## 11. Quick commands
 
 ```bash
 # Start backend with the ecosystem file
@@ -228,10 +267,23 @@ source .venv/bin/activate
 python3 scripts/clear_db.py --all --yes --force-prod
 python3 scripts/seed_all.py --yes --force-prod
 
+# Seed admin UI translations
+cd /root/fnb-super-app/v3
+python3 scripts/seed_admin_ui_translations.py
+
 # Run E2E tests
 cd /root/fnb-super-app/v3/e2e-tests
 source .venv/bin/activate
 pytest -q
+
+# TypeScript checks
+cd /root/fnb-super-app/v3/admin-portal && npx tsc --noEmit
+cd /root/fnb-super-app/v3/staff-portal && npx tsc --noEmit
+cd /root/fnb-super-app/v3/customer-pwa && npx tsc --noEmit
+
+# Validate frontend routes against backend OpenAPI
+cd /root/fnb-super-app/v3
+python3 scripts/validate-routes.py
 
 # Reload host Caddy after config edits
 caddy reload --config /etc/caddy/Caddyfile
@@ -239,7 +291,7 @@ caddy reload --config /etc/caddy/Caddyfile
 
 ---
 
-## 11. Decision: keep `v3/` nested
+## 12. Decision: keep `v3/` nested
 
 **Do not flatten `v3/` into the repository root.**
 

@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function VoucherReportPage() {
+  const { symbol } = useCurrency();
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function VoucherReportPage() {
             <tr key={v.id}>
               <td><div style={{fontWeight:600}}>{v.display_title}</div><div style={{fontSize:11,color:"var(--color-text-muted)"}}>{v.voucher_code}</div></td>
               <td>{v.voucher_type}</td>
-              <td>{v.voucher_type==="percentage_off" ? Math.round(v.discount_value) : v.discount_value}{v.voucher_type==="percentage_off"?"%":v.voucher_type==="fixed_amount_off"?" RM":""}</td>
+              <td>{v.voucher_type==="percentage_off" ? Math.round(v.discount_value) : v.discount_value}{v.voucher_type==="percentage_off"?"%":v.voucher_type==="fixed_amount_off"?` ${symbol}`:""}</td>
               <td>{v.global_use_count||0}</td>
               <td>{v.max_global_uses||"∞"}</td>
               <td><div style={{width:100,height:6,borderRadius:3,background:"var(--color-bg-muted)"}}><div style={{width:`${v.max_global_uses?Math.min(100,(v.global_use_count||0)/v.max_global_uses*100):0}%`,height:"100%",borderRadius:3,background:(v.global_use_count||0)>0?"var(--color-primary)":"var(--color-border-light)"}}/></div></td>

@@ -201,14 +201,16 @@ export async function placeOrder(params: {
     orderPayload.delivery_instructions = params.deliveryInstructions;
   }
 
+  const orderIdempotencyKey = createIdempotencyKey('order');
+
   let orderRes;
   try {
     orderRes = await api.post('/orders', orderPayload, {
-      headers: { 'Idempotency-Key': createIdempotencyKey('order') },
+      headers: { 'Idempotency-Key': orderIdempotencyKey },
     });
   } catch (err: unknown) {
     if ((isOffline || isNetworkError(err)) && canQueueOffline) {
-      const queued = await queueOrder(orderPayload);
+      const queued = await queueOrder(orderPayload, orderIdempotencyKey);
       return { queued: true as const, queuedOrder: queued };
     }
     throw err;

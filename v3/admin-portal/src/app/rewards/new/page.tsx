@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Upload, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function RewardNewPage() {
   const router = useRouter();
+  const { symbol } = useCurrency();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -86,18 +88,18 @@ export default function RewardNewPage() {
             </div>
             {(form.reward_type === "percentage_discount" || form.reward_type === "fixed_discount") && (<>
               <div className="df-field">
-                <label className="df-label">{form.reward_type === "percentage_discount" ? "Discount %" : "Discount (RM)"}</label>
+                <label className="df-label">{form.reward_type === "percentage_discount" ? "Discount %" : `Discount (${symbol})`}</label>
                 <input type="number" step={form.reward_type === "percentage_discount" ? "1" : "0.01"} min="0" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} />
                 {form.reward_type === "percentage_discount" && <div className="df-hint">e.g. enter 10 for 10% off</div>}
               </div>
               <div className="df-field">
-                <label className="df-label">Max Discount Cap (RM)</label>
+                <label className="df-label">{`Max Discount Cap (${symbol})`}</label>
                 <input type="number" step="0.01" min="0" value={form.discount_max_amount} onChange={e => setForm({ ...form, discount_max_amount: Number(e.target.value) })} />
                 <div className="df-hint">Optional — cap the total discount</div>
               </div>
             </>)}
             <div className="df-field">
-              <label className="df-label">Min Order Value (RM)</label>
+              <label className="df-label">{`Min Order Value (${symbol})`}</label>
               <input type="number" step="0.01" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} />
             </div>
             <div className="df-field">

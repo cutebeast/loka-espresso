@@ -35,14 +35,17 @@ function createIdempotencyKey(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export async function queueOrder(payload: Record<string, unknown>): Promise<QueuedOrder> {
+export async function queueOrder(
+  payload: Record<string, unknown>,
+  idempotencyKey?: string,
+): Promise<QueuedOrder> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const record: QueuedOrder = {
       payload,
-      idempotencyKey: createIdempotencyKey('order'),
+      idempotencyKey: idempotencyKey || createIdempotencyKey('order'),
       timestamp: Date.now(),
       retryCount: 0,
       nextRetryAt: 0,

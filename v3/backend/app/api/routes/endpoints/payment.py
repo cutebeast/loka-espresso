@@ -35,8 +35,6 @@ from app.services.webhook import (
     get_provider_secret,
     is_event_processed,
     mark_event_processed,
-    mask_header,
-    verify_webhook_api_key,
 )
 from app.services.payment import (
     PaymentError,
@@ -504,16 +502,6 @@ def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str
         return False
 
 
-def _require_webhook_api_key(request: Request) -> None:
-    api_key = request.headers.get("X-Webhook-API-Key")
-    if not verify_webhook_api_key(api_key):
-        logger.warning(
-            "Webhook rejected: invalid or missing X-Webhook-API-Key (received %s)",
-            mask_header(api_key),
-        )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing webhook API key")
-
-
 # ---------------------------------------------------------------------------
 # Webhooks
 # ---------------------------------------------------------------------------
@@ -530,8 +518,6 @@ async def stripe_webhook(
     Fails closed: a configured signing secret is required in every environment.
     Set stripe.webhook_secret in platform_config or STRIPE_WEBHOOK_SECRET.
     """
-    _require_webhook_api_key(request)
-
     sig_header = request.headers.get("Stripe-Signature")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe-Signature header")
@@ -580,8 +566,6 @@ async def grabpay_webhook(
     db: DBDependency,
 ):
     """GrabPay webhook handler."""
-    _require_webhook_api_key(request)
-
     sig_header = request.headers.get("X-GrabPay-Signature") or request.headers.get("Authorization")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing GrabPay signature header")
@@ -624,8 +608,6 @@ async def hitpay_webhook(
     db: DBDependency,
 ):
     """HitPay v2 webhook handler."""
-    _require_webhook_api_key(request)
-
     sig_header = request.headers.get("Hitpay-Signature")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Hitpay-Signature header")

@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Plus, Trash2, Save, Upload, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 type Group = { id?: number; group_label: string; pick_count: number; min_pick: number; max_pick: number; sort_order: number; _origId?: number };
 
@@ -17,6 +18,7 @@ interface MenuItemOption { id: number; item_name: string; base_price: number; ca
 interface CategoryOption { id: number; category_name: string; }
 
 export default function BundleProductEditPage() {
+  const { symbol, format } = useCurrency();
   const p = useParams(); const r = useRouter(); const id = p.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -289,7 +291,7 @@ export default function BundleProductEditPage() {
         <div className="df-grid">
           <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
           <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option><option value="pick_x">Pick-X (Build Your Own)</option><option value="multi_course">Multi-Course</option></select></div>
-          <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} /></div>
+          <div className="df-field"><label className="df-label">Bundle Price ({symbol}) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} /></div>
 
           {form.bundle_type === "pick_x" && (
             <>
@@ -326,7 +328,7 @@ export default function BundleProductEditPage() {
                     return mi ? mi.base_price : 0;
                   }).sort((a: number, b: number) => a - b);
                   const cheapestSum = prices.slice(0, Math.min(pickN, prices.length)).reduce((s: number, p: number) => s + p, 0);
-                  return `Cheapest ${pickN} items total RM ${cheapestSum.toFixed(2)}. Set bundle price ≤ RM ${cheapestSum.toFixed(2)} for the deal to always apply.`;
+                  return `Cheapest ${pickN} items total ${symbol} ${cheapestSum.toFixed(2)}. Set bundle price ≤ ${symbol} ${cheapestSum.toFixed(2)} for the deal to always apply.`;
                 })()}
               </div>
             </div>
@@ -369,7 +371,7 @@ export default function BundleProductEditPage() {
                         </select>
                         <select value={c.menu_item_id} onChange={e => updateComponent(ci, "menu_item_id", e.target.value)} style={{ flex: 1, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
                           <option value="">— Select item —</option>
-                          {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                          {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} ({format(m.base_price)})</option>)}
                         </select>
                         <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(ci, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
                         <button type="button" onClick={() => removeComponent(ci)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
@@ -400,7 +402,7 @@ export default function BundleProductEditPage() {
                 </select>
                 <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
                   <option value="">— Select item —</option>
-                  {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                  {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} ({format(m.base_price)})</option>)}
                 </select>
                 <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
                 <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>

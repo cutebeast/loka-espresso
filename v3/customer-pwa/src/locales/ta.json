@@ -260,7 +260,8 @@
     "tomorrow": "நாளை",
     "view": "காட்சி",
     "year": "ஆண்டு",
-    "yourCode": "உங்கள் குறியீடு"
+    "yourCode": "உங்கள் குறியீடு",
+    "pay": "Pay"
   },
   "errorBoundary": {
     "message": "எதிர்பாராத பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.",
@@ -296,7 +297,23 @@
     "sendMessage": "செய்தி அனுப்பு",
     "subject": "விஷயம்",
     "title": "உதவி மற்றும் ஆதரவு",
-    "yourName": "உங்கள் பெயர்"
+    "yourName": "உங்கள் பெயர்",
+    "faq": {
+      "q1": "How do I earn points?",
+      "q2": "How do I redeem rewards?",
+      "q3": "How do I use a voucher?",
+      "q4": "What are the delivery options?",
+      "a1": "You earn points with every purchase. The amount varies by your loyalty tier.",
+      "a2": "Go to the Rewards section, choose a reward, and tap Redeem.",
+      "a3": "Enter your voucher code at checkout or show it to the barista in-store.",
+      "a4": "We offer dine-in, takeaway, and delivery. Delivery availability depends on your location."
+    },
+    "subjects": {
+      "feedback": "Feedback",
+      "order": "Order Issue",
+      "rewards": "Rewards",
+      "technical": "Technical Support"
+    }
   },
   "history": {
     "balance": "சமநிலை",
@@ -355,7 +372,8 @@
       "signInPrompt": "உங்கள் Loka வாலட்டைப் பார்க்க உள்நுழையவும்",
       "tierMember": "{tier} உறுப்பினர்",
       "topUp": "மேல்நிரப்பு",
-      "vouchers": "வவுச்சர்கள்"
+      "vouchers": "வவுச்சர்கள்",
+      "checkin": "Daily Check-In"
     }
   },
   "information": {
@@ -376,7 +394,9 @@
     "tagProduct": "தயாரிப்பு"
   },
   "legal": {
-    "tableOfContents": "பொருளடக்கம்"
+    "tableOfContents": "பொருளடக்கம்",
+    "unableToLoadTerms": "Unable to load Terms of Service right now.",
+    "unableToLoadPrivacy": "Unable to load Privacy Policy right now."
   },
   "menu": {
     "addPrice": "விலை சேர்",
@@ -493,7 +513,9 @@
       "justNow": "இப்போதுதான்",
       "minutes": "{minutes} நிமிடங்களுக்கு முன்"
     },
-    "title": "தலைப்பு"
+    "title": "தலைப்பு",
+    "newCount_one": "{count} new notification",
+    "newCount_other": "{count} new notifications"
   },
   "orderDetail": {
     "addingToCart": "வண்டியில் சேர்க்கப்படுகிறது…",
@@ -608,7 +630,10 @@
     "settings": "அமைப்புகள்",
     "tierMember": "{tier} உறுப்பினர்",
     "title": "சுயவிவரம்",
-    "viewAll": "அனைத்தையும் பார்க்க →"
+    "viewAll": "அனைத்தையும் பார்க்க →",
+    "reservations": "Reservations",
+    "promotions": "Promotions",
+    "events": "Events"
   },
   "promotions": {
     "alreadyCompleted": "ஏற்கனவே முடிந்துவிட்டது",
@@ -694,7 +719,13 @@
     "toNextTier_one": "{count} இன்னும் அடுத்த நிலைக்கு",
     "toNextTier_other": "{count} இன்னும் அடுத்த நிலைக்கு",
     "unknown": "தெரியாத",
-    "yourCode": "உங்கள் குறியீடு"
+    "yourCode": "உங்கள் குறியீடு",
+    "tiers": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    }
   },
   "reservations": {
     "bookNow": "இப்போது முன்பதிவு செய்யவும்",
@@ -879,7 +910,8 @@
     "topUpFailed": "மேல்நிரப்பு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.",
     "topUpSuccess": "வெற்றிகரமாக {amount} நிரப்பப்பட்டது",
     "verificationFailed": "தவறான OTP. மீண்டும் முயற்சிக்கவும்.",
-    "verificationFailedTitle": "சரிபார்ப்பு தோல்வி"
+    "verificationFailedTitle": "சரிபார்ப்பு தோல்வி",
+    "topUpSuccessReturn": "Wallet topped up successfully"
   },
   "voucher": {
     "showToBarista": "இந்த குறியீட்டை பாரிஸ்டாவிடம் காட்டுங்கள்"
@@ -902,6 +934,29 @@
     "otherAmount": "மற்ற தொகை",
     "quickTopUp": "விரைவு டாப் அப்",
     "recentTransactions": "சமீபத்திய பரிவர்த்தனைகள்",
-    "topUpTitle": "மேல்நிரப்பு"
+    "topUpTitle": "மேல்நிரப்பு",
+    "paymentMethod": "Payment Method",
+    "selectPaymentMethod": "Select a payment method to top up",
+    "creditDebitCard": "Credit / Debit Card",
+    "cardDesc": "Visa, Mastercard, Amex",
+    "fpxBanking": "FPX Online Banking",
+    "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",
+    "eWallet": "E-Wallet",
+    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now.",
+    "onlineTopUpUnavailable": "Online top-up is not available until a payment provider is integrated. Please top up at a store."
+  },
+  "checkin": {
+    "title": "Daily Check-In",
+    "subtitle": "Check in daily to earn loyalty points",
+    "streak": "Current Streak",
+    "rewards": "Reward Tiers",
+    "dailyBase": "Daily Base",
+    "streakBonus": "Streak Bonus",
+    "sevenDayBonus": "7-Day Bonus",
+    "checkInNow": "Check In Now",
+    "checkedIn": "You're checked in!",
+    "pointsEarned": "+{points} points earned",
+    "comeBackTomorrow": "Come back tomorrow for your next reward"
   }
 }

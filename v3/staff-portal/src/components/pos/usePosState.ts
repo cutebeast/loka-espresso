@@ -16,7 +16,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getMenuItems, getMenuCategories, getTables, getOrders, getBundleProducts,
-  createPosOrder, payWithWallet,
+  createPosOrder,
   type MenuItem, type Category, type Customer, type Table,
   type Reward, type Voucher, type BundleProduct
 } from "@/lib/api";
@@ -441,7 +441,8 @@ export function usePosState() {
             // Wallet payment already applied via handleCheckoutWalletPayment; just finalize.
             walletRes = { message: "Paid with wallet", payment_status: "paid" };
           } else {
-            walletRes = await payWithWallet(checkoutOrderId, walletPaid);
+            // Fully discounted order; no wallet payment required.
+            walletRes = { message: "No payment required", payment_status: "paid" };
           }
           setResult({
             order_id: checkoutOrderId,

@@ -3,9 +3,11 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, Upload } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function ProductNewPage() {
   const router = useRouter();
+  const { symbol } = useCurrency();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -26,7 +28,7 @@ export default function ProductNewPage() {
       <div className="card" style={{padding:24,maxWidth:700}}>
         <form onSubmit={handleSubmit}><div className="df-grid">
           <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Title *</label><input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
-          <div className="df-field"><label className="df-label">Price (RM)</label><input type="number" step="0.01" value={form.price} onChange={e=>setForm({...form,price:Number(e.target.value)})}/></div>
+          <div className="df-field"><label className="df-label">{`Price (${symbol})`}</label><input type="number" step="0.01" value={form.price} onChange={e=>setForm({...form,price:Number(e.target.value)})}/></div>
           <div className="df-field"><label className="df-label">Position</label><input type="number" value={form.position} onChange={e=>setForm({...form,position:Number(e.target.value)})}/></div>
           <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Short Description</label><input value={form.short_description} onChange={e=>setForm({...form,short_description:e.target.value})}/></div>
           <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Full Description</label><textarea rows={3} value={form.long_description} onChange={e=>setForm({...form,long_description:e.target.value})}/></div>

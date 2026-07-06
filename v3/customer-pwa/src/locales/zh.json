@@ -260,7 +260,8 @@
     "tomorrow": "明天",
     "view": "视图",
     "year": "年",
-    "yourCode": "您的代码"
+    "yourCode": "您的代码",
+    "pay": "Pay"
   },
   "errorBoundary": {
     "message": "发生了意外错误。请重试。",
@@ -296,7 +297,23 @@
     "sendMessage": "发送消息",
     "subject": "主题",
     "title": "帮助与支持",
-    "yourName": "您的姓名"
+    "yourName": "您的姓名",
+    "faq": {
+      "q1": "How do I earn points?",
+      "q2": "How do I redeem rewards?",
+      "q3": "How do I use a voucher?",
+      "q4": "What are the delivery options?",
+      "a1": "You earn points with every purchase. The amount varies by your loyalty tier.",
+      "a2": "Go to the Rewards section, choose a reward, and tap Redeem.",
+      "a3": "Enter your voucher code at checkout or show it to the barista in-store.",
+      "a4": "We offer dine-in, takeaway, and delivery. Delivery availability depends on your location."
+    },
+    "subjects": {
+      "feedback": "Feedback",
+      "order": "Order Issue",
+      "rewards": "Rewards",
+      "technical": "Technical Support"
+    }
   },
   "history": {
     "balance": "平衡",
@@ -355,7 +372,8 @@
       "signInPrompt": "登录以查看您的 Loka 钱包",
       "tierMember": "{tier} 会员",
       "topUp": "充值",
-      "vouchers": "优惠券"
+      "vouchers": "优惠券",
+      "checkin": "Daily Check-In"
     }
   },
   "information": {
@@ -376,7 +394,9 @@
     "tagProduct": "产品"
   },
   "legal": {
-    "tableOfContents": "目录"
+    "tableOfContents": "目录",
+    "unableToLoadTerms": "Unable to load Terms of Service right now.",
+    "unableToLoadPrivacy": "Unable to load Privacy Policy right now."
   },
   "menu": {
     "addPrice": "添加价格",
@@ -493,7 +513,9 @@
       "justNow": "刚才",
       "minutes": "{minutes} 分钟前"
     },
-    "title": "标题"
+    "title": "标题",
+    "newCount_one": "{count} new notification",
+    "newCount_other": "{count} new notifications"
   },
   "orderDetail": {
     "addingToCart": "正在加入购物车……",
@@ -608,7 +630,10 @@
     "settings": "设置",
     "tierMember": "{tier} 会员",
     "title": "个人简介",
-    "viewAll": "查看全部 →"
+    "viewAll": "查看全部 →",
+    "reservations": "Reservations",
+    "promotions": "Promotions",
+    "events": "Events"
   },
   "promotions": {
     "alreadyCompleted": "已完成",
@@ -694,7 +719,13 @@
     "toNextTier_one": "距离下一等级还差{count}个",
     "toNextTier_other": "还需{count}个达到下一等级",
     "unknown": "未知",
-    "yourCode": "您的代码"
+    "yourCode": "您的代码",
+    "tiers": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    }
   },
   "reservations": {
     "bookNow": "立即预订",
@@ -879,7 +910,8 @@
     "topUpFailed": "充值失败。请重试。",
     "topUpSuccess": "已成功充值 {amount}",
     "verificationFailed": "一次性密码无效。请重试。",
-    "verificationFailedTitle": "验证失败"
+    "verificationFailedTitle": "验证失败",
+    "topUpSuccessReturn": "Wallet topped up successfully"
   },
   "voucher": {
     "showToBarista": "把这个代码给咖啡师看"
@@ -902,6 +934,29 @@
     "otherAmount": "其他金额",
     "quickTopUp": "快速充值",
     "recentTransactions": "近期交易",
-    "topUpTitle": "充值"
+    "topUpTitle": "充值",
+    "paymentMethod": "Payment Method",
+    "selectPaymentMethod": "Select a payment method to top up",
+    "creditDebitCard": "Credit / Debit Card",
+    "cardDesc": "Visa, Mastercard, Amex",
+    "fpxBanking": "FPX Online Banking",
+    "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",
+    "eWallet": "E-Wallet",
+    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now.",
+    "onlineTopUpUnavailable": "Online top-up is not available until a payment provider is integrated. Please top up at a store."
+  },
+  "checkin": {
+    "title": "Daily Check-In",
+    "subtitle": "Check in daily to earn loyalty points",
+    "streak": "Current Streak",
+    "rewards": "Reward Tiers",
+    "dailyBase": "Daily Base",
+    "streakBonus": "Streak Bonus",
+    "sevenDayBonus": "7-Day Bonus",
+    "checkInNow": "Check In Now",
+    "checkedIn": "You're checked in!",
+    "pointsEarned": "+{points} points earned",
+    "comeBackTomorrow": "Come back tomorrow for your next reward"
   }
 }

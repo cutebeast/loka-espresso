@@ -23,6 +23,7 @@ export default function StaffTranslationsTab() {
   const [msg, setMsg] = useState("");
   const [regenerating, setRegenerating] = useState<string | false>(false);
   const [translateProgress, setTranslateProgress] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -173,11 +174,14 @@ export default function StaffTranslationsTab() {
                     const value = existing?.translated_text || "";
                     return (
                       <td key={loc} style={{ padding: 4 }}>
-                        <input type="text" defaultValue={value}
+                        <input type="text"
+                          value={drafts[`${key}:${loc}`] ?? value}
                           placeholder={value ? "" : "—"}
+                          onChange={(e) => setDrafts((prev) => ({ ...prev, [`${key}:${loc}`]: e.target.value }))}
                           onBlur={async (e) => {
                             const newVal = e.target.value.trim();
-                            if (newVal && newVal !== (value || "")) {
+                            const current = value || "";
+                            if (newVal && newVal !== current) {
                               try {
                                 await upsertTranslation(key, loc, newVal, existing);
                                 setMsg(t("admin.translations.saved"));
@@ -188,7 +192,8 @@ export default function StaffTranslationsTab() {
                           onKeyDown={async (e) => {
                             if (e.key === "Enter") {
                               const newVal = (e.target as HTMLInputElement).value.trim();
-                              if (newVal && newVal !== (value || "")) {
+                              const current = value || "";
+                              if (newVal && newVal !== current) {
                                 try {
                                   await upsertTranslation(key, loc, newVal, existing);
                                   setMsg(t("admin.translations.saved"));

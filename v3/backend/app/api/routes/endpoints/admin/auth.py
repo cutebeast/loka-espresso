@@ -10,13 +10,14 @@ from app.schemas.auth import AdminLoginRequest, AuthResponse, RefreshTokenReques
 from app.schemas.base import APIResponse, BaseSchema
 from app.services.auth import (
     AuthError,
+    blacklist_refresh_token,
     create_admin_tokens,
     login_admin,
     refresh_admin_tokens,
 )
 from app.core.auth_cookies import clear_admin_auth_cookies, get_admin_refresh_token, set_admin_auth_cookies
 from app.core.rate_limiter import limiter
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password, verify_password, decode_token
 
 router = APIRouter(prefix="/admin/auth", tags=["admin — authentication"])
 
@@ -205,8 +206,25 @@ async def admin_refresh(request: Request, response: Response, db: DBDependency, 
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def admin_logout(response: Response):
-    """Log out the current admin by clearing auth cookies."""
+async def admin_logout(
+    request: Request,
+    response: Response,
+    db: DBDependency,
+    data: RefreshTokenRequest | None = None,
+):
+    """Log out the current admin, revoke the refresh token, and clear auth cookies."""
+    refresh_token = get_admin_refresh_token(request) or (data.refresh_token if data else None)
+    if refresh_token:
+        try:
+            payload = decode_token(refresh_token)
+            if payload.get("type") != "refresh":
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
+            jti = payload.get("jti")
+            await blacklist_refresh_token(db, jti, None, payload)
+        except HTTPException:
+            raise
+        except Exception:
+            pass
     clear_admin_auth_cookies(response)
 
 
@@ -224,7 +242,7 @@ async def admin_me(db: DBDependency, request: Request, admin: CurrentAdmin):
     roles = [row[0] for row in role_result.all()]
 
     # Staff-only users (no admin roles) cannot access admin portal
-    admin_roles = {"system_admin", "regional_manager", "store_manager"}
+    admin_roles = {"system_admin", "regional_manager", "store_manager", "readonly_analyst"}
     if not (set(roles) & admin_roles):
         raise HTTPException(status_code=403, detail="Staff accounts cannot access admin portal")
 

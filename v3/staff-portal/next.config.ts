@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
-const API_PROXY = process.env.API_PROXY_URL || "http://127.0.0.1:13800/api";
+const API_PROXY = process.env.API_PROXY_URL || (
+  process.env.NODE_ENV === "development" ? "http://127.0.0.1:13800/api" : ""
+);
+if (!API_PROXY) {
+  throw new Error("API_PROXY_URL must be set to a valid HTTP(S) URL in production");
+}
 
 const nextConfig: NextConfig = {
   // output: "standalone", // disabled for 'next start' compatibility
@@ -23,10 +28,12 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
+          ...(process.env.NODE_ENV === "production"
+            ? [{
+                key: "Strict-Transport-Security",
+                value: "max-age=63072000; includeSubDomains; preload",
+              }]
+            : []),
           {
             key: "Content-Security-Policy",
             value:

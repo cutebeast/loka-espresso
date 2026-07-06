@@ -260,7 +260,8 @@
     "tomorrow": "Esok",
     "view": "Tonton",
     "year": "Tahun",
-    "yourCode": "Kod anda"
+    "yourCode": "Kod anda",
+    "pay": "Pay"
   },
   "errorBoundary": {
     "message": "Ralat yang tidak dijangka telah berlaku. Sila cuba lagi.",
@@ -296,7 +297,23 @@
     "sendMessage": "Hantar mesej",
     "subject": "Subjek",
     "title": "Bantuan & Sokongan",
-    "yourName": "Nama Anda"
+    "yourName": "Nama Anda",
+    "faq": {
+      "q1": "How do I earn points?",
+      "q2": "How do I redeem rewards?",
+      "q3": "How do I use a voucher?",
+      "q4": "What are the delivery options?",
+      "a1": "You earn points with every purchase. The amount varies by your loyalty tier.",
+      "a2": "Go to the Rewards section, choose a reward, and tap Redeem.",
+      "a3": "Enter your voucher code at checkout or show it to the barista in-store.",
+      "a4": "We offer dine-in, takeaway, and delivery. Delivery availability depends on your location."
+    },
+    "subjects": {
+      "feedback": "Feedback",
+      "order": "Order Issue",
+      "rewards": "Rewards",
+      "technical": "Technical Support"
+    }
   },
   "history": {
     "balance": "Keseimbangan",
@@ -355,7 +372,8 @@
       "signInPrompt": "Log masuk untuk melihat dompet Loka anda.",
       "tierMember": "{tingkat} Ahli",
       "topUp": "Tambah nilai",
-      "vouchers": "Baucar"
+      "vouchers": "Baucar",
+      "checkin": "Daily Check-In"
     }
   },
   "information": {
@@ -376,7 +394,9 @@
     "tagProduct": "Produk"
   },
   "legal": {
-    "tableOfContents": "Senarai Kandungan"
+    "tableOfContents": "Senarai Kandungan",
+    "unableToLoadTerms": "Unable to load Terms of Service right now.",
+    "unableToLoadPrivacy": "Unable to load Privacy Policy right now."
   },
   "menu": {
     "addPrice": "Tambah Harga",
@@ -493,7 +513,9 @@
       "justNow": "Baru sahaja",
       "minutes": "{minutes} minit lalu"
     },
-    "title": "Tajuk"
+    "title": "Tajuk",
+    "newCount_one": "{count} new notification",
+    "newCount_other": "{count} new notifications"
   },
   "orderDetail": {
     "addingToCart": "Menambah ke dalam troli…",
@@ -608,7 +630,10 @@
     "settings": "Tetapan",
     "tierMember": "{tingkat} Ahli",
     "title": "Profil",
-    "viewAll": "Lihat semua →"
+    "viewAll": "Lihat semua →",
+    "reservations": "Reservations",
+    "promotions": "Promotions",
+    "events": "Events"
   },
   "promotions": {
     "alreadyCompleted": "Sudah selesai",
@@ -694,7 +719,13 @@
     "toNextTier_one": "{count} lagi ke peringkat seterusnya",
     "toNextTier_other": "{count} lagi ke peringkat seterusnya",
     "unknown": "Tidak diketahui",
-    "yourCode": "Kod Anda"
+    "yourCode": "Kod Anda",
+    "tiers": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    }
   },
   "reservations": {
     "bookNow": "Tempah Sekarang",
@@ -879,7 +910,8 @@
     "topUpFailed": "Pengisian semula gagal. Sila cuba lagi.",
     "topUpSuccess": "Berjaya menambah nilai {amount}",
     "verificationFailed": "OTP tidak sah. Sila cuba lagi.",
-    "verificationFailedTitle": "Pengesahan gagal"
+    "verificationFailedTitle": "Pengesahan gagal",
+    "topUpSuccessReturn": "Wallet topped up successfully"
   },
   "voucher": {
     "showToBarista": "Tunjukkan kod ini kepada barista."
@@ -902,6 +934,29 @@
     "otherAmount": "Jumlah lain",
     "quickTopUp": "Isian Semula Pantas",
     "recentTransactions": "Transaksi terkini",
-    "topUpTitle": "Tambah nilai"
+    "topUpTitle": "Tambah nilai",
+    "paymentMethod": "Payment Method",
+    "selectPaymentMethod": "Select a payment method to top up",
+    "creditDebitCard": "Credit / Debit Card",
+    "cardDesc": "Visa, Mastercard, Amex",
+    "fpxBanking": "FPX Online Banking",
+    "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",
+    "eWallet": "E-Wallet",
+    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now.",
+    "onlineTopUpUnavailable": "Online top-up is not available until a payment provider is integrated. Please top up at a store."
+  },
+  "checkin": {
+    "title": "Daily Check-In",
+    "subtitle": "Check in daily to earn loyalty points",
+    "streak": "Current Streak",
+    "rewards": "Reward Tiers",
+    "dailyBase": "Daily Base",
+    "streakBonus": "Streak Bonus",
+    "sevenDayBonus": "7-Day Bonus",
+    "checkInNow": "Check In Now",
+    "checkedIn": "You're checked in!",
+    "pointsEarned": "+{points} points earned",
+    "comeBackTomorrow": "Come back tomorrow for your next reward"
   }
 }

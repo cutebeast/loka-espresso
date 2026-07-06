@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api, getMarketingCampaigns, sendCampaign, type MarketingCampaign } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function MarketingCampaignsPage() {
   const router = useRouter();
+  const { format } = useCurrency();
   const [items, setItems] = useState<MarketingCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,7 +63,7 @@ export default function MarketingCampaignsPage() {
               <td><span className="badge badge-sm badge-blue">{channelLabel(item.channel)}</span></td>
               <td>{statusBadge(item.status)}</td>
               <td style={{ fontSize: 12 }}>{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString() : "—"}</td>
-              <td style={{ fontWeight: 600 }}>RM {typeof item.budget_spent === "number" ? item.budget_spent.toFixed(2) : "—"}</td>
+              <td style={{ fontWeight: 600 }}>{typeof item.budget_spent === "number" ? format(item.budget_spent) : "—"}</td>
               <td onClick={e => e.stopPropagation()}>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   <button type="button" onClick={() => router.push(`/marketing/campaigns/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>

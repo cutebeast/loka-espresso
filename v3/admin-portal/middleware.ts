@@ -29,6 +29,10 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/favicon.svg") ||
+    pathname.startsWith("/version.json") ||
+    pathname.startsWith("/manifest.json") ||
+    pathname.startsWith("/icons/") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/");
 
@@ -48,10 +52,12 @@ export async function middleware(request: NextRequest) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set(
-    "Strict-Transport-Security",
-    "max-age=63072000; includeSubDomains; preload"
-  );
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload"
+    );
+  }
   response.headers.set(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=()"
@@ -66,6 +72,18 @@ export async function middleware(request: NextRequest) {
     try {
       const apiHost = new URL(apiUrl).host;
       if (apiHost) connectHosts.push(`${new URL(apiUrl).protocol}//${apiHost}`);
+    } catch {
+      // ignore malformed URL
+    }
+  }
+  for (const envUrl of [
+    process.env.NEXT_PUBLIC_STAFF_VERSION_URL,
+    process.env.NEXT_PUBLIC_CUSTOMER_VERSION_URL,
+  ]) {
+    if (!envUrl) continue;
+    try {
+      const { protocol, host } = new URL(envUrl);
+      if (host) connectHosts.push(`${protocol}//${host}`);
     } catch {
       // ignore malformed URL
     }

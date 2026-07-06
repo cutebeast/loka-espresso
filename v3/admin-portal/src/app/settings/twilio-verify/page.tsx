@@ -53,8 +53,7 @@ export default function TwilioVerifySettingsPage() {
     setSaving(field.key);
     setIsError(false);
     try {
-      const qs = new URLSearchParams({ key: field.key, value: val });
-      await api.put(`/admin/config?${qs.toString()}`);
+      await api.put("/admin/config", { key: field.key, value: val });
       setConfig((prev) => ({ ...prev, [field.key]: val }));
       showMsg(t("admin.twilioVerify.saved"));
     } catch (e: unknown) {

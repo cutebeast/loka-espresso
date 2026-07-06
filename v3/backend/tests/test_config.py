@@ -2,6 +2,8 @@
 
 import os
 
+import pytest
+
 from app.core.config import Settings
 
 
@@ -26,3 +28,9 @@ def test_stripe_simulator_url_is_configurable():
         assert s.stripe_simulator_checkout_url == custom
     finally:
         del os.environ["STRIPE_SIMULATOR_CHECKOUT_URL"]
+
+
+def test_empty_trusted_hosts_raises_in_production():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        Settings(environment="production", trusted_hosts="")

@@ -2,7 +2,7 @@
 
 import json
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
@@ -43,18 +43,28 @@ async def list_config(
 async def update_config(
     admin: CurrentAdmin,
     db: DBDependency,
-    key: str = Query(...),
-    value: str = Query(...),
+    key: str = Query(""),
+    value: str = Query(""),
+    data: dict = Body({}),
 ):
-    """Update a platform config value."""
+    """Update a platform config value.
+
+    Accepts key/value via query params (legacy) or JSON body. Body is preferred
+    for sensitive values such as API tokens.
+    """
+    effective_key = key or data.get("key") or data.get("config_key")
+    effective_value = value if value != "" else data.get("value") or data.get("config_value")
+    if not effective_key or effective_value == "" or effective_value is None:
+        raise HTTPException(status_code=400, detail="Both 'key' and 'value' are required")
+
     result = await db.execute(
-        select(PlatformConfig).where(PlatformConfig.config_key == key)
+        select(PlatformConfig).where(PlatformConfig.config_key == effective_key)
     )
     config = result.scalar_one_or_none()
     if config is None:
-        raise HTTPException(status_code=404, detail=f"Config key '{key}' not found")
+        raise HTTPException(status_code=404, detail=f"Config key '{effective_key}' not found")
     if not config.is_editable:
-        raise HTTPException(status_code=403, detail=f"Config key '{key}' is not editable")
+        raise HTTPException(status_code=403, detail=f"Config key '{effective_key}' is not editable")
 
     # Parse value based on value_type before storing in JSONB
     vt = config.value_type or "string"
@@ -62,19 +72,19 @@ async def update_config(
         try:
             config.config_value = json.loads(value)
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail=f"Invalid JSON for config key '{key}'")
+            raise HTTPException(status_code=400, detail=f"Invalid JSON for config key '{effective_key}'")
     elif vt == "integer":
         try:
             config.config_value = int(value)
         except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail=f"Invalid integer for config key '{key}'")
+            raise HTTPException(status_code=400, detail=f"Invalid integer for config key '{effective_key}'")
     elif vt in ("float", "decimal"):
         try:
             config.config_value = float(value)
         except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail=f"Invalid number for config key '{key}'")
+            raise HTTPException(status_code=400, detail=f"Invalid number for config key '{effective_key}'")
     elif vt == "boolean":
-        config.config_value = value.lower() in ("true", "1", "yes")
+        config.config_value = effective_value.lower() in ("true", "1", "yes")
     else:
         config.config_value = value
     await db.commit()
@@ -84,6 +94,6 @@ async def update_config(
         data={
             "config_key": config.config_key,
             "config_value": config.config_value,
-            "message": f"Config '{key}' updated",
+            "message": f"Config '{effective_key}' updated",
         }
     )

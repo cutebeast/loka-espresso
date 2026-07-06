@@ -36,15 +36,13 @@ function interpolate(text: string, vars?: Record<string, string | number>): stri
 }
 
 export function TranslationProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<string>(DEFAULT_LOCALE);
-  const [translations, setTranslations] = useState<Translations>({});
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
+  const [locale, setLocaleState] = useState<string>(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     const nav = typeof window !== "undefined" ? navigator.language : null;
-    setLocaleState(parseLocale(stored || nav));
-  }, []);
+    return parseLocale(stored || nav);
+  });
+  const [translations, setTranslations] = useState<Translations>({});
+  const [loading, setLoading] = useState(false);
 
   const loadTranslations = useCallback(async (targetLocale: string) => {
     setLoading(true);

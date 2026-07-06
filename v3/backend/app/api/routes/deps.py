@@ -200,62 +200,34 @@ async def get_current_admin(
 
     now = datetime.now(timezone.utc)
 
-    # Staff tokens must be tied to a real identity before they can satisfy this
-    # dependency. Admins acting as staff use the admin_id claim; real staff
-    # profiles use the staff_id claim.
+    # Staff tokens can satisfy CurrentAdmin only when they represent an admin
+    # acting in a staff context (admin_id claim). Real staff profile tokens
+    # (staff_id > 0 with no admin_id) are rejected.
     if token_type == "staff":
         admin_id = int(payload.get("admin_id", 0))
-        staff_id = int(payload.get("staff_id", 0))
-
-        if admin_id:
-            result = await db.execute(
-                select(AdminAccount).where(AdminAccount.id == admin_id)
+        if not admin_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid staff token",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-            admin = result.scalar_one_or_none()
-            if admin is None or admin.deleted_at is not None or not admin.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Admin not found",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            if admin.locked_until and admin.locked_until > now:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Account is locked",
-                )
-            return admin
 
-        if staff_id > 0:
-            result = await db.execute(
-                select(StaffProfile).where(StaffProfile.id == staff_id)
-            )
-            staff = result.scalar_one_or_none()
-            if staff is None or staff.deleted_at is not None or not staff.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Staff not found or inactive",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            from dataclasses import dataclass as _dc
-
-            @_dc
-            class _StaffAdmin:
-                id: int = staff.id
-                principal_id: int = staff.principal_id
-                store_id: int = staff.store_id
-                display_name: str = staff.display_name or "Staff"
-                email: str = staff.email_address or ""
-                is_active: bool = True
-                is_staff_context: bool = True
-                deleted_at = None
-
-            return _StaffAdmin()
-
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid staff token",
-            headers={"WWW-Authenticate": "Bearer"},
+        result = await db.execute(
+            select(AdminAccount).where(AdminAccount.id == admin_id)
         )
+        admin = result.scalar_one_or_none()
+        if admin is None or admin.deleted_at is not None or not admin.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if admin.locked_until and admin.locked_until > now:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is locked",
+            )
+        return admin
 
     admin_id = int(payload.get("admin_id", 0))
     if not admin_id:
@@ -393,7 +365,6 @@ async def _get_admin_role_keys(db: AsyncSession, admin_id: int, admin_obj: Any =
         .where(
             RoleAssignment.assignee_id == admin_id,
             RoleAssignment.is_active.is_(True),
-            IAMRole.is_system.is_(True),
         )
     )
     return {row[0] for row in result.all()}

@@ -30,6 +30,7 @@ export default function AdminTranslationsTab() {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState<number | null>(null);
   const [msg, setMsg] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -244,18 +245,21 @@ export default function AdminTranslationsTab() {
                                 <td key={loc} style={{ padding: 4 }}>
                                   <input
                                     type="text"
-                                    defaultValue={value}
+                                    value={drafts[`${key}:${loc}`] ?? value}
                                     placeholder={loc === "en" ? t("admin.translations.englishSource") : "—"}
+                                    onChange={(e) => setDrafts((prev) => ({ ...prev, [`${key}:${loc}`]: e.target.value }))}
                                     onBlur={(e) => {
                                       const newVal = e.target.value;
-                                      if (newVal !== (value || "")) {
+                                      const current = value || "";
+                                      if (newVal !== current) {
                                         handleCellBlur(key, loc, newVal, existing);
                                       }
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         const newVal = (e.target as HTMLInputElement).value;
-                                        if (newVal !== (value || "")) {
+                                        const current = value || "";
+                                        if (newVal !== current) {
                                           handleCellBlur(key, loc, newVal, existing);
                                         }
                                         (e.target as HTMLInputElement).blur();

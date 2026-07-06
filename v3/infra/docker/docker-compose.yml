@@ -79,11 +79,14 @@ services:
     build:
       context: ../../admin-portal
       dockerfile: ../infra/docker/Dockerfile.admin
+      args:
+        - API_URL=http://backend:13800/api
     container_name: fnb-v3-admin
     restart: unless-stopped
     ports:
       - "13830:3000"
     environment:
+      API_URL: http://backend:13800/api
       NEXT_PUBLIC_API_URL: /api
     depends_on:
       backend:
@@ -100,11 +103,14 @@ services:
     build:
       context: ../../customer-pwa
       dockerfile: ../infra/docker/Dockerfile.customer
+      args:
+        - API_PROXY_URL=http://backend:13800/api
     container_name: fnb-v3-customer
     restart: unless-stopped
     ports:
       - "13810:13810"
     environment:
+      API_PROXY_URL: http://backend:13800/api
       NEXT_PUBLIC_API_URL: /api
     depends_on:
       backend:
@@ -121,11 +127,14 @@ services:
     build:
       context: ../../staff-portal
       dockerfile: ../infra/docker/Dockerfile.staff
+      args:
+        - API_PROXY_URL=http://backend:13800/api
     container_name: fnb-v3-staff
     restart: unless-stopped
     ports:
       - "13820:3000"
     environment:
+      API_PROXY_URL: http://backend:13800/api
       NEXT_PUBLIC_API_URL: /api
     depends_on:
       backend:

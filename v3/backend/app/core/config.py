@@ -84,6 +84,14 @@ class Settings(BaseSettings):
             self.database_url_sync = self.database_url.replace("postgresql+asyncpg://", "postgresql://")
         return self
 
+    @model_validator(mode="after")
+    def _validate_production_trusted_hosts(self) -> "Settings":
+        if self.is_production:
+            hosts = [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+            if not hosts:
+                raise ValueError("TRUSTED_HOSTS cannot be empty in production")
+        return self
+
     # Argon2
     argon2_time_cost: int = 3
     argon2_memory_cost: int = 65536

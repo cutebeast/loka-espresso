@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api.routes.deps import DBDependency
-from app.core.config import get_settings
 from app.models.customer import Customer
 from app.schemas.auth import (
     AuthResponse,
@@ -84,7 +83,8 @@ async def _require_otp_or_bypass(
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def customer_register(response: Response, db: DBDependency, data: CustomerRegisterRequest):
+@limiter.limit("10/minute")
+async def customer_register(request: Request, response: Response, db: DBDependency, data: CustomerRegisterRequest):
     """Register a new customer account (passwordless / OTP)."""
     try:
         customer = await register_customer(db, data)
@@ -104,26 +104,18 @@ async def customer_register(response: Response, db: DBDependency, data: Customer
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("15/minute")
 async def customer_login(request: Request, response: Response, db: DBDependency, data: CustomerLoginRequest):
-    """Login with email or phone (OTP-based / passwordless)."""
-    settings = get_settings()
+    """Login with phone (OTP-based / passwordless)."""
     config_svc = PlatformConfigService(db)
 
-    if data.email_address:
-        result = await db.execute(
-            select(Customer).where(
-                Customer.email_address == data.email_address,
-                Customer.deleted_at.is_(None),
-            )
+    if not data.phone_number:
+        raise HTTPException(status_code=400, detail="phone_number required")
+
+    result = await db.execute(
+        select(Customer).where(
+            Customer.phone_number == data.phone_number,
+            Customer.deleted_at.is_(None),
         )
-    elif data.phone_number:
-        result = await db.execute(
-            select(Customer).where(
-                Customer.phone_number == data.phone_number,
-                Customer.deleted_at.is_(None),
-            )
-        )
-    else:
-        raise HTTPException(status_code=400, detail="Email or phone required")
+    )
 
     customer = result.scalar_one_or_none()
     is_new = False
@@ -143,18 +135,11 @@ async def customer_login(request: Request, response: Response, db: DBDependency,
         raise HTTPException(status_code=403, detail="Account is inactive")
 
     # ── OTP verification for phone login ──
-    if data.phone_number:
-        # Non-production: allow bypass if otp.bypass_enabled is true; otherwise verify.
-        # Production: always require OTP unless explicitly bypassed.
-        bypass_enabled = await config_svc.get_bool("otp.bypass_enabled", default=False)
-        if not settings.is_production and not bypass_enabled:
-            logger.warning("OTP verification BYPASSED in non-production environment (no bypass enabled)")
-        else:
-            verified = await _require_otp_or_bypass(config_svc, data.phone_number, data.otp_code)
-            if not verified:
-                raise HTTPException(status_code=401, detail="Invalid or expired OTP")
-            customer.phone_verified_at = datetime.now(timezone.utc)
-            await db.commit()
+    verified = await _require_otp_or_bypass(config_svc, data.phone_number, data.otp_code)
+    if not verified:
+        raise HTTPException(status_code=401, detail="Invalid or expired OTP")
+    customer.phone_verified_at = datetime.now(timezone.utc)
+    await db.commit()
 
     tokens = await create_customer_tokens(customer)
     set_customer_auth_cookies(response, tokens.access_token, tokens.refresh_token)

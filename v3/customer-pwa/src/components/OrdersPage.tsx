@@ -132,7 +132,7 @@ export default function OrdersPage() {
       }
     } catch (err) { console.error('[OrdersPage] Failed to load past orders:', err); }
     finally { setLoadingPast(false); }
-  }, []);
+  }, [pastPage]);
 
   useEffect(() => { loadPastOrders(true); }, [loadPastOrders]);
 

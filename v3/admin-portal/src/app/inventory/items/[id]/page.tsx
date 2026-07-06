@@ -3,11 +3,13 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const LOCALES = [{code:"en",label:"English",flag:"🇬🇧"},{code:"ms",label:"BM",flag:"🇲🇾"},{code:"zh",label:"中文",flag:"🇨🇳"},{code:"ta",label:"தமிழ்",flag:"🇮🇳"},{code:"tr",label:"TR",flag:"🇹🇷"}];
 const TR_FIELDS = [{key:"item_name",label:"Item Name"},{key:"description",label:"Description"}];
 
 export default function InventoryItemEditPage() {
+  const { symbol } = useCurrency();
   const p = useParams(); const router = useRouter(); const itemId = p.id as string;
   const [form,setForm]=useState<Record<string,any>>({});
   const [loading,setLoading]=useState(true);
@@ -91,7 +93,7 @@ export default function InventoryItemEditPage() {
             <div className="df-field"><label className="df-label">Unit</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.unit_of_measure||"kg"} onChange={e=>setForm({...form,unit_of_measure:e.target.value})}><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="ml">ml</option><option value="pcs">pcs</option><option value="pack">pack</option></select></div>
             <div className="df-field"><label className="df-label">Category</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id||""} onChange={e=>setForm({...form,category_id:e.target.value})}><option value="">—</option>{categories.map((c:any)=><option key={c.id} value={c.id}>{c.category_name||c.name}</option>)}</select></div>
             <div className="df-field"><label className="df-label">Supplier</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.supplier_id||""} onChange={e=>setForm({...form,supplier_id:e.target.value})}><option value="">—</option>{suppliers.map((s:any)=><option key={s.id} value={s.id}>{s.supplier_name}</option>)}</select></div>
-            <div className="df-field"><label className="df-label">Unit Cost (RM)</label><input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm" value={form.unit_cost} onChange={e=>setForm({...form,unit_cost:e.target.value})}/></div>
+            <div className="df-field"><label className="df-label">{`Unit Cost (${symbol})`}</label><input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm" value={form.unit_cost} onChange={e=>setForm({...form,unit_cost:e.target.value})}/></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Image</label><div style={{display:"flex",gap:12,alignItems:"center"}}><input ref={fileRef} type="file" accept="image/*" onChange={async()=>{const f=fileRef.current?.files?.[0];if(!f)return;setUploading(true);try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);const url=j.url||j.filename||"";setForm({...form,image_url:url})}catch (e) { console.error(e); }finally{setUploading(false)}}} style={{display:"none"}}/><button type="button" onClick={()=>fileRef.current?.click()} className="btn btn-sm btn-outline" disabled={uploading}><Upload size={14}/>{uploading?"Uploading...":"Upload Image"}</button>{form.image_url&&<span style={{fontSize:12,color:"var(--color-success)"}}>✓ {form.image_url.split("/").pop()}</span>}</div></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_active} onChange={e=>setForm({...form,is_active:e.target.checked})}/>Active</label></div>
           </div>

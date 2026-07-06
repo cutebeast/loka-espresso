@@ -3,11 +3,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Card { id: number; title: string; slug: string; image_url?: string; position: number; price?: number; is_active: boolean; }
 
 export default function ProductsPage() {
   const router = useRouter();
+  const { format } = useCurrency();
   const [items, setItems] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -73,7 +75,7 @@ export default function ProductsPage() {
                 </td>
                 <td style={{ fontWeight: 600 }}>{item.title}</td>
                 <td style={{ fontWeight: 600, color: "var(--color-success)" }}>
-                  {item.price != null && !isNaN(Number(item.price)) ? `RM ${Number(item.price).toFixed(2)}` : "—"}
+                  {item.price != null && !isNaN(Number(item.price)) ? format(item.price) : "—"}
                 </td>
                 <td>{item.position}</td>
                 <td onClick={e => e.stopPropagation()}>

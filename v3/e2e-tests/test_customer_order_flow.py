@@ -54,10 +54,12 @@ async def test_customer_list_stores_with_locale(client: httpx.AsyncClient, base_
 
 @pytest.mark.asyncio
 async def test_customer_auth_flow(client: httpx.AsyncClient, base_url: str, cleanup_registry: dict):
-    """Customer can register and login to obtain a valid token."""
+    """Customer can register and login with phone to obtain a valid token."""
     ts = uuid.uuid4().hex[:16]
+    digit_suffix = str(int(ts[:8], 16)).zfill(8)
     payload = {
         "email_address": f"e2e-test-{ts}@example.com",
+        "phone_number": f"+6012{digit_suffix}",
         "display_name": f"E2E Test Customer {ts}",
         "device_fingerprint": f"e2e-device-{ts}",
     }
@@ -68,9 +70,9 @@ async def test_customer_auth_flow(client: httpx.AsyncClient, base_url: str, clea
     assert "tokens" in data
     assert data["user_type"] == "customer"
 
-    # Login with the same email
+    # Login with the registered phone number (OTP bypass is enabled in dev/E2E)
     login_payload = {
-        "email_address": payload["email_address"],
+        "phone_number": payload["phone_number"],
         "device_fingerprint": payload["device_fingerprint"],
     }
     r2 = await client.post(f"{base_url}/auth/login", json=login_payload)

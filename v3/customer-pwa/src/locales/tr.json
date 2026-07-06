@@ -260,7 +260,8 @@
     "tomorrow": "Yarın",
     "view": "Görüntüle",
     "year": "Yıl",
-    "yourCode": "Kodunuz"
+    "yourCode": "Kodunuz",
+    "pay": "Pay"
   },
   "errorBoundary": {
     "message": "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
@@ -296,7 +297,23 @@
     "sendMessage": "Mesaj Gönder",
     "subject": "Konu",
     "title": "Yardım ve Destek",
-    "yourName": "Adınız"
+    "yourName": "Adınız",
+    "faq": {
+      "q1": "How do I earn points?",
+      "q2": "How do I redeem rewards?",
+      "q3": "How do I use a voucher?",
+      "q4": "What are the delivery options?",
+      "a1": "You earn points with every purchase. The amount varies by your loyalty tier.",
+      "a2": "Go to the Rewards section, choose a reward, and tap Redeem.",
+      "a3": "Enter your voucher code at checkout or show it to the barista in-store.",
+      "a4": "We offer dine-in, takeaway, and delivery. Delivery availability depends on your location."
+    },
+    "subjects": {
+      "feedback": "Feedback",
+      "order": "Order Issue",
+      "rewards": "Rewards",
+      "technical": "Technical Support"
+    }
   },
   "history": {
     "balance": "Denge",
@@ -355,7 +372,8 @@
       "signInPrompt": "Loka cüzdanınızı görüntülemek için giriş yapın.",
       "tierMember": "{tier} Üyesi",
       "topUp": "Bakiye Yükle",
-      "vouchers": "Kuponlar"
+      "vouchers": "Kuponlar",
+      "checkin": "Daily Check-In"
     }
   },
   "information": {
@@ -376,7 +394,9 @@
     "tagProduct": "Ürün"
   },
   "legal": {
-    "tableOfContents": "İçindekiler"
+    "tableOfContents": "İçindekiler",
+    "unableToLoadTerms": "Unable to load Terms of Service right now.",
+    "unableToLoadPrivacy": "Unable to load Privacy Policy right now."
   },
   "menu": {
     "addPrice": "Fiyat ekle",
@@ -493,7 +513,9 @@
       "justNow": "Az önce",
       "minutes": "{minutes} dakika önce"
     },
-    "title": "Başlık"
+    "title": "Başlık",
+    "newCount_one": "{count} new notification",
+    "newCount_other": "{count} new notifications"
   },
   "orderDetail": {
     "addingToCart": "Sepete ekleniyor…",
@@ -608,7 +630,10 @@
     "settings": "Ayarlar",
     "tierMember": "{tier} Üyesi",
     "title": "Profil",
-    "viewAll": "Tümünü göster →"
+    "viewAll": "Tümünü göster →",
+    "reservations": "Reservations",
+    "promotions": "Promotions",
+    "events": "Events"
   },
   "promotions": {
     "alreadyCompleted": "Zaten tamamlandı",
@@ -694,7 +719,13 @@
     "toNextTier_one": "{count} daha fazla, bir sonraki seviyeye",
     "toNextTier_other": "{count} daha var bir sonraki seviyeye",
     "unknown": "Bilinmiyor",
-    "yourCode": "Kodunuz"
+    "yourCode": "Kodunuz",
+    "tiers": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    }
   },
   "reservations": {
     "bookNow": "Şimdi Rezervasyon Yap",
@@ -879,7 +910,8 @@
     "topUpFailed": "Kontör yükleme işlemi başarısız oldu. Lütfen tekrar deneyin.",
     "topUpSuccess": "{tutar} tutarında kontör yüklemesi başarıyla gerçekleştirildi",
     "verificationFailed": "Şifre geçersiz. Lütfen tekrar deneyin.",
-    "verificationFailedTitle": "Doğrulama Başarısız"
+    "verificationFailedTitle": "Doğrulama Başarısız",
+    "topUpSuccessReturn": "Wallet topped up successfully"
   },
   "voucher": {
     "showToBarista": "Bu kodu baristaya göster"
@@ -902,6 +934,29 @@
     "otherAmount": "Diğer tutar",
     "quickTopUp": "Hızlı Kontör Yükleme",
     "recentTransactions": "Son İşlemler",
-    "topUpTitle": "Bakiye Yükle"
+    "topUpTitle": "Bakiye Yükle",
+    "paymentMethod": "Payment Method",
+    "selectPaymentMethod": "Select a payment method to top up",
+    "creditDebitCard": "Credit / Debit Card",
+    "cardDesc": "Visa, Mastercard, Amex",
+    "fpxBanking": "FPX Online Banking",
+    "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",
+    "eWallet": "E-Wallet",
+    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now.",
+    "onlineTopUpUnavailable": "Online top-up is not available until a payment provider is integrated. Please top up at a store."
+  },
+  "checkin": {
+    "title": "Daily Check-In",
+    "subtitle": "Check in daily to earn loyalty points",
+    "streak": "Current Streak",
+    "rewards": "Reward Tiers",
+    "dailyBase": "Daily Base",
+    "streakBonus": "Streak Bonus",
+    "sevenDayBonus": "7-Day Bonus",
+    "checkInNow": "Check In Now",
+    "checkedIn": "You're checked in!",
+    "pointsEarned": "+{points} points earned",
+    "comeBackTomorrow": "Come back tomorrow for your next reward"
   }
 }

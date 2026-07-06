@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Reward {
   id: number; reward_name: string; reward_key: string; reward_type: string;
@@ -21,6 +22,7 @@ export default function RewardsPage() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const { symbol } = useCurrency();
 
   const fetchData = useCallback(async (p: number = 1) => {
     return api.getRaw<{ items: Reward[]; total: number; total_pages: number }>(
@@ -70,7 +72,7 @@ export default function RewardsPage() {
                 <td style={{ fontWeight: 600 }}>{item.reward_name}</td>
                 <td>{typeLabel(item.reward_type)}</td>
                 <td style={{ fontWeight: 600 }}>{(item.points_cost ?? 0).toLocaleString()} pts</td>
-                <td>{item.minimum_order_value != null ? `RM ${item.minimum_order_value}` : "—"}</td>
+                <td>{item.minimum_order_value != null ? `${symbol} ${item.minimum_order_value}` : "—"}</td>
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>

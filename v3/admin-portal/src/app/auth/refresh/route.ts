@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
     });
 
     const json = await res.json().catch(() => ({}));
+    const { tokens, ...safeJson } = json;
 
-    const response = NextResponse.json(json, { status: res.status });
+    const response = NextResponse.json(safeJson, { status: res.status });
 
     if (!res.ok) {
       response.cookies.set({

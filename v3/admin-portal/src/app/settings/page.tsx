@@ -81,8 +81,7 @@ export default function SettingsPage() {
     setSaving(item.config_key); setUpdateMsg("");
     setConfigs(prev => prev.map(c => c.config_key === item.config_key ? { ...c, config_value: newValue } : c));
     try {
-      const qs = new URLSearchParams({ key: item.config_key, value: newValue });
-      await api.put(`/admin/config?${qs.toString()}`);
+      await api.put("/admin/config", { key: item.config_key, value: newValue });
       setUpdateMsg(`${item.config_key} updated`);
       setTimeout(() => setUpdateMsg(""), 3000);
     } catch (err: any) {

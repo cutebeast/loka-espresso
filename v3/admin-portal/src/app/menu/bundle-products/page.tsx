@@ -4,11 +4,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface BundleProduct { id: number; title: string; bundle_type: string; bundle_price: number; image_url?: string | null; components_count?: number; components?: { menu_item_id: number }[]; groups?: { pick_count: number; group_label: string }[]; category_name?: string; is_active: boolean; pick_count?: number | null; }
 
 export default function BundleProductsPage() {
   const router = useRouter();
+  const { format } = useCurrency();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<BundleProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function BundleProductsPage() {
                 <td><div style={{ fontWeight: 600 }}>{b.title}</div></td>
                 <td><span className="badge badge-sm badge-blue">{b.pick_count ? `Pick ${b.pick_count}` : (b.bundle_type || "combo")}</span></td>
                 <td style={{ fontSize: 12 }}>{b.components_count ?? b.components?.length ?? "—"} items</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(b.bundle_price || 0).toFixed(2)}</td>
+                <td style={{ textAlign: "right", fontWeight: 600 }}>{format(b.bundle_price)}</td>
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? "Active" : "Inactive"}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
