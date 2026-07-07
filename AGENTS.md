@@ -13,10 +13,9 @@ source .venv/bin/activate
 python3 scripts/clear_db.py --all --yes --force-prod
 python3 scripts/seed_all.py --yes --force-prod
 
-# Seed staff UI translations (staff portal login labels)
+# UI translation English keys are seeded automatically by Alembic migrations.
+# (staff-ui, pwa-ui, admin-ui). Run the scripts below only if you need to re-seed.
 python3 scripts/seed_staff_ui_translations.py
-
-# Seed admin UI translations
 python3 scripts/seed_admin_ui_translations.py
 
 # Backend unit tests
@@ -55,6 +54,9 @@ pytest -q
 
 - Backend `ENVIRONMENT=production` on the dev server disables OpenAPI docs, so `scripts/validate-routes.py` falls back to generating the schema from code.
 - `otp.bypass_enabled` is seeded `true` by default so dev/E2E can log in without Twilio credentials. **Disable it on the live server** and rotate `otp.bypass_code` if an emergency fallback is kept.
+- Twilio Verify and marketing credentials (Twilio SMS/WhatsApp, Resend Email) are managed in `platform_config` and support live/test toggles via the Admin Portal.
+- Customer registration with a `phone_number` now requires OTP verification (unless bypass is enabled).
+- Marketing campaign sends skip customers with `marketing_opt_out=true`.
 - `currency.default` is seeded `"MYR"`; wallets created without an explicit currency use this value.
 - All three portals use HttpOnly cookie auth:
   - Admin: `admin_token` / `admin_refresh_token`
