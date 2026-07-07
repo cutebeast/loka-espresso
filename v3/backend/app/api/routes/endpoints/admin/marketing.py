@@ -86,11 +86,17 @@ async def _send_email_via_resend(
     db = None,
     api_key: str | None = None,
     from_email: str | None = None,
+    tags: dict[str, str] | None = None,
 ) -> bool:
     """Send an email via Resend API. Returns True on success.
 
     If api_key/from_email are not provided, reads from platform_config and
     respects the integration.resend_use_test_credentials toggle.
+
+    ``tags`` is a flat mapping of tag names to values. Resend expects an array
+    of ``{"name": ..., "value": ...}`` objects, so the mapping is converted
+    automatically. Tags are returned in webhook events and are used to map
+    delivery events back to a campaign.
     """
     if not to_email:
         return False
@@ -123,6 +129,8 @@ async def _send_email_via_resend(
         "subject": subject,
         "html": f"<p>{body.replace(chr(10), '<br>')}</p>" if body else f"<p>{subject}</p>",
     }
+    if tags:
+        payload["tags"] = [{"name": k, "value": v} for k, v in tags.items()]
     try:
         async with AsyncClient(timeout=15) as client:
             resp = await client.post(url, json=payload, headers=headers)
@@ -424,6 +432,7 @@ async def send_campaign(
                     addr,
                     campaign.campaign_name, campaign.body_content or "",
                     db=db,
+                    tags={"campaign_id": str(campaign.id)},
                 )
         tasks = [_send_email(addr, cid) for cid in customer_ids if (addr := email_map.get(cid))]
         if tasks:

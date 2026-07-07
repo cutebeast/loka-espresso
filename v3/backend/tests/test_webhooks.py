@@ -51,8 +51,49 @@ def webhook_app(monkeypatch):
 
 
 @pytest.fixture
+def resend_webhook_app(monkeypatch):
+    """FastAPI app with only the Resend webhook router wired up."""
+    from app.api.routes.endpoints.webhooks import router as resend_router
+    from app.core.rate_limiter import limiter
+    from app.api.routes.deps import get_async_db
+
+    async def _fake_get_db():
+        class FakeResult:
+            def scalar_one_or_none(self): return None
+            def scalars(self): return self
+            def all(self): return []
+            def scalar(self): return None
+            def first(self): return None
+        class FakeSession:
+            async def commit(self): pass
+            async def rollback(self): pass
+            async def close(self): pass
+            async def refresh(self, *args, **kwargs): pass
+            async def flush(self): pass
+            async def execute(self, *args, **kwargs): return FakeResult()
+            def add(self, *args, **kwargs): return None
+            def get(self, *args, **kwargs): return None
+        yield FakeSession()
+
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.is_event_processed", AsyncMock(return_value=False))
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.mark_event_processed", AsyncMock())
+
+    app = FastAPI()
+    app.state.limiter = limiter
+    app.dependency_overrides[get_async_db] = _fake_get_db
+    app.include_router(resend_router, prefix="/api/webhooks")
+    return app
+
+
+@pytest.fixture
 async def webhook_client(webhook_app):
     async with AsyncClient(transport=ASGITransport(app=webhook_app), base_url="http://test") as client:
+        yield client
+
+
+@pytest.fixture
+async def resend_webhook_client(resend_webhook_app):
+    async with AsyncClient(transport=ASGITransport(app=resend_webhook_app), base_url="http://test") as client:
         yield client
 
 
@@ -213,5 +254,136 @@ async def test_hitpay_webhook_deduplicates_replays(webhook_client, monkeypatch):
     )
     assert res.status_code == 200
     data = res.json()["data"]
+    assert data["received"] is True
+    assert data["duplicate"] is True
+
+
+# ---------------------------------------------------------------------------
+# Resend webhooks
+# ---------------------------------------------------------------------------
+
+
+def _make_resend_signature(secret: str, payload: str, msg_id: str, timestamp: int):
+    """Generate Svix/Resend webhook headers for tests."""
+    from datetime import datetime, timezone
+    from svix.webhooks import Webhook
+
+    wh = Webhook(secret)
+    dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    signature = wh._inner.sign(msg_id=msg_id, timestamp=dt, data=payload)
+    return {
+        "svix-id": msg_id,
+        "svix-timestamp": str(timestamp),
+        "svix-signature": signature,
+    }
+
+
+@pytest.mark.asyncio
+async def test_resend_rejected_without_secret(resend_webhook_client, monkeypatch):
+    """Resend webhook must fail closed when no signing secret is configured."""
+    async def empty_secret(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.get_provider_secret", empty_secret)
+
+    res = await resend_webhook_client.post(
+        "/api/webhooks/resend",
+        headers={"svix-signature": "v1=invalid"},
+        content=b"{}",
+    )
+    assert res.status_code == 500
+    assert "webhook secret not configured" in res.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_resend_rejected_invalid_signature(resend_webhook_client, monkeypatch):
+    """Resend webhook must reject invalid Svix signatures."""
+    async def test_secret(*args, **kwargs):
+        return "whsec_testsecret"
+
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.get_provider_secret", test_secret)
+
+    res = await resend_webhook_client.post(
+        "/api/webhooks/resend",
+        headers={"svix-signature": "v1=invalid"},
+        content=b"{}",
+    )
+    assert res.status_code == 400
+    assert "invalid resend signature" in res.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_resend_accepts_valid_delivered_event(resend_webhook_client, monkeypatch):
+    """Resend webhook updates campaign analytics for a valid delivered event."""
+    import os
+    import base64
+    from datetime import timezone
+
+    secret = "whsec_" + base64.b64encode(os.urandom(24)).decode()
+
+    async def test_secret(*args, **kwargs):
+        return secret
+
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.get_provider_secret", test_secret)
+
+    payload = {
+        "type": "email.delivered",
+        "created_at": "2026-07-06T00:00:00.000Z",
+        "data": {
+            "email_id": "email_123",
+            "tags": {"campaign_id": "42"},
+        },
+    }
+    body = json.dumps(payload)
+    now = int(__import__("datetime").datetime.now(timezone.utc).timestamp())
+    headers = _make_resend_signature(secret, body, "evt_123", now)
+
+    res = await resend_webhook_client.post(
+        "/api/webhooks/resend",
+        headers=headers,
+        content=body.encode(),
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["received"] is True
+    assert data["updated"] is True
+    assert data["campaign_id"] == 42
+    assert data["event_type"] == "email.delivered"
+
+
+@pytest.mark.asyncio
+async def test_resend_deduplicates_replays(resend_webhook_client, monkeypatch):
+    """Duplicate Resend events should be acknowledged without reprocessing."""
+    import os
+    import base64
+    from datetime import timezone
+
+    secret = "whsec_" + base64.b64encode(os.urandom(24)).decode()
+
+    async def test_secret(*args, **kwargs):
+        return secret
+
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.get_provider_secret", test_secret)
+    monkeypatch.setattr("app.api.routes.endpoints.webhooks.is_event_processed", AsyncMock(return_value=True))
+
+    payload = {
+        "type": "email.opened",
+        "created_at": "2026-07-06T00:00:00.000Z",
+        "data": {
+            "email_id": "email_456",
+            "tags": {"campaign_id": "7"},
+        },
+    }
+    body = json.dumps(payload)
+    now = int(__import__("datetime").datetime.now(timezone.utc).timestamp())
+    headers = _make_resend_signature(secret, body, "evt_456", now)
+
+    res = await resend_webhook_client.post(
+        "/api/webhooks/resend",
+        headers=headers,
+        content=body.encode(),
+    )
+    assert res.status_code == 200
+    data = res.json()
     assert data["received"] is True
     assert data["duplicate"] is True

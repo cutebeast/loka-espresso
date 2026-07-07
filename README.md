@@ -14,7 +14,7 @@ Full-stack F&B ordering and loyalty platform. The active codebase is in `v3/`.
 
 ## Current status
 
-- **Backend unit tests:** 32 passed, 0 failed
+- **Backend unit tests:** 36 passed, 0 failed
 - **E2E tests:** 199 passed, 16 skipped, 0 failed
 - **TypeScript strict:** 0 errors across admin, staff, and customer PWA
 - **Route validation:** 0 unmatched frontend API calls
@@ -22,8 +22,11 @@ Full-stack F&B ordering and loyalty platform. The active codebase is in `v3/`.
 - OTP verification enforced on customer registration; OTP rate/expiry limits wired
 - Marketing opt-out endpoint live; campaign sends respect opt-outs
 - Twilio Verify and Twilio/Resend marketing credentials support live/test toggles from Admin Portal
+- Resend delivery-status webhook (`/api/webhooks/resend`) live with Svix signature verification for both `app.lokaespresso.com` and `app.loyaltysystem.uk`
+- `loyaltysystem.uk` domain verified in Resend; webhook signing secrets stored in `platform_config`
+- Campaign emails tagged with `campaign_id`; analytics update automatically on delivered, bounced, opened, and clicked events
 - Root repository is cleaned of legacy v1/v2 artifacts; all active code stays in `v3/`
-- Round 26 security, auth, currency, payment, translation, and deployment fixes are applied
+- Round 26 security, auth, currency, payment, translation, marketing, and deployment fixes are applied
 
 ## Repository layout
 

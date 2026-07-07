@@ -22,6 +22,7 @@ from app.api.routes.endpoints.customer import order as customer_order
 from app.api.routes.endpoints.customer import profile as customer_profile
 from app.api.routes.endpoints import translation as translation_endpoints
 from app.api.routes.endpoints import payment as payment_endpoints
+from app.api.routes.endpoints import webhooks as webhooks_endpoints
 from app.api.routes.endpoints.admin import loyalty as admin_loyalty
 from app.api.routes.endpoints.admin import reservations as admin_reservations
 from app.api.routes.endpoints.admin import time_events as admin_time_events
@@ -222,3 +223,4 @@ api_router.include_router(customer_order.router, tags=["orders"])
 # Payments & webhooks
 api_router.include_router(payment_endpoints.router, prefix="/payments", tags=["payments"])
 api_router.include_router(payment_endpoints.webhook_router, prefix="/webhooks", tags=["webhooks"])
+api_router.include_router(webhooks_endpoints.router, prefix="/webhooks", tags=["webhooks"])

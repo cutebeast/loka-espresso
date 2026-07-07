@@ -19,3 +19,4 @@ uploads/*
 .turbo
 tsconfig.tsbuildinfo
 CLAUDE.md
+extracted-keys.json

@@ -46,6 +46,7 @@ CONFIGS = [
     ("integration.resend_from_email", '"Loka Espresso <noreply@lokaespresso.my>"', "string", "all", False, True),
     ("integration.resend_test_api_key", '""', "string", "all", True, True),
     ("integration.resend_test_from_email", '"Loka Espresso Test <noreply@lokaespresso.my>"', "string", "all", False, True),
+    ("integration.resend_webhook_secret", '""', "string", "all", True, True),
     ("integration.twilio_api_url", '"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"', "string", "all", False, True),
     ("integration.twilio_use_test_credentials", "false", "boolean", "all", False, True),
     ("integration.twilio_account_sid", '""', "string", "all", False, True),
