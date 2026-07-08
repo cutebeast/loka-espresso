@@ -12,7 +12,7 @@ import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useConfigStore } from '@/stores/configStore';
 
-const ACTIVE = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
+const ACTIVE = ['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
 const STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.completed'];
 
 export default function OrdersPage() {
@@ -52,7 +52,7 @@ export default function OrdersPage() {
     if (!useAuthStore.getState().isAuthenticated) return;
     setIsLoading(true);
     try {
-      const activeStatuses = ['pending', 'preparing', 'in_progress', 'ready', 'awaiting_payment'];
+      const activeStatuses = ['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
       const res = await api.get('/orders', { params: { status: activeStatuses.join(','), per_page: 20 } });
       const raw = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
       setOrders(raw);

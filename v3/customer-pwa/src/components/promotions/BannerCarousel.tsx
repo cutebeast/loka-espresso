@@ -59,9 +59,6 @@ export default function BannerCarousel({
   }
   return <div className="promo-list">
       {promotions.map(promo => {
-      const {
-        t
-      } = useTranslation();
       const img = resolveAssetUrl(promo.image_url);
       const tagText = promo.action_type === 'survey' ? t('promotions.survey') : promo.action_type === 'detail' ? t('promotions.offer') : t('promotions.promo');
       return <motion.button key={promo.id} whileTap={{

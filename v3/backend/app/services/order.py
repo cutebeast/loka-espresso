@@ -809,7 +809,18 @@ async def get_customer_orders(
     if store_id is not None:
         base_filters.append(Order.store_id == store_id)
     if status:
-        base_filters.append(Order.status == status)
+        # Support comma-separated status lists (e.g. "pending,preparing,ready")
+        # Filter to valid enum values to avoid PostgreSQL InvalidTextRepresentationError.
+        VALID_STATUSES = {
+            "pending", "confirmed", "preparing", "ready_for_pickup",
+            "out_for_delivery", "delivered", "cancelled_by_customer",
+            "cancelled_by_merchant", "refunded", "partially_refunded", "disputed",
+        }
+        status_list = [s.strip() for s in status.split(",") if s.strip() and s.strip() in VALID_STATUSES]
+        if len(status_list) == 1:
+            base_filters.append(Order.status == status_list[0])
+        elif len(status_list) > 1:
+            base_filters.append(Order.status.in_(status_list))
 
     stmt = select(Order).options(
         selectinload(Order.line_items),

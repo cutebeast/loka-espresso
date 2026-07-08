@@ -194,9 +194,6 @@ export default function BundlePickerSheet({
           <div className="bps-scroll">
             <div className="bps-grid">
               {poolItems.map(item => {
-              const {
-                t
-              } = useTranslation();
               const imgSrc = resolveAssetUrl(item.image_url);
               const selected = isItemSelected(item.componentId);
               const selectable = isSelectable(item.componentId);

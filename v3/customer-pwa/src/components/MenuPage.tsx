@@ -342,9 +342,6 @@ export default function MenuPage() {
               </div>
               <div className="menu-items-grid">
                 {items.map(item => {
-            const {
-              t
-            } = useTranslation();
             const imgSrc = resolveAssetUrl(item.image_url);
             return <div key={item.id} className="menu-product-card" onClick={() => openItem(item)}>
                       <div className="menu-product-img">

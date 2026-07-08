@@ -74,9 +74,6 @@ export function HubHeader({
     }
   };
   const renderRight = (): ReactNode => {
-    const {
-      t
-    } = useTranslation();
     const actions: ReactNode[] = [];
 
     // Home: QR scanner for dine-in customers
