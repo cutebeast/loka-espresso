@@ -71,9 +71,6 @@ export default function StoreSettingsPage() {
             }}></th></tr></thead>
             <tbody>
               {KEYS.map(key => {
-            const {
-              t
-            } = useTranslation();
             const c = get(key);
             if (!c) return null;
             const label = key.replace("store.default_", "").replace("integration.", "").replace(/_/g, " ");

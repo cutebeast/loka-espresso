@@ -110,9 +110,6 @@ export default function NotificationsPage() {
     ;
   };
   const statusBadge = (s: string, scheduled?: string) => {
-    const {
-      t
-    } = useTranslation();
     if (scheduled && s === "draft") return <span className="badge badge-sm badge-yellow"><Clock size={10} />{t("notifications.scheduled")}</span>;
     const m: Record<string, {
       l: string;

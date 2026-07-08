@@ -286,9 +286,6 @@ export default function DietaryTagEditPage() {
           margin: 0
         }}>{L.find(l => l.code === loc)?.flag} {L.find(l => l.code === loc)?.label}{t("menu_dietary-tags_[id].translation")}</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label={t("menu_dietary-tags_[id].refresh")}><RefreshCw size={14} /> {regen ? "..." : "Regenerate All"}</button></div>
           <div className="df-grid">{F.map(f => {
-          const {
-            t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
           return <div className="df-field" key={f.key}><label style={{
               fontSize: 11,

@@ -496,9 +496,6 @@ export default function SurveyEditPage() {
           margin: 0
         }}>{LOCALES.find(l => l.code === loc)?.flag} {LOCALES.find(l => l.code === loc)?.label}{t("surveys_[id].translation")}</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label={t("surveys_[id].refresh")}><RefreshCw size={14} />{regen ? "..." : "Regenerate All"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f => {
-          const {
-            t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
           const isTA = f.key === "description";
           return <div className="df-field" key={f.key} style={isTA ? {

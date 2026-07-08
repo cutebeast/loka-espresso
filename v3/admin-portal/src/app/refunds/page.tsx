@@ -97,7 +97,7 @@ export default function RefundsPage() {
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("refunds.order")}</th><th>{t("refunds.amount")}</th><th>{t("refunds.reason")}</th><th>{t("refunds.status")}</th><th>{t("refunds.date")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={5} className="data-table-empty">{t("refunds.loading")}</td></tr> : items.map(r => <tr key={r.id}>
+          {loading ? <tr><td colSpan={5} className="data-table-empty">{t("refunds.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(r => <tr key={r.id}>
               <td style={{
               fontWeight: 600
             }}>{r.order_number || `#${r.order_id}`}</td>

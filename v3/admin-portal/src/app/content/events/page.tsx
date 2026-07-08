@@ -67,7 +67,7 @@ export default function EventsPage() {
             </tr>
           </thead>
           <tbody>
-            {loading ? <tr><td colSpan={5} className="data-table-empty">{t("content_events.loading")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
+            {loading ? <tr><td colSpan={5} className="data-table-empty">{t("content_events.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               router.push(`/content/events/${item.id}`);

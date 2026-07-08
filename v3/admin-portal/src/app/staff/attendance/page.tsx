@@ -117,7 +117,7 @@ export default function StaffTimeEventsPage() {
                 width: 80
               }}>{t("staff_attendance.actions")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={5} className="data-table-empty">{t("staff_attendance.loading")}</td></tr> : items.map(e => <tr key={e.id}>
+          {loading ? <tr><td colSpan={5} className="data-table-empty">{t("staff_attendance.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(e => <tr key={e.id}>
               <td>{e.staff_name || `#${e.staff_id}`}</td>
               <td>{typeBadge(e.event_type)}</td>
               <td style={{

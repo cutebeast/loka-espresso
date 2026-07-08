@@ -721,9 +721,6 @@ export default function StoreEditPage() {
         }}>{t("stores_[id].basic_address")}</h4>
             <div className="df-grid">
               {TRANSLATABLE_FIELDS.map(field => {
-            const {
-              t
-            } = useTranslation();
             const trKey = `${activeLocale}:${field.key}`;
             const translation = translations[trKey] || "";
             const sourceText = form[field.key] || "";

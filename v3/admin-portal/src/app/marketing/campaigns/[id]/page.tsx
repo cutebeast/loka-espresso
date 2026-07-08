@@ -292,11 +292,8 @@ export default function CampaignEditPage() {
           padding: "8px 16px"
         }}><RefreshCw size={14} /> {regen === "all" ? "Generating..." : "Regenerate All"}</button></div>
         <div className="df-grid">{TR_FIELDS.map(f => {
-          const {
-            t: _t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
-          const t = tr[k] || "";
+          const trVal = tr[k] || "";
           const s = form[f.key] || "";
           const isTextarea = f.key === "body_content";
           return <div className="df-field" key={f.key} style={isTextarea ? {
@@ -310,27 +307,27 @@ export default function CampaignEditPage() {
             }}><span>{f.label}</span><span style={{
                 fontWeight: 400,
                 fontStyle: "italic"
-              }}>{_t("marketing_campaigns_[id].en")}{s?.slice(0, 30) || "—"}</span></label>{isTextarea ? <textarea rows={5} value={t} onChange={e => setTr(prev => ({
+              }}>{t("marketing_campaigns_[id].en")}{s?.slice(0, 30) || "—"}</span></label>{isTextarea ? <textarea rows={5} value={trVal} onChange={e => setTr(prev => ({
               ...prev,
               [k]: e.target.value
             }))} style={{
               width: "100%",
               padding: "8px 10px",
               fontSize: 13,
-              border: t ? "1px solid var(--color-border-light)" : "2px solid #FCD34D",
+              border: trVal ? "1px solid var(--color-border-light)" : "2px solid #FCD34D",
               borderRadius: "var(--radius-sm)",
-              background: t ? "var(--color-bg-white)" : "#FFFBEB"
-            }} placeholder={t ? "" : "—"} /> : <input value={t} onChange={e => setTr(prev => ({
+              background: trVal ? "var(--color-bg-white)" : "#FFFBEB"
+            }} placeholder={trVal ? "" : "—"} /> : <input value={trVal} onChange={e => setTr(prev => ({
               ...prev,
               [k]: e.target.value
             }))} style={{
               width: "100%",
               padding: "8px 10px",
               fontSize: 13,
-              border: t ? "1px solid var(--color-border-light)" : "2px solid #FCD34D",
+              border: trVal ? "1px solid var(--color-border-light)" : "2px solid #FCD34D",
               borderRadius: "var(--radius-sm)",
-              background: t ? "var(--color-bg-white)" : "#FFFBEB"
-            }} placeholder={t ? "" : "—"} />}</div>;
+              background: trVal ? "var(--color-bg-white)" : "#FFFBEB"
+            }} placeholder={trVal ? "" : "—"} />}</div>;
         })}</div>
         <div style={{
         marginTop: 20

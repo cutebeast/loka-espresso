@@ -49,7 +49,7 @@ export default function ReferralsPage() {
         <table className="data-table">
           <thead><tr><th>{t("referrals.referrer")}</th><th>{t("referrals.code")}</th><th>{t("referrals.invitee")}</th><th>{t("referrals.reward_pts")}</th><th>{t("referrals.status")}</th><th>{t("referrals.date")}</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={6} className="data-table-empty">{t("referrals.loading")}</td></tr> : items.map(item => <tr key={item.id}>
+            {loading ? <tr><td colSpan={6} className="data-table-empty">{t("referrals.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id}>
                 <td style={{
               fontWeight: 600
             }}>{item.referrer_name || `#${item.referrer_customer_id}`}</td>

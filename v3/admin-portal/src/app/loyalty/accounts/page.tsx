@@ -29,9 +29,6 @@ export default function LoyaltyAccountsPage() {
     };
   }, [fetchData]);
   const tierBadge = (tierName: string | null, colorHex?: string) => {
-    const {
-      t
-    } = useTranslation();
     if (!tierName) return <span className="badge badge-sm badge-gray">{t("loyalty_accounts.none")}</span>;
     return <span className="badge badge-sm" style={{
       background: colorHex || "var(--color-bg-muted)",

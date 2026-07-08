@@ -564,9 +564,6 @@ export default function RewardEditPage() {
           </div>
           <div className="df-grid">
             {TRANSLATABLE_FIELDS.map(field => {
-          const {
-            t
-          } = useTranslation();
           const trKey = `${activeLocale}:${field.key}`;
           const translation = translations[trKey] || "";
           const sourceText = form[field.key] || "";

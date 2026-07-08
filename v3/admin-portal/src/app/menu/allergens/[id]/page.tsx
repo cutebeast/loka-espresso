@@ -285,9 +285,6 @@ export default function AllergenEditPage() {
           </div>
           <div className="df-grid">
             {F.map(f => {
-          const {
-            t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
           return <div className="df-field" key={f.key} style={{
             gridColumn: f.key === "description" ? "1/-1" : undefined

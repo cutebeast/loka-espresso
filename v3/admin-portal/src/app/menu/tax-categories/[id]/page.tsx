@@ -209,9 +209,6 @@ export default function TaxCategoryEditPage() {
       }}><h3 style={{
           margin: 0
         }}>{L.find(l => l.code === loc)?.flag} {L.find(l => l.code === loc)?.label}{t("menu_tax-categories_[id].translation")}</h3><button onClick={ra} disabled={regen} className="btn btn-primary btn-sm"><RefreshCw size={14} />{regen ? "..." : "Regenerate All"}</button></div><div className="df-grid">{F.map(f => {
-          const {
-            t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
           return <div className="df-field" key={f.key}><label style={{
               fontSize: 11,

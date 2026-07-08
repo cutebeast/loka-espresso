@@ -485,9 +485,6 @@ export default function VoucherEditPage() {
           </div>
           <div className="df-grid">
             {TRANSLATABLE_FIELDS.map(field => {
-          const {
-            t
-          } = useTranslation();
           const trKey = `${activeLocale}:${field.key}`;
           const translation = translations[trKey] || "";
           const sourceText = form[field.key] || "";

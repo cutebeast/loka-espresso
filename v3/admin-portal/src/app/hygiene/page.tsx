@@ -179,9 +179,6 @@ export default function HygienePage() {
           </tr></thead>
           <tbody>
             {loading ? <tr><td colSpan={9} className="data-table-empty">{t("hygiene.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={9} className="data-table-empty">{t("hygiene.no_hygiene_reports_found")}</td></tr> : items.map(item => {
-            const {
-              t
-            } = useTranslation();
             const imgList = getImageList(item.image_urls);
             const storeName = stores.find(s => s.id === item.store_id)?.store_name || `Store #${item.store_id}`;
             return <tr key={item.id}>

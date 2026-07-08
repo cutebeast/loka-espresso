@@ -293,9 +293,6 @@ export default function CategoryEditPage() {
           </div>
           <div className="df-grid">
             {TR_FIELDS.map(f => {
-          const {
-            t
-          } = useTranslation();
           const trKey = `${activeLocale}:${f.key}`;
           return <div className="df-field" key={f.key}>
                   <label style={{

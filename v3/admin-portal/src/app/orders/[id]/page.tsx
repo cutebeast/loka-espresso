@@ -295,9 +295,6 @@ export default function OrderDetailPage() {
               }}>{t("orders_[id].refund")}</th></tr></thead>
               <tbody>
                 {payments.map(p => {
-              const {
-                t
-              } = useTranslation();
               const available = (p.captured_amount || 0) - (p.refunded_amount || 0);
               const canRefund = available > 0.001 && ["captured", "partially_refunded"].includes(p.status);
               return <tr key={p.id}>

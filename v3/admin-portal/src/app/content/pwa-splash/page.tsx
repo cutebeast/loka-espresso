@@ -55,7 +55,7 @@ export default function SplashScreensPage() {
             }}>{t("content_pwa-splash.status")}</th><th style={{
               width: 80
             }}>{t("content_pwa-splash.actions")}</th></tr></thead><tbody>
-        {loading ? <tr><td colSpan={5} className="data-table-empty">{t("content_pwa-splash.loading")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
+        {loading ? <tr><td colSpan={5} className="data-table-empty">{t("content_pwa-splash.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               (() => router.push(`/content/pwa-splash/${item.id}`))();

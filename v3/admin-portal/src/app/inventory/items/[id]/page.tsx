@@ -316,9 +316,6 @@ export default function InventoryItemEditPage() {
           margin: 0
         }}>{LOCALES.find(l => l.code === activeLocale)?.flag} {LOCALES.find(l => l.code === activeLocale)?.label}{t("inventory_items_[id].translation")}</h3><button onClick={regenerateAll} disabled={regenerating} className="btn btn-primary btn-sm" aria-label={t("inventory_items_[id].refresh")}><RefreshCw size={14} />{regenerating ? "..." : "Regenerate"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f => {
-          const {
-            t
-          } = useTranslation();
           const trKey = `${activeLocale}:${f.key}`;
           return <div className="df-field" key={f.key}><label style={{
               fontSize: 11,

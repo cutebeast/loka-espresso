@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "No access token returned" }, { status: 500 });
     }
 
-    const { tokens, ...safeJson } = json;
+    const { tokens: _tokens, ...safeJson } = json;
     const response = NextResponse.json(safeJson);
     const secure = process.env.NODE_ENV === "production";
 

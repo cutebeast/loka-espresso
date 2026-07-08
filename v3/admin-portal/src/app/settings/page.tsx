@@ -165,9 +165,6 @@ export default function SettingsPage() {
       gap: 20
     }}>
           {SECTIONS.map(section => {
-        const {
-          t
-        } = useTranslation();
         const items = getConfigs(section.prefix);
         if (items.length === 0) return null;
         return <div key={section.title} className="card" style={{

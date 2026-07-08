@@ -914,9 +914,6 @@ export default function ItemEditPage() {
           margin: 0
         }}>{LOCALES.find(l => l.code === loc)?.flag} {LOCALES.find(l => l.code === loc)?.label}{t("menu_items_[id].translation")}</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label={t("menu_items_[id].refresh")}><RefreshCw size={14} />{regen ? "..." : "Regenerate All"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f => {
-          const {
-            t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
           const w = f.key === "long_description" ? {
             gridColumn: "1/-1"

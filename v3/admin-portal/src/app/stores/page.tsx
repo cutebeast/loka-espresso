@@ -86,9 +86,6 @@ export default function StoresPage() {
           <thead><tr><th>{t("stores.store")}</th><th>{t("stores.city")}</th><th>{t("stores.state")}</th><th>{t("stores.postal")}</th><th>{t("stores.country")}</th><th>{t("stores.phone")}</th><th>{t("stores.hours")}</th><th>{t("stores.status")}</th><th>{t("stores.actions")}</th></tr></thead>
           <tbody>
             {loading ? <tr><td colSpan={9} className="data-table-empty">{t("stores.loading")}</td></tr> : items.map(item => {
-            const {
-              t
-            } = useTranslation();
             const hours = item.operating_hours || [];
             const has24h = hours.some(h => h.is_24_hours);
             const closedDays = hours.filter(h => h.is_closed).length;

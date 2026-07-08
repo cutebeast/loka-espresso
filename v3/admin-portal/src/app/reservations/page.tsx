@@ -112,7 +112,7 @@ export default function ReservationsPage() {
               width: 160
             }}>{t("reservations.actions")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={7} className="data-table-empty">{t("reservations.loading")}</td></tr> : items.map(r => <tr key={r.id}>
+          {loading ? <tr><td colSpan={7} className="data-table-empty">{t("reservations.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={7} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(r => <tr key={r.id}>
             <td><div style={{
                 fontWeight: 600
               }}>{r.customer_name || "—"}</div>{r.customer_phone && <div style={{

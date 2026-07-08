@@ -41,6 +41,7 @@ export default function SystemPageEditPage() {
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [loc, setLoc] = useState("en");
   const [saving, setSaving] = useState(false);
   const [savingTr, setSavingTr] = useState(false);
@@ -71,8 +72,9 @@ export default function SystemPageEditPage() {
         }
       }
       setTr(x);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // record not found / load failed — show friendly state
+      setNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -153,6 +155,13 @@ export default function SystemPageEditPage() {
     setTimeout(() => setMsg(""), 2000);
     setSavingTr(false);
   };
+  if (notFound) return <div style={{
+    padding: 32,
+    textAlign: "center"
+  }}><p style={{
+    marginBottom: 16,
+    color: "var(--color-text-muted)"
+  }}>{t("admin.common.noData")}</p><button onClick={() => r.back()} className="btn btn-outline btn-sm">{t("admin.common.back")}</button></div>;
   if (loading) return <div style={{
     padding: 32
   }}>{t("content_system_[id].loading")}</div>;
@@ -234,9 +243,6 @@ export default function SystemPageEditPage() {
           margin: 0
         }}>{LOCALES.find(l => l.code === loc)?.flag} {LOCALES.find(l => l.code === loc)?.label}{t("content_system_[id].translation")}</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label={t("content_system_[id].refresh")}><RefreshCw size={14} />{regen ? "..." : "Regenerate All"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f => {
-          const {
-            t
-          } = useTranslation();
           const k = `${loc}:${f.key}`;
           const isLong = f.key === "body_text";
           return <div className="df-field" key={f.key} style={isLong ? {

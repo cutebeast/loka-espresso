@@ -51,7 +51,7 @@ export default function SystemPagesPage() {
             }}>{t("content_system.status")}</th><th style={{
               width: 80
             }}>{t("content_system.actions")}</th></tr></thead><tbody>
-        {loading ? <tr><td colSpan={4} className="data-table-empty">{t("content_system.loading")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
+        {loading ? <tr><td colSpan={4} className="data-table-empty">{t("content_system.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={4} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               (() => router.push(`/content/system/${item.id}`))();
