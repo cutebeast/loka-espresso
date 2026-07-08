@@ -2,7 +2,7 @@
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCallback, useRef, useEffect, useState } from "react";
-import { Search, QrCode, Plus, Minus, Trash2, Pause, Wallet, User, Send, ImageOff, LayoutGrid } from "lucide-react";
+import { Search, QrCode, Plus, Minus, Trash2, Pause, Wallet, User, Send, ImageOff, LayoutGrid, Monitor } from "lucide-react";
 import Alert from "@/components/Alert";
 import SkeletonCard from "@/components/SkeletonCard";
 import EmptyState from "@/components/EmptyState";
@@ -15,6 +15,7 @@ import PosHeldOrdersDrawer from "@/components/pos/PosHeldOrdersDrawer";
 import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
+import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
 export default function PosPage() {
   const {
     t
@@ -27,6 +28,87 @@ export default function PosPage() {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, []);
+
+  // ── Broadcast to customer display (second screen) ──
+  useEffect(() => {
+    const tableObj = pos.tableId ? pos.tables.find(t => t.id === pos.tableId) : null;
+    const tableNum = pos.tableId ? (tableObj?.table_number || String(pos.tableId)) : null;
+    // Derive PWA deep-link: customer scans QR → opens PWA order detail → pays from their phone
+    const pwaBase = typeof window !== "undefined" ? window.location.origin.replace("://staff.", "://app.") : "https://app.loyaltysystem.uk";
+    const orderId = pos.qrPayment?.orderId || (pos.result as Record<string, unknown>)?.order_id?.toString() || "";
+    const pwaPayUrl = orderId ? `${pwaBase}/order-detail?order_id=${orderId}` : undefined;
+
+    if (pos.state === "done" && pos.result) {
+      // Order confirmed / paid
+      broadcastDisplay({
+        storeName: "LOKA Espresso",
+        orderType: pos.orderType,
+        tableNumber: tableNum ? String(tableNum) : null,
+        cart: pos.cart,
+        subtotal: pos.subtotal,
+        serviceCharge: 0,
+        taxAmount: 0,
+        total: pos.total,
+        itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
+        phase: "paid",
+        orderNumber: (pos.result as Record<string, unknown>)?.order_number?.toString(),
+        orderId,
+        paidTotal: (pos.result as Record<string, unknown>)?.total as number | undefined,
+        change: pos.successChange,
+        paymentMethod: pos.paymentMethod,
+      });
+    } else if (pos.state === "qr_payment" && pos.qrPayment) {
+      // Stripe QR payment — show QR linking to PWA
+      broadcastDisplay({
+        storeName: "LOKA Espresso",
+        orderType: pos.orderType,
+        tableNumber: tableNum ? String(tableNum) : null,
+        cart: pos.cart,
+        subtotal: pos.subtotal,
+        serviceCharge: 0,
+        taxAmount: 0,
+        total: pos.qrPayment.total,
+        itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
+        phase: "qr_payment",
+        paymentUrl: pos.qrPayment.paymentUrl,
+        pwaPayUrl,
+        orderNumber: pos.qrPayment.orderNumber,
+        orderId: pos.qrPayment.orderId,
+      });
+    } else if (pos.mode === "checkout" || pos.state === "payment") {
+      // Checkout in progress (non-QR payment like cash)
+      broadcastDisplay({
+        storeName: "LOKA Espresso",
+        orderType: pos.orderType,
+        tableNumber: tableNum ? String(tableNum) : null,
+        cart: pos.cart,
+        subtotal: pos.subtotal,
+        serviceCharge: 0,
+        taxAmount: 0,
+        total: pos.total,
+        itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
+        phase: "payment",
+        orderNumber: pos.checkoutOrder?.order_number,
+        orderId: pos.checkoutOrderId || undefined,
+      });
+    } else if (pos.cart.length > 0) {
+      // Browsing — cart building
+      broadcastDisplay({
+        storeName: "LOKA Espresso",
+        orderType: pos.orderType,
+        tableNumber: tableNum ? String(tableNum) : null,
+        cart: pos.cart,
+        subtotal: pos.subtotal,
+        serviceCharge: 0,
+        taxAmount: 0,
+        total: pos.total,
+        itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
+        phase: "browsing",
+      });
+    } else {
+      broadcastReset();
+    }
+  }, [pos.state, pos.mode, pos.cart, pos.subtotal, pos.total, pos.orderType, pos.tableId, pos.tables, pos.qrPayment, pos.result, pos.successChange, pos.paymentMethod, pos.checkoutOrder, pos.checkoutOrderId]);
   const handleToggleModifier = useCallback((groupId: number, modId: number, selectionType: string, maxSelections: number) => {
     pos.setSelectedModifiers(prev => {
       const current = prev[groupId] || [];
@@ -177,6 +259,14 @@ export default function PosPage() {
           padding: "6px 10px"
         }} onClick={() => pos.setShowHeld(true)} aria-label={t("pos.view_parked_orders")}>
             <Pause size={16} />{t("pos.park_order")}</button>
+          <button className="btn btn-ghost" style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 12,
+          padding: "6px 10px"
+        }} onClick={() => openCustomerDisplay()} aria-label={t("pos.display_open_customer_screen")}>
+            <Monitor size={16} />{t("pos.display_customer_screen")}</button>
         </div>
         {pos.searchResults.length > 0 && <div style={{
         background: "white",

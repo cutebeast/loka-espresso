@@ -24,6 +24,7 @@ export default function AuthProvider({
     type: string;
   } | null>(null);
   const isLoginPage = pathname === "/login";
+  const isDisplayPage = pathname === "/pos/display";
 
   // Branding favicon
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function AuthProvider({
 
   // ── Idle timeout (30 min) with 60s warning ──
   useEffect(() => {
-    if (isLoginPage) return;
+    if (isLoginPage || isDisplayPage) return;
     const IDLE_MS = 30 * 60 * 1000;
     const WARN_MS = 60 * 1000;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -106,9 +107,9 @@ export default function AuthProvider({
       if (idleTimer) clearTimeout(idleTimer);
       if (warnTimer) clearTimeout(warnTimer);
     };
-  }, [isLoginPage, router]);
+  }, [isLoginPage, isDisplayPage, router]);
   useEffect(() => {
-    if (isLoginPage) {
+    if (isLoginPage || isDisplayPage) {
       setChecked(true);
       return;
     }
@@ -164,8 +165,8 @@ export default function AuthProvider({
       cancelled = true;
       if (redirectTimer) clearTimeout(redirectTimer);
     };
-  }, [pathname, router, isLoginPage]);
-  if (isLoginPage) {
+  }, [pathname, router, isLoginPage, isDisplayPage]);
+  if (isLoginPage || isDisplayPage) {
     return <>{children}</>;
   }
   return <div className="app-shell">
