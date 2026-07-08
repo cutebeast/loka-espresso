@@ -55,9 +55,6 @@ export default function PosModifierDrawer({
         gap: 8
       }}>
             {group.options.map(mod => {
-          const {
-            t
-          } = useTranslation();
           const isSelected = selectedModifiers[group.id]?.includes(mod.id);
           return <button key={mod.id} className={`btn ${isSelected ? "btn-primary" : "btn-ghost"}`} style={{
             justifyContent: "space-between"

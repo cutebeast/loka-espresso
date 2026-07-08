@@ -257,9 +257,6 @@ export default function ReservationsPage() {
             </thead>
             <tbody>
               {reservations.map(res => {
-            const {
-              t
-            } = useTranslation();
             const overdue = isOverdue(res);
             return <tr key={res.id} style={overdue ? {
               background: "var(--color-error-bg)"

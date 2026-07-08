@@ -440,9 +440,6 @@ export default function PosPage() {
 
       {/* Add-on Deal Suggestions (when a bundle is in cart) */}
       {pos.cart.length > 0 && pos.bundleProducts.length > 0 && (() => {
-      const {
-        t
-      } = useTranslation();
       const cartBundleIds = new Set(pos.cart.filter(c => c.bundle_product_id).map(c => c.bundle_product_id!));
       if (cartBundleIds.size === 0) return null;
       const addonSuggestions = pos.filteredItems.filter(item => item.is_addon_deal_eligible && item.addon_discount_value && item.eligible_bundle_ids?.some(bid => cartBundleIds.has(bid)));
@@ -591,9 +588,6 @@ export default function PosPage() {
         return <>
                 {standalone.map(c => renderCartItem(c, false))}
                 {Array.from(bundleGroups.entries()).map(([bpId, items]) => {
-            const {
-              t
-            } = useTranslation();
             const bp = pos.bundleProducts.find(b => b.id === bpId);
             return <div key={`bundle-${bpId}`} style={{
               marginBottom: 8,

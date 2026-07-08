@@ -11,9 +11,10 @@ export default function StoreHeader() {
   const router = useRouter();
   const isAdmin = useIsAdmin();
   const { t } = useTranslation();
-  const [staffName, setStaffName] = useState(() => typeof window !== "undefined" ? localStorage.getItem("staffName") || "" : "");
+  const [staffName, setStaffName] = useState("");
 
   useEffect(() => {
+    setStaffName(localStorage.getItem("staffName") || "");
     const onStorage = () => {
       setStaffName(localStorage.getItem("staffName") || "");
     };

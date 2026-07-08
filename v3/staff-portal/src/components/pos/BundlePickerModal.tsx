@@ -304,9 +304,6 @@ export default function BundlePickerModal({
         gap: 10
       }}>
           {poolItems.map(item => {
-          const {
-            t
-          } = useTranslation();
           const selected = isItemSelected(item.componentId);
           const selectable = isSelectable(item.componentId);
           const qty = quantities[item.componentId] || 0;

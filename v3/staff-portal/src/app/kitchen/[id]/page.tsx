@@ -356,9 +356,6 @@ export default function KitchenDetailPage() {
         gap: 0
       }}>
             {(order.status_log || []).map((sl, i, arr) => {
-          const {
-            t
-          } = useTranslation();
           const isLast = i === arr.length - 1;
           return <div key={`${sl.to_status}-${sl.created_at || i}`} style={{
             display: "flex",

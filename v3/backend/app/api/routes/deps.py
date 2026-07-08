@@ -170,9 +170,14 @@ async def get_current_admin(
     """Dependency to get the currently authenticated admin.
 
     Prefers the HttpOnly admin_token cookie, falling back to the
-    Authorization header for backward compatibility.
+    Authorization header for backward compatibility. Also accepts a staff
+    token (staff_token cookie) when it represents an admin acting in a staff
+    context (carries an admin_id claim) — this lets the staff portal, which
+    authenticates via the staff_token cookie, reach admin-scoped endpoints.
     """
     token = get_admin_access_token(request)
+    if not token:
+        token = get_staff_access_token(request)
     if not token and credentials is not None:
         token = credentials.credentials
     if not token:

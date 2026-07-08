@@ -212,9 +212,6 @@ export default function TablesPage() {
       gap: 16
     }}>
           {filteredTables.map(table => {
-        const {
-          t
-        } = useTranslation();
         const expiry = qrExpiry[table.id];
         const hasQr = !!(table.qr_code_image_url || table.qr_code_token) && !expiry?.expired;
         return <div key={table.id} className="card" role="button" tabIndex={0} style={{

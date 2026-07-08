@@ -296,9 +296,6 @@ export default function KitchenPage() {
       gap: 16
     }}>
           {kanbanColumns.map(col => {
-        const {
-          t
-        } = useTranslation();
         const colOrders = filteredOrders.filter(o => o.status === col.status);
         return <div key={col.status} style={{
           background: "var(--color-bg-muted)",

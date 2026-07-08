@@ -299,10 +299,22 @@ export const api = {
 
 export async function staffLogin(email: string, password: string, storeId?: number) {
   clearAuthStorage();
-  const data = await api.post<{
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password, store_id: storeId }),
+  });
+  const data: {
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
-  }>("/auth/login", { email, password, store_id: storeId });
+    detail?: string | { msg?: string } | { msg?: string }[];
+    message?: string;
+  } = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = data.detail || data.message || "Login failed";
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
   if (data.profile) {
     localStorage.setItem("staffProfile", JSON.stringify(data.profile));
     if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
@@ -316,10 +328,22 @@ export async function staffLogin(email: string, password: string, storeId?: numb
 
 export async function staffLoginByName(name: string, pin: string, storeId: number) {
   clearAuthStorage();
-  const data = await api.post<{
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ display_name: name, password: pin, store_id: storeId }),
+  });
+  const data: {
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
-  }>("/auth/login", { display_name: name, password: pin, store_id: storeId });
+    detail?: string | { msg?: string } | { msg?: string }[];
+    message?: string;
+  } = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = data.detail || data.message || "Login failed";
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
   if (data.profile) {
     localStorage.setItem("staffProfile", JSON.stringify(data.profile));
     if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
