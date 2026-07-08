@@ -341,7 +341,9 @@ async def process_order_payment(
     rounding_mode = await config_service.get_accounting_rounding()
 
     # Prevent overpayment: compute already-captured amount for this order.
-    # Prefer the order's captured_amount aggregate; fall back to summing captured payments.
+    # Prevent overpayment: compute already-captured amount for this order by
+    # summing captured payments. (Order has no denormalized captured_amount
+    # column, so the Payment table is the source of truth.)
     existing_payments = await db.execute(
         select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
     )
@@ -350,11 +352,10 @@ async def process_order_payment(
         precision,
         rounding_mode,
     )
-    already_paid = money_round(
-        max(to_decimal(order.captured_amount or 0), captured_from_payments),
-        precision,
-        rounding_mode,
-    )
+    # In-request tracker for the order's captured total; updated as payments are
+    # recorded below so overpayment checks and final status reflect this payment.
+    order_captured = captured_from_payments
+    already_paid = captured_from_payments
 
     payment_method = data.payment_method
     amount_tendered = to_decimal(data.amount_tendered or 0)
@@ -471,14 +472,14 @@ async def process_order_payment(
             payment.provider_transaction_id = checkout["id"]
             payment_url = checkout["url"]
         else:
-            # Record the captured amount on the order for idempotent balance tracking.
-            order.captured_amount = money_round(to_decimal(order.captured_amount or 0) + net_amount, precision, rounding_mode)
+            # Track the captured amount in-request for idempotent balance tracking.
+            order_captured = money_round(order_captured + net_amount, precision, rounding_mode)
 
     order.updated_at = datetime.now(timezone.utc)
 
     # Payment status reflects whether the order is fully paid
     if not is_stripe_qr:
-        total_paid = money_round(to_decimal(order.captured_amount or 0), precision, rounding_mode)
+        total_paid = order_captured
         if total_paid >= to_decimal(order.total_amount):
             order.payment_status = "captured"
         elif total_paid > 0:

@@ -319,6 +319,10 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
                 store_id: int = int(payload.get("store_id", 0))
                 display_name: str = payload.get("admin_name", admin.display_name or "Admin")
                 email_address: str = admin.email or ""
+                # Marks this object as an admin acting in a staff context so that
+                # RequireStaffRole's admin-override lets it through staff endpoints
+                # (admin has full authority; no StaffProfile/role needed).
+                is_staff_context: bool = True
 
             return AdminStaff()
 
