@@ -553,7 +553,7 @@ async def apply_order_voucher(
             CustomerVoucher.customer_id == order.customer_id,
             CustomerVoucher.status == "active",
         )
-        .with_for_update()
+        .with_for_update(of=CustomerVoucher)
     )
     row = result.first()
     if not row:
@@ -693,7 +693,7 @@ async def apply_order_reward(
             CustomerReward.customer_id == order.customer_id,
             CustomerReward.status.in_(["active", "reserved"]),
         )
-        .with_for_update()
+        .with_for_update(of=CustomerReward)
     )
     row = result.first()
     if not row:
