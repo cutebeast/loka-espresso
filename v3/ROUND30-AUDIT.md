@@ -305,10 +305,10 @@
 
 ### Customer PWA Summary
 - **Components reviewed:** 26
-- **Help coverage:** 25/26 (GuestPayPage is the only gap)
+- **Help coverage:** ✓ 100% (all 26 components covered, GuestPayPage section added to checkout-and-payment.md)
 - **ErrorBoundary:** ✓ FIXED in round 30 — added to AppShell renderPage wrapper
 - **Bugs fixed in round 30:** EventsPage silent swallow, OrdersPage pastPage pagination
-- **Known issues remaining:** CheckinPage all inline styles, XSS in HelpSupportPage, no loading indicators on 3 profile subpages, GuestPayPage has no help article
+- **Known issues remaining:** CheckinPage all inline styles, XSS in HelpSupportPage, no loading indicators on 3 profile subpages
 
 ---
 
@@ -357,7 +357,7 @@
 
 **Staff Portal: 100% coverage** — all 18 functional pages have guide articles in `guide/staff/`.
 
-**Customer PWA: 96% coverage** — 25/26 components covered.
+**Customer PWA: 100% coverage** — all 26 components covered. GuestPayPage section added to `checkout-and-payment.md`.
 
 ### Changes Made in Round 30 to Achieve 100% Admin Coverage
 

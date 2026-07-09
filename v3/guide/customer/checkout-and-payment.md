@@ -67,6 +67,34 @@ The available methods depend on store configuration.
 3. Complete payment.
 4. Order details are sent via SMS or email for tracking.
 
+## Guest Pay — Dine-in QR payment (`guest-pay`)
+
+The **Guest Pay** page is a standalone public payment screen for walk-in dine-in customers who scan a table QR code and pay without creating an account.
+
+### How it works
+1. A customer sits at a table and scans the table QR code with their phone camera.
+2. The PWA opens directly to the Guest Pay page with the order pre-loaded.
+3. The page shows the order summary — line items, subtotal, tax, service charge, and total.
+4. The customer chooses a payment method:
+   - **Stripe** — card, FPX, GrabPay, or QR payments.
+   - **HitPay** — payment links and QR payments.
+5. After payment, a success screen confirms the order. A receipt is shown on screen with a **Back to Menu** button if the customer wants to order more.
+6. No login or registration is required. The order is linked to the table for staff to manage.
+
+### Payment methods on Guest Pay
+- **Stripe** — enter card details or select a local payment method. Complete 3D Secure authentication if required.
+- **HitPay** — redirected to HitPay's hosted payment page, then returned on success.
+
+### What happens if payment fails
+- The page shows an error with the reason.
+- Tap **Try Again** to retry with the same method or choose a different one.
+- The order remains at the table until paid — staff can also process payment at the POS.
+
+### After payment
+- Staff see the order move to `confirmed` status in the POS and Kitchen Display.
+- A confirmation screen with the receipt appears on the customer's device.
+- The customer can tap **Back to Menu** to continue ordering from the same table without logging in.
+
 ## After payment
 
 1. Order confirmation screen appears.
