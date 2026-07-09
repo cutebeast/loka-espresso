@@ -63,7 +63,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
       const res = await api.get('/content/events?limit=20');
       const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
       setEvents(data);
-    } catch { setEvents([]); }
+    } catch { setEvents([]); showToast(t('events.loadFailed'), 'error'); }
     finally { setLoading(false); }
   }, []);
 

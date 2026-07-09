@@ -145,7 +145,7 @@ export default function KitchenDetailPage() {
       setError(t("kitchen.err_load_tables"));
     }
   };
-  const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
+  const fmt = (v: number) => `${Number(v || 0).toFixed(2)}`;
   const dt = (s: string | null) => {
     if (!s) return "—";
     const d = new Date(s);

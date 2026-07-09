@@ -9,6 +9,7 @@ import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { TranslationProvider, useTranslation } from "@/lib/i18n";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 import { refreshToken, BASE_URL } from "@/lib/api";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function clearSession() {
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
@@ -138,6 +139,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {!isLogin && !forbidden && <Sidebar />}
       <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+      <ErrorBoundary>
       {forbidden ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center" }}>
           <div><p style={{ fontSize: 18, fontWeight: 700, color: "#991B1B" }}>{t("admin.common.accessDenied")}</p><p style={{ fontSize: 13, opacity: 0.6 }}>{t("admin.layout.staffForbidden")}</p></div>
@@ -147,6 +149,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           <div style={{ color: "var(--color-text-muted)" }}>{t("admin.common.loading")}</div>
         </div>
       )}
+      </ErrorBoundary>
       </main>
     </div>
   );

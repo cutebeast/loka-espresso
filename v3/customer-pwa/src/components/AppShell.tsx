@@ -21,6 +21,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useA2HS } from '@/hooks/useA2HS';
 import { useWebPush } from '@/hooks/useWebPush';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import PromotionPopup from '@/components/PromotionPopup';
 import StorePickerModal from '@/components/StorePickerModal';
 import { LoginModal } from '@/components/auth/LoginModal';
@@ -397,7 +398,9 @@ export default function AppShell() {
           } : {
             duration: 0.2
           }} className="h-full">
-                {renderPage}
+                <ErrorBoundary>
+                  {renderPage}
+                </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </main>

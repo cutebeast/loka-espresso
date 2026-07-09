@@ -115,8 +115,9 @@ export default function OrdersPage() {
     setLoadingPast(true);
     try {
       if (reset) {
-        setPastPage(1);
-        const res = await api.get('/orders', { params: { per_page: 10, page: 1 } });
+        const page = 1;
+        setPastPage(page);
+        const res = await api.get('/orders', { params: { per_page: 10, page } });
         const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
         const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
         setAllPastOrders(past);

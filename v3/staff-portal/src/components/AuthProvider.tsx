@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import StoreHeader from "@/components/StoreHeader";
 import MustChangePinScreen from "@/components/MustChangePinScreen";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { staffLogout, refreshToken as apiRefreshToken } from "@/lib/api";
 export default function AuthProvider({
   children
@@ -281,7 +282,7 @@ export default function AuthProvider({
             window.location.reload();
           }}>{t("common.retry")}</button>
             </div>
-          </div> : children}
+          </div> : <ErrorBoundary>{children}</ErrorBoundary>}
       </main>
     </div>;
 }
