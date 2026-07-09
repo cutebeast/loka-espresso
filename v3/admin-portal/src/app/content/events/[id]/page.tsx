@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
 const LOCALES = [{
@@ -27,20 +28,22 @@ const LOCALES = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "title",
-  label: "Title"
-}, {
-  key: "short_description",
-  label: "Short Description"
-}, {
-  key: "long_description",
-  label: "Full Description"
-}];
+
 export default function EventEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "title",
+  label: t("admin.form.title")
+}, {
+  key: "short_description",
+  label: t("admin.form.shortDescription")
+}, {
+  key: "long_description",
+  label: t("admin.form.fullDescription")
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
@@ -86,13 +89,11 @@ export default function EventEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
-    } catch {
-      // record not found / load failed — show friendly state
+    } catch (e) {
+      logError("Failed to load content record", e);
       setNotFound(true);
     } finally {
       setLoading(false);
@@ -117,9 +118,7 @@ export default function EventEditPage() {
         image_url: url
       });
       setImg(url);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setUploading(false);
     }
     ;
@@ -133,11 +132,9 @@ export default function EventEditPage() {
         rsvp_max_capacity: form.rsvp_max_capacity || null
       };
       await api.patch(`/admin/event-cards/${id}`, pl);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
     ;
@@ -158,9 +155,7 @@ export default function EventEditPage() {
         record_id: Number(id),
         column_name: field
       });
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const regenAll = async () => {
     setRegen(true);
@@ -182,9 +177,7 @@ export default function EventEditPage() {
           await upsertTr(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${c}`);
     setTimeout(() => setMsg(""), 2500);
@@ -196,7 +189,7 @@ export default function EventEditPage() {
       const t = tr[`${loc}:${f.key}`] || "";
       if (t) await upsertTr(f.key, loc, (form[f.key] || "").trim(), t);
     }
-    setMsg("Translations saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
     setSavingTr(false);
   };
@@ -343,7 +336,7 @@ export default function EventEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/content/events")} className="btn btn-ghost">{t("content_events_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/content/events")} className="btn btn-ghost">{t("content_events_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 700

@@ -44,7 +44,7 @@ export default function TwilioVerifySettingsPage() {
         setConfig(m);
         setValues({ ...m });
       })
-      .catch((e) => { console.error("twilio verify settings:", e); })
+      .catch((e) => { console.error("twilio verify settings:", e); setMsg(e.message || t("admin.errors.loadFailed")); })
       .finally(() => setLoading(false));
   }, []);
 

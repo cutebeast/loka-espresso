@@ -30,9 +30,7 @@ export default function NewEquipmentPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('stores:', e);
-    });
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const update = (k: string, v: any) => setForm(p => ({
     ...p,

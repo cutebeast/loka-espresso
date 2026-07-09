@@ -160,8 +160,8 @@ async def list_orders(
             "id": li.id,
             "name": (li.item_snapshot or {}).get("item_name") or (li.item_snapshot or {}).get("name") or f"Item #{li.menu_item_id}",
             "quantity": li.quantity,
-            "unit_price": float(li.unit_price),
-            "line_total": float(li.line_total),
+            "unit_price": str(li.unit_price),
+            "line_total": str(li.line_total),
             "special_instructions": li.special_instructions,
         })
 
@@ -178,7 +178,7 @@ async def list_orders(
             "status": order.status,
             "payment_status": order.payment_status,
             "item_count": order.item_count,
-            "total_amount": float(order.total_amount),
+            "total_amount": order.total_amount,
             "total_amount_currency": order.total_amount_currency,
             "dining_table_id": order.dining_table_id,
             "table_number": table_map.get(order.dining_table_id) if order.dining_table_id else None,
@@ -505,9 +505,9 @@ async def process_order_payment(
         "id": order.id,
         "order_number": order.order_number,
         "payment_status": order.payment_status,
-        "amount": float(net_amount),
-        "change": float(change),
-        "tip_amount": float(tip_amount),
+        "amount": net_amount,
+        "change": change,
+        "tip_amount": tip_amount,
         "payment_method": payment_method,
         "message": "Payment processed successfully",
     }
@@ -573,7 +573,7 @@ async def apply_order_voucher(
     subtotal = to_decimal(order.items_subtotal)
     min_spend = to_decimal(voucher_def.minimum_order_value) if voucher_def else Decimal(0)
     if subtotal < min_spend:
-        raise HTTPException(status_code=400, detail=f"Minimum spend RM {float(min_spend):.2f} required")
+        raise HTTPException(status_code=400, detail=f"Minimum spend RM {min_spend:.2f} required")
 
     if voucher_def and voucher_def.minimum_tier_id:
         from app.models.loyalty import LoyaltyAccount
@@ -658,7 +658,7 @@ async def apply_order_voucher(
             "order_id": order.id,
             "voucher_code": voucher_code,
             "discount_amount": discount,
-            "new_total": float(order.total_amount),
+            "new_total": order.total_amount,
             "message": f"Voucher applied. Discount: RM {discount:.2f}",
         }
     )
@@ -773,7 +773,7 @@ async def apply_order_reward(
             "order_id": order.id,
             "reward_id": customer_reward.id,
             "discount_amount": discount,
-            "new_total": float(order.total_amount),
+            "new_total": order.total_amount,
             "message": f"Reward applied. Discount: RM {discount:.2f}",
         }
     )
@@ -899,7 +899,7 @@ async def pay_with_wallet(
         action="wallet_payment",
         resource_type="order",
         resource_id=order_id,
-        changes_summary={"amount": float(amount), "remaining_balance": float(new_balance), "customer_id": order.customer_id},
+        changes_summary={"amount": str(amount), "remaining_balance": str(new_balance), "customer_id": order.customer_id},
     ))
 
     await db.commit()
@@ -997,12 +997,12 @@ async def add_order_line_item(
         order_id=order.id,
         staff_id=admin.id,
         modification_type="add_item",
-        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": float(price)},
+        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": str(price)},
     )
     db.add(log)
     await db.commit()
     await db.refresh(line_item)
-    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": float(total)}, status_code=201)
+    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": str(total)}, status_code=201)
 
 
 @router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])

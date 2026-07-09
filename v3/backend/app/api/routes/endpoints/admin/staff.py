@@ -1,5 +1,6 @@
 """Admin staff management endpoints."""
 
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -75,7 +76,7 @@ async def create_staff(
     """Create a new staff profile with credentials."""
     email = (data.email or "").strip()
     password = (data.password or "").strip()
-    pin = (data.pin or "000000").strip()
+    pin = (data.pin or f"{secrets.randbelow(900000) + 100000:06d}").strip()
     display_name = data.display_name.strip()
 
     if not display_name:

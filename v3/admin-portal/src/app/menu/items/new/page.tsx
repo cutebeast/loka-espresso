@@ -83,27 +83,13 @@ export default function NewItemPage() {
     const safeSet = <T,>(setter: (v: T) => void) => (v: T) => {
       if (!cancelled) setter(v);
     };
-    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => safeSet(setCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('categories:', e);
-    });
-    api.getRaw<any>("/admin/menu/allergens").then(d => safeSet(setAllergens)(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('allergens:', e);
-    });
-    api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => safeSet(setDietaryTags)(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('dietary-tags:', e);
-    });
-    api.getRaw<any>("/admin/menu/tax-categories").then(d => safeSet(setTaxCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('tax-categories:', e);
-    });
-    api.getRaw<any>("/admin/loyalty/tiers").then(d => safeSet(setLoyaltyTiers)(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('loyalty-tiers:', e);
-    });
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => safeSet(setStores)(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('stores:', e);
-    });
-    api.getRaw<any>("/admin/menu/bundle-products?per_page=500").then(d => safeSet(setBundleProducts)(Array.isArray(d) ? d : [])).catch(e => {
-      console.error('bundles:', e);
-    });
+    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => safeSet(setCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/menu/allergens").then(d => safeSet(setAllergens)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('allergens:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => safeSet(setDietaryTags)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('dietary-tags:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/menu/tax-categories").then(d => safeSet(setTaxCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('tax-categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/loyalty/tiers").then(d => safeSet(setLoyaltyTiers)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('loyalty-tiers:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => safeSet(setStores)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/menu/bundle-products?per_page=500").then(d => safeSet(setBundleProducts)(Array.isArray(d) ? d : [])).catch(e => { console.error('bundles:', e); setError(e.message || t("admin.errors.loadFailed")); });
     return () => {
       cancelled = true;
     };
@@ -233,9 +219,7 @@ export default function NewItemPage() {
         image_url: j.url || j.filename
       });
       if (fileRef.current) fileRef.current.value = "";
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setUploading(false);
     }
   };
@@ -272,7 +256,7 @@ export default function NewItemPage() {
       const id = r?.data?.id || r?.id;
       if (id) router.push(`/menu/items/${id}`);
     } catch (e: any) {
-      setError(e.message || "Save failed");
+      setError(e.message || t("admin.errors.saveFailed"));
       console.error(e);
     } finally {
       setSaving(false);
@@ -730,7 +714,7 @@ export default function NewItemPage() {
                 </div>)}
             </div>
           </div>
-          <div className="df-actions"><button type="button" onClick={() => router.push("/menu/items")} className="btn btn-ghost">{t("menu_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Creating..." : "Create Item"}</button></div>
+          <div className="df-actions"><button type="button" onClick={() => router.push("/menu/items")} className="btn btn-ghost">{t("menu_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div>
         </div>
       </form>
     </div>;

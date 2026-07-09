@@ -40,7 +40,7 @@ export default function PaymentMethodsPage() {
           is_default: (m.is_default as boolean) ?? false,
         })));
       })
-      .catch((err) => { console.error('[PaymentMethods] Fetch failed:', err); setMethods([]); })
+      .catch((err) => { console.error('[PaymentMethods] Fetch failed:', err); showToast(t('toast.failedToLoad'), 'error'); setMethods([]); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -79,7 +79,7 @@ export default function PaymentMethodsPage() {
     const p = (provider || type || '').toLowerCase();
     if (p.includes('visa')) return 'VISA';
     if (p.includes('master') || p.includes('mc')) return 'MC';
-    return type?.toUpperCase() || 'CARD';
+    return type?.toUpperCase() || t('paymentMethods.cardFallback');
   };
 
   return (
@@ -123,7 +123,7 @@ export default function PaymentMethodsPage() {
             <div className="payment-empty-text">
               {t('paymentMethods.noMethodsDesc')}
             </div>
-            <button className="payment-empty-cta" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title={t('toast.cardLinkingSoon')}>
+            <button className="payment-empty-cta" onClick={handleAdd}>
               <Plus size={14} />
               {t('paymentMethods.addCardComingSoon')}
             </button>

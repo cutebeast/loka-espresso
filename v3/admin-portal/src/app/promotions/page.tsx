@@ -43,13 +43,11 @@ export default function PromotionsPage() {
     fetchBanners();
   }, []);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this promotion?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/promo-banners/${id}`);
       fetchBanners();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const actionBadge = (t: string) => {
     const m: Record<string, string> = {
@@ -106,7 +104,7 @@ export default function PromotionsPage() {
                 <td style={{
               fontSize: 12
             }}>{b.start_date ? b.start_date.slice(0, 10) : "—"} {b.end_date ? `→ ${b.end_date.slice(0, 10)}` : ""}</td>
-                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? "Active" : "Inactive"}</span></td>
+                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{
                 display: "flex",

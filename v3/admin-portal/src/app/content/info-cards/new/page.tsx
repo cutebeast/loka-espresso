@@ -155,7 +155,7 @@ export default function InfoCardNewPage() {
               })} />{t("content_info-cards_new.active")}</label></div>
         </div><div className="df-actions" style={{
           marginTop: 20
-        }}><button type="button" onClick={() => router.push("/content/info-cards")} className="btn btn-ghost">{t("content_info-cards_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? "Creating..." : "Create Card"}</button></div></form>
+        }}><button type="button" onClick={() => router.push("/content/info-cards")} className="btn btn-ghost">{t("content_info-cards_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div></form>
       </div>
     </div>;
 }

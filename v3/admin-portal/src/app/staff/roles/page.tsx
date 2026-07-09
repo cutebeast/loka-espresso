@@ -66,9 +66,7 @@ export default function StaffRolesPage() {
     }>("/admin/auth/roles").then(d => {
       const all = Array.isArray(d) ? d : d.items || [];
       setRoles(all.filter((r: Role) => STAFF_ROLE_KEYS.includes(r.role_key)));
-    }).catch(e => {
-      console.error('staff roles:', e);
-    }).finally(() => setLoading(false));
+    }).catch(e => { console.error('staff roles:', e); setMsg(e.message || t("admin.errors.loadFailed")); }).finally(() => setLoading(false));
   }, []);
   useEffect(() => {
     fetch();
@@ -78,9 +76,7 @@ export default function StaffRolesPage() {
       const all = Array.isArray(d) ? d : d.items || [];
       // Only staff portal permissions (28-37)
       setPermissions(all.filter((p: Permission) => STAFF_PERM_GROUPS.some(g => g.resources.includes(p.resource))));
-    }).catch(e => {
-      console.error('staff permissions:', e);
-    });
+    }).catch(e => { console.error('staff permissions:', e); setMsg(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,14 +116,12 @@ export default function StaffRolesPage() {
     }
   };
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this role? All assignments will be removed.")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/auth/roles/${id}`);
       fetch();
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };
@@ -156,11 +150,9 @@ export default function StaffRolesPage() {
         permission_ids: rolePerms
       });
       setAssigningRole(null);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   return <div style={{
     padding: 24

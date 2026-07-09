@@ -1,5 +1,5 @@
 """Wallet domain schemas."""
-
+from decimal import Decimal
 from datetime import datetime
 from typing import Literal
 
@@ -20,9 +20,9 @@ class WalletOut(BaseSchema):
     frozen_at: datetime | None = None
     freeze_reason: str | None = None
     frozen_by: int | None = None
-    balance: float = 0.0
-    total_credited: float = 0.0
-    total_debited: float = 0.0
+    balance: Decimal = Decimal("0")
+    total_credited: Decimal = Decimal("0")
+    total_debited: Decimal = Decimal("0")
     created_at: datetime
     updated_at: datetime
 
@@ -30,7 +30,7 @@ class WalletOut(BaseSchema):
 class WalletLedgerEntryBase(BaseSchema):
     wallet_id: int
     entry_type: Literal["credit", "debit", "hold", "release", "adjustment"]
-    amount: float = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0)
     reference_type: str | None = Field(None, max_length=50)
     reference_id: int | None = None
     description: str | None = None
@@ -39,31 +39,31 @@ class WalletLedgerEntryBase(BaseSchema):
 class WalletLedgerEntryOut(WalletLedgerEntryBase):
     id: int
     wallet_id: int
-    running_balance: float
+    running_balance: Decimal
     created_at: datetime
 
 
 class TopUpRequest(BaseSchema):
-    amount: float = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0)
     payment_method_id: int | None = None
     return_url: str | None = Field(None, max_length=500)
 
 
 class AdminTopupRequest(BaseSchema):
     customer_id: int = Field(..., gt=0)
-    amount: float = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0)
     reason: str | None = Field(None, max_length=255)
     payment_method_id: int | None = None
 
 
 class WalletTopupCheckoutRequest(BaseSchema):
-    amount: float = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0)
     return_url: str | None = Field(None, max_length=500)
 
 
 class WalletTopupCheckoutResponse(BaseSchema):
     session_id: int
     checkout_url: str
-    amount: float
+    amount: Decimal
     currency_code: str
     status: str

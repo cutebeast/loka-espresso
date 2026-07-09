@@ -28,9 +28,7 @@ export default function InventoryMovementsPage() {
       const d = await api.getRaw<any>("/admin/stores?per_page=50");
       setStores(d.items || []);
       if (!storeId && d.items?.length) setStoreId(String(d.items[0].id));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const fetchData = useCallback(async () => {
     try {

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { unstable_noStore } from "next/cache";
 import "./globals.css";
+import "@/lib/logger";
 import AuthProvider from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
@@ -9,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  unstable_noStore();
   return (
     <html lang="en" style={{ height: "100%" }}>
       <head>

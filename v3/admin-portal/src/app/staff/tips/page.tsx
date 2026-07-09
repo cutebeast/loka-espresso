@@ -22,9 +22,7 @@ export default function StaffTipsPage() {
   const [storeId, setStoreId] = useState("");
   const [stores, setStores] = useState<Store[]>([]);
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(e => {
-      console.error('stores:', e);
-    });
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const fetchData = useCallback(async () => {
     return getTipAllocations({

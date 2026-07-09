@@ -325,7 +325,7 @@ async def _deduct_stock_for_order(
         current = Decimal(str(stock.current_stock))
         if current < qty_needed:
             inv = inv_items[inv_id]
-            raise OrderError(f"Insufficient stock for {inv.item_name}: need {float(qty_needed):.3f}, have {float(current):.3f}", 400)
+            raise OrderError(f"Insufficient stock for {inv.item_name}: need {qty_needed:.3f}, have {current:.3f}", 400)
 
     for inv_id, qty_needed in recipe_needs.items():
         stock = stock_map[inv_id]
@@ -340,12 +340,12 @@ async def _deduct_stock_for_order(
             quantity_delta=-Decimal(str(qty_needed)),
             stock_after=Decimal(str(new_stock)),
             reserved_delta=0,
-            reserved_after=float(stock.reserved_stock),
+            reserved_after=stock.reserved_stock,
             reason=f"Order {order.order_number} stock deduction",
             reference_type="order",
             reference_id=order.id,
-            unit_cost_at_movement=float(inv.unit_cost) if inv.unit_cost is not None else None,
-            movement_cost=float(qty_needed * Decimal(str(inv.unit_cost or 0))),
+            unit_cost_at_movement=inv.unit_cost if inv.unit_cost is not None else None,
+            movement_cost=qty_needed * Decimal(str(inv.unit_cost or 0)),
         ))
 
 
@@ -470,7 +470,7 @@ async def create_order_from_cart(
         order_base = subtotal  # cart subtotal already includes modifiers
         min_order = to_decimal(vd.minimum_order_value)
         if order_base < min_order:
-            raise OrderError(f"Voucher requires minimum order of {float(min_order):.2f}", 400)
+            raise OrderError(f"Voucher requires minimum order of {min_order:.2f}", 400)
 
         if vd.voucher_type == "percentage_off":
             pct = to_decimal(vd.discount_value) / Decimal(100)
@@ -528,7 +528,7 @@ async def create_order_from_cart(
         order_base = subtotal  # cart subtotal already includes modifiers
         min_order = to_decimal(rc.minimum_order_value)
         if order_base < min_order:
-            raise OrderError(f"Reward requires minimum order of {float(min_order):.2f}", 400)
+            raise OrderError(f"Reward requires minimum order of {min_order:.2f}", 400)
 
         if rc.reward_type == "percentage_discount":
             pct = to_decimal(rc.discount_value) / Decimal(100)
@@ -685,9 +685,9 @@ async def create_order_from_cart(
             "item_name": item.item_name if item else None,
             "item_code": item.item_code if item else None,
             "image_url": item.image_url if item else None,
-            "base_price": float(item.base_price) if item else None,
+            "base_price": str(item.base_price) if item else None,
             "variant_name": variant.variant_name if variant else None,
-            "variant_price_adjustment": float(variant.price_adjustment) if variant else None,
+            "variant_price_adjustment": str(variant.price_adjustment) if variant else None,
             "bundle_product_id": ci.bundle_product_id,
             "bundle_component_id": ci.bundle_component_id,
             "bundle_title": bundle.title if bundle else None,
@@ -716,13 +716,13 @@ async def create_order_from_cart(
     # Create initial status log
     reason_parts = ["Order created"]
     if voucher_used:
-        reason_parts.append(f"voucher {data.voucher_code} applied ({float(voucher_discount):.2f})")
+        reason_parts.append(f"voucher {data.voucher_code} applied ({voucher_discount:.2f})")
     if reward_used:
-        reason_parts.append(f"reward #{data.reward_id} applied ({float(reward_discount):.2f})")
+        reason_parts.append(f"reward #{data.reward_id} applied ({reward_discount:.2f})")
     if bundle_discount > 0:
-        reason_parts.append(f"bundle discount ({float(bundle_discount):.2f})")
+        reason_parts.append(f"bundle discount ({bundle_discount:.2f})")
     if addon_discount > 0:
-        reason_parts.append(f"add-on deal discount ({float(addon_discount):.2f})")
+        reason_parts.append(f"add-on deal discount ({addon_discount:.2f})")
     status_log = OrderStatusLog(
         order_id=order.id,
         from_status=None,

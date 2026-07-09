@@ -9,6 +9,17 @@ export function parseApiError(err: unknown, fallback = "Something went wrong"): 
         return parsed.detail.map((e: { msg?: string }) => e.msg || "").filter(Boolean).join("; ") || fallback;
       }
     }
-  } catch { /* not JSON */ }
+  } catch { /* response is not JSON, fall through to text handling */ }
   return raw || fallback;
+}
+
+export function isNotFoundError(err: unknown): boolean {
+  const e = err as any;
+  if (e?.response?.status === 404) return true;
+  if (e?.status === 404) return true;
+  if (err instanceof Error) {
+    const m = err.message.toLowerCase();
+    return m.includes("404") || m.includes("not found");
+  }
+  return false;
 }

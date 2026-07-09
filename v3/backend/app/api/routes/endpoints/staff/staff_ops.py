@@ -25,7 +25,7 @@ from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
 from app.models.staff import StaffProfile, StaffShift, StaffTask, StaffTimeEvent, TipAllocation
 from app.models.platform import PlatformConfig
-from app.models.store import Store, DiningTable, StoreConfiguration, TableStatusSnapshot
+from app.models.store import Store, DiningTable, Reservation, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.staff import (
     StaffLoginRequest,
@@ -443,6 +443,7 @@ async def staff_profile_me(db: DBDependency, request: Request):
         return APIResponse(data={
             "display_name": admin.display_name, "email": admin.email,
             "is_admin": True, "roles": roles, "store_id": payload.get("store_id"),
+            "must_change_pin": False,
         })
 
     # Staff user
@@ -456,6 +457,7 @@ async def staff_profile_me(db: DBDependency, request: Request):
                 "display_name": sp.display_name, "email": sp.email_address,
                 "is_admin": False, "roles": [sp.role.replace("_", " ").title()],
                 "store_id": sp.store_id, "staff_role": sp.role,
+                "must_change_pin": sp.pin_last_changed_at is None,
             })
 
     # Admin user on staff portal (staff_id == 0)
@@ -470,9 +472,10 @@ async def staff_profile_me(db: DBDependency, request: Request):
                 "is_admin": True,
                 "roles": ["Staff Portal"],
                 "store_id": payload.get("store_id"),
+                "must_change_pin": False,
             })
 
-    return APIResponse(data={"display_name": payload.get("admin_name", "User"), "roles": ["Staff Portal"]})
+    return APIResponse(data={"display_name": payload.get("admin_name", "User"), "roles": ["Staff Portal"], "must_change_pin": False})
 
 
 @router.post("/staff/auth/logout")
@@ -527,9 +530,12 @@ async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
 
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_resv = (await db.execute(
-        select(func.count(DiningTable.id)).where(
-            DiningTable.store_id == store_id,
-            DiningTable.deleted_at.is_(None),
+        select(func.count(Reservation.id)).where(
+            Reservation.store_id == store_id,
+            Reservation.reservation_date == date.today(),
+            Reservation.status.notin_([
+                "cancelled_by_guest", "cancelled_by_merchant", "no_show"
+            ]),
         )
     )).scalar() or 0
 
@@ -556,7 +562,7 @@ async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
     return APIResponse(data={
         "pending_orders": pending,
         "occupied_tables": occupied,
-        "today_reservations": 0,
+        "today_reservations": today_resv,
         "clock_status": clock_status,
         "current_shift_start": shift_start.isoformat() if shift_start else None,
         "store_name": store_name,
@@ -595,6 +601,48 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, request: 
     return APIResponse(data={"items": items})
 
 
+# ── Staff Store Config (POS display) ──
+
+@router.get("/staff/store")
+async def staff_store_config(db: DBDependency, staff: CurrentStaff):
+    """Return the active store's public details plus POS fee configuration."""
+    store = await db.get(Store, staff.store_id)
+    if not store or store.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    config_result = await db.execute(
+        select(StoreConfiguration).where(
+            StoreConfiguration.store_id == store.id,
+            StoreConfiguration.config_key.in_([
+                "order.service_charge",
+                "order.tax_rate",
+                "pos.customer_display.left",
+            ]),
+        )
+    )
+    config_map = {c.config_key: c.config_value for c in config_result.scalars().all()}
+
+    def _to_float(value, default=0.0):
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    return APIResponse(data={
+        "id": store.id,
+        "store_name": store.store_name,
+        "brand_name": store.brand_name,
+        "currency_code": store.currency_code,
+        "service_charge": _to_float(config_map.get("order.service_charge"), 0.0),
+        "tax_rate": _to_float(config_map.get("order.tax_rate"), 0.0),
+        "display_left": int(_to_float(config_map.get("pos.customer_display.left"), 1920.0)),
+    })
+
+
 # ── PIN Verify ──
 
 @router.post("/staff/auth/verify-pin")
@@ -602,8 +650,8 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, request: 
 async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentStaff, data: StaffPinVerifyRequest):
 
     pin = str(data.pin or "").strip()
-    if not pin or len(pin) < 4:
-        raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
+    if not pin or len(pin) != 6 or not pin.isdigit():
+        raise HTTPException(status_code=400, detail="PIN must be exactly 6 digits")
 
     import bcrypt
     if not hasattr(staff, "pin_hash") or not staff.pin_hash:
@@ -678,8 +726,14 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
     if not staff.pin_hash or not verify_password_staff(current, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode()):
         raise HTTPException(status_code=400, detail="Current PIN is incorrect")
     p = (data.new_pin or "").strip()
-    if len(p) < 4: raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
+    if not p or len(p) != 6 or not p.isdigit():
+        raise HTTPException(status_code=400, detail="PIN must be exactly 6 digits")
+    if p == "000000":
+        raise HTTPException(status_code=400, detail="Invalid PIN")
+    if p == current:
+        raise HTTPException(status_code=400, detail="New PIN must be different")
     staff.pin_hash = hash_password(p)
+    staff.pin_last_changed_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"updated": True})
 
@@ -901,8 +955,8 @@ async def staff_pos_create_order(
                 "order_id": existing_order.id,
                 "order_number": existing_order.order_number,
                 "status": existing_order.status,
-                "total": float(existing_order.total_amount),
-                "change": float(replay_change),
+                "total": existing_order.total_amount,
+                "change": replay_change,
                 "created_at": existing_order.created_at.isoformat(),
             })
 
@@ -1026,7 +1080,7 @@ async def staff_pos_create_order(
                     to_status="captured",
                     from_status="initiated",
                     amount=total,
-                    provider_response={"method": payment_data.method, "tendered": float(amount_tendered) if payment_data.method == "cash" else None},
+                    provider_response={"method": payment_data.method, "tendered": str(amount_tendered) if payment_data.method == "cash" else None},
                 )
 
         # Update table status if dine-in
@@ -1056,8 +1110,8 @@ async def staff_pos_create_order(
                     "order_id": existing_order.id,
                     "order_number": existing_order.order_number,
                     "status": existing_order.status,
-                    "total": float(existing_order.total_amount),
-                    "change": float(replay_change),
+                    "total": existing_order.total_amount,
+                    "change": replay_change,
                     "created_at": existing_order.created_at.isoformat(),
                 })
         raise
@@ -1071,12 +1125,16 @@ async def staff_pos_create_order(
         "order_id": order.id,
         "order_number": order.order_number,
         "status": order.status,
-        "total": float(total),
-        "change": float(change),
+        "total": total,
+        "change": change,
         "created_at": order.created_at.isoformat(),
     }
     if payment_url:
         response_data["payment_url"] = payment_url
+        # Generate a signed guest-pay token so a walk-in customer can scan the
+        # QR and pay from their phone via the PWA without logging in.
+        from app.core.security import create_guest_pay_token
+        response_data["pay_token"] = create_guest_pay_token(order.id, order.store_id)
 
     return APIResponse(data=response_data)
 
@@ -1344,9 +1402,9 @@ async def list_inventory_for_staff(
                 "item_code": s.item.item_code,
                 "item_type": s.item.item_type,
                 "unit_of_measure": s.item.unit_of_measure,
-                "current_stock": float(s.current_stock),
-                "reorder_level": float(s.reorder_level or 0),
-                "par_level": float(s.par_level or 0),
+                "current_stock": s.current_stock,
+                "reorder_level": s.reorder_level or 0,
+                "par_level": s.par_level or 0,
                 "storage_location": s.storage_location,
                 "category_name": s.item.category.category_name if s.item.category else None,
             }
@@ -1396,7 +1454,7 @@ async def staff_update_stock(
         db.add(stock)
         await db.flush()
 
-    old_stock = float(stock.current_stock)
+    old_stock = stock.current_stock
     delta = round(data.current_stock - old_stock, 4)
 
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
@@ -1422,7 +1480,7 @@ async def staff_update_stock(
     return APIResponse(data={
         "id": item.id,
         "item_name": item.item_name,
-        "current_stock": float(stock.current_stock),
+        "current_stock": stock.current_stock,
         "previous_stock": old_stock,
         "delta": delta,
     })
@@ -1472,7 +1530,7 @@ async def staff_report_waste(
             await db.flush()
 
         delta = round(-data.quantity, 4)
-        new_stock = round(float(stock.current_stock) + delta, 4)
+        new_stock = round(stock.current_stock + delta, 4)
         stock.current_stock = max(0, new_stock)
         stock.updated_at = now
 
@@ -1481,7 +1539,7 @@ async def staff_report_waste(
             store_id=store_id,
             movement_type="waste",
             quantity_delta=delta,
-            stock_after=float(stock.current_stock),
+            stock_after=stock.current_stock,
             reason=f"[Reported by {staff_name}] {data.reason}",
         )
         db.add(movement)
@@ -1493,7 +1551,7 @@ async def staff_report_waste(
             "id": item.id,
             "item_name": item.item_name,
             "wasted_quantity": data.quantity,
-            "current_stock": float(stock.current_stock),
+            "current_stock": stock.current_stock,
             "message": "Waste recorded for inventory item",
         })
 
@@ -1528,7 +1586,7 @@ async def staff_report_waste(
             )
             stock_row = stock_result.scalar_one_or_none()
             if stock_row:
-                new_stock = max(0, round(float(stock_row.current_stock) - total_qty, 4))
+                new_stock = max(0, round(stock_row.current_stock - total_qty, 4))
                 stock_row.current_stock = new_stock
                 stock_row.updated_at = now
                 movement = InventoryMovementLog(

@@ -36,14 +36,12 @@ export default function InventorySuppliersPage() {
     fetchData();
   }, [fetchData]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/inventory/suppliers/${id}`);
       setConfirmDelete(null);
       fetchData();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   return <div style={{
     padding: 32

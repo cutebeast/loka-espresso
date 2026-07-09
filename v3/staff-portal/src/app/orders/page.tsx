@@ -33,7 +33,7 @@ export default function OrdersPage() {
     try {
       if (!storeId) {
         setLoading(false);
-        setError("Store not selected");
+        setError(t("orders.err_store_not_selected"));
         return;
       }
       const data = await getOrders(storeId, undefined);
@@ -46,7 +46,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, t]);
   usePolling(fetchOrders, [storeId], {
     interval: 10000
   });
@@ -85,15 +85,15 @@ export default function OrdersPage() {
   const totalUnpaid = unpaidByType.dine_in.length + unpaidByType.takeaway.length + unpaidByType.delivery.length;
   const tabConfig = [{
     key: "queue" as Tab,
-    label: "Queue",
+    label: t("orders.tab_queue"),
     icon: LayoutGrid
   }, {
     key: "unpaid" as Tab,
-    label: `Unpaid${totalUnpaid > 0 ? ` (${totalUnpaid})` : ""}`,
+    label: totalUnpaid > 0 ? t("orders.unpaid_count", { count: totalUnpaid }) : t("orders.unpaid"),
     icon: Wallet
   }, {
     key: "history" as Tab,
-    label: "History",
+    label: t("orders.tab_history"),
     icon: CheckCircle
   }];
   return <div style={{
@@ -101,7 +101,7 @@ export default function OrdersPage() {
     maxWidth: 1400,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("orders.order_queue")} subtitle={`${orders.filter(o => !o.status.includes("delivered") && !o.status.includes("cancelled")).length} active`} action={<button onClick={fetchOrders} className="btn btn-ghost btn-sm">
+      <PageHeader title={t("orders.order_queue")} subtitle={`${orders.filter(o => !o.status.includes("delivered") && !o.status.includes("cancelled")).length} ${t("orders.active")}`} action={<button onClick={fetchOrders} className="btn btn-ghost btn-sm">
             <RefreshCw size={14} />{t("orders.refresh")}</button>} />
 
       {error && <Alert variant="error" onDismiss={() => setError("")} autoDismiss={5000}>{error}</Alert>}
@@ -137,19 +137,19 @@ export default function OrdersPage() {
           <Filter size={16} className="text-gray-400 shrink-0" />
           {[{
           value: "all",
-          label: "All Types",
+          label: t("orders.all_types"),
           icon: null
         }, {
           value: "dine_in",
-          label: "Dine-in",
+          label: t("orders.type_dine_in"),
           icon: <UtensilsCrossed size={12} />
         }, {
           value: "takeaway",
-          label: "Takeaway",
+          label: t("orders.type_takeaway"),
           icon: <Package size={12} />
         }, {
           value: "delivery",
-          label: "Delivery",
+          label: t("orders.type_delivery"),
           icon: <Truck size={12} />
         }].map(t => <button key={t.value} onClick={() => setTypeFilter(t.value)} className={`badge badge-sm flex items-center gap-1 cursor-pointer ${typeFilter === t.value ? "badge-primary" : "badge-outline"}`}>
               {t.icon}
@@ -165,7 +165,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {loading ? <SkeletonCard count={6} /> : filteredOrders.length === 0 ? <EmptyState title={t("orders.no_orders_found")} description={`No ${tab} orders match your filters.`} icon={<ClipboardList size={48} />} /> : tab === "unpaid" ? (/* ── Unpaid List View ── */
+      {loading ? <SkeletonCard count={6} /> : filteredOrders.length === 0 ? <EmptyState title={t("orders.no_orders_found")} description={t("orders.no_orders_match", { tab })} icon={<ClipboardList size={48} />} /> : tab === "unpaid" ? (/* ── Unpaid List View ── */
     <div style={{
       display: "flex",
       flexDirection: "column",

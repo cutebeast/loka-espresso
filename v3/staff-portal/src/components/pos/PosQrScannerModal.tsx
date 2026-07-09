@@ -17,7 +17,7 @@ export default function PosQrScannerModal({
   const {
     t
   } = useTranslation();
-  return <Modal open={open} onClose={onClose} title={mode === "customer" ? "Scan Customer QR" : "Scan Table QR"} size="sm">
+  return <Modal open={open} onClose={onClose} title={mode === "customer" ? t("common.scan_customer_qr") : t("common.scan_table_qr")} size="sm">
       {scannerError ? <div style={{
       padding: 20,
       textAlign: "center"

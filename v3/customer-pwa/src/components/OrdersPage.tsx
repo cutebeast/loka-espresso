@@ -43,7 +43,7 @@ export default function OrdersPage() {
     if (s === 'pending') return 0;
     if (s === 'confirmed') return 1;
     if (s === 'preparing' || s === 'in_progress') return 2;
-    if (s === 'ready') return 3;
+    if (s === 'ready_for_pickup') return 3;
     if (s === 'completed' || s === 'delivered') return 4;
     return 0;
   }, []);
@@ -130,7 +130,7 @@ export default function OrdersPage() {
         setPastPage(nextPage);
         setHasMorePast(past.length === 10);
       }
-    } catch (err) { console.error('[OrdersPage] Failed to load past orders:', err); }
+    } catch (err) { console.error('[OrdersPage] Failed to load past orders:', err); showToast(t('toast.loadPastOrdersFailed'), 'error'); }
     finally { setLoadingPast(false); }
   }, [pastPage]);
 
@@ -221,7 +221,7 @@ export default function OrdersPage() {
               return (
                 <div key={order.id} className="orders-past-card" onClick={() => openDetail(order)}>
                   <div className="orders-past-thumb">
-                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt={firstItem.item_name || 'Order item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
+                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt={firstItem.item_name || t('profile_page.order_item')} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
                   </div>
                   <div className="orders-past-info">
                     <div className="orders-past-number">{t('orders.orderNumber', { number: order.order_number })}</div>

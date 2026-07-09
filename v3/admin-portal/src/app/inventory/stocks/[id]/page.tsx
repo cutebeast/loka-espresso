@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save } from "lucide-react";
 interface StockRecord {
   id: number;
@@ -27,6 +29,7 @@ export default function StockEditPage() {
   const id = params?.id as string;
   const [record, setRecord] = useState<StockRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
@@ -50,7 +53,10 @@ export default function StockEditPage() {
         par_level: item.par_level ?? 0,
         storage_location: item.storage_location || ""
       });
-    }).catch((e: any) => setError(e.message || "Failed to load stock record")).finally(() => setLoading(false));
+    }).catch((e: any) => {
+    if (isNotFoundError(e)) setNotFound(true);
+    else setError(e.message || "Failed to load stock record");
+  }).finally(() => setLoading(false));
   }, [id]);
   const handleSave = async () => {
     setSaving(true);
@@ -72,6 +78,7 @@ export default function StockEditPage() {
       setSaving(false);
     }
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) {
     return <div style={{
       padding: 32
@@ -184,7 +191,7 @@ export default function StockEditPage() {
       }}>
           <button type="button" onClick={() => router.back()} className="btn btn-ghost">{t("inventory_stocks_[id].cancel")}</button>
           <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary">
-            <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
+            <Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}
           </button>
         </div>
       </div>

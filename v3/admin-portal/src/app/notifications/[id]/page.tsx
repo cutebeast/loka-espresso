@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { logError } from "@/lib/logger";
 import { ArrowLeft, Save, Send, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 const TYPES = ["general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"];
@@ -28,13 +29,7 @@ const LOCALES = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "title",
-  label: "Title"
-}, {
-  key: "body",
-  label: "Body"
-}];
+
 interface Template {
   id: number;
   name: string;
@@ -47,6 +42,14 @@ export default function NotificationEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "title",
+  label: t("admin.form.title")
+}, {
+  key: "body",
+  label: "Body"
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
@@ -68,9 +71,7 @@ export default function NotificationEditPage() {
     load();
     api.get<{
       items: Template[];
-    }>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('templates:', e);
-    });
+    }>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('templates:', e); setMsg(e.message || t("admin.errors.loadFailed")); });
   }, [id]);
   const load = async () => {
     setLoading(true);
@@ -95,13 +96,11 @@ export default function NotificationEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
-    } catch {
-      // record not found / load failed — show friendly state
+    } catch (e) {
+      logError("Failed to load notification", e);
       setNotFound(true);
     } finally {
       setLoading(false);
@@ -121,23 +120,19 @@ export default function NotificationEditPage() {
     setSaving(true);
     try {
       await api.put(`/admin/notifications/${id}`, form);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
   const handleSend = async () => {
-    if (!confirm("Send now?")) return;
+    if (!confirm(t("common.confirm_send"))) return;
     try {
       await api.post(`/admin/notifications/${id}/send`, {});
       setMsg("Sent!");
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
     try {
@@ -155,9 +150,7 @@ export default function NotificationEditPage() {
         record_id: Number(id),
         column_name: field
       });
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const regenAll = async () => {
     setRegen(true);
@@ -179,9 +172,7 @@ export default function NotificationEditPage() {
           await upsertTr(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${c} fields`);
     setTimeout(() => setMsg(""), 2500);
@@ -194,11 +185,9 @@ export default function NotificationEditPage() {
         const t = tr[`${loc}:${f.key}`] || "";
         if (t) await upsertTr(f.key, loc, (form[f.key] || "").trim(), t);
       }
-      setMsg("Translations saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSavingTr(false);
     }
   };
@@ -339,7 +328,7 @@ export default function NotificationEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/notifications")} className="btn btn-ghost">{t("notifications_[id].cancel")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/notifications")} className="btn btn-ghost">{t("notifications_[id].cancel")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 700

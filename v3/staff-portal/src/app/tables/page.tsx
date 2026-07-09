@@ -85,7 +85,7 @@ export default function TablesPage() {
     try {
       await generateTableQr(storeId, table.id);
       await fetchTables();
-      setSuccess(`QR generated for Table ${table.table_number}`);
+      setSuccess(t("tables.qr_generated", { number: table.table_number }));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
@@ -104,7 +104,7 @@ export default function TablesPage() {
       await fetchTables();
       setSelectedTable(null);
       setConfirmClean(null);
-      setSuccess(`Table ${confirmClean.table_number} marked as available`);
+      setSuccess(t("tables.marked_available", { number: confirmClean.table_number }));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
@@ -132,7 +132,7 @@ export default function TablesPage() {
     if (!url) return;
     const a = document.createElement("a");
     a.href = url;
-    a.download = `table-${table.table_number}-qr.png`;
+    a.download = `${t("common.table").trim().toLowerCase()}-${table.table_number}-qr.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -157,26 +157,26 @@ export default function TablesPage() {
       flexWrap: "wrap"
     }}>
         {[{
-        label: "Available",
+        labelKey: "tables.status_available",
         count: statusCounts.available,
         color: "var(--color-success)"
       }, {
-        label: "Occupied",
+        labelKey: "tables.status_occupied",
         count: statusCounts.occupied,
         color: "var(--color-error)"
       }, {
-        label: "Reserved",
+        labelKey: "tables.status_reserved",
         count: statusCounts.reserved,
         color: "var(--color-warning)"
       }, {
-        label: "Cleaning",
+        labelKey: "tables.status_cleaning",
         count: statusCounts.cleaning,
         color: "var(--color-text-muted)"
       }, {
-        label: "Maintenance",
+        labelKey: "tables.status_maintenance",
         count: statusCounts.maintenance,
         color: "var(--color-info)"
-      }].map(s => <div key={s.label} style={{
+      }].map(s => <div key={(s as { labelKey: string }).labelKey} style={{
         display: "flex",
         alignItems: "center",
         gap: 6,
@@ -188,7 +188,7 @@ export default function TablesPage() {
           borderRadius: "50%",
           background: s.color
         }} />
-            {s.label} ({s.count})
+            {t((s as { labelKey: string }).labelKey)} ({s.count})
           </div>)}
       </div>
 
@@ -256,7 +256,7 @@ export default function TablesPage() {
               background: statusColor(table.current_status) + "20",
               color: statusColor(table.current_status)
             }}>
-                    {table.current_status?.toUpperCase()}
+                    {t(`staff.status.${(table.current_status || "").replace(/-/g, "_")}`).toUpperCase()}
                   </span>
                 </div>
 
@@ -333,7 +333,7 @@ export default function TablesPage() {
         </div>}
 
       {/* Table Detail Modal */}
-      <Modal open={!!selectedTable} onClose={() => setSelectedTable(null)} title={selectedTable ? `Table ${selectedTable.table_number}` : ""} size="md">
+      <Modal open={!!selectedTable} onClose={() => setSelectedTable(null)} title={selectedTable ? `${t("common.table")}${selectedTable.table_number}` : ""} size="md">
         {selectedTable && <div>
             <div style={{
           display: "flex",
@@ -356,7 +356,7 @@ export default function TablesPage() {
             background: statusColor(selectedTable.current_status) + "20",
             color: statusColor(selectedTable.current_status)
           }}>
-                {selectedTable.current_status?.toUpperCase()}
+                {t(`staff.status.${(selectedTable.current_status || "").replace(/-/g, "_")}`).toUpperCase()}
               </span>
             </div>
 
@@ -369,7 +369,7 @@ export default function TablesPage() {
           borderRadius: "var(--radius-lg)"
         }}>
               {qrImages[selectedTable.id] ? <>
-                  <img src={qrImages[selectedTable.id]} alt={`QR for Table ${selectedTable.table_number}`} style={{
+                  <img src={qrImages[selectedTable.id]} alt={`${t("pos.payment_qr_alt")} ${t("common.table")}${selectedTable.table_number}`} style={{
               width: 180,
               height: 180,
               margin: "0 auto",
@@ -380,7 +380,7 @@ export default function TablesPage() {
               color: "var(--color-text-muted)",
               marginTop: 8
             }}>
-                    {qrExpiry[selectedTable.id]?.expired ? "QR Expired" : `Expires in ${Math.floor((qrExpiry[selectedTable.id]?.remaining || 0) / 60)}m ${(qrExpiry[selectedTable.id]?.remaining || 0) % 60}s`}
+                    {qrExpiry[selectedTable.id]?.expired ? t("tables.qr_expired") : t("tables.expires_in", { minutes: Math.floor((qrExpiry[selectedTable.id]?.remaining || 0) / 60), seconds: (qrExpiry[selectedTable.id]?.remaining || 0) % 60 })}
                   </p>
                   <div style={{
               display: "flex",
@@ -436,7 +436,7 @@ export default function TablesPage() {
               await updateTableStatus(storeId, selectedTable.id, "maintenance");
               await fetchTables();
               setSelectedTable(null);
-              setSuccess(`Table ${selectedTable.table_number} set to maintenance`);
+              setSuccess(t("tables.set_to_maintenance", { number: selectedTable.table_number }));
               if (successTimerRef.current) clearTimeout(successTimerRef.current);
               successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
             } catch (err: unknown) {

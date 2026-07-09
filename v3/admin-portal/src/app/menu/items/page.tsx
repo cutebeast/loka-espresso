@@ -23,10 +23,10 @@ export default function MenuItemsPage() {
   useEffect(() => {
     api.getRaw<{
       items: any[];
-    }>("/admin/menu/items?per_page=100").then(d => setItems(d.items || [])).catch((e: any) => setError(e.message || "Failed to load menu items")).finally(() => setLoading(false));
+    }>("/admin/menu/items?per_page=100").then(d => setItems(d.items || [])).catch((e: any) => setError(e.message || t("admin.errors.loadFailed"))).finally(() => setLoading(false));
     api.getRaw<{
       items: any[];
-    }>("/admin/menu/categories?per_page=50").then(d => setCategories(d.items || [])).catch((e: any) => console.error("Failed to load categories:", e));
+    }>("/admin/menu/categories?per_page=50").then(d => setCategories(d.items || [])).catch((e: any) => { console.error("Failed to load categories:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const filtered = catFilter ? items.filter(i => i.category_id === Number(catFilter)) : items;
   return <div style={{
@@ -117,23 +117,21 @@ export default function MenuItemsPage() {
             }}>
                   {(item.recipes || []).length ? <span className="badge badge-sm badge-blue">{(item.recipes || []).length}{t("menu_items.components")}</span> : "—"}
                 </td>
-                <td><span className={`badge badge-sm ${item.is_available ? "badge-green" : "badge-gray"}`}>{item.is_available ? "Active" : "Inactive"}</span></td>
+                <td><span className={`badge badge-sm ${item.is_available ? "badge-green" : "badge-gray"}`}>{item.is_available ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-info)",
                 marginRight: 4
               }}><Edit2 size={14} /></button>
                   <button onClick={async () => {
-                if (confirm("Delete?")) {
+                if (confirm(t("common.confirm_delete"))) {
                   try {
                     await api.del(`/admin/menu/items/${item.id}`);
                     const d = await api.getRaw<{
                       items: any[];
                     }>("/admin/menu/items?per_page=100");
                     setItems(d.items || []);
-                  } catch (e) {
-                    console.error(e);
-                  }
+                  } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
                 }
               }} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-error)"

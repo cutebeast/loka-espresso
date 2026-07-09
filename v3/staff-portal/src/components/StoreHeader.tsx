@@ -5,7 +5,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { staffLogout } from "@/lib/api";
 import { useTranslation } from "@/hooks/useTranslation";
 import LanguageSelector from "@/components/LanguageSelector";
-import { Store, LogOut, Shield } from "lucide-react";
+import { Store, LogOut, Shield, HelpCircle } from "lucide-react";
 
 export default function StoreHeader() {
   const router = useRouter();
@@ -47,6 +47,16 @@ export default function StoreHeader() {
           {staffName}
         </span>
         <LanguageSelector />
+        <button
+          type="button"
+          className="store-header-logout"
+          onClick={() => router.push("/help")}
+          title={t("header.help")}
+          aria-label={t("header.help")}
+          style={{ marginRight: 4 }}
+        >
+          <HelpCircle size={18} />
+        </button>
         <button type="button" className="store-header-logout" onClick={handleLogout} title={t("header.logout")} aria-label={t("header.logout")}>
           <LogOut size={18} />
         </button>

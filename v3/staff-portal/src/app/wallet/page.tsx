@@ -71,10 +71,11 @@ export default function WalletPage() {
     } catch (e) {
       console.error("Customer search failed:", e);
       setSearchResults([]);
+      setError(t("staff.errors.search_failed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   const loadCustomer = async (customer: Customer) => {
     setSelectedCustomer(customer);
     setSearchResults([]);
@@ -100,11 +101,11 @@ export default function WalletPage() {
         const data = await scanCustomerCode(code);
         const customer = await getCustomerById(data.customer_id);
         await loadCustomer(customer);
-        setSuccess(`Found customer: ${data.customer_name}`);
+        setSuccess(t("wallet.found_customer", { name: data.customer_name }));
       } else if (scanMode === "reward") {
         const data = await scanRewardCode(code);
         if (!data.valid) {
-          setError("Invalid or expired reward");
+          setError(t("wallet.err_invalid_reward"));
           return;
         }
         if (data.customer_id && selectedCustomer?.id !== data.customer_id) {
@@ -114,12 +115,12 @@ export default function WalletPage() {
           const wallet = await getCustomerWallet(selectedCustomer.id);
           setWalletData(wallet);
         }
-        setSuccess(`Reward found: ${data.name}`);
+        setSuccess(t("wallet.found_reward", { name: data.name }));
         setTab("rewards");
       } else if (scanMode === "voucher") {
         const data = await scanVoucherCode(code);
         if (!data.valid) {
-          setError("Invalid or expired voucher");
+          setError(t("wallet.err_invalid_voucher"));
           return;
         }
         if (data.customer_id && selectedCustomer?.id !== data.customer_id) {
@@ -129,12 +130,12 @@ export default function WalletPage() {
           const wallet = await getCustomerWallet(selectedCustomer.id);
           setWalletData(wallet);
         }
-        setSuccess(`Voucher found: ${data.title}`);
+        setSuccess(t("wallet.found_voucher", { title: data.title }));
         setTab("rewards");
       }
     } catch (err: unknown) {
       console.error("Scan failed:", err);
-      setError(parseApiError(err, "Scan failed"));
+      setError(parseApiError(err, t("wallet.scan_failed")));
     } finally {
       setLoading(false);
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -157,17 +158,18 @@ export default function WalletPage() {
       return (d?.valid || d?.data?.valid) === true;
     } catch (e) {
       console.error("PIN verification failed:", e);
+      setError(t("staff.errors.verify_failed"));
       return false;
     }
-  }, []);
+  }, [t]);
   const handleTopUp = async () => {
     const amt = parseFloat(amount);
     if (!selectedCustomer || !amount || isNaN(amt) || amt <= 0) {
-      setError("Select a customer and enter a valid amount");
+      setError(t("wallet.err_customer_amount"));
       return;
     }
     if (amt > MAX_TOPUP) {
-      setError(`Maximum top-up is RM ${MAX_TOPUP.toLocaleString()}`);
+      setError(t("common.maximum_topup", { amount: MAX_TOPUP.toLocaleString() }));
       return;
     }
     setToppingUp(true);
@@ -175,7 +177,7 @@ export default function WalletPage() {
       const valid = await verifyPin(pin);
       if (!valid) {
         attemptCountRef.current++;
-        setError("Invalid PIN");
+        setError(t("wallet.err_invalid_pin"));
         setToppingUp(false);
         return;
       }
@@ -187,7 +189,7 @@ export default function WalletPage() {
         notes: notes || undefined
       });
       const bal = typeof res.new_balance === "number" && !isNaN(res.new_balance) ? res.new_balance.toFixed(2) : "—";
-      setSuccess(`Top-up successful! New balance: RM ${bal}`);
+      setSuccess(t("wallet.top_up_successful", { balance: bal }));
       setAmount("");
       setPin("");
       setNotes("");
@@ -195,14 +197,14 @@ export default function WalletPage() {
       if (selectedCustomer) loadCustomer(selectedCustomer);
     } catch (e: unknown) {
       console.error("Top-up failed:", e);
-      setError(parseApiError(e, "Top-up failed"));
+      setError(parseApiError(e, t("wallet.top_up_failed")));
     } finally {
       setToppingUp(false);
     }
   };
   const handleUseReward = async (reward: Reward) => {
     if (!selectedCustomer) {
-      setError("Search for a customer first");
+      setError(t("wallet.err_search_customer"));
       return;
     }
     setPendingRedeem({
@@ -213,7 +215,7 @@ export default function WalletPage() {
   };
   const handleUseVoucher = async (voucher: Voucher) => {
     if (!selectedCustomer) {
-      setError("Search for a customer first");
+      setError(t("wallet.err_search_customer"));
       return;
     }
     setPendingRedeem({
@@ -224,13 +226,13 @@ export default function WalletPage() {
   };
   const executeRedeem = async () => {
     if (!pendingRedeem || !selectedCustomer) {
-      setError("Select a reward or voucher first");
+      setError(t("wallet.err_select_reward"));
       return;
     }
     const valid = await verifyPin(redeemPin);
     if (!valid) {
       attemptCountRef.current++;
-      setError("Invalid PIN");
+      setError(t("wallet.err_invalid_pin"));
       return;
     }
     attemptCountRef.current = 0;
@@ -242,10 +244,10 @@ export default function WalletPage() {
       setRedeemType("reward");
       try {
         const res = await markRewardUsed(selectedCustomer.id, reward.id);
-        setSuccess(res.message || "Reward used successfully");
+        setSuccess(res.message || t("wallet.reward_used_success"));
         if (selectedCustomer) loadCustomer(selectedCustomer);
       } catch (e: unknown) {
-        setError(parseApiError(e, "Failed to redeem reward"));
+        setError(parseApiError(e, t("wallet.redeem_reward_failed")));
       } finally {
         setRedeemingId(null);
         setRedeemType(null);
@@ -256,10 +258,10 @@ export default function WalletPage() {
       setRedeemType("voucher");
       try {
         const res = await markVoucherUsed(selectedCustomer.id, voucher.id);
-        setSuccess(res.message || "Voucher used successfully");
+        setSuccess(res.message || t("wallet.voucher_used_success"));
         if (selectedCustomer) loadCustomer(selectedCustomer);
       } catch (e: unknown) {
-        setError(parseApiError(e, "Failed to redeem voucher"));
+        setError(parseApiError(e, t("wallet.redeem_voucher_failed")));
       } finally {
         setRedeemingId(null);
         setRedeemType(null);
@@ -268,17 +270,17 @@ export default function WalletPage() {
     setPendingRedeem(null);
   };
   const formatRewardName = (r: Reward) => {
-    return r.name || (r.redemption_code ? `Reward #${r.redemption_code}` : `Reward #${r.id}`);
+    return r.name || (r.redemption_code ? t("common.reward_n", { id: r.redemption_code }) : t("common.reward_n", { id: r.id }));
   };
   const formatVoucherName = (v: Voucher) => {
-    return v.title || v.code || v.voucher_title || v.voucher_code || `Voucher #${v.id}`;
+    return v.title || v.code || v.voucher_title || v.voucher_code || t("common.voucher_n", { id: v.id });
   };
   return <div style={{
     padding: 24,
     maxWidth: 700,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("wallet.customer_service")} subtitle="Wallet, Rewards & Vouchers" />
+      <PageHeader title={t("wallet.customer_service")} subtitle={t("wallet.subtitle")} />
 
       {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
       {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
@@ -304,7 +306,7 @@ export default function WalletPage() {
         marginBottom: 8,
         display: "block"
       }}>
-          {selectedCustomer ? "Customer" : "Search Customer"}
+          {selectedCustomer ? t("wallet.customer") : t("wallet.search_customer")}
         </label>
         {!selectedCustomer ? <>
             <div style={{
@@ -382,7 +384,7 @@ export default function WalletPage() {
             fontSize: 14,
             fontWeight: 700
           }}>
-                {(selectedCustomer.display_name || "?").charAt(0).toUpperCase()}
+                {(selectedCustomer.display_name || t("common.unnamed")).charAt(0).toUpperCase()}
               </div>
               <div>
                 <div style={{
@@ -432,7 +434,7 @@ export default function WalletPage() {
             fontSize: 18,
             fontWeight: 700
           }}>
-                {(selectedCustomer.display_name || "?").charAt(0).toUpperCase()}
+                {(selectedCustomer.display_name || t("common.unnamed")).charAt(0).toUpperCase()}
               </div>
               <div>
                 <div style={{
@@ -505,7 +507,7 @@ export default function WalletPage() {
 
           {tab === "topup" && <Card>
               <label className="form-label">{t("wallet.top_up_amount")}</label>
-              <input type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="form-input" style={{
+              <input type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder={t("wallet.zero_amount")} className="form-input" style={{
           fontSize: 24,
           fontWeight: 700,
           marginBottom: 10
@@ -553,7 +555,7 @@ export default function WalletPage() {
             }} autoFocus />
                   </form>
                   <button className="btn btn-primary w-full" onClick={handleTopUp} disabled={toppingUp || pin.length < 4}>
-                    {toppingUp ? "Processing..." : `Top-Up RM ${(() => {
+                    {toppingUp ? t("wallet.processing") : `${t("wallet.top_up_rm")}${(() => {
               const a = parseFloat(amount || "0");
               return isNaN(a) ? "0.00" : a.toFixed(2);
             })()}`}
@@ -598,7 +600,7 @@ export default function WalletPage() {
                   </div>
                 </Card>}
               {/* Rewards */}
-              <Card title={`Available Rewards (${walletData.rewards?.length || 0})`}>
+              <Card title={t("wallet.available_rewards", { count: walletData.rewards?.length || 0 })}>
                 {!walletData.rewards || walletData.rewards.length === 0 ? <EmptyState title={t("wallet.no_rewards")} description={t("wallet.this_customer_has_no_available_rewards")} icon={<Gift size={40} />} /> : <div style={{
             display: "flex",
             flexDirection: "column",
@@ -625,7 +627,7 @@ export default function WalletPage() {
                             {reward.points_spent !== undefined && <>{reward.points_spent}{t("wallet.pts")}</>}
                             {reward.expires_at && <>{(() => {
                       const d = new Date(reward.expires_at);
-                      return !isNaN(d.getTime()) ? `Expires: ${d.toLocaleDateString()}` : null;
+                      return !isNaN(d.getTime()) ? t("common.expires", { date: d.toLocaleDateString() }) : null;
                     })()}</>}
                           </div>
                         </div>
@@ -647,7 +649,7 @@ export default function WalletPage() {
               </Card>
 
               {/* Vouchers */}
-              <Card title={`Available Vouchers (${walletData.vouchers?.length || 0})`}>
+              <Card title={t("wallet.available_vouchers", { count: walletData.vouchers?.length || 0 })}>
                 {!walletData.vouchers || walletData.vouchers.length === 0 ? <EmptyState title={t("wallet.no_vouchers")} description={t("wallet.this_customer_has_no_available_vouchers")} icon={<Ticket size={40} />} /> : <div style={{
             display: "flex",
             flexDirection: "column",
@@ -672,7 +674,7 @@ export default function WalletPage() {
                 }}>{t("wallet.code_2")}{voucher.code || voucher.voucher_code || voucher.redemption_code || "—"}
                             {voucher.expires_at && <>{(() => {
                       const d = new Date(voucher.expires_at);
-                      return !isNaN(d.getTime()) ? ` · Exp: ${d.toLocaleDateString()}` : null;
+                      return !isNaN(d.getTime()) ? ` · ${t("common.exp", { date: d.toLocaleDateString() })}` : null;
                     })()}</>}
                           </div>
                         </div>
@@ -696,6 +698,6 @@ export default function WalletPage() {
         </>}
 
       {/* QR Scanner */}
-      <QrScannerModal open={showScanner} onClose={() => setShowScanner(false)} onScan={handleScan} title={scanMode === "customer" ? "Scan Customer QR" : scanMode === "reward" ? "Scan Reward QR" : "Scan Voucher QR"} />
+      <QrScannerModal open={showScanner} onClose={() => setShowScanner(false)} onScan={handleScan} title={scanMode === "customer" ? t("wallet.scan_customer_qr") : scanMode === "reward" ? t("wallet.scan_reward_qr") : t("wallet.scan_voucher_qr")} />
     </div>;
 }

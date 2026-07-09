@@ -6,6 +6,9 @@ const REFRESH_COOKIE = "admin_refresh_token";
 function getBackendUrl(): string {
   const direct = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (direct && direct.startsWith("http")) return direct;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("API_URL must be set in production");
+  }
   return "http://127.0.0.1:13800/api";
 }
 
@@ -19,6 +22,11 @@ function cookieHeader(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin && host && new URL(origin).host !== host) {
+    return new Response("Forbidden", { status: 403 });
+  }
   try {
     const res = await fetch(`${getBackendUrl()}/admin/auth/refresh`, {
       method: "POST",

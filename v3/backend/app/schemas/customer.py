@@ -1,6 +1,7 @@
 """Customer domain schemas."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -124,9 +125,9 @@ class CustomerProfileOut(CustomerProfileBase, TimestampedSchema):
     referral_code: str | None
     referred_by_customer_id: int | None
     referral_count: int
-    referral_earnings_total: float
+    referral_earnings_total: Decimal
     customer_segment: str | None
-    lifetime_value: float
+    lifetime_value: Decimal
     order_count: int
     last_order_at: datetime | None
     is_active: bool

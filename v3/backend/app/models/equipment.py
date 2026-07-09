@@ -1,5 +1,5 @@
 """Equipment and maintenance tracking models."""
-
+from decimal import Decimal
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -83,7 +83,7 @@ class EquipmentMaintenanceLog(Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     performed_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    cost: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     started_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

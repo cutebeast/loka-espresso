@@ -27,6 +27,7 @@ interface PosCheckoutOrder {
   reward_discount?: number;
   line_items?: PosCheckoutLineItem[];
   items?: PosCheckoutLineItem[];
+  items_subtotal?: number;
 }
 interface DiscountsApplied {
   voucher?: unknown;
@@ -68,7 +69,6 @@ interface PosCheckoutPanelProps {
 }
 export default function PosCheckoutPanel({
   order,
-  orderId: _orderId,
   customer,
   walletData,
   paymentMethod,
@@ -107,7 +107,7 @@ export default function PosCheckoutPanel({
   const originalTotal = order.total_amount || order.total || 0;
   const orderBase = order.total_amount || order.total || 0;
   // Backend applies percentage discounts to items_subtotal.
-  const discountBase = (order as any).items_subtotal || orderBase;
+  const discountBase = order.items_subtotal || orderBase;
   const manualDisc = discountType === "percentage" ? discountBase * (discountAmount / 100) : discountAmount;
   const walletPaid = discountsApplied.wallet || 0;
   const preTipDue = Math.max(0, orderBase - manualDisc - walletPaid);
@@ -198,7 +198,7 @@ export default function PosCheckoutPanel({
               }}>{li.quantity}</td>
                   <td style={{
                 textAlign: "right"
-              }}>{t("pos.rm")}{Number(li.unit_price || li.price || 0).toFixed(2)}</td>
+              }}>{t("pos.currency_symbol")}{Number(li.unit_price || li.price || 0).toFixed(2)}</td>
                 </tr>)}
             </tbody>
           </table>
@@ -209,7 +209,7 @@ export default function PosCheckoutPanel({
         fontSize: 14,
         marginBottom: 4
       }}>
-          <span>{t("pos.subtotal")}</span><span>{t("pos.rm_2")}{originalTotal.toFixed(2)}</span>
+          <span>{t("pos.subtotal")}</span><span>{t("pos.currency_symbol")}{originalTotal.toFixed(2)}</span>
         </div>
         {voucherDisc > 0 && <div style={{
         display: "flex",
@@ -218,7 +218,7 @@ export default function PosCheckoutPanel({
         color: "var(--color-success)",
         marginBottom: 4
       }}>
-            <span>{t("pos.voucher_discount")}</span><span>{t("pos.rm_3")}{voucherDisc.toFixed(2)}</span>
+            <span>{t("pos.voucher_discount")}</span><span>{t("pos.currency_symbol")}{voucherDisc.toFixed(2)}</span>
           </div>}
         {rewardDisc > 0 && <div style={{
         display: "flex",
@@ -227,7 +227,7 @@ export default function PosCheckoutPanel({
         color: "var(--color-success)",
         marginBottom: 4
       }}>
-            <span>{t("pos.reward_discount")}</span><span>{t("pos.rm_4")}{rewardDisc.toFixed(2)}</span>
+            <span>{t("pos.reward_discount")}</span><span>{t("pos.currency_symbol")}{rewardDisc.toFixed(2)}</span>
           </div>}
         {manualDisc > 0 && <div style={{
         display: "flex",
@@ -236,7 +236,7 @@ export default function PosCheckoutPanel({
         color: "var(--color-success)",
         marginBottom: 4
       }}>
-            <span>{t("pos.staff_discount")}</span><span>{t("pos.rm_5")}{manualDisc.toFixed(2)}</span>
+            <span>{t("pos.staff_discount")}</span><span>{t("pos.currency_symbol")}{manualDisc.toFixed(2)}</span>
           </div>}
         {walletPaid > 0 && <div style={{
         display: "flex",
@@ -245,7 +245,7 @@ export default function PosCheckoutPanel({
         color: "var(--color-info)",
         marginBottom: 4
       }}>
-            <span>{t("pos.wallet_payment")}</span><span>{t("pos.rm_6")}{walletPaid.toFixed(2)}</span>
+            <span>{t("pos.wallet_payment")}</span><span>{t("pos.currency_symbol")}{walletPaid.toFixed(2)}</span>
           </div>}
         <div style={{
         display: "flex",
@@ -256,7 +256,7 @@ export default function PosCheckoutPanel({
         paddingTop: 8,
         borderTop: "1px solid var(--color-border-light)"
       }}>
-          <span>{t("pos.total_due")}</span><span>{t("pos.rm_7")}{checkoutTotal.toFixed(2)}</span>
+          <span>{t("pos.total_due")}</span><span>{t("pos.currency_symbol")}{checkoutTotal.toFixed(2)}</span>
         </div>
       </div>
 
@@ -279,8 +279,8 @@ export default function PosCheckoutPanel({
         gap: 8,
         marginBottom: 12
       }}>
-          {(["percentage", "fixed"] as const).map(t => <button key={t} className={`btn btn-sm ${discountType === t ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetDiscountType(t)}>
-              {t === "percentage" ? "%" : "RM"}
+          {(["percentage", "fixed"] as const).map(ty => <button key={ty} className={`btn btn-sm ${discountType === ty ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetDiscountType(ty)}>
+              {ty === "percentage" ? "%" : t("pos.currency_symbol")}
             </button>)}
         </div>
         <div style={{
@@ -313,7 +313,7 @@ export default function PosCheckoutPanel({
           {[0, 5, 10, 15, 20].map(pct => {
           const tip = Math.round(preTipDue * pct / 100 * 100) / 100;
           return <button key={pct} className={`btn btn-sm ${tipAmount === tip ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetTipAmount(tip)}>
-                {pct === 0 ? "None" : `${pct}% (RM ${tip.toFixed(0)})`}
+                {pct === 0 ? t("pos.none") : `${pct}% (RM ${tip.toFixed(0)})`}
               </button>;
         })}
         </div>
@@ -325,7 +325,7 @@ export default function PosCheckoutPanel({
           <span style={{
           fontSize: 13,
           fontWeight: 600
-        }}>{t("pos.rm_8")}</span>
+        }}>{t("pos.currency_symbol")}</span>
           <input type="number" min={0} step={0.5} value={tipAmount === 0 ? "" : tipAmount} onChange={e => {
           const v = parseFloat(e.target.value);
           onSetTipAmount(isNaN(v) ? 0 : Math.max(0, v));
@@ -351,9 +351,9 @@ export default function PosCheckoutPanel({
       }}>
           {(["cash", "card", "stripe_qr"] as PaymentMethod[]).map(m => {
           const disabled = m === "stripe_qr" && stripeEnabled === false;
-          return <button key={m} className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"} ${disabled ? "btn-disabled" : ""}`} onClick={() => !disabled && onSetPaymentMethod(m)} disabled={disabled} title={disabled ? "Stripe is not configured" : undefined}>
+          return <button key={m} className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"} ${disabled ? "btn-disabled" : ""}`} onClick={() => !disabled && onSetPaymentMethod(m)} disabled={disabled} title={disabled ? t("pos.stripe_not_configured") : undefined}>
                 {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
-                {m === "stripe_qr" ? "QR" : m.toUpperCase()}
+                {m === "stripe_qr" ? "QR" : t(`pos.${m}_label`)}
               </button>;
         })}
         </div>
@@ -364,14 +364,14 @@ export default function PosCheckoutPanel({
           fontWeight: 700,
           textAlign: "center",
           marginBottom: 12
-        }}>{t("pos.rm_9")}{checkoutTotal.toFixed(2)}</div>
+        }}>{t("pos.currency_symbol")}{checkoutTotal.toFixed(2)}</div>
             <NumericKeypad value={amountTendered} onPress={key => onSetAmountTendered((prev: string) => prev + key)} onBackspace={() => onSetAmountTendered((prev: string) => prev.slice(0, -1))} onClear={() => onSetAmountTendered("")} />
             <div style={{
           display: "flex",
           gap: 6,
           marginTop: 12
         }}>
-              {[checkoutTotal, Math.ceil(checkoutTotal / 5) * 5, Math.ceil(checkoutTotal / 10) * 10].filter((v, i, a) => a.indexOf(v) === i).map(v => <button key={v} className="btn btn-sm btn-ghost flex-1" onClick={() => onSetAmountTendered(String(v))}>{t("pos.rm_10")}{v.toFixed(0)}</button>)}
+              {[checkoutTotal, Math.ceil(checkoutTotal / 5) * 5, Math.ceil(checkoutTotal / 10) * 10].filter((v, i, a) => a.indexOf(v) === i).map(v => <button key={v} className="btn btn-sm btn-ghost flex-1" onClick={() => onSetAmountTendered(String(v))}>{t("pos.currency_symbol")}{v.toFixed(0)}</button>)}
             </div>
             {amountTendered && !isNaN(parseFloat(amountTendered)) && parseFloat(amountTendered) >= checkoutTotal && <div style={{
           marginTop: 12,
@@ -421,7 +421,7 @@ export default function PosCheckoutPanel({
       </div>
 
       <button className="btn btn-primary btn-lg w-full" onClick={onCheckout} disabled={saving || paymentMethod === "cash" && checkoutTotal > 0 && (!amountTendered || isNaN(parseFloat(amountTendered)) || parseFloat(amountTendered) < checkoutTotal)}>
-        {saving ? "Processing..." : checkoutTotal <= 0 ? "Complete Checkout" : `Confirm Payment — RM ${checkoutTotal.toFixed(2)}`}
+        {saving ? t("pos.processing") : checkoutTotal <= 0 ? t("pos.complete_checkout") : `${t("pos.confirm_payment_rm")}${checkoutTotal.toFixed(2)}`}
       </button>
 
       {/* Checkout Discounts Drawer */}
@@ -448,7 +448,7 @@ export default function PosCheckoutPanel({
                   <span style={{
               fontWeight: 700
             }}>{t("pos.wallet_balance")}</span>
-                  <span className="badge badge-primary">{t("pos.rm_11")}{Number(walletData.balance ?? 0).toFixed(2)}</span>
+                  <span className="badge badge-primary">{t("pos.currency_symbol")}{Number(walletData.balance ?? 0).toFixed(2)}</span>
                 </div>
                 {checkoutTotal > 0 && walletData.balance > 0 && <button className="btn btn-primary w-full" onClick={() => onWalletPayment(Math.min(walletData.balance, checkoutTotal))}>{t("pos.pay_rm")}{Math.min(walletData.balance, checkoutTotal).toFixed(2)}{t("pos.from_wallet")}</button>}
               </div>}
@@ -474,13 +474,13 @@ export default function PosCheckoutPanel({
                         <div style={{
                   fontWeight: 600,
                   fontSize: 14
-                }}>{v.title || v.code}</div>
+                }}>{v.title || v.code || t("common.voucher")}</div>
                         <div style={{
                   fontSize: 12,
                   color: "var(--color-text-muted)"
                 }}>
-                          {v.discount_type === "percent" ? `${v.discount_value}% off` : `RM ${v.discount_value} off`}
-                          {v.min_spend ? ` · Min spend RM ${v.min_spend}` : ""}
+                          {v.discount_type === "percent" ? t("pos.discount_percent_off", { value: v.discount_value ?? 0 }) : t("pos.discount_amount_off", { value: v.discount_value ?? 0 })}
+                          {v.min_spend ? ` \u00b7 ${t("pos.min_spend", { value: v.min_spend })}` : ""}
                         </div>
                       </div>
                       <button className="btn btn-sm btn-primary" onClick={() => onApplyVoucher(v.code ?? "")}>{t("pos.apply")}</button>
@@ -509,7 +509,7 @@ export default function PosCheckoutPanel({
                         <div style={{
                   fontWeight: 600,
                   fontSize: 14
-                }}>{r.name || r.redemption_code}</div>
+                }}>{r.name || r.redemption_code || t("common.reward")}</div>
                         <div style={{
                   fontSize: 12,
                   color: "var(--color-text-muted)"

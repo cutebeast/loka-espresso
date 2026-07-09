@@ -19,6 +19,7 @@ export default function WastagePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [form, setForm] = useState({
     menu_item_id: "",
     quantity: 0,
@@ -32,22 +33,23 @@ export default function WastagePage() {
       if (!cancelled) setMenuItems(Array.isArray(d) ? d : d?.items || []);
     }).catch(err => {
       console.error("Failed to load menu items:", err);
+      if (!cancelled) setLoadError(t("wastage.load_menu_failed"));
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
   const handleSubmit = async () => {
     if (!form.menu_item_id) {
-      setError("Select a menu item");
+      setError(t("wastage.err_select_item"));
       return;
     }
     if (form.quantity <= 0) {
-      setError("Quantity must be greater than 0");
+      setError(t("wastage.err_quantity"));
       return;
     }
     if (form.reason.trim().length < 3) {
-      setError("Please select a reason");
+      setError(t("wastage.err_reason"));
       return;
     }
     setSubmitting(true);
@@ -60,7 +62,7 @@ export default function WastagePage() {
         quantity: form.quantity,
         reason: combinedReason
       });
-      setSuccess("Wastage reported successfully");
+      setSuccess(t("wastage.reported_successfully"));
       setForm({
         menu_item_id: "",
         quantity: 0,
@@ -79,9 +81,10 @@ export default function WastagePage() {
     maxWidth: 700,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("wastage.wastage_report")} subtitle="Record F&B waste — burnt, spilled, expired, or damaged items" />
+      <PageHeader title={t("wastage.wastage_report")} subtitle={t("wastage.subtitle")} />
       {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
       {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
+      {loadError && <Alert variant="error" onDismiss={() => setLoadError("")}>{loadError}</Alert>}
 
       <div className="card" style={{
       padding: 20
@@ -156,7 +159,7 @@ export default function WastagePage() {
 
           <button type="button" onClick={handleSubmit} disabled={submitting} className="btn btn-danger">
             <AlertTriangle size={16} />
-            {submitting ? "Submitting..." : "Submit Wastage Report"}
+            {submitting ? t("common.submitting") : t("wastage.submit_report")}
           </button>
         </div>
       </div>

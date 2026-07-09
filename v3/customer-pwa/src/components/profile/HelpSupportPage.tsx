@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, Package, Gift, AlertCircle, MessageSquare, PartyPopper } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 
-const FAQ_ITEMS = [
-  { id: 'q1' },
-  { id: 'q2' },
-  { id: 'q3' },
-  { id: 'q4' },
-];
+interface HelpArticle {
+  id: number;
+  slug: string;
+  title: string;
+  audience: string;
+  category: string | null;
+  body_text: string | null;
+}
 
 const SUBJECTS = [
   { id: 'feedback', icon: MessageSquare, bg: '#F5F0E6', stroke: '#4A2210' },
@@ -35,6 +37,24 @@ export default function HelpSupportPage() {
   const [sending, setSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [articles, setArticles] = useState<HelpArticle[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(true);
+
+  const fetchArticles = useCallback(async () => {
+    try {
+      const res = await api.get('/public/help/articles', { params: { audience: 'customer', per_page: 50 } });
+      const data = res.data;
+      setArticles((data && typeof data === 'object' && Array.isArray(data.items) ? data.items : data) || []);
+    } catch {
+      // articles are optional, fail silently
+    } finally {
+      setArticlesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchArticles();
+  }, [fetchArticles]);
 
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !subject || !message.trim()) {
@@ -63,6 +83,8 @@ export default function HelpSupportPage() {
     }
   };
 
+  const categories = Array.from(new Set(articles.map((a) => a.category).filter(Boolean)));
+
   return (
     <div className="support-screen">
       <div className="sub-page-header">
@@ -78,31 +100,77 @@ export default function HelpSupportPage() {
       <div className="support-form-scroll">
         {!showSuccess ? (
           <>
-            {/* FAQ Section */}
-            <div className="support-faq-section">
-              <div className="support-faq-title">{t('helpSupport.faqTitle')}</div>
-              {FAQ_ITEMS.map((item, i) => {
-                const isOpen = expandedFaq === i;
-                return (
-                  <div key={i}>
-                    <button
-                      className="support-faq-item"
-                      onClick={() => setExpandedFaq(isOpen ? null : i)}
-                    >
-                      <span className="support-faq-text">{t(`helpSupport.faq.${item.id}` as const)}</span>
-                      {isOpen ? (
-                        <ChevronUp size={16} className="support-faq-chevron" />
-                      ) : (
-                        <ChevronDown size={16} className="support-faq-chevron" />
-                      )}
-                    </button>
-                    {isOpen && (
-                      <div className="support-faq-answer">{t(`helpSupport.faq.a${item.id.slice(1)}` as const)}</div>
+            {/* Help Articles from API */}
+            {!articlesLoading && articles.length > 0 && (
+              <div className="support-faq-section">
+                <div className="support-faq-title">{t('helpSupport.faqTitle')}</div>
+                {categories.map((category) => (
+                  <div key={category}>
+                    {categories.length > 1 && (
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, textTransform: 'capitalize', color: 'var(--loka-text-muted)' }}>
+                        {category}
+                      </div>
                     )}
+                    {articles
+                      .filter((a) => a.category === category)
+                      .map((item) => {
+                        const isOpen = expandedFaq === item.id;
+                        return (
+                          <div key={item.id}>
+                            <button
+                              className="support-faq-item"
+                              onClick={() => setExpandedFaq(isOpen ? null : item.id)}
+                            >
+                              <span className="support-faq-text">{item.title}</span>
+                              {isOpen ? (
+                                <ChevronUp size={16} className="support-faq-chevron" />
+                              ) : (
+                                <ChevronDown size={16} className="support-faq-chevron" />
+                              )}
+                            </button>
+                            {isOpen && (
+                              <div
+                                className="support-faq-answer"
+                                dangerouslySetInnerHTML={{ __html: renderSimpleMarkdown(item.body_text || '') }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+                {articles.some((a) => !a.category) && (
+                  <div>
+                    {articles
+                      .filter((a) => !a.category)
+                      .map((item) => {
+                        const isOpen = expandedFaq === item.id;
+                        return (
+                          <div key={item.id}>
+                            <button
+                              className="support-faq-item"
+                              onClick={() => setExpandedFaq(isOpen ? null : item.id)}
+                            >
+                              <span className="support-faq-text">{item.title}</span>
+                              {isOpen ? (
+                                <ChevronUp size={16} className="support-faq-chevron" />
+                              ) : (
+                                <ChevronDown size={16} className="support-faq-chevron" />
+                              )}
+                            </button>
+                            {isOpen && (
+                              <div
+                                className="support-faq-answer"
+                                dangerouslySetInnerHTML={{ __html: renderSimpleMarkdown(item.body_text || '') }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Contact Form */}
             <div className="support-form-section">
@@ -189,4 +257,15 @@ export default function HelpSupportPage() {
       </div>
     </div>
   );
+}
+
+function renderSimpleMarkdown(md: string): string {
+  return md
+    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
+    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+    .replace(/^\> (.*$)/gim, "<blockquote>$1</blockquote>")
+    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
+    .replace(/\n/g, "<br />");
 }

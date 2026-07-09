@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import GalleryUpload from "@/components/GalleryUpload";
@@ -34,22 +36,7 @@ const LOCALES: {
   label: "TR",
   flag: "🇹🇷"
 }];
-const TRANSLATABLE_FIELDS = [{
-  key: "reward_name",
-  label: "Reward Name"
-}, {
-  key: "short_description",
-  label: "Short Description"
-}, {
-  key: "long_description",
-  label: "Full Description"
-}, {
-  key: "how_to_redeem",
-  label: "How to Redeem"
-}, {
-  key: "terms_and_conditions",
-  label: "Terms & Conditions"
-}];
+
 interface Reward {
   id: number;
   reward_name: string;
@@ -76,6 +63,23 @@ export default function RewardEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TRANSLATABLE_FIELDS = [{
+  key: "reward_name",
+  label: "Reward Name"
+}, {
+  key: "short_description",
+  label: t("admin.form.shortDescription")
+}, {
+  key: "long_description",
+  label: t("admin.form.fullDescription")
+}, {
+  key: "how_to_redeem",
+  label: "How to Redeem"
+}, {
+  key: "terms_and_conditions",
+  label: "Terms & Conditions"
+}];
   const params = useParams();
   const router = useRouter();
   const rewardId = params.id as string;
@@ -87,6 +91,7 @@ export default function RewardEditPage() {
   } = useCurrency();
   const [reward, setReward] = useState<Reward | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeLocale, setActiveLocale] = useState<LocaleTab>("en");
   const [regenerating, setRegenerating] = useState<string>("");
@@ -146,13 +151,15 @@ export default function RewardEditPage() {
               allTr[`${loc.code}:${field}`] = t.translated_text || "";
             }
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTranslations(allTr);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -167,11 +174,9 @@ export default function RewardEditPage() {
         if (payload[k] !== null && payload[k] !== "") payload[k] = Number(payload[k]);
       });
       await api.put(`/admin/rewards/${rewardId}`, payload);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -190,9 +195,7 @@ export default function RewardEditPage() {
       });
       setImagePreview(url);
       if (fileRef.current) fileRef.current.value = "";
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setUploading(false);
     }
   };
@@ -247,9 +250,7 @@ export default function RewardEditPage() {
             [`${locale}:${field.key}`]: translated
           }));
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     for (const r of results) {
       await upsertTranslation(r.field, locale, (form[r.field] || "").trim(), r.text);
@@ -271,6 +272,7 @@ export default function RewardEditPage() {
     setTimeout(() => setMsg(""), 2000);
     setSaving(false);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}><p>{t("rewards_[id].loading")}</p></div>;
@@ -535,7 +537,7 @@ export default function RewardEditPage() {
         marginTop: 20
       }}>
              <button type="button" onClick={() => router.push("/rewards")} className="btn btn-ghost">{t("rewards_[id].cancel")}</button>
-             <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button>
+             <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button>
            </div>
         </div>}
 

@@ -1,7 +1,9 @@
 """Admin menu management endpoints."""
-
+import logging
 from datetime import datetime, timezone
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -51,7 +53,7 @@ async def _translate_item_modifiers(db, item_id: int):
             for opt in opt_result.scalars().all():
                 await auto_translate_record(db, "menu_modifier_options", opt.id, {"option_name": opt.option_name})
     except Exception:
-        pass  # non-blocking
+        logger.debug("Non-blocking error", exc_info=True)
 
 
 router = APIRouter(prefix="/admin/menu", tags=["admin — menu"])

@@ -49,14 +49,13 @@ export default function PosQrPaymentScreen({
       errorCorrectionLevel: "M"
     })).then(url => {
       if (mounted) setQrDataUrl(url);
-    }).catch(e => {
-      if (mounted) setError("Failed to generate QR code");
-      console.error(e);
+    }).catch(() => {
+      if (mounted) setError(t("pos.err_qr_failed"));
     });
     return () => {
       mounted = false;
     };
-  }, [paymentUrl]);
+  }, [paymentUrl, t]);
 
   // Poll order payment status until captured, failed, or timed out.
   useEffect(() => {
@@ -73,7 +72,7 @@ export default function PosQrPaymentScreen({
       try {
         if (Date.now() - startedAtRef.current > TIMEOUT_MS) {
           setStatus("failed");
-          const msg = "Payment session expired";
+          const msg = t("pos.payment_session_expired");
           setError(msg);
           onError?.(msg);
           stopPolling();
@@ -94,19 +93,19 @@ export default function PosQrPaymentScreen({
           stopPolling();
         } else if (ps === "failed" || ps === "voided" || ps === "refunded" || ps?.includes("cancelled")) {
           setStatus("failed");
-          const msg = `Payment ${ps}`;
+          const msg = t("pos.payment_status_failed", { status: ps });
           setError(msg);
           onError?.(msg);
           stopPolling();
         }
-      } catch (e: unknown) {
-        console.error("QR payment polling failed:", e);
+      } catch {
+        // transient polling error — will retry on next interval
       }
     };
     check();
     intervalRef.current = setInterval(check, POLL_INTERVAL_MS);
     return stopPolling;
-  }, [orderId, orderNumber, total, onComplete, onError]);
+  }, [orderId, orderNumber, total, onComplete, onError, t]);
   return <div style={{
     padding: 24,
     maxWidth: 520,
@@ -126,7 +125,7 @@ export default function PosQrPaymentScreen({
       fontSize: 28,
       fontWeight: 700,
       marginBottom: 24
-    }}>{t("pos.rm")}{total.toFixed(2)}</div>
+    }}>{t("pos.currency_symbol")}{total.toFixed(2)}</div>
 
       <div style={{
       width: 280,
@@ -172,7 +171,7 @@ export default function PosQrPaymentScreen({
             <span style={{
           color: "var(--color-error)",
           fontWeight: 700
-        }}>{error || "Payment failed"}</span>
+        }}>{error || t("pos.payment_failed")}</span>
           </> : <>
             <Smartphone size={20} color="var(--color-info)" />
             <span style={{

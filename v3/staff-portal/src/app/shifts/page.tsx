@@ -22,7 +22,7 @@ function formatDate(iso: string | null | undefined): string {
     day: "numeric"
   });
 }
-function statusBadge(status: string) {
+function statusBadge(status: string, t: (key: string) => string) {
   const map: Record<string, string> = {
     scheduled: "#6B7280",
     confirmed: "#2563EB",
@@ -40,7 +40,7 @@ function statusBadge(status: string) {
     color: "white",
     background: map[status] || "#6B7280"
   }}>
-      {status.replace("_", " ")}
+      {t(`staff.status.${status.replace(/-/g, "_")}`)}
     </span>;
 }
 export default function ShiftsPage() {
@@ -56,9 +56,9 @@ export default function ShiftsPage() {
     const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     getMyShifts(today, future).then(data => setShifts(data || [])).catch(e => {
       console.error(e);
-      setError("Could not load shifts");
+      setError(t("shifts.err_load_failed"));
     }).finally(() => setLoading(false));
-  }, []);
+  }, [t]);
   return <div style={{
     padding: 24,
     maxWidth: 720,
@@ -123,7 +123,7 @@ export default function ShiftsPage() {
               fontWeight: 700
             }}>{formatDate(s.shift_date)}</span>
                 </div>
-                {statusBadge(s.status)}
+                {statusBadge(s.status, t)}
               </div>
               <div style={{
           display: "flex",

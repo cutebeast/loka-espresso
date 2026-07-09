@@ -41,9 +41,14 @@ export type DisplayState = {
 
 const CHANNEL = "pos-display";
 
+let _channel: BroadcastChannel | null = null;
+
 function getChannel(): BroadcastChannel | null {
   if (typeof window === "undefined" || !("BroadcastChannel" in window)) return null;
-  return new BroadcastChannel(CHANNEL);
+  if (!_channel) {
+    _channel = new BroadcastChannel(CHANNEL);
+  }
+  return _channel;
 }
 
 /** POS side: broadcast state to the customer display. */
@@ -52,7 +57,6 @@ export function broadcastDisplay(state: DisplayState): void {
     const ch = getChannel();
     if (!ch) return;
     ch.postMessage({ type: "state", state, ts: Date.now() });
-    ch.close();
   } catch {
     /* display may not be open */
   }
@@ -64,7 +68,6 @@ export function broadcastReset(): void {
     const ch = getChannel();
     if (!ch) return;
     ch.postMessage({ type: "reset", ts: Date.now() });
-    ch.close();
   } catch { /* */ }
 }
 
@@ -82,14 +85,13 @@ export function subscribeToPos(
   ch.addEventListener("message", handler);
   return () => {
     ch.removeEventListener("message", handler);
-    ch.close();
   };
 }
 
 /** Open the customer display in a new browser window (fullscreen on dual-screen). */
-export function openCustomerDisplay(): void {
+export function openCustomerDisplay(left = 1920): void {
   if (typeof window === "undefined") return;
   const url = "/pos/display";
-  const features = "popup=yes,width=480,height=800,left=1920,top=0,menubar=no,toolbar=no,location=no,status=no";
+  const features = `popup=yes,width=480,height=800,left=${left},top=0,menubar=no,toolbar=no,location=no,status=no`;
   window.open(url, "pos-customer-display", features);
 }

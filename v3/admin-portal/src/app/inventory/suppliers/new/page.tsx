@@ -29,9 +29,7 @@ export default function NewSupplierPage() {
       const list = d.items || [];
       setStores(list);
       if (list.length > 0) setStoreId(String(list[0].id));
-    }).catch(e => {
-      console.error('stores:', e);
-    });
+    }).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

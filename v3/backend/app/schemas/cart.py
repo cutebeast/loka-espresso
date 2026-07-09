@@ -1,5 +1,5 @@
 """Cart domain schemas."""
-
+from decimal import Decimal
 from datetime import datetime
 from typing import Literal
 
@@ -39,9 +39,9 @@ class CartLineItemOut(BaseSchema):
     menu_item_id: int
     menu_variant_id: int | None
     quantity: int
-    unit_price: float
-    line_total: float
-    modifier_total: float
+    unit_price: Decimal
+    line_total: Decimal
+    modifier_total: Decimal
     selected_modifiers: dict | list = {}
     special_instructions: str | None
     item_name: str | None = None
@@ -56,7 +56,7 @@ class CustomerCartOut(BaseSchema):
     customer_id: int
     store_id: int
     item_count: int
-    subtotal: float
+    subtotal: Decimal
     last_activity_at: datetime
     line_items: list[CartLineItemOut] = []
     created_at: datetime
@@ -71,11 +71,11 @@ class CheckoutSessionOut(BaseSchema):
     cart_snapshot: dict
     applied_voucher_id: int | None
     applied_reward_id: int | None
-    discount_amount: float
-    delivery_fee: float
-    tax_amount: float
-    subtotal: float
-    total_amount: float
+    discount_amount: Decimal
+    delivery_fee: Decimal
+    tax_amount: Decimal
+    subtotal: Decimal
+    total_amount: Decimal
     is_completed: bool
     completed_order_id: int | None
     expires_at: datetime

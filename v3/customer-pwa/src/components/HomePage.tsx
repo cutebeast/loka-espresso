@@ -6,13 +6,15 @@ import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard } from '@/lib/api';
 
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
 
 export default function HomePage() {
-  const { setPage, isGuest, triggerSignIn, selectedStore } = useUIStore();
+  const { t } = useTranslation();
+  const { setPage, isGuest, triggerSignIn, selectedStore, showToast } = useUIStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const addItem = useCartStore((s) => s.addItem);
   const { balance, points, tier } = useWalletStore();
@@ -54,6 +56,7 @@ export default function HomePage() {
       setFeaturedItems(list.slice(0, 10));
     } catch {
       console.error('Failed to load featured items');
+      showToast(t('toast.failedToLoad'), 'error');
       setFeaturedItems([]);
     } finally {
       setLoadingFeatured(false);
@@ -73,6 +76,7 @@ export default function HomePage() {
       setBanners(active);
     } catch {
       console.error('Failed to load banners');
+      showToast(t('toast.failedToLoad'), 'error');
       setBanners([]);
     } finally {
       setLoadingBanners(false);
@@ -90,6 +94,7 @@ export default function HomePage() {
       setProductCards(Array.isArray(prodRes.data) ? prodRes.data : []);
     } catch {
       console.error('Failed to load info cards');
+      showToast(t('toast.failedToLoad'), 'error');
       try {
         const res = await api.get('/promos/banners', { signal });
         const data = Array.isArray(res.data) ? res.data : [];
@@ -112,6 +117,7 @@ export default function HomePage() {
         setInfoCards(detailBanners);
       } catch {
         console.error('Failed to load info fallback from banners');
+        showToast(t('toast.failedToLoad'), 'error');
         setInfoCards([]);
       }
     } finally {

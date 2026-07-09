@@ -29,9 +29,7 @@ export default function ReservationsPage() {
     store_name: string;
   }[]>([]);
   useEffect(() => {
-    api.get<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('stores:', e);
-    });
+    api.get<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const fetch = useCallback(() => {
     setLoading(true);
@@ -56,9 +54,7 @@ export default function ReservationsPage() {
         status: s
       });
       fetch();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const sb = (s: string) => {

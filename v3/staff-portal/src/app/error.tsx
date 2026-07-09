@@ -17,7 +17,7 @@ export default function Error({
   useEffect(() => {
     console.error("Staff portal error:", error);
   }, [error]);
-  const displayMessage = !error.message ? "An unexpected error occurred. Please try again." : error.message.includes("Cannot read") || error.message.includes("undefined") ? "Something went wrong. Please try again." : error.message.startsWith("{") || error.message.includes("Error:") ? "An unexpected error occurred. Please go back and try again." : error.message;
+  const displayMessage = !error.message ? t("error.unexpected_error") : error.message.includes("Cannot read") || error.message.includes("undefined") ? t("error.something_went_wrong_try_again") : error.message.startsWith("{") || error.message.includes("Error:") ? t("error.unexpected_error_go_back") : error.message;
   return <div style={{
     display: "flex",
     flexDirection: "column",

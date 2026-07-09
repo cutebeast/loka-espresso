@@ -74,15 +74,11 @@ export default function RolesPage() {
   const [rolePerms, setRolePerms] = useState<number[]>([]);
   const fetch = useCallback(() => {
     setLoading(true);
-    api.get<any>("/admin/auth/roles").then(d => setRoles(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('roles:', e);
-    }).finally(() => setLoading(false));
+    api.get<any>("/admin/auth/roles").then(d => setRoles(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('roles:', e); setMsg(e.message || t("admin.errors.loadFailed")); }).finally(() => setLoading(false));
   }, []);
   useEffect(() => {
     fetch();
-    api.get<any>("/admin/auth/permissions").then(d => setPermissions(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('permissions:', e);
-    });
+    api.get<any>("/admin/auth/permissions").then(d => setPermissions(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('permissions:', e); setMsg(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,16 +118,14 @@ export default function RolesPage() {
     }
   };
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this role? All assignments will be removed.")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/auth/roles/${id}`);
       fetch();
       setMsg("Role deleted");
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };
@@ -157,9 +151,7 @@ export default function RolesPage() {
       setAssigningRole(null);
       setMsg("Permissions saved");
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const startEdit = (r: Role) => {
     setForm({

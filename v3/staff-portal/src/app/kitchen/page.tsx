@@ -14,43 +14,43 @@ import SearchInput from "@/components/SearchInput";
 import SkeletonCard from "@/components/SkeletonCard";
 import { Filter, RefreshCw, Volume2, VolumeX, LayoutGrid, List, UtensilsCrossed, Package, Wifi, WifiOff, ChefHat } from "lucide-react";
 const statusFilters: {
-  label: string;
+  labelKey: string;
   value: OrderStatus | "all";
 }[] = [{
-  label: "All",
+  labelKey: "kitchen.filter_all",
   value: "all"
 }, {
-  label: "New",
+  labelKey: "kitchen.filter_new",
   value: "pending"
 }, {
-  label: "Queued",
+  labelKey: "kitchen.filter_queued",
   value: "confirmed"
 }, {
-  label: "Preparing",
+  labelKey: "kitchen.filter_preparing",
   value: "preparing"
 }, {
-  label: "Done",
+  labelKey: "kitchen.filter_done",
   value: "ready_for_pickup"
 }];
 const kanbanColumns: {
   status: OrderStatus;
-  label: string;
+  labelKey: string;
   color: string;
 }[] = [{
   status: "pending",
-  label: "New",
+  labelKey: "kitchen.column_new",
   color: "#D97706"
 }, {
   status: "confirmed",
-  label: "Queued",
+  labelKey: "kitchen.column_queued",
   color: "#2563EB"
 }, {
   status: "preparing",
-  label: "Preparing",
+  labelKey: "kitchen.column_preparing",
   color: "#9B6625"
 }, {
   status: "ready_for_pickup",
-  label: "Done",
+  labelKey: "kitchen.column_done",
   color: "#16A34A"
 }];
 export default function KitchenPage() {
@@ -79,7 +79,7 @@ export default function KitchenPage() {
     try {
       if (!storeId) {
         setLoading(false);
-        setError("Store not selected");
+        setError(t("kitchen.err_store_not_selected"));
         return;
       }
       const data = await getOrders(storeId, undefined);
@@ -118,7 +118,7 @@ export default function KitchenPage() {
       isFirstFetchRef.current = false;
       setLoading(false);
     }
-  }, [storeId, soundOn]);
+  }, [storeId, soundOn, t]);
   usePolling(fetchOrders, [storeId, soundOn], {
     interval: 5000
   });
@@ -173,7 +173,20 @@ export default function KitchenPage() {
     if (sort === "newest") return tb - ta;
     if (sort === "value") return (b.total_amount ?? 0) - (a.total_amount ?? 0);
     return 0;
-  }), [orders, filter, typeFilter, search, sort]);
+    }), [orders, filter, typeFilter, search, sort]);
+  const filterLabelMap: Record<string, string> = {
+    all: t("kitchen.filter_all"),
+    pending: t("kitchen.filter_new"),
+    confirmed: t("kitchen.filter_queued"),
+    preparing: t("kitchen.filter_preparing"),
+    ready_for_pickup: t("kitchen.filter_done"),
+  };
+  const columnLabelMap: Record<string, string> = {
+    pending: t("kitchen.column_new"),
+    confirmed: t("kitchen.column_queued"),
+    preparing: t("kitchen.column_preparing"),
+    ready_for_pickup: t("kitchen.column_done"),
+  };
   const counts = statusFilters.reduce((acc, s) => {
     acc[s.value] = s.value === "all" ? orders.length : orders.filter(o => o.status === s.value).length;
     return acc;
@@ -184,12 +197,12 @@ export default function KitchenPage() {
     maxWidth: 1400,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("kitchen.kitchen_display")} subtitle={`${activeOrders.length} active orders`} action={<div style={{
+      <PageHeader title={t("kitchen.kitchen_display")} subtitle={`${activeOrders.length} ${t("staff.status.active")}`} action={<div style={{
       display: "flex",
       alignItems: "center",
       gap: 8
     }}>
-            <button onClick={() => setSoundOn(!soundOn)} className="btn btn-ghost btn-icon" title={soundOn ? "Mute sound" : "Unmute sound"} aria-label={soundOn ? "Mute notifications" : "Unmute notifications"}>
+            <button onClick={() => setSoundOn(!soundOn)} className="btn btn-ghost btn-icon" title={soundOn ? t("kitchen.mute") : t("kitchen.unmute")} aria-label={soundOn ? t("kitchen.mute") : t("kitchen.unmute")}>
               {soundOn ? <Volume2 size={16} className="text-gray-500" /> : <VolumeX size={16} className="text-gray-400" />}
             </button>
             <button onClick={fetchOrders} className="btn btn-ghost btn-sm">
@@ -260,7 +273,7 @@ export default function KitchenPage() {
     }}>
         <Filter size={16} className="text-gray-400 shrink-0" />
         {statusFilters.map(s => <button key={s.value} onClick={() => setFilter(s.value)} className={`btn btn-sm ${filter === s.value ? "btn-primary" : "btn-ghost"}`}>
-            {s.label} ({counts[s.value] ?? 0})
+            {filterLabelMap[s.value] || t(s.labelKey)} ({counts[s.value] ?? 0})
           </button>)}
       </div>
 
@@ -273,15 +286,15 @@ export default function KitchenPage() {
     }}>
         {[{
         value: "all",
-        label: "All Types",
+        label: t("kitchen.all_types"),
         icon: null
       }, {
         value: "dine_in",
-        label: "Dine In",
+        label: t("kitchen.dine_in"),
         icon: <UtensilsCrossed size={12} />
       }, {
         value: "pack_away",
-        label: "Pack Away",
+        label: t("kitchen.pack_away"),
         icon: <Package size={12} />
       }].map(t => <button key={t.value} onClick={() => setTypeFilter(t.value)} className={`badge badge-sm flex items-center gap-1 cursor-pointer ${typeFilter === t.value ? "badge-primary" : "badge-outline"}`}>
             {t.icon}
@@ -312,7 +325,7 @@ export default function KitchenPage() {
               fontSize: 14,
               fontWeight: 700,
               color: col.color
-            }}>{col.label}</h3>
+            }}>{columnLabelMap[col.status] || t(col.labelKey)}</h3>
                   <span className="badge badge-sm badge-outline">{colOrders.length}</span>
                 </div>
                 <div style={{
@@ -326,7 +339,7 @@ export default function KitchenPage() {
               padding: 24,
               color: "var(--color-text-muted)",
               fontSize: 13
-            }}>{t("kitchen.no")}{col.label.toLowerCase()}{t("kitchen.orders")}</div>}
+            }}>{t("kitchen.no")}{(columnLabelMap[col.status] || t(col.labelKey)).toLowerCase()}{t("kitchen.orders")}</div>}
                 </div>
               </div>;
       })}

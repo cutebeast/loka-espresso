@@ -23,7 +23,7 @@ export default function NumericKeypad({
   return <div className={`keypad ${className}`}>
       {keys.map(key => <button type="button" key={key} className="keypad-btn" onClick={() => {
       if (key === "←") onBackspace?.();else if (key === "." && hasDecimal) return;else onPress(key);
-    }} aria-label={key === "←" ? "Backspace" : key}>
+    }} aria-label={key === "←" ? t("common.backspace") : key}>
           {key}
         </button>)}
       {onClear && <button type="button" className="keypad-btn keypad-btn-wide" onClick={onClear} aria-label={t("common.clear")}>{t("common.clear_2")}</button>}

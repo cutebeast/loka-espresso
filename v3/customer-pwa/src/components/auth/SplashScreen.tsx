@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/tokens';
 interface SplashScreenProps {
@@ -79,6 +80,7 @@ export function SplashScreen({
   const {
     t
   } = useTranslation();
+  const { showToast } = useUIStore();
   const reducedMotion = useReducedMotion();
   const [splashData, setSplashData] = useState<SplashData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +112,10 @@ export function SplashScreen({
         markSplashShown(frequency);
       }
     }).catch(err => {
-      if (err?.name !== 'AbortError') console.error('[Splash] Content fetch failed:', err);
+      if (err?.name !== 'AbortError') {
+        console.error('[Splash] Content fetch failed:', err);
+        showToast(t('toast.failedToLoad'), 'error');
+      }
     }).finally(() => setLoading(false));
     return () => abortCtrl.abort();
   }, [onFinish]);
@@ -142,7 +147,7 @@ export function SplashScreen({
           maxWidth: 280,
           height: 280
         }}>
-            <img src={splashData.image_url} alt={splashData.title || 'Welcome'} style={{
+            <img src={splashData.image_url} alt={splashData.title || t('common.welcome')} style={{
             width: '100%',
             height: '100%',
             objectFit: 'contain',

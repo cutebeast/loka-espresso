@@ -66,9 +66,7 @@ export default function TablesPage() {
       if (cancelled) return;
       const list = Array.isArray(data) ? data : [];
       setStores(list);
-    }).catch(e => {
-      console.error('stores:', e);
-    });
+    }).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
     return () => {
       cancelled = true;
     };

@@ -58,7 +58,7 @@ export default function BundlePickerModal({
         return {
           componentId: comp.id,
           menu_item_id: comp.menu_item_id,
-          name: mi?.item_name || comp.menu_item_name || `Item #${comp.menu_item_id}`,
+          name: mi?.item_name || comp.menu_item_name || t("common.item_n", { id: comp.menu_item_id }),
           price: mi?.base_price ?? comp.menu_item_price ?? 0,
           image_url: mi?.image_url || comp.menu_item_image_url || null,
           is_available: mi?.is_available ?? true
@@ -76,7 +76,7 @@ export default function BundlePickerModal({
         is_available: mi?.is_available ?? true
       };
     }).filter(item => item.is_available);
-  }, [bundle, menuItems, currentGroupIdx]);
+  }, [bundle, menuItems, currentGroupIdx, t]);
   const currentSelections = isMultiCourse ? groupSelections[currentGroupIdx] || new Set<number>() : selectedIds;
   const currentMaxPick = isMultiCourse ? groups[currentGroupIdx]?.max_pick ?? groups[currentGroupIdx]?.pick_count ?? 0 : pickCount;
   const totalSelected = allowDuplicates ? Object.values(quantities).reduce((sum, q) => sum + q, 0) : currentSelections.size;
@@ -210,7 +210,7 @@ export default function BundlePickerModal({
     if (selectedIds.has(componentId)) return true;
     return selectedIds.size < pickCount;
   };
-  const modalTitle = isMultiCourse ? `Build ${bundle?.title || 'Combo'}` : `Pick ${pickCount} for ${bundle?.title || 'Combo'}`;
+  const modalTitle = isMultiCourse ? `${t("pos.build")}${bundle?.title || t("common.combo")}` : `${t("pos.pick")}${pickCount}${t("pos.for")}${bundle?.title || t("common.combo")}`;
   return <Modal open={open} onClose={onClose} title={modalTitle} size="lg" footer={<div style={{
     display: "flex",
     justifyContent: "space-between",
@@ -221,14 +221,14 @@ export default function BundlePickerModal({
       fontSize: 14,
       fontWeight: 600
     }}>
-          {isMultiCourse ? `${groups.filter((g, gi) => (groupSelections[gi] || new Set<number>()).size >= g.pick_count).length}/${groups.length} groups done` : `${totalSelected} / ${pickCount} selected`}
+          {isMultiCourse ? `${groups.filter((g, gi) => (groupSelections[gi] || new Set<number>()).size >= g.pick_count).length}/${groups.length}${t("pos.groups_done")}` : `${totalSelected} / ${pickCount}${t("pos.selected_label")}`}
         </span>
         <div style={{
       display: "flex",
       gap: 8
     }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>{t("pos.cancel")}</button>
-          <button type="button" className="btn btn-primary" disabled={!canAdd} onClick={handleAdd}>{t("pos.add_to_cart_rm")}{bundle?.bundle_price?.toFixed(2) ?? '0.00'}
+          <button type="button" className="btn btn-primary" disabled={!canAdd} onClick={handleAdd}>{t("pos.add_to_cart_rm")}{bundle?.bundle_price?.toFixed(2) ?? t("wallet.zero_amount")}
           </button>
         </div>
       </div>}>
@@ -296,7 +296,7 @@ export default function BundlePickerModal({
         color: "var(--color-text-muted)",
         marginBottom: 12
       }}>
-            {selectedIds.size >= pickCount ? "Maximum selected. Remove one to pick another." : `Select ${pickCount} items to continue`}
+            {selectedIds.size >= pickCount ? t("pos.maximum_selected") : t("pos.select_n_items", { count: pickCount })}
           </p>}
         <div style={{
         display: "grid",
@@ -362,7 +362,7 @@ export default function BundlePickerModal({
               fontSize: 12,
               fontWeight: 700,
               color: "var(--color-primary)"
-            }}>{t("pos.rm")}{Number(item.price ?? 0).toFixed(2)}
+            }}>{t("pos.currency_symbol")}{Number(item.price ?? 0).toFixed(2)}
                 </div>
 
                 {allowDuplicates && <div style={{

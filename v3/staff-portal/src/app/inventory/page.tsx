@@ -81,7 +81,7 @@ export default function InventoryPage() {
   const handleUpdate = async (itemId: number) => {
     const newCount = Number(editStock);
     if (isNaN(newCount) || newCount < 0) {
-      setError("Please enter a valid stock count");
+      setError(t("inventory.err_invalid_count"));
       return;
     }
     setUpdateSubmitting(true);
@@ -93,7 +93,7 @@ export default function InventoryPage() {
         current_stock: newCount,
         reason: editReason.trim() || null
       });
-      setSuccess("Stock updated — movement logged");
+      setSuccess(t("inventory.stock_updated"));
       setEditingId(null);
       setEditStock("");
       load();
@@ -108,7 +108,7 @@ export default function InventoryPage() {
     maxWidth: 900,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("inventory.inventory")} subtitle="Stock counts and adjustments" action={<button type="button" onClick={load} className="btn btn-ghost btn-sm" aria-label={t("inventory.refresh")} style={{
+      <PageHeader title={t("inventory.inventory")} subtitle={t("inventory.subtitle")} action={<button type="button" onClick={load} className="btn btn-ghost btn-sm" aria-label={t("inventory.refresh")} style={{
       display: "flex",
       alignItems: "center",
       gap: 4
@@ -158,7 +158,7 @@ export default function InventoryPage() {
                   <div style={{
               fontWeight: 700,
               fontSize: 15
-            }}>{item.item_name || "Unnamed Item"}</div>
+            }}>{item.item_name || t("common.unnamed_item")}</div>
                   <div style={{
               fontSize: 12,
               color: "var(--color-text-muted)"
@@ -166,7 +166,7 @@ export default function InventoryPage() {
                     {item.item_code}{item.category_name ? ` · ${item.category_name}` : ""}{item.item_type ? ` · ${item.item_type === "non_fnb" ? "Non-FnB" : "FnB"}` : ""}
                   </div>
                 </div>
-                <Badge variant={item.item_type === "non_fnb" ? "purple" : "blue"}>{item.item_type === "non_fnb" ? "Non-FnB" : "FnB"}</Badge>
+                <Badge variant={item.item_type === "non_fnb" ? "purple" : "blue"}>{item.item_type === "non_fnb" ? t("inventory.item_type_non_fnb") : t("inventory.item_type_fnb")}</Badge>
               </div>
               <div style={{
           display: "flex",
@@ -208,7 +208,7 @@ export default function InventoryPage() {
               width: 100,
               marginBottom: 0
             }} value={editStock} onChange={e => setEditStock(e.target.value)} />
-                    <button type="button" onClick={() => handleUpdate(item.id)} disabled={updateSubmitting} className="btn btn-primary btn-sm">{updateSubmitting ? "..." : "Save"}</button>
+                    <button type="button" onClick={() => handleUpdate(item.id)} disabled={updateSubmitting} className="btn btn-primary btn-sm">{updateSubmitting ? "..." : t("inventory.save")}</button>
                     <button type="button" onClick={cancelUpdate} className="btn btn-ghost btn-sm"><X size={14} /></button>
                   </div>
                   <input type="text" className="form-input" style={{

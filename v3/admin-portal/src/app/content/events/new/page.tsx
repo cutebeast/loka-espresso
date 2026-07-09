@@ -169,7 +169,7 @@ export default function EventNewPage() {
               })} />{t("content_events_new.active")}</label></div>
         </div><div className="df-actions" style={{
           marginTop: 20
-        }}><button type="button" onClick={() => router.push("/content/events")} className="btn btn-ghost">{t("content_events_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? "Creating..." : "Create Event"}</button></div></form>
+        }}><button type="button" onClick={() => router.push("/content/events")} className="btn btn-ghost">{t("content_events_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div></form>
       </div>
     </div>;
 }

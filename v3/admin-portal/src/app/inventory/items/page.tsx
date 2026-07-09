@@ -30,7 +30,7 @@ export default function InventoryItemsPage() {
   const [catFilter, setCatFilter] = useState("");
   const [categories, setCategories] = useState<InvCategory[]>([]);
   useEffect(() => {
-    api.getRaw<any>("/admin/inventory/categories?per_page=50").then(d => setCategories(d.items || (Array.isArray(d) ? d : []))).catch((e: any) => console.error("Failed to load categories:", e));
+    api.getRaw<any>("/admin/inventory/categories?per_page=50").then(d => setCategories(d.items || (Array.isArray(d) ? d : []))).catch((e: any) => { console.error("Failed to load categories:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -105,20 +105,18 @@ export default function InventoryItemsPage() {
                 <td style={{
               fontSize: 12
             }}>{item.unit_of_measure}</td>
-                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td>
                   <button onClick={() => router.push(`/inventory/items/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-info)",
                 marginRight: 4
               }}><Edit2 size={14} /></button>
                   <button onClick={async () => {
-                if (confirm("Delete?")) {
+                if (confirm(t("common.confirm_delete"))) {
                   try {
                     await api.del(`/admin/inventory/items/${item.id}`);
                     fetchData();
-                  } catch (e) {
-                    console.error(e);
-                  }
+                  } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
                 }
               }} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-error)"

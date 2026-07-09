@@ -246,6 +246,7 @@ TRANSLATABLE_ENTITIES: dict[str, list[str]] = {
     "survey_definitions": ["survey_name", "description"],
     "survey_questions": ["question_text"],
     "system_pages": ["title", "body_text"],
+    "help_articles": ["title", "body_text"],
     "splash_screens": ["title", "subtitle"],
     "marketing_campaigns": ["campaign_name", "body_content"],
     "notification_templates": ["title", "body"],
@@ -265,6 +266,7 @@ TABLE_TO_NAMESPACE = {
     "promo_banners": "promo",
     "system_pages": "content",
     "splash_screens": "content",
+    "help_articles": "help",
     "survey_definitions": "survey",
     "marketing_campaigns": "campaign",
 }

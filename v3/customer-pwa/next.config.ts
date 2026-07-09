@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: https://ip-api.com" +
-            (process.env.NODE_ENV === "development" ? " http://localhost:13800 http://127.0.0.1:13800" : "") + "; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+            (process.env.NODE_ENV === "development" ? " http://localhost:13800 http://127.0.0.1:13800" : "") + "; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://*.stripe.com;",
           },
         ],
       },

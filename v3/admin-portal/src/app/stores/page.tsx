@@ -53,14 +53,12 @@ export default function StoresPage() {
     fetchData();
   }, [fetchData]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this store?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/stores/${id}`);
       fetchData();
-    } catch (e: any) {
-      console.error("Failed to delete store:", e);
-    } finally {
+    } catch (e: any) {console.error("Failed to delete store:", e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };
@@ -123,7 +121,7 @@ export default function StoresPage() {
                     {!has24h && closedDays === 0 && <span className="badge badge-sm badge-green">{t("stores.regular")}</span>}
                   </div>
                 </td>
-                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td>
                   <button type="button" onClick={() => router.push(`/stores/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                   color: "var(--color-info)",

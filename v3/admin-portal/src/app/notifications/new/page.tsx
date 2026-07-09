@@ -39,9 +39,7 @@ export default function NotificationNewPage() {
   useEffect(() => {
     api.get<{
       items: Template[];
-    }>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('templates:', e);
-    });
+    }>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('templates:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const [selTemplate, setSelTemplate] = useState("");
   const applyTemplate = () => {

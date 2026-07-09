@@ -55,12 +55,12 @@ export default function InventoryStocksPage() {
     }).catch((e: any) => setError(e.message || "Failed to load stores"));
     api.getRaw<any>("/admin/inventory/categories?per_page=100").then(d => {
       setCategories(d.items || (Array.isArray(d) ? d : []));
-    }).catch((e: unknown) => console.error("inventory stocks load:", e));
+    }).catch((e: any) => { console.error("inventory stocks load:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   useEffect(() => {
     api.getRaw<any>("/admin/inventory/items?per_page=500").then(d => {
       setItems(d.items || (Array.isArray(d) ? d : []));
-    }).catch(e => console.error("Failed to load items:", e));
+    }).catch(e => { console.error("Failed to load items:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const fetchStocks = useCallback(() => {
     if (!storeId) return;

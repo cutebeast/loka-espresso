@@ -66,29 +66,25 @@ const typeIcons: Record<string, React.ReactNode> = {
   takeaway: <Package size={14} />,
   delivery: <Truck size={14} />
 };
-const typeLabels: Record<string, string> = {
-  dine_in: "Dine-in",
-  takeaway: "Takeaway",
-  delivery: "Delivery"
-};
+
 function isPaid(ps?: string): boolean {
   return ps === "paid" || ps === "captured" || ps === "settled" || ps === "authorized";
 }
-function paymentIndicator(order: Order): {
+function paymentIndicator(order: Order, t: (key: string) => string): {
   color: string;
   label: string;
 } | null {
   if (isPaid(order.payment_status)) return {
     color: "#16A34A",
-    label: "Paid"
+    label: t("orders.paid")
   };
   if (order.order_type === "dine_in") return {
     color: "#D97706",
-    label: "Unpaid"
+    label: t("orders.unpaid")
   };
   return {
     color: "#DC2626",
-    label: "NEEDS PAYMENT"
+    label: t("orders.needs_payment_do_not_hand_over")
   };
 }
 const nextMap: Partial<Record<OrderStatus, OrderStatus | null>> = {
@@ -117,10 +113,10 @@ export default function OrderCard({
   const urgencyStyle = urgencyStyles[urgency];
   if (!urgencyStyle) return null;
   const next = nextMap[order.status];
-  const orderType = order.order_type as keyof typeof typeLabels;
-  const typeLabel = typeLabels[orderType] || order.order_type;
-  const typeIcon = typeIcons[orderType] || null;
-  const payInd = paymentIndicator(order);
+  const orderType = order.order_type;
+  const typeLabel = orderType === "dine_in" ? t("orders.type_dine_in") : orderType === "takeaway" ? t("orders.type_takeaway") : orderType === "delivery" ? t("orders.type_delivery") : order.order_type;
+  const typeIcon = typeIcons[orderType as keyof typeof typeIcons] || null;
+  const payInd = paymentIndicator(order, t);
   const items = order.items || order.line_items || [];
   const visibleItems = items.slice(0, compact ? 2 : 4);
   const hiddenCount = items.length - visibleItems.length;
@@ -190,7 +186,7 @@ export default function OrderCard({
           e.stopPropagation();
           onQuickAction(order, next);
         }} className="btn btn-sm btn-primary">
-              {next.replace(/_/g, " ")}
+              {t(`staff.status.${next.replace(/-/g, "_")}`)}
               <ChevronRight size={14} />
             </button>}
         </div>

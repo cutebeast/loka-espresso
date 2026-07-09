@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store } from 'lucide-react';
+import { ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store, RefreshCw } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
@@ -85,7 +85,7 @@ export default function CheckoutPage() {
   const [discountValue, setDiscountValue] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway' | 'hitpay'>(checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet'));
   const [hitpayEnabled, setHitpayEnabled] = useState(false);
-  const [notes, _setNotes] = useState(checkoutDraft.notes || orderNote || '');
+  const [notes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [showRewardSheet, setShowRewardSheet] = useState(false);
@@ -99,9 +99,15 @@ export default function CheckoutPage() {
   } | null>(null);
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [stripeReady, setStripeReady] = useState(false);
+  const [gatewayIntentError, setGatewayIntentError] = useState(false);
+  const [retryingGatewayIntent, setRetryingGatewayIntent] = useState(false);
   const isSubmittingRef = useRef(false);
+  const walletRefreshed = useRef(false);
   useEffect(() => {
-    refreshWallet();
+    if (!walletRefreshed.current) {
+      refreshWallet();
+      walletRefreshed.current = true;
+    }
   }, [refreshWallet]);
   useEffect(() => {
     api.get('/payments/config').then(res => {
@@ -111,7 +117,7 @@ export default function CheckoutPage() {
         setStripeReady(true);
       }
       setHitpayEnabled(!!cfg.hitpay_enabled);
-    }).catch((e: unknown) => console.error('[Checkout] payment config failed:', e));
+    }).catch((e: unknown) => { console.error('[Checkout] payment config failed:', e); showToast(t('toast.loadPaymentConfigFailed'), 'error'); });
   }, []);
   useEffect(() => {
     if (user && !checkoutDraft.recipientName && !recipientName) {
@@ -124,7 +130,7 @@ export default function CheckoutPage() {
     let cancelled = false;
     api.get('/menu/bundle-products').then(res => {
       if (!cancelled) setBundleProducts(Array.isArray(res.data) ? res.data : res.data?.items || []);
-    }).catch((e: unknown) => console.error("Bundle products fetch failed:", e));
+    }).catch((e: unknown) => { console.error("Bundle products fetch failed:", e); showToast(t('toast.loadBundleProductsFailed'), 'error'); });
     return () => {
       cancelled = true;
     };
@@ -188,10 +194,13 @@ export default function CheckoutPage() {
     try {
       const missing = new Set<string>();
       const storeId = selectedStore?.id ?? dineInSession?.storeId ?? null;
+      const resolvedPickupTime = orderMode === 'pickup' && !pickupTime
+        ? new Date(Date.now() + 30 * 60 * 1000).toISOString()
+        : pickupTime;
       if (!storeId || storeId === 0) missing.add('store');
       if (orderMode === 'delivery' && !deliveryAddress?.address) missing.add('address');
       if (orderMode === 'pickup' && !selectedStore) missing.add('store');
-      if (orderMode !== 'dine_in' && !pickupTime) missing.add('time');
+      if (orderMode !== 'dine_in' && !resolvedPickupTime) missing.add('time');
       if (missing.size > 0) {
         setFieldErrors(missing);
         showToast(t('checkout.fieldErrors'), 'error');
@@ -208,7 +217,7 @@ export default function CheckoutPage() {
           storeId: storeId!,
           orderType: orderMode,
           deliveryAddress: deliveryAddress || undefined,
-          pickupTime: pickupTime || undefined,
+          pickupTime: resolvedPickupTime || undefined,
           paymentMethod,
           notes: notes || orderNote,
           recipientName: recipientName || undefined,
@@ -230,22 +239,31 @@ export default function CheckoutPage() {
           if (!stripeReady || !stripePublishableKey) {
             throw new Error('Online payment is not ready');
           }
-          const intentRes = await api.post('/payments/intent', {
-            order_id: orderResult.id,
-            provider: 'stripe',
-            payment_method: 'gateway'
-          });
-          const data = intentRes.data;
-          if (!data?.client_secret || !data?.payment_id) {
-            throw new Error('Unable to start payment');
+          try {
+            const intentRes = await api.post('/payments/intent', {
+              order_id: orderResult.id,
+              provider: 'stripe',
+              payment_method: 'gateway'
+            });
+            const data = intentRes.data;
+            if (!data?.client_secret || !data?.payment_id) {
+              throw new Error('Unable to start payment');
+            }
+            setGatewayOrder(orderResult);
+            setGatewayIntent({
+              paymentId: data.payment_id,
+              clientSecret: data.client_secret
+            });
+            setGatewayIntentError(false);
+            setPlacing(false);
+            return;
+          } catch {
+            setGatewayOrder(orderResult);
+            setGatewayIntentError(true);
+            showToast(t('checkout.payment_retry_toast'), 'error');
+            setPlacing(false);
+            return;
           }
-          setGatewayOrder(result);
-          setGatewayIntent({
-            paymentId: data.payment_id,
-            clientSecret: data.client_secret
-          });
-          setPlacing(false);
-          return;
         }
         if (paymentMethod === 'hitpay') {
           if (!hitpayEnabled) {
@@ -283,6 +301,36 @@ export default function CheckoutPage() {
       }
     } finally {
       isSubmittingRef.current = false;
+    }
+  };
+  const retryGatewayPayment = async () => {
+    if (!gatewayOrder) return;
+    setRetryingGatewayIntent(true);
+    setGatewayIntentError(false);
+    try {
+      if (gatewayIntent?.paymentId) {
+        try {
+          await api.post(`/payments/${gatewayIntent.paymentId}/cancel`, {});
+        } catch { /* proceed anyway */ }
+      }
+      const intentRes = await api.post('/payments/intent', {
+        order_id: gatewayOrder.id,
+        provider: 'stripe',
+        payment_method: 'gateway'
+      });
+      const data = intentRes.data;
+      if (!data?.client_secret || !data?.payment_id) {
+        throw new Error('Unable to start payment');
+      }
+      setGatewayIntent({
+        paymentId: data.payment_id,
+        clientSecret: data.client_secret
+      });
+    } catch (e: unknown) {
+      setGatewayIntentError(true);
+      showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('checkout.payment_retry_toast'), 'error');
+    } finally {
+      setRetryingGatewayIntent(false);
     }
   };
   return <>
@@ -335,7 +383,7 @@ export default function CheckoutPage() {
               <div className="co-delivery-field"><label className="co-delivery-label">{t('checkout.recipientPhone')}</label><input value={recipientPhone} onChange={e => {
                 setRecipientPhone(e.target.value);
                 saveDraft();
-              }} placeholder="60123456789" autoComplete="tel" inputMode="tel" className="co-delivery-input" /></div>
+              }} placeholder={t('checkout.recipientPhonePlaceholder')} autoComplete="tel" inputMode="tel" className="co-delivery-input" /></div>
             </div>
             <DeliveryAddressCard value={deliveryAddress} onChange={addr => {
             setDeliveryAddress(addr);
@@ -438,6 +486,12 @@ export default function CheckoutPage() {
           })}</button> : <button className="co-place-order-btn" onClick={handlePlaceOrder} disabled={placing}>{placing ? <Loader2 size={18} className="spinning" /> : <UtensilsCrossed size={18} />}{placing ? t('checkout.placingOrder') : t('checkout.placeOrderPrice', {
             price: formatPrice(total)
           })}</button>}
+        {gatewayIntentError && gatewayOrder && (
+          <button className="co-place-order-btn" style={{ marginTop: 8 }} onClick={retryGatewayPayment} disabled={retryingGatewayIntent}>
+            {retryingGatewayIntent ? <Loader2 size={18} className="spinning" /> : <RefreshCw size={18} />}
+            {retryingGatewayIntent ? t('common.retrying') : t('checkout.retryPayment')}
+          </button>
+        )}
       </div>
     </div>
     <BottomSheet isOpen={showRewardSheet} onClose={() => setShowRewardSheet(false)} title={t('checkout.voucherRewards')}>

@@ -38,6 +38,8 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [inputValue, setInputValue] = useState(searchQuery);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
@@ -182,7 +184,7 @@ export default function MenuPage() {
       }
     }
     if (unavailable.length > 0) {
-      showToast(`${t('menu.bundleIncompleteToast') || 'Bundle unavailable:'} ${unavailable.join(', ')}`, 'warning');
+      showToast(`${t('menu.bundleIncompleteToast')} ${unavailable.join(', ')}`, 'warning');
       return;
     }
     for (const comp of bp.components) {
@@ -204,6 +206,9 @@ export default function MenuPage() {
     setPendingAddonBundle(bp);
   }, [addItem, selectedStore?.id, showToast, t]);
   const debouncedSearch = useDebounce(searchQuery, 150);
+  useEffect(() => {
+    setInputValue(searchQuery);
+  }, [searchQuery]);
   const filteredItems = useMemo(() => menuItems.filter(item => {
     const matchesSearch = !debouncedSearch || item.item_name.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesDietary = !selectedDietaryTag || item.dietary_tags && item.dietary_tags.some((t: string) => t.toLowerCase() === selectedDietaryTag.toLowerCase());
@@ -268,7 +273,13 @@ export default function MenuPage() {
         {showSearch ? <div className="menu-search-bar">
             <div className="menu-search-input-wrap">
               <Search size={14} color={LOKA.textMuted} />
-              <input type="text" autoFocus placeholder={t('menu.searchPlaceholder')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="menu-search-input" />
+              <input type="text" autoFocus placeholder={t('menu.searchPlaceholder')} value={inputValue} onChange={e => {
+                setInputValue(e.target.value);
+                if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+                searchTimeoutRef.current = setTimeout(() => {
+                  setSearchQuery(e.target.value);
+                }, 300);
+              }} className="menu-search-input" />
               {searchQuery && <button onClick={() => setSearchQuery('')} className="menu-search-clear">
                   <X size={14} />
                 </button>}
@@ -447,7 +458,7 @@ export default function MenuPage() {
                 }}>
                             {bp.pick_count && bp.pick_count > 0 ? t('menu.pickXSubtitle', {
                     count: bp.pick_count
-                  }) : `${(bp.components || []).slice(0, 3).map(c => c.menu_item_name || 'Item').join(" + ")}${(bp.components || []).length > 3 ? ` +${(bp.components || []).length - 3} more` : ""}`}
+                  }) : `${(bp.components || []).slice(0, 3).map(c => c.menu_item_name || t('menu.itemFallback')).join(" + ")}${(bp.components || []).length > 3 ? t('menu.moreCount', { count: (bp.components || []).length - 3 }) : ""}`}
                           </div>
                           <div className="menu-product-price">{formatPrice(bp.bundle_price)}</div>
                         </div>

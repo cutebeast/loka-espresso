@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
+import { logError } from "@/lib/logger";
 
 interface Translation {
   id: number;
@@ -47,7 +48,7 @@ export default function AdminTranslationsTab() {
         if (r?.items) all.push(...r.items);
       }
       setItems(all);
-    } catch (e) { console.error(e); }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     finally { setLoading(false); }
   }, []);
 
@@ -99,7 +100,7 @@ export default function AdminTranslationsTab() {
       setMsg(t("admin.translations.saved"));
       setTimeout(() => setMsg(""), 2000);
       fetchAll();
-    } catch (e) { console.error(e); }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     finally { setSaving(null); }
   };
 
@@ -143,7 +144,8 @@ export default function AdminTranslationsTab() {
       }
       setMsg(t("admin.translations.autoTranslatedDone", { count, locale }));
       fetchAll();
-    } catch {
+    } catch (e) {
+      logError("Auto translate failed", e);
       setMsg(t("admin.translations.autoTranslateFailed"));
     } finally {
       setSaving(null);

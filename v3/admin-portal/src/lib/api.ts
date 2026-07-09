@@ -10,6 +10,9 @@ function resolveApiBase(): string {
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("NEXT_PUBLIC_API_URL must be set in production");
+    }
     return "http://127.0.0.1:13800/api";
   }
   return "/api";
@@ -333,3 +336,56 @@ export interface TipAllocation { id: number; order_id: number; store_id?: number
 export function getTipAllocations(params?: { page?: number; per_page?: number; store_id?: number }) { const qs = new URLSearchParams(); if (params?.page) qs.set("page", String(params.page)); if (params?.per_page) qs.set("per_page", String(params.per_page)); if (params?.store_id) qs.set("store_id", String(params.store_id)); return api.get<TipAllocation[]>(`/admin/staff/tips?${qs.toString()}`); }
 
 export interface OrderDetail { id: number; order_number: string; customer_name: string; customer_id: number; store_name: string; store_id: number; order_type: string; status: string; payment_status: string; payment_method?: string; fulfillment_type: string; item_count: number; subtotal?: number; items_subtotal: number; modifier_subtotal?: number; delivery_fee: number; tax_amount: number; discount_amount: number; tip_amount?: number; total_amount: number; total_amount_currency: string; line_items: any[]; status_log: any[]; adjustments: any[]; fulfillment: any; customer_notes: string | null; created_at: string; }
+
+
+// ── Help Center / Internal Wiki ──
+
+export type HelpAudience = "admin" | "staff" | "customer";
+
+export interface HelpArticle {
+  id: number;
+  slug: string;
+  title: string;
+  audience: HelpAudience;
+  category: string | null;
+  body_text: string | null;
+  position: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HelpArticleInput {
+  slug: string;
+  title: string;
+  audience: HelpAudience;
+  category?: string | null;
+  body_text?: string | null;
+  position?: number;
+  is_active?: boolean;
+}
+
+export function getHelpArticles(params?: { audience?: HelpAudience; category?: string; page?: number; per_page?: number }) {
+  const qs = new URLSearchParams();
+  if (params?.audience) qs.set("audience", params.audience);
+  if (params?.category) qs.set("category", params.category);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
+  return api.getPaginated<HelpArticle>(`/admin/help-articles?${qs.toString()}`);
+}
+
+export function getHelpArticle(id: number) {
+  return api.get<HelpArticle>(`/admin/help-articles/${id}`);
+}
+
+export function createHelpArticle(body: HelpArticleInput) {
+  return api.post<{ id: number; message: string }>("/admin/help-articles", body);
+}
+
+export function updateHelpArticle(id: number, body: Partial<HelpArticleInput>) {
+  return api.patch<{ id: number; message: string }>(`/admin/help-articles/${id}`, body);
+}
+
+export function deleteHelpArticle(id: number) {
+  return api.del<{ id: number; deleted: boolean }>(`/admin/help-articles/${id}`);
+}

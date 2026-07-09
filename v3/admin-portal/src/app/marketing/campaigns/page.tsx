@@ -35,19 +35,17 @@ export default function MarketingCampaignsPage() {
     };
   }, [fetchData]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this campaign?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/marketing/campaigns/${id}`);
       setItems(await fetchData());
-    } catch (e: any) {
-      console.error("Failed to delete campaign:", e);
-    } finally {
+    } catch (e: any) {console.error("Failed to delete campaign:", e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };
   const handleSend = async (id: number) => {
-    if (!confirm("Send this campaign now?")) return;
+    if (!confirm(t("common.confirm_send"))) return;
     try {
       await sendCampaign(id);
       setItems(await fetchData());
@@ -68,11 +66,11 @@ export default function MarketingCampaignsPage() {
   };
   const channelLabel = (ch: string) => {
     const m: Record<string, string> = {
-      push_notification: "Push",
-      email: "Email",
-      sms: "SMS",
-      in_app: "In-App",
-      whatsapp: "WhatsApp"
+      push_notification: t("marketing.channel_push"),
+      email: t("marketing.channel_email"),
+      sms: t("marketing.channel_sms"),
+      in_app: t("marketing.channel_in_app"),
+      whatsapp: t("marketing.channel_whatsapp")
     };
     return m[ch] || ch;
   };

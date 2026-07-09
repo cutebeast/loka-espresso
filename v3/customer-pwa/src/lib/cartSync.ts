@@ -3,6 +3,8 @@ import type { CartItem, Cart, CartLineItem } from './api';
 import { queueOrder, replayOrders, isNetworkError } from './orderQueue';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
+import { useUIStore } from '@/stores/uiStore';
+import { t } from '@/lib/i18n';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;
@@ -40,6 +42,7 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
 
   while (_syncPromise) {
     try { await _syncPromise; } catch { /* ignore previous failure */ }
+    items = useCartStore.getState().items;
   }
 
   _syncPromise = (async () => {
@@ -250,6 +253,7 @@ export async function placeOrder(params: {
     }
     // Refresh wallet balance in case of partial deduction
     useWalletStore.getState().refreshWallet().catch((err) => console.error('[CartSync] Wallet refresh after payment failure failed:', err));
+    useUIStore.getState().showToast(t('toast.payment_failed_refunded'), 'error');
     throw error;
   }
 

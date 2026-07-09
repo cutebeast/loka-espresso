@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { BASE_URL } from "@/lib/api";
+import { logError } from "@/lib/logger";
+import DEFAULT_TRANSLATIONS from "./i18n/locales/en.json";
 
 const STORAGE_KEY = "admin-locale";
 const SUPPORTED_LOCALES = ["en", "ms", "zh", "ta", "tr"];
@@ -13,7 +15,7 @@ type Translations = Record<string, string>;
 interface I18nContextValue {
   locale: string;
   setLocale: (locale: string) => void;
-  t: (key: string, vars?: Record<string, string | number>) => string;
+  t: (key: string, varsOrDefault?: Record<string, string | number> | string) => string;
   loading: boolean;
 }
 
@@ -41,7 +43,7 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
     const nav = typeof window !== "undefined" ? navigator.language : null;
     return parseLocale(stored || nav);
   });
-  const [translations, setTranslations] = useState<Translations>({});
+  const [translations, setTranslations] = useState<Translations>(DEFAULT_TRANSLATIONS);
   const [loading, setLoading] = useState(false);
 
   const loadTranslations = useCallback(async (targetLocale: string) => {
@@ -53,8 +55,8 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
         if (cached) {
           try {
             setTranslations(JSON.parse(cached));
-          } catch {
-            // ignore corrupt cache
+          } catch (e) {
+            logError("Corrupt translations cache", e);
           }
         }
       }
@@ -65,7 +67,7 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
       const json = await res.json();
       const data = (json && typeof json === "object" && "data" in json ? json.data : json) as Translations;
       if (data && typeof data === "object") {
-        setTranslations(data);
+        setTranslations({ ...DEFAULT_TRANSLATIONS, ...data });
         if (typeof window !== "undefined") {
           localStorage.setItem(cacheKey, JSON.stringify(data));
         }
@@ -90,8 +92,14 @@ export function TranslationProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const t = useCallback(
-    (key: string, vars?: Record<string, string | number>) => {
-      const text = translations[key] ?? key;
+    (key: string, varsOrDefault?: Record<string, string | number> | string) => {
+      let text = translations[key] ?? key;
+      let vars: Record<string, string | number> | undefined;
+      if (typeof varsOrDefault === "string") {
+        if (!translations[key]) text = varsOrDefault;
+      } else {
+        vars = varsOrDefault;
+      }
       return interpolate(text, vars);
     },
     [translations]

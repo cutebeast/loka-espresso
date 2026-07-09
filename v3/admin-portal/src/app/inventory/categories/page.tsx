@@ -57,14 +57,14 @@ export default function InventoryCategoriesPage() {
                 <td className="font-mono" style={{
               fontSize: 12
             }}>{item.slug}</td>
-                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td>
                   <button onClick={() => router.push(`/inventory/categories/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-info)",
                 marginRight: 4
               }}><Edit2 size={14} /></button>
                   <button onClick={async () => {
-                if (confirm("Delete?")) {
+                if (confirm(t("common.confirm_delete"))) {
                   await api.del(`/admin/inventory/categories/${item.id}`);
                   fetchData();
                 }

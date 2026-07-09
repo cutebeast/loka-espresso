@@ -22,9 +22,7 @@ export default function CheckinSettingsPage() {
       });
       setConfig(m);
       setValues(m);
-    }).catch(e => {
-      console.error('checkin config:', e);
-    }).finally(() => setLoading(false));
+    }).catch(e => { console.error('checkin config:', e); setMsg(e.message || t("admin.errors.loadFailed")); }).finally(() => setLoading(false));
   }, []);
   const saveAll = async () => {
     setSaving(true);

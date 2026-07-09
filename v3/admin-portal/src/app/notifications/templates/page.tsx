@@ -34,14 +34,12 @@ export default function TemplatesPage() {
     })();
   }, [fetch]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/notifications/templates/${id}`);
       setConfirmDelete(null);
       fetch();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const typeBadge = (t: string) => <span className="badge badge-sm badge-outline">{t}</span>;

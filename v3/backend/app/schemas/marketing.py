@@ -1,6 +1,7 @@
 """Marketing domain schemas."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import Field
@@ -33,8 +34,8 @@ class MarketingCampaignBase(BaseSchema):
     ] = "draft"
     provider: str | None = Field(None, max_length=50)
     provider_campaign_id: str | None = Field(None, max_length=100)
-    budget_allocated: float | None = Field(None, ge=0)
-    target_roi: float | None = None
+    budget_allocated: Decimal | None = Field(None, ge=0)
+    target_roi: Decimal | None = None
 
 
 class MarketingCampaignCreate(MarketingCampaignBase):
@@ -66,15 +67,15 @@ class MarketingCampaignUpdate(BaseSchema):
     ] | None = None
     provider: str | None = Field(None, max_length=50)
     provider_campaign_id: str | None = Field(None, max_length=100)
-    budget_allocated: float | None = Field(None, ge=0)
-    target_roi: float | None = None
+    budget_allocated: Decimal | None = Field(None, ge=0)
+    target_roi: Decimal | None = None
 
 
 class MarketingCampaignOut(MarketingCampaignBase, TimestampedSchema):
     id: int
     started_at: datetime | None = None
     completed_at: datetime | None = None
-    budget_spent: float = 0
-    actual_roi: float | None = None
+    budget_spent: Decimal = Decimal(0)
+    actual_roi: Decimal | None = None
     created_by: int | None = None
     delivered_count: int | None = None  # computed — set by send endpoint

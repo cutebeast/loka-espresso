@@ -1,5 +1,5 @@
 """Payment domain schemas."""
-
+from decimal import Decimal
 from datetime import datetime
 from typing import Literal
 
@@ -36,17 +36,17 @@ class PaymentOut(BaseSchema):
     provider: str
     provider_transaction_id: str | None
     payment_method_type: str | None
-    amount: float
+    amount: Decimal
     currency_code: str
     status: Literal[
         "initiated", "pending_authorization", "authorized", "captured",
         "failed", "refunded", "partially_refunded", "chargeback", "voided", "settled",
     ]
-    captured_amount: float
-    refunded_amount: float
+    captured_amount: Decimal
+    refunded_amount: Decimal
     refund_count: int
-    fee_amount: float
-    net_amount: float
+    fee_amount: Decimal
+    net_amount: Decimal
     failure_code: str | None
     failure_message: str | None
     settled_at: datetime | None
@@ -60,7 +60,7 @@ class RefundOut(BaseSchema):
     id: int
     payment_id: int
     order_id: int
-    amount: float
+    amount: Decimal
     reason: str
     status: Literal["pending", "processing", "completed", "failed"]
     approved_by: int | None
@@ -78,7 +78,7 @@ class PaymentIntentRequest(BaseSchema):
 
 
 class RefundCreate(BaseSchema):
-    amount: float = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0)
     reason: str = Field(..., min_length=1)
     reason_category: str = "other"
 
@@ -88,7 +88,7 @@ class PaymentIntentResponse(BaseSchema):
     client_secret: str | None
     redirect_url: str | None
     status: str
-    amount: float
+    amount: Decimal
     currency_code: str
 
 
@@ -101,7 +101,7 @@ class CheckoutSessionResponse(BaseSchema):
     payment_id: int
     checkout_url: str
     status: str
-    amount: float
+    amount: Decimal
     currency_code: str
 
 

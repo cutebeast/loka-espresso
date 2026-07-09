@@ -4,35 +4,37 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 const LOCALES = [{
   code: "en",
-  label: "English",
+  localeKey: "locale.english",
   flag: "🇬🇧"
 }, {
   code: "ms",
-  label: "BM",
+  localeKey: "locale.bahasa_melayu",
   flag: "🇲🇾"
 }, {
   code: "zh",
-  label: "中文",
+  localeKey: "locale.chinese",
   flag: "🇨🇳"
 }, {
   code: "ta",
-  label: "தமிழ்",
+  localeKey: "locale.tamil",
   flag: "🇮🇳"
 }, {
   code: "tr",
-  label: "TR",
+  localeKey: "locale.turkish",
   flag: "🇹🇷"
 }];
 const TR_FIELDS = [{
   key: "title",
-  label: "Title"
+  fieldKey: "notifications.field_title"
 }, {
   key: "body",
-  label: "Body"
+  fieldKey: "notifications.field_body"
 }];
 const TYPES = ["general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"];
 export default function TemplateEditPage() {
@@ -43,6 +45,7 @@ export default function TemplateEditPage() {
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [loc, setLoc] = useState("en");
   const [saving, setSaving] = useState(false);
   const [savingTr, setSavingTr] = useState(false);
@@ -79,13 +82,15 @@ export default function TemplateEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -99,11 +104,9 @@ export default function TemplateEditPage() {
     setSaving(true);
     try {
       await api.put(`/admin/notifications/templates/${id}`, form);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
     ;
@@ -124,9 +127,7 @@ export default function TemplateEditPage() {
         record_id: Number(id),
         column_name: field
       });
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const regenAll = async () => {
     setRegen(true);
@@ -148,9 +149,7 @@ export default function TemplateEditPage() {
           await upsertTr(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${c}`);
     setTimeout(() => setMsg(""), 2500);
@@ -162,10 +161,11 @@ export default function TemplateEditPage() {
       const t = tr[`${loc}:${f.key}`] || "";
       if (t) await upsertTr(f.key, loc, (form[f.key] || "").trim(), t);
     }
-    setMsg("Translations saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
     setSavingTr(false);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("notifications_templates_[id].loading")}</div>;
@@ -199,7 +199,7 @@ export default function TemplateEditPage() {
         cursor: "pointer",
         color: loc === lc.code ? "var(--color-primary)" : "var(--color-text-muted)",
         borderRadius: "4px 4px 0 0"
-      }}>{lc.flag} {lc.label}</button>)}</div>
+      }}>{lc.flag} {t(lc.localeKey)}</button>)}</div>
       {loc === "en" ? <div className="card" style={{
       padding: 24,
       maxWidth: 700
@@ -237,7 +237,7 @@ export default function TemplateEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/notifications/templates")} className="btn btn-ghost">{t("notifications_templates_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/notifications/templates")} className="btn btn-ghost">{t("notifications_templates_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 700
@@ -249,7 +249,7 @@ export default function TemplateEditPage() {
         marginBottom: 20
       }}><h3 style={{
           margin: 0
-        }}>{LOCALES.find(l => l.code === loc)?.flag} {LOCALES.find(l => l.code === loc)?.label}{t("notifications_templates_[id].translation")}</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label={t("notifications_templates_[id].refresh")}><RefreshCw size={14} />{regen ? "..." : "Regenerate All"}</button></div>
+        }}>{LOCALES.find(l => l.code === loc)?.flag} {t(LOCALES.find(l => l.code === loc)?.localeKey || "")}{t("notifications_templates_[id].translation")}</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label={t("notifications_templates_[id].refresh")}><RefreshCw size={14} />{regen ? "..." : "Regenerate All"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f => {
           const k = `${loc}:${f.key}`;
           const isTA = f.key === "body";
@@ -259,7 +259,7 @@ export default function TemplateEditPage() {
               fontSize: 11,
               fontWeight: 600,
               color: "var(--color-text-muted)"
-            }}>{f.label}<span style={{
+            }}>{t(f.fieldKey)}<span style={{
                 fontWeight: 400,
                 fontStyle: "italic",
                 marginLeft: 8

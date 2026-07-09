@@ -32,8 +32,8 @@ import HomePage from './HomePage';
 import MenuPage from './MenuPage';
 import CartPage from './CartPage';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pageImporters: Record<string, () => Promise<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   default: React.ComponentType<any>;
 }>> = {
   orders: () => import('./OrdersPage'),
@@ -56,6 +56,7 @@ const pageImporters: Record<string, () => Promise<{
   referral: () => import('./profile/ReferralPage'),
   'my-card': () => import('./MyCardPage'),
   'order-detail': () => import('./OrderDetailPage'),
+  'guest-pay': () => import('./GuestPayPage'),
   reservations: () => import('./ReservationsPage'),
   events: () => import('./EventsPage'),
   checkin: () => import('./CheckinPage')
@@ -282,6 +283,8 @@ export default function AppShell() {
         return <LazyRenderer pageKey="my-card" />;
       case 'order-detail':
         return <LazyRenderer pageKey="order-detail" />;
+      case 'guest-pay':
+        return <LazyRenderer pageKey="guest-pay" />;
       case 'reservations':
         return <LazyRenderer pageKey="reservations" onBack={onBackProfile} />;
       case 'events':
@@ -323,8 +326,9 @@ export default function AppShell() {
         </motion.div>}
       {page === 'home' && authDone && <PromotionPopup />}
 
-      {/* Guest users skip auth flow entirely */}
-      {!isGuest && !authDone ? <AuthFlow onAuthDone={handleAuthDone} /> : <>
+      {/* Guest users skip auth flow entirely; guest-pay is a standalone public payment
+          page (walk-in dine-in customers scan a QR and pay without logging in) */}
+      {!isGuest && !authDone && page !== 'guest-pay' ? <AuthFlow onAuthDone={handleAuthDone} /> : <>
           {/* Toast */}
           {toast && <Toast toast={toast} onDismiss={() => useUIStore.getState().hideToast()} />}
 
@@ -377,7 +381,7 @@ export default function AppShell() {
             </>}
 
           {/* Main Content */}
-          <main id="main-content" className="flex-1 overflow-hidden bg-bg">
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-hidden bg-bg">
             <AnimatePresence mode="wait">
               <motion.div key={page} initial={{
             opacity: 0,

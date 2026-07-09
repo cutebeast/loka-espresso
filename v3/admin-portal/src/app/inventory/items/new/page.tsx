@@ -30,12 +30,8 @@ export default function NewItemPage() {
     is_active: true
   });
   useEffect(() => {
-    api.getRaw<any>("/admin/inventory/categories?per_page=50").then(d => setCategories(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('categories:', e);
-    });
-    api.getRaw<any>("/admin/inventory/suppliers?per_page=50").then(d => setSuppliers(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('suppliers:', e);
-    });
+    api.getRaw<any>("/admin/inventory/categories?per_page=50").then(d => setCategories(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/inventory/suppliers?per_page=50").then(d => setSuppliers(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('suppliers:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +117,7 @@ export default function NewItemPage() {
               })} />{t("inventory_items_new.active")}</label></div>
         </div><div className="df-actions" style={{
           marginTop: 20
-        }}><button type="button" onClick={() => router.push("/inventory/items")} className="btn btn-ghost">{t("inventory_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Creating..." : "Create Item"}</button></div></form>
+        }}><button type="button" onClick={() => router.push("/inventory/items")} className="btn btn-ghost">{t("inventory_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.creating") : t("admin.common.create")}</button></div></form>
       </div>
     </div>;
 }

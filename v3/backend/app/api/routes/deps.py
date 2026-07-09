@@ -1,7 +1,9 @@
 """FastAPI dependencies for API v1."""
-
+import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -67,6 +69,7 @@ def get_staff_store_id_from_request(request: Request) -> int | None:
     try:
         payload = decode_token(token)
     except Exception:
+        logger.debug("Failed to decode staff store id from token", exc_info=True)
         return None
     if payload.get("type") == "staff":
         return int(payload.get("store_id", 0)) or None
@@ -335,6 +338,13 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
         staff = result.scalar_one_or_none()
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
+
+        if staff.pin_last_changed_at is None:
+            path = request.url.path
+            exempt_paths = ["change-pin", "change-password", "/auth/me", "/auth/logout", "/auth/refresh", "/auth/pin", "/health"]
+            if request.method != "OPTIONS" and not any(p in path for p in exempt_paths):
+                raise HTTPException(status_code=403, detail="must_change_pin")
+
         return staff
     except pyjwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")

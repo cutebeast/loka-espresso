@@ -54,14 +54,10 @@ export default function PromotionNewPage() {
   useEffect(() => {
     api.get<{
       items: Voucher[];
-    }>("/admin/vouchers?per_page=100&is_active=true").then(d => setVouchers(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('vouchers:', e);
-    });
+    }>("/admin/vouchers?per_page=100&is_active=true").then(d => setVouchers(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('vouchers:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.get<{
       items: Survey[];
-    }>("/admin/surveys?per_page=100").then(d => setSurveys(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('surveys:', e);
-    });
+    }>("/admin/surveys?per_page=100").then(d => setSurveys(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('surveys:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   useEffect(() => {
     if (!form.voucher_id) {

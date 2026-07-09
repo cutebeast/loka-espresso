@@ -1,6 +1,7 @@
 """POS domain schemas."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -36,7 +37,7 @@ class PosSessionBase(BaseSchema):
     terminal_id: int = Field(..., gt=0)
     staff_id: int | None = None
     status: Literal["open", "closed", "paused"] = "open"
-    opening_cash: float = Field(default=0, ge=0)
+    opening_cash: Decimal = Field(default=Decimal(0), ge=0)
 
 
 class PosSessionCreate(PosSessionBase):
@@ -44,7 +45,7 @@ class PosSessionCreate(PosSessionBase):
 
 
 class PosSessionClose(BaseSchema):
-    closing_cash: float = Field(..., ge=0)
+    closing_cash: Decimal = Field(..., ge=0)
     discrepancy_notes: str | None = Field(None, max_length=500)
 
 
@@ -55,14 +56,14 @@ class PosSessionOut(BaseSchema):
     status: str
     opened_at: datetime
     closed_at: datetime | None
-    opening_cash: float
-    closing_cash: float | None
-    expected_cash: float | None
-    discrepancy: float | None
+    opening_cash: Decimal
+    closing_cash: Decimal | None
+    expected_cash: Decimal | None
+    discrepancy: Decimal | None
     discrepancy_notes: str | None
-    total_sales_cash: float
-    total_sales_card: float
-    total_sales_qr: float
+    total_sales_cash: Decimal
+    total_sales_card: Decimal
+    total_sales_qr: Decimal
     order_count: int
     created_at: datetime
     updated_at: datetime

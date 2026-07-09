@@ -73,23 +73,23 @@ export default function TableCard({
   const hasQr = !!(table.qr_code_url || table.qr_code_token) && !expiry.expired;
   const getStatusBadge = () => {
     if (table.is_occupied) return {
-      text: "In Use",
+      text: t("tables.status_in_use"),
       cls: "tp-badge-red"
     };
     if (!table.qr_code_token) return {
-      text: "Pending",
+      text: t("tables.status_pending"),
       cls: "tp-badge-yellow"
     };
     if (expiry.expired) return {
-      text: "Expired",
+      text: t("tables.status_expired"),
       cls: "tp-badge-red"
     };
     if (table.is_active) return {
-      text: "Active",
+      text: t("tables.status_active"),
       cls: "tp-badge-green"
     };
     return {
-      text: "Inactive",
+      text: t("tables.status_inactive"),
       cls: "tp-badge-gray"
     };
   };
@@ -144,7 +144,7 @@ export default function TableCard({
               <RefreshCw size={14} />
             </button>
           </>}
-        <button type="button" onClick={() => onToggle(table)} className="tp-btn-toggle" aria-label={table.is_active ? "Deactivate" : "Activate"} title={table.is_active ? "Deactivate" : "Activate"}>
+        <button type="button" onClick={() => onToggle(table)} className="tp-btn-toggle" aria-label={table.is_active ? t("tables.deactivate") : t("tables.activate")} title={table.is_active ? t("tables.deactivate") : t("tables.activate")}>
           {table.is_active ? <ToggleRight size={18} className="text-green-600" /> : <ToggleLeft size={18} className="text-gray-400" />}
         </button>
         <button type="button" onClick={() => onEdit(table)} className="tp-btn-edit" aria-label={t("common.tables_table_card.edit_table")} title={t("common.tables_table_card.edit")}>

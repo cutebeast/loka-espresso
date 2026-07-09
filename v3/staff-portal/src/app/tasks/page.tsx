@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/hooks/useTranslation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getMyTasks, completeMyTask, type StaffTask } from "@/lib/api";
 import { ChevronLeft, CheckCircle2, Circle, Calendar } from "lucide-react";
@@ -31,20 +31,22 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [completing, setCompleting] = useState<number | null>(null);
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const data = await getMyTasks();
       setTasks(data || []);
     } catch (e) {
       console.error(e);
-      setError("Could not load tasks");
+      setError(t("tasks.err_load_failed"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
   useEffect(() => {
     fetchTasks();
-  }, []);
+    const interval = setInterval(fetchTasks, 30000);
+    return () => clearInterval(interval);
+  }, [fetchTasks]);
   const handleComplete = async (taskId: number) => {
     setCompleting(taskId);
     try {
@@ -52,7 +54,7 @@ export default function TasksPage() {
       await fetchTasks();
     } catch (e) {
       console.error(e);
-      setError("Failed to complete task");
+      setError(t("tasks.err_complete_failed"));
     } finally {
       setCompleting(null);
     }

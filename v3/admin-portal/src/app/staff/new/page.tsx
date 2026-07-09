@@ -32,14 +32,13 @@ export default function NewStaffPage() {
     display_name: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [tempPin] = useState(() => String(Math.floor(Math.random() * 900000) + 100000));
   useEffect(() => {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => {
       const list = d.items || [];
       setStores(list);
       if (list.length > 0) setStoreId(String(list[0].id));
-    }).catch(e => {
-      console.error('stores:', e);
-    });
+    }).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +52,12 @@ export default function NewStaffPage() {
         phone_number: form.phone_number,
         role: form.role,
         store_id: Number(storeId),
-        pin: "000000"
+        pin: tempPin
       });
       setCreated({
         email: form.email,
         password: form.password,
-        pin: "000000",
+        pin: tempPin,
         display_name: form.display_name
       });
     } catch (err: any) {
@@ -108,7 +107,7 @@ export default function NewStaffPage() {
         <div className="df-actions" style={{
         marginTop: 16
       }}>
-          <button onClick={handleCopy} className="btn btn-primary" aria-label={t("staff_new.copy")}><Copy size={14} /> {copied ? "Copied!" : "Copy Credentials"}</button>
+          <button onClick={handleCopy} className="btn btn-primary" aria-label={t("staff_new.copy")}><Copy size={14} /> {copied ? t("staff_new.copied") : t("staff_new.copy_credentials")}</button>
           <button onClick={() => router.push("/staff")} className="btn btn-ghost"><Check size={14} />{t("staff_new.done")}</button>
         </div>
       </div>;
@@ -143,7 +142,7 @@ export default function NewStaffPage() {
               ...form,
               email: e.target.value
             })} placeholder={t("staff_new.staff_example_com")} /></div>
-          <div className="df-field"><label className="df-label">{t("staff_new.password_2")}</label><input required type="text" className="w-full border rounded px-3 py-2 text-sm" value={form.password} onChange={e => setForm({
+          <div className="df-field"><label className="df-label">{t("staff_new.password_2")}</label><input required type="password" className="w-full border rounded px-3 py-2 text-sm" value={form.password} onChange={e => setForm({
               ...form,
               password: e.target.value
             })} /></div>
@@ -162,7 +161,7 @@ export default function NewStaffPage() {
             <div style={{
               fontSize: 11,
               opacity: 0.5
-            }}>{t("staff_new.default_pin")}<strong>000000</strong>{t("staff_new.staff_can_change_after_login")}</div>
+            }}>{t("staff_new.default_pin")}<strong>{tempPin}</strong>{t("staff_new.staff_can_change_after_login")}</div>
           </div>
         </div><div className="df-actions" style={{
           marginTop: 20

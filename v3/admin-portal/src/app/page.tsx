@@ -28,12 +28,13 @@ export default function DashboardPage() {
   const [toDate, setToDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [storesError, setStoresError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     api.get<{ items: Store[] }>("/admin/stores?per_page=50")
-      .then(d => { if (!cancelled) setStores(d.items || (Array.isArray(d) ? d : [])); })
-      .catch((err: any) => { if (!cancelled) console.error("Failed to load stores:", err); });
+      .then(d => { if (!cancelled) { setStores(d.items || (Array.isArray(d) ? d : [])); setStoresError(""); } })
+      .catch((err: any) => { if (!cancelled) { console.error("Failed to load stores:", err); setStoresError(err.message || "Failed to load stores"); } });
     return () => { cancelled = true; };
   }, []);
 
@@ -73,6 +74,7 @@ export default function DashboardPage() {
           <p className="page-subtitle">{t("admin.dashboard.subtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          {storesError && <div style={{ fontSize: 12, color: "#991B1B", marginTop: 4 }}>{storesError}</div>}
           <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
             <option value="">{t("admin.dashboard.allStores")}</option>
             {stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}

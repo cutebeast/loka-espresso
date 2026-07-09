@@ -146,6 +146,7 @@ from app.models.pos import (
     PosSession,
     OrderModificationLog,
 )
+from app.models.help import HelpArticle
 from app.models.feedback import FeedbackEntry
 from app.models.checkin import CustomerDailyCheckin
 from app.models.equipment import (

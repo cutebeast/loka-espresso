@@ -293,7 +293,7 @@ export default function NewTierPage() {
         maxWidth: 720
       }}>
           <button type="button" onClick={() => router.push("/loyalty/tiers")} className="btn btn-ghost">{t("loyalty_tiers_new.cancel")}</button>
-          <button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Creating..." : "Create Tier"}</button>
+          <button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.creating") : t("admin.common.create")}</button>
         </div>
       </form>
     </div>;

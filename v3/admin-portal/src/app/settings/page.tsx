@@ -13,36 +13,36 @@ interface ConfigItem {
   is_editable: boolean;
 }
 const SECTIONS: {
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   prefix: string;
 }[] = [{
-  title: "App",
-  description: "Brand identity & contact",
+  titleKey: "settings.section_app",
+  descriptionKey: "settings.section_app_desc",
   prefix: "app."
 }, {
-  title: "OTP / Authentication",
-  description: "OTP bypass, expiry, rate limits",
+  titleKey: "settings.section_otp",
+  descriptionKey: "settings.section_otp_desc",
   prefix: "otp."
 }, {
-  title: "Orders",
-  description: "Auto-confirm, preparation time",
+  titleKey: "settings.section_orders",
+  descriptionKey: "settings.section_orders_desc",
   prefix: "order."
 }, {
-  title: "Notifications",
-  description: "Retention and delivery settings",
+  titleKey: "settings.section_notifications",
+  descriptionKey: "settings.section_notifications_desc",
   prefix: "notifications."
 }, {
-  title: "Upload",
-  description: "File upload limits",
+  titleKey: "settings.section_upload",
+  descriptionKey: "settings.section_upload_desc",
   prefix: "upload."
 }, {
-  title: "Reservation",
-  description: "SMS/WhatsApp confirmation & default duration",
+  titleKey: "settings.section_reservation",
+  descriptionKey: "settings.section_reservation_desc",
   prefix: "reservation."
 }, {
-  title: "Payments / Stripe",
-  description: "Stripe keys and Checkout redirect URLs",
+  titleKey: "settings.section_payments",
+  descriptionKey: "settings.section_payments_desc",
   prefix: "stripe."
 }];
 function ConfigRow({
@@ -138,9 +138,7 @@ export default function SettingsPage() {
       setTimeout(() => setUpdateMsg(""), 3000);
     } catch (err: any) {
       setError(err.message);
-      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch(e => {
-        console.error('reload configs:', e);
-      });
+      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch(e => { console.error('reload configs:', e); setError(e.message || t("admin.errors.loadFailed")); });
     } finally {
       setSaving(null);
     }
@@ -167,7 +165,7 @@ export default function SettingsPage() {
           {SECTIONS.map(section => {
         const items = getConfigs(section.prefix);
         if (items.length === 0) return null;
-        return <div key={section.title} className="card" style={{
+        return <div key={section.prefix} className="card" style={{
           padding: "16px 20px"
         }}>
                 <div style={{
@@ -176,11 +174,11 @@ export default function SettingsPage() {
                   <h3 style={{
               fontSize: 15,
               fontWeight: 600
-            }}>{section.title}</h3>
+            }}>{t(section.titleKey)}</h3>
                   <p style={{
               fontSize: 12,
               color: "var(--color-text-muted)"
-            }}>{section.description}</p>
+            }}>{t(section.descriptionKey)}</p>
                 </div>
                 <table className="data-table" style={{
             fontSize: 13

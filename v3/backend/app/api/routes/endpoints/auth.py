@@ -93,7 +93,7 @@ async def _require_otp_or_bypass(
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def customer_register(request: Request, response: Response, db: DBDependency, data: CustomerRegisterRequest):
     """Register a new customer account (passwordless / OTP).
 
@@ -127,7 +127,7 @@ async def customer_register(request: Request, response: Response, db: DBDependen
 
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit("15/minute")
+@limiter.limit("5/minute")
 async def customer_login(request: Request, response: Response, db: DBDependency, data: CustomerLoginRequest):
     """Login with phone (OTP-based / passwordless)."""
     config_svc = PlatformConfigService(db)
@@ -178,7 +178,7 @@ async def customer_login(request: Request, response: Response, db: DBDependency,
 
 
 @router.post("/refresh", response_model=TokenPair)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def customer_refresh(request: Request, response: Response, db: DBDependency, data: RefreshTokenRequest | None = None):
     """Refresh access token.
 

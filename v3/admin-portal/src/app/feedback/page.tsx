@@ -73,9 +73,7 @@ export default function FeedbackPage() {
       if (toDate) params.set("to_date", toDate + "T23:59:59");
       const s = await api.getRaw<FeedbackStats>(`/admin/feedback/stats?${params}`);
       setStats(s);
-    } catch (e: any) {
-      console.error("Failed to load feedback stats:", e);
-    }
+    } catch (e: any) {console.error("Failed to load feedback stats:", e); setError(e.message || t("admin.errors.loadFailed")); }
   }, [fromDate, toDate]);
   useEffect(() => {
     (async () => {
@@ -107,7 +105,7 @@ export default function FeedbackPage() {
     }
   };
   const deleteReply = async (item: FeedbackItem) => {
-    if (!confirm("Delete this reply?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.post(`/admin/feedback/${item.id}/reply`, {
         admin_reply: "",
@@ -115,9 +113,7 @@ export default function FeedbackPage() {
       });
       fetchData(page);
       fetchStats();
-    } catch (e: any) {
-      console.error("Failed to delete reply:", e);
-    }
+    } catch (e: any) {console.error("Failed to delete reply:", e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const renderStars = (rating: number) => <span style={{
     display: "inline-flex",
@@ -436,7 +432,7 @@ export default function FeedbackPage() {
         }}>
               <button onClick={() => setReplyModal(null)} className="btn btn-ghost">{t("feedback.cancel")}</button>
               <button onClick={submitReply} className="btn btn-primary" disabled={replySubmitting || !replyText.trim()}>
-                {replySubmitting ? "Sending..." : replyModal.admin_reply ? "Update" : "Send"}
+                {replySubmitting ? t("admin.common.sending") : replyModal.admin_reply ? t("admin.common.update") : t("admin.common.send")}
               </button>
             </div>
           </div>

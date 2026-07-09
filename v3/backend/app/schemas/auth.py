@@ -102,7 +102,7 @@ class StaffLoginRequest(BaseSchema):
     """Staff portal login."""
 
     staff_id: str = Field(..., description="Staff identifier or badge number")
-    pin: str = Field(..., pattern=r"^\d{4,6}$")
+    pin: str = Field(..., pattern=r"^\d{6}$")
     store_id: int
 
 

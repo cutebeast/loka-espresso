@@ -7,15 +7,15 @@ import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, Send, Archive, Undo, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 const PAGE_SIZE = 20;
-const TYPE_LABELS: Record<string, string> = {
-  general: "General",
-  order: "Order",
-  reward: "Reward",
-  wallet: "Wallet",
-  loyalty: "Loyalty",
-  promo: "Promo",
-  info: "Info",
-  event: "Event"
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  general: "notifications.type_general",
+  order: "notifications.type_order",
+  reward: "notifications.type_reward",
+  wallet: "notifications.type_wallet",
+  loyalty: "notifications.type_loyalty",
+  promo: "notifications.type_promo",
+  info: "notifications.type_info",
+  event: "notifications.type_event"
 };
 interface Notif {
   id: number;
@@ -82,7 +82,7 @@ export default function NotificationsPage() {
     };
   }, [fetchData, applyData]);
   const sendNow = async (id: number) => {
-    if (!confirm("Send now?")) return;
+    if (!confirm(t("common.confirm_send"))) return;
     try {
       await api.post(`/admin/notifications/${id}/send`, {});
       applyData(await fetchData(page), page);
@@ -94,9 +94,7 @@ export default function NotificationsPage() {
     try {
       await api.patch(`/admin/notifications/${id}/archive`, {});
       applyData(await fetchData(page), page);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const handleDelete = async (id: number) => {
@@ -104,9 +102,7 @@ export default function NotificationsPage() {
       await api.del(`/admin/notifications/${id}`);
       setConfirmDelete(null);
       applyData(await fetchData(page), page);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const statusBadge = (s: string, scheduled?: string) => {
@@ -116,19 +112,19 @@ export default function NotificationsPage() {
       c: string;
     }> = {
       draft: {
-        l: "Draft",
+        l: t("notifications.status_draft"),
         c: "badge-gray"
       },
       scheduled: {
-        l: "Scheduled",
+        l: t("notifications.status_scheduled"),
         c: "badge-yellow"
       },
       sent: {
-        l: "Sent",
+        l: t("notifications.status_sent"),
         c: "badge-green"
       },
       failed: {
-        l: "Failed",
+        l: t("notifications.status_failed"),
         c: "badge-red"
       }
     };
@@ -192,7 +188,7 @@ export default function NotificationsPage() {
                 fontSize: 12,
                 color: "var(--color-text-muted)"
               }}>{n.body.slice(0, 60)}</div>}</td>
-              <td><span className="badge badge-sm badge-outline">{TYPE_LABELS[n.notification_type] || n.notification_type}</span></td>
+              <td><span className="badge badge-sm badge-outline">{(() => { const typeKey = TYPE_LABEL_KEYS[n.notification_type]; return typeKey ? t(typeKey) : n.notification_type; })()}</span></td>
               <td>{AUD_LABELS[n.audience_segment] || n.audience_segment}</td>
               <td>{statusBadge(n.status, n.scheduled_at)}</td>
               <td style={{
@@ -216,7 +212,7 @@ export default function NotificationsPage() {
                     color: "var(--color-error)"
                   }}><Trash2 size={14} /></button>}
                   </>}
-                  <button onClick={() => toggleArchive(n.id)} className="btn btn-ghost btn-sm" title={n.is_archived ? "Unarchive" : "Archive"}>{n.is_archived ? <Undo size={14} /> : <Archive size={14} />}</button>
+                  <button onClick={() => toggleArchive(n.id)} className="btn btn-ghost btn-sm" title={n.is_archived ? t("notifications.unarchive") : t("notifications.archive")}>{n.is_archived ? <Undo size={14} /> : <Archive size={14} />}</button>
                 </div>
               </td>
             </tr>)}

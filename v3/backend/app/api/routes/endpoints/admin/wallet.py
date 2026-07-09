@@ -1,8 +1,10 @@
 """Admin and public wallet endpoints."""
-
 import json
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -56,7 +58,7 @@ async def _get_default_currency(db) -> str:
             if isinstance(parsed, str):
                 return parsed
         except Exception:
-            pass
+            logger.debug("Failed to parse config JSON", exc_info=True)
         return row
     return str(row)
 
@@ -72,11 +74,11 @@ def _compute_wallet_stats(ledger_entries: list[WalletLedgerEntry]) -> dict:
             total_debited += amt
         elif entry.entry_type == "adjustment":
             total_credited += amt
-    balance = float(total_credited - total_debited)
+    balance = total_credited - total_debited
     return {
         "balance": balance,
-        "total_credited": float(total_credited),
-        "total_debited": float(total_debited),
+        "total_credited": total_credited,
+        "total_debited": total_debited,
     }
 
 
@@ -86,9 +88,9 @@ def _wallet_to_out(wallet: Wallet, ledger_entries: list[WalletLedgerEntry] | Non
         stats = _compute_wallet_stats(ledger_entries)
         data.update(stats)
     else:
-        data["balance"] = 0.0
-        data["total_credited"] = 0.0
-        data["total_debited"] = 0.0
+        data["balance"] = Decimal(0)
+        data["total_credited"] = Decimal(0)
+        data["total_debited"] = Decimal(0)
     return WalletOut.model_validate(data)
 
 
@@ -243,7 +245,7 @@ async def adjust_wallet(
         resource_id=wallet_id,
         principal_id=admin.id,
         severity="warning",
-        changes_summary={"amount": float(amount), "entry_type": data.entry_type, "new_balance": float(new_balance), "description": data.description},
+        changes_summary={"amount": str(amount), "entry_type": data.entry_type, "new_balance": str(new_balance), "description": data.description},
     ))
     await db.commit()
     await db.refresh(entry)
@@ -287,9 +289,9 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupReq
         resource_id=wallet.id,
         principal_id=admin.id,
         severity="warning",
-        changes_summary={"amount": float(amount), "reason": reason, "new_balance": float(new_balance)},
+        changes_summary={"amount": str(amount), "reason": reason, "new_balance": str(new_balance)},
     )); await db.commit(); await db.refresh(entry)
-    return APIResponse(data={"message": "Top-up complete", "new_balance": float(new_balance)})
+    return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})
 
 
 @wallet_alias_router.post("/topup", response_model=APIResponse[dict])
@@ -339,9 +341,9 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
         resource_id=wallet.id,
         principal_id=admin.id,
         severity="warning",
-        changes_summary={"amount": float(amount), "reason": reason, "new_balance": float(new_balance)},
+        changes_summary={"amount": str(amount), "reason": reason, "new_balance": str(new_balance)},
     )); await db.commit(); await db.refresh(entry)
-    return APIResponse(data={"message": "Deducted", "new_balance": float(new_balance)})
+    return APIResponse(data={"message": "Deducted", "new_balance": new_balance})
 
 
 # ---------------------------------------------------------------------------
@@ -386,9 +388,9 @@ async def get_my_wallet(
             "id": cv.id,
             "code": cv.voucher_code,
             "discount_type": vd.voucher_type,
-            "discount_value": float(vd.discount_value) if vd else None,
-            "min_spend": float(vd.minimum_order_value or 0) if vd else 0,
-            "max_discount": float(vd.discount_max_amount) if vd and vd.discount_max_amount else None,
+            "discount_value": str(vd.discount_value) if vd else None,
+            "min_spend": str(vd.minimum_order_value or 0) if vd else "0",
+            "max_discount": str(vd.discount_max_amount) if vd and vd.discount_max_amount else None,
             "display_title": vd.display_title if vd else None,
             "image_url": vd.image_url if vd else None,
             "expires_at": cv.expires_at.isoformat() if cv.expires_at else None,
@@ -413,8 +415,8 @@ async def get_my_wallet(
             "code": cr.redemption_code,
             "reward_name": rc.reward_name if rc else None,
             "reward_type": rc.reward_type if rc else None,
-            "discount_value": float(rc.discount_value) if rc and rc.discount_value else None,
-            "discount_max_amount": float(rc.discount_max_amount) if rc and rc.discount_max_amount else None,
+            "discount_value": str(rc.discount_value) if rc and rc.discount_value else None,
+            "discount_max_amount": str(rc.discount_max_amount) if rc and rc.discount_max_amount else None,
             "points_spent": cr.points_spent,
             "expires_at": cr.expires_at.isoformat() if cr.expires_at else None,
             "status": cr.status,
@@ -496,7 +498,8 @@ async def create_wallet_topup_checkout(
 
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
-    base_return = (data.return_url or f"{app_public_url}/wallet").rstrip("/")
+    # Use hash-based routing (#wallet) matching the PWA's hash router.
+    base_return = (data.return_url or f"{app_public_url}/#wallet").rstrip("/")
     success_url = f"{base_return}?topup_session={session.id}&status=success"
     cancel_url = f"{base_return}?topup_session={session.id}&status=cancel"
 
@@ -516,7 +519,7 @@ async def create_wallet_topup_checkout(
         data=WalletTopupCheckoutResponse(
             session_id=session.id,
             checkout_url=checkout["url"],
-            amount=float(session.amount),
+            amount=session.amount,
             currency_code=session.currency_code,
             status=session.status,
         )

@@ -115,6 +115,7 @@ def verify_hitpay_signature(payload_bytes: bytes, signature: str | None, salt: s
         expected = hmac.new(salt.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
     except Exception:
+        logger.debug("Signature verification failed", exc_info=True)
         return False
 
 
@@ -156,7 +157,7 @@ async def create_hitpay_payment_request(
     ]
 
     payload: dict = {
-        "amount": float(payment.amount),
+        "amount": str(payment.amount),
         "currency": payment.currency_code.upper(),
         "payment_methods": payment_methods,
         "reference_number": f"order-{order.id}-payment-{payment.id}",

@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 const L = [{
   code: "en",
@@ -26,19 +28,22 @@ const L = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const F = [{
-  key: "category_name",
-  label: "Tax Name"
-}];
+
 export default function TaxCategoryEditPage() {
   const {
     t
   } = useTranslation();
+
+  const F = [{
+  key: "category_name",
+  label: t("admin.form.taxName")
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
   const [form, setForm] = useState<Record<string, any>>({});
   const [l, setL] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [loc, setLoc] = useState("en");
   const [s, setS] = useState(false);
   const [msg, setMsg] = useState("");
@@ -72,11 +77,16 @@ export default function TaxCategoryEditPage() {
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setL(false);
     }
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   const save = async () => {
     setS(true);
     try {
@@ -85,11 +95,9 @@ export default function TaxCategoryEditPage() {
       };
       p.rate = Number(p.rate);
       await api.patch(`/admin/menu/tax-categories/${id}`, p);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setS(false);
     }
   };
@@ -133,9 +141,7 @@ export default function TaxCategoryEditPage() {
           await upsert(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${c}`);
     setTimeout(() => setMsg(""), 2500);
@@ -146,7 +152,7 @@ export default function TaxCategoryEditPage() {
       const t = tr[`${loc}:${f.key}`] || "";
       if (t) await upsert(f.key, loc, (form[f.key] || "").trim(), t);
     }
-    setMsg("Saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
   };
   if (l) return <div style={{
@@ -198,7 +204,7 @@ export default function TaxCategoryEditPage() {
               is_active: e.target.checked
             })} />{t("menu_tax-categories_[id].active")}</label></div></div><div className="df-actions" style={{
         marginTop: 16
-      }}><button type="button" onClick={() => r.push("/menu/tax-categories")} className="btn btn-ghost">{t("menu_tax-categories_[id].cancel")}</button><button onClick={save} disabled={s} className="btn btn-primary"><Save size={16} />{s ? "Saving..." : "Save"}</button></div></div> : <div className="card" style={{
+      }}><button type="button" onClick={() => r.push("/menu/tax-categories")} className="btn btn-ghost">{t("menu_tax-categories_[id].cancel")}</button><button onClick={save} disabled={s} className="btn btn-primary"><Save size={16} />{s ? t("admin.common.saving") : t("admin.common.save")}</button></div></div> : <div className="card" style={{
       padding: 24,
       maxWidth: 600
     }}><div style={{

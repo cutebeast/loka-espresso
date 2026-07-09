@@ -30,7 +30,8 @@ export default function ProfilePage() {
     tier
   } = useWalletStore();
   const {
-    setPage
+    setPage,
+    showToast
   } = useUIStore();
   const {
     t
@@ -68,12 +69,13 @@ export default function ProfilePage() {
           month: 'short',
           day: 'numeric'
         }) : '',
-        status: o.status || 'Completed',
+        status: o.status || t('orders.status.completed'),
         total: o.total_amount || 0,
         imageUrl: o.line_items?.[0]?.image_url ? resolveAssetUrl(o.line_items[0].image_url) : null
       })));
     }).catch(err => {
       console.error('[Profile] Recent orders fetch failed:', err);
+      showToast(t('toast.loadOrdersFailed'), 'error');
       setRecentOrders([]);
     });
   }, [t]);
@@ -131,7 +133,7 @@ export default function ProfilePage() {
   }, {
     id: 'reservations',
     icon: CalendarCheck,
-    label: t('profile.reservations') || 'Reservations',
+    label: t('profile.reservations'),
     iconClass: 'profile-icon-notif',
     onClick: () => setPage('reservations')
   }, {
@@ -143,7 +145,7 @@ export default function ProfilePage() {
   }, {
     id: 'promotions',
     icon: Tag,
-    label: t('profile.promotions') || 'Promotions',
+    label: t('profile.promotions'),
     iconClass: 'profile-icon-reward',
     onClick: () => setPage('promotions')
   }];

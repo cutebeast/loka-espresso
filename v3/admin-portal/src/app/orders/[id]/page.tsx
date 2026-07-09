@@ -4,7 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type OrderDetail } from "@/lib/api";
-import { parseApiError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
+import { parseApiError, isNotFoundError } from "@/lib/errors";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 interface Payment {
@@ -36,6 +37,7 @@ export default function OrderDetailPage() {
   const id = Number(p.id);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
   const [reason, setReason] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -58,11 +60,14 @@ export default function OrderDetailPage() {
     load().then(data => {
       if (!cancelled) setOrder(data);
     }).catch((e: any) => {
-      if (!cancelled) setError(e.message);
+      if (!cancelled) {
+        if (isNotFoundError(e)) setNotFound(true);
+        else setError(e.message);
+      }
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
-    loadPayments().catch((e: any) => console.error("Failed to load payments:", e));
+    loadPayments().catch((e: any) => { console.error("Failed to load payments:", e); setError(e.message || t("admin.errors.loadFailed")); });
     return () => {
       cancelled = true;
     };
@@ -135,6 +140,7 @@ export default function OrderDetailPage() {
     };
     return <span className={`badge badge-sm ${m[s] || "badge-gray"}`}>{s?.replace(/_/g, " ")}</span>;
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("orders_[id].loading")}</div>;

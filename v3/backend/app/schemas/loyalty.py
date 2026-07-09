@@ -1,5 +1,5 @@
 """Loyalty domain schemas."""
-
+from decimal import Decimal
 from datetime import datetime
 from typing import Literal
 
@@ -80,9 +80,9 @@ class RewardCatalogBase(BaseSchema):
     reward_type: Literal["free_item", "percentage_discount", "fixed_discount", "free_delivery", "points_multiplier", "bundle_deal", "buy_x_get_y"]
     points_cost: int = Field(..., gt=0)
     menu_item_id: int | None = None
-    discount_value: float | None = Field(None, ge=0)
-    discount_max_amount: float | None = Field(None, ge=0)
-    minimum_order_value: float = Field(default=0.0, ge=0)
+    discount_value: Decimal | None = Field(None, ge=0)
+    discount_max_amount: Decimal | None = Field(None, ge=0)
+    minimum_order_value: Decimal = Field(default=Decimal("0"), ge=0)
     maximum_redemptions: int | None = Field(None, gt=0)
     image_url: str | None = Field(None, max_length=500)
     validity_days: int = Field(default=30, gt=0)
@@ -109,9 +109,9 @@ class RewardCatalogUpdate(BaseSchema):
     reward_type: Literal["free_item", "percentage_discount", "fixed_discount", "free_delivery", "points_multiplier", "bundle_deal", "buy_x_get_y"] | None = None
     points_cost: int | None = Field(None, gt=0)
     menu_item_id: int | None = None
-    discount_value: float | None = Field(None, ge=0)
-    discount_max_amount: float | None = Field(None, ge=0)
-    minimum_order_value: float | None = Field(None, ge=0)
+    discount_value: Decimal | None = Field(None, ge=0)
+    discount_max_amount: Decimal | None = Field(None, ge=0)
+    minimum_order_value: Decimal | None = Field(None, ge=0)
     maximum_redemptions: int | None = Field(None, gt=0)
     image_url: str | None = Field(None, max_length=500)
     validity_days: int | None = Field(None, gt=0)

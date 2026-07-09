@@ -62,9 +62,25 @@
 <body>
   <div class="card">
     <div class="icon">☕</div>
-    <h1>You're offline</h1>
-    <p>Please check your internet connection and try again.</p>
-    <button onclick="location.reload()">Retry</button>
+    <h1 id="offline-title">You're offline</h1>
+    <p id="offline-body">Please check your internet connection and try again.</p>
+    <button id="offline-retry" onclick="location.reload()">Retry</button>
   </div>
+  <script>
+    (function(){
+      var lang = (navigator.language || 'en').slice(0,2);
+      var dict = {
+        en: { title: "You're offline", body: "Please check your internet connection and try again.", retry: "Retry" },
+        ms: { title: "Anda luar talian", body: "Sila periksa sambungan internet anda dan cuba lagi.", retry: "Cuba lagi" },
+        zh: { title: "您已离线", body: "请检查您的互联网连接并重试。", retry: "重试" },
+        ta: { title: "நீங்கள் ஆஃப்லைனில் உள்ளீர்கள்", body: "உங்கள் இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.", retry: "மீண்டும் முயற்சிக்கவும்" },
+        tr: { title: "Çevrimdışısınız", body: "Lütfen internet bağlantınızı kontrol edip tekrar deneyin.", retry: "Tekrar dene" }
+      };
+      var t = dict[lang] || dict.en;
+      document.getElementById('offline-title').textContent = t.title;
+      document.getElementById('offline-body').textContent = t.body;
+      document.getElementById('offline-retry').textContent = t.retry;
+    })();
+  </script>
 </body>
 </html>

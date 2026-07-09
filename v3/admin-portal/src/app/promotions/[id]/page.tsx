@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
 type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
@@ -32,16 +34,7 @@ const LOCALES: {
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "title",
-  label: "Title"
-}, {
-  key: "short_description",
-  label: "Short Description"
-}, {
-  key: "long_description",
-  label: "Full Description"
-}];
+
 const ACTION_TYPES = [{
   value: "read_claim",
   label: "Read & Claim"
@@ -56,10 +49,22 @@ export default function PromotionEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "title",
+  label: t("admin.form.title")
+}, {
+  key: "short_description",
+  label: t("admin.form.shortDescription")
+}, {
+  key: "long_description",
+  label: t("admin.form.fullDescription")
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loc, setLoc] = useState<LocaleTab>("en");
   const [regen, setRegen] = useState("");
@@ -95,15 +100,11 @@ export default function PromotionEditPage() {
     try {
       const d = await api.getRaw<any>("/admin/vouchers?per_page=100&is_active=true");
       setVouchers(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/surveys?per_page=100");
       setSurveys(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const load = useCallback(async () => {
     try {
@@ -140,13 +141,15 @@ export default function PromotionEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -165,9 +168,7 @@ export default function PromotionEditPage() {
         image_url: url
       });
       setImg(url);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setUploading(false);
     }
   };
@@ -182,11 +183,9 @@ export default function PromotionEditPage() {
         end_date: form.end_date || null
       };
       await api.patch(`/admin/promo-banners/${id}`, p);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -242,9 +241,7 @@ export default function PromotionEditPage() {
             [`${locale}:${f.key}`]: r.translated_text!
           }));
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     for (const r of results) {
       await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text);
@@ -264,6 +261,7 @@ export default function PromotionEditPage() {
     setTimeout(() => setMsg(""), 2000);
     setSaving(false);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}><p>{t("promotions_[id].loading")}</p></div>;
@@ -414,7 +412,7 @@ export default function PromotionEditPage() {
         </div>
         <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/promotions")} className="btn btn-ghost">{t("promotions_[id].cancel")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/promotions")} className="btn btn-ghost">{t("promotions_[id].cancel")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
       </div>}
 
       {loc !== "en" && <div className="card" style={{

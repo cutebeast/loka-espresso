@@ -30,13 +30,11 @@ export default function EventsPage() {
     fetch();
   }, [fetch]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/event-cards/${id}`);
       fetch();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   return <div style={{
     padding: 32
@@ -87,7 +85,7 @@ export default function EventsPage() {
                 <td>{item.position}</td>
                 <td onClick={e => e.stopPropagation()}>
                   <span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>
-                    {item.is_active ? "Active" : "Inactive"}
+                    {item.is_active ? t("admin.status.active") : t("admin.status.inactive")}
                   </span>
                 </td>
                 <td onClick={e => e.stopPropagation()}>

@@ -41,11 +41,11 @@ function stepIdx(status: string, orderType?: string): number {
   if (s === 'confirmed') return 1;
   if (s === 'preparing' || s === 'in_progress') return 2;
   if (isDelivery) {
-    if (s === 'ready') return 3;
+    if (s === 'ready_for_pickup') return 3;
     if (s === 'out_for_delivery' || s === 'driver_assigned') return 4;
     if (s === 'completed' || s === 'delivered') return 5;
   } else {
-    if (s === 'ready') return 3;
+    if (s === 'ready_for_pickup') return 3;
     if (s === 'completed' || s === 'picked_up') return 4;
   }
   return 0;
@@ -92,7 +92,7 @@ export default function OrderDetailPage() {
         if (cfg.stripe_publishable_key) setStripePublishableKey(cfg.stripe_publishable_key);
         setHitpayEnabled(!!cfg.hitpay_enabled);
       })
-      .catch((e: unknown) => console.error('[OrderDetail] payment config failed:', e));
+      .catch((e: unknown) => { console.error('[OrderDetail] payment config failed:', e); showToast(t('toast.loadPaymentConfigFailed'), 'error'); });
   }, []);
 
   // Handle Stripe PaymentElement return (success / cancel)
@@ -222,8 +222,11 @@ export default function OrderDetailPage() {
       t('orderDetail.shareTotal', { amount: formatPrice(order.total_amount) }),
     ];
     const text = lines.join('\n');
-    if (navigator.share) navigator.share({ title: t('orderDetail.orderNumber', { number: order.order_number }), text }).catch((err) => console.error('[OrderDetail] Share failed:', err));
-    else navigator.clipboard.writeText(text).then(() => showToast(t('toast.receiptCopied'), 'success')).catch((err) => console.error('[OrderDetail] Clipboard copy failed:', err));
+    if (navigator.share) navigator.share({ title: t('orderDetail.orderNumber', { number: order.order_number }), text }).catch((err) => {
+      console.error('[OrderDetail] Share failed:', err);
+      showToast(t('toast.share_failed'), 'error');
+    });
+    else navigator.clipboard.writeText(text).then(() => showToast(t('toast.receiptCopied'), 'success')).catch((err) => { console.error('[OrderDetail] Clipboard copy failed:', err); showToast(t('toast.codeCopyFailed'), 'error'); });
   };
 
   if (loading || !order) {
@@ -357,7 +360,7 @@ export default function OrderDetailPage() {
             return (
               <div key={item.id ?? i} className="od-item-row">
                 <div className="od-item-thumb">
-                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name || 'Menu item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
+                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name || t('common.menuItem')} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>
                 <div className="od-item-details">
                   <div className="od-item-name">{item.item_name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</div>
@@ -379,7 +382,7 @@ export default function OrderDetailPage() {
         <div className="od-section">
           <div className="od-section-title">{t('orderDetail.payment')}</div>
           <div className="od-payment-row">
-            <div className="od-payment-icon">{order.payment_method === 'wallet' ? 'L' : order.payment_method?.toUpperCase()?.slice(0, 4) || 'COD'}</div>
+            <div className="od-payment-icon">{order.payment_method === 'wallet' ? 'L' : order.payment_method?.toUpperCase()?.slice(0, 4) || t('checkout.cashOnDelivery')}</div>
             <div className="od-payment-text">{order.payment_method === 'wallet' ? t('orderDetail.lokaWallet') : order.payment_method === 'cod' ? t('checkout.cashOnDelivery') : order.payment_method === 'pay_at_store' ? t('checkout.payAtStore') : order.payment_method} — {formatPrice(order.total_amount)}</div>
           </div>
         </div>

@@ -15,28 +15,28 @@ import Modal from "@/components/Modal";
 import { RefreshCw, CalendarDays, AlertCircle, CheckCircle2, LogIn, Check, X, UtensilsCrossed, Users, Bell, Ban } from "lucide-react";
 const CANCELLED_STATUSES: ReservationStatus[] = ["cancelled_by_guest", "cancelled_by_merchant"];
 const statusFilters: {
-  label: string;
+  labelKey: string;
   value: ReservationStatus | "all" | "cancelled";
 }[] = [{
-  label: "All",
+  labelKey: "reservations.status_all",
   value: "all"
 }, {
-  label: "Requested",
+  labelKey: "reservations.status_requested",
   value: "requested"
 }, {
-  label: "Confirmed",
+  labelKey: "reservations.status_confirmed",
   value: "confirmed"
 }, {
-  label: "Seated",
+  labelKey: "reservations.status_seated",
   value: "seated"
 }, {
-  label: "Completed",
+  labelKey: "reservations.status_completed",
   value: "completed"
 }, {
-  label: "No Show",
+  labelKey: "reservations.status_no_show",
   value: "no_show"
 }, {
-  label: "Cancelled",
+  labelKey: "reservations.status_cancelled",
   value: "cancelled"
 }];
 function parseTime(timeStr: string): {
@@ -130,7 +130,7 @@ export default function ReservationsPage() {
     try {
       await updateReservationStatus(id, status);
       await fetchReservations();
-      setSuccess(`Reservation ${status.replace(/_/g, " ")}`);
+      setSuccess(t("reservations.reservation_status", { status: t(`staff.status.${status.replace(/-/g, "_")}`) }));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
@@ -158,7 +158,7 @@ export default function ReservationsPage() {
     try {
       await updateReservationStatus(confirmRes.id, "confirmed", selectedTableId);
       await fetchReservations();
-      setSuccess("Reservation confirmed");
+      setSuccess(t("reservations.confirmed"));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
@@ -239,7 +239,7 @@ export default function ReservationsPage() {
       paddingBottom: 4
     }}>
         {statusFilters.map(s => <button key={s.value} onClick={() => setFilter(s.value)} className={`btn btn-sm ${filter === s.value ? "btn-primary" : "btn-ghost"}`}>
-            {s.label} ({counts[s.value] ?? 0})
+            {t(s.labelKey)} ({counts[s.value] ?? 0})
           </button>)}
       </div>
 
@@ -347,7 +347,7 @@ export default function ReservationsPage() {
         setConfirmRes(null);
       }}>{t("reservations.cancel")}</button>
             <button className="btn btn-success" onClick={handleConfirmReservation} disabled={updatingId === confirmRes?.id}>
-              {updatingId === confirmRes?.id ? "Confirming..." : "Confirm Reservation"}
+              {updatingId === confirmRes?.id ? t("reservations.confirming") : t("reservations.confirm_reservation_button")}
             </button>
           </div>}>
         {confirmRes && <div style={{
@@ -373,7 +373,7 @@ export default function ReservationsPage() {
             justifyContent: "center",
             fontWeight: 700
           }}>
-                {(confirmRes.customer_name || "?").charAt(0).toUpperCase()}
+                {(confirmRes.customer_name || t("common.unnamed")).charAt(0).toUpperCase()}
               </div>
               <div>
                 <div style={{

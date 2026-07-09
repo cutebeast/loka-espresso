@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, UserCircle, ShoppingBag, Award, Wallet, Shield, Smartphone, Settings, Gift, Save } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 const TIERS = ["silver", "gold", "platinum"];
@@ -111,7 +113,8 @@ const emptyPaginated = <T,>(): PaginatedResponse<T> => ({
 });
 export default function CustomerDetailPage() {
   const {
-    t
+    t,
+    locale
   } = useTranslation();
   const {
     symbol,
@@ -124,6 +127,7 @@ export default function CustomerDetailPage() {
   const isValidId = !isNaN(id) && id > 0;
   const [c, setC] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("profile");
   const [msg, setMsg] = useState("");
@@ -158,7 +162,8 @@ export default function CustomerDetailPage() {
     try {
       setC(await api.get<CustomerDetail>(`/admin/customers/${id}`));
     } catch (e: any) {
-      setError(e.message);
+      if (isNotFoundError(e)) setNotFound(true);
+      else setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -175,9 +180,7 @@ export default function CustomerDetailPage() {
       if (!cancelled) setVouchers(Array.isArray(d) ? d : (d as unknown as {
         items: VoucherOption[];
       }).items || []);
-    }).catch(e => {
-      console.error('vouchers preload:', e);
-    });
+    }).catch(e => { console.error('vouchers preload:', e); setError(e.message || t("admin.errors.loadFailed")); });
     return () => {
       cancelled = true;
     };
@@ -220,7 +223,7 @@ export default function CustomerDetailPage() {
     setMsg("");
     try {
       await api.patch(`/admin/customers/${id}`, form);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setEdit(false);
       load();
     } catch (e: any) {
@@ -276,7 +279,8 @@ export default function CustomerDetailPage() {
       setActionLoading("");
     }
   };
-  const dt = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString("en-MY") : "—";
+  const dt = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString(locale) : "—";
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("customers_[id].loading")}</div>;
@@ -286,35 +290,35 @@ export default function CustomerDetailPage() {
   }}>{error || "Not found"}</div>;
   const tabs = [{
     key: "profile",
-    label: "Profile",
+    label: t("customers.tab_profile"),
     icon: UserCircle
   }, {
     key: "manage",
-    label: "Manage",
+    label: t("customers.tab_manage"),
     icon: Settings
   }, {
     key: "orders",
-    label: "Orders",
+    label: t("customers.tab_orders"),
     icon: ShoppingBag
   }, {
     key: "loyalty",
-    label: "Loyalty",
+    label: t("customers.tab_loyalty"),
     icon: Award
   }, {
     key: "wallet",
-    label: "Wallet",
+    label: t("customers.tab_wallet"),
     icon: Wallet
   }, {
     key: "vouchers",
-    label: "Rewards",
+    label: t("customers.tab_rewards"),
     icon: Gift
   }, {
     key: "consents",
-    label: "Consents",
+    label: t("customers.tab_consents"),
     icon: Shield
   }, {
     key: "devices",
-    label: "Devices",
+    label: t("customers.tab_devices"),
     icon: Smartphone
   }];
   return <div style={{
@@ -337,7 +341,7 @@ export default function CustomerDetailPage() {
           marginTop: 2
         }}>{c.phone_number || "—"}{t("customers_[id].joined")}{dt(c.created_at)} · {c.loyalty?.points_balance || 0}{t("customers_[id].pts")}{format(c.lifetime_value)}{t("customers_[id].ltv")}</p>
         </div>
-        <span className={`badge badge-sm ${c.is_active ? "badge-green" : "badge-gray"}`}>{c.is_active ? "Active" : "Inactive"}</span>
+        <span className={`badge badge-sm ${c.is_active ? "badge-green" : "badge-gray"}`}>{c.is_active ? t("customers.status_active") : t("customers.status_inactive")}</span>
       </div>
       {error && <div className="alert alert-error" style={{
       marginBottom: 12
@@ -386,7 +390,7 @@ export default function CustomerDetailPage() {
         }}>{t("customers_[id].profile")}</h3>
             <button type="button" onClick={() => setEdit(!edit)} className="btn btn-sm btn-ghost" style={{
           color: "var(--color-info)"
-        }}>{edit ? "Cancel" : "Edit"}</button>
+        }}>{edit ? t("common.cancel") : t("common.edit")}</button>
           </div>
           {edit ? <div className="df-grid">
               <div className="df-field"><label className="df-label" htmlFor="cust-edit-name">{t("customers_[id].name")}</label><input id="cust-edit-name" value={form.display_name} onChange={e => setForm({
@@ -415,23 +419,35 @@ export default function CustomerDetailPage() {
             })} />{t("customers_[id].active")}</label></div>
               <div className="df-actions" style={{
           gridColumn: "1/-1"
-        }}><button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save"}</button></div>
+        }}><button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("common.saving") : t("common.save")}</button></div>
             </div> : <div style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "6px 24px",
         fontSize: 13
       }}>
-              {[["Phone", c.phone_number], ["Email", c.email_address || "—"], ["DOB", c.date_of_birth || "—"], ["Language", c.preferred_language], ["Referral", c.referral_code || "—"], ["Referrals", c.referral_count], ["Orders", c.order_count], ["LTV", format(c.lifetime_value)]].map(([l, v]) => <div key={l} style={{
+              {[["Phone", c.phone_number], ["Email", c.email_address || "—"], ["DOB", c.date_of_birth || "—"], ["Language", c.preferred_language], ["Referral", c.referral_code || "—"], ["Referrals", c.referral_count], ["Orders", c.order_count], ["LTV", format(c.lifetime_value)]].map(([l, v]) => {
+          const fieldKey = String({
+            "Phone": "customers.field_phone",
+            "Email": "customers.field_email",
+            "DOB": "customers.field_dob",
+            "Language": "customers.field_language",
+            "Referral": "customers.field_referral",
+            "Referrals": "customers.field_referrals",
+            "Orders": "customers.field_orders",
+            "LTV": "customers.field_ltv"
+          }[l as string] || l);
+          return <div key={l} style={{
           display: "flex",
           justifyContent: "space-between",
           borderBottom: "1px solid var(--color-border-light)",
           padding: "4px 0"
         }}><span style={{
             color: "var(--color-text-muted)"
-          }}>{l}</span><span style={{
-            fontWeight: 500
-          }}>{v}</span></div>)}
+          }}>{t(fieldKey)}</span><span style={{
+              fontWeight: 500
+            }}>{v}</span></div>;
+        })}
             </div>}
         </div>}
 
@@ -454,7 +470,7 @@ export default function CustomerDetailPage() {
               fontSize: 12,
               color: "var(--color-text-muted)"
             }}>{t("customers_[id].approve_to_verify_and_activate")}</div></div>
-                <button type="button" onClick={() => doAction("approve", {})} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "approve" ? "..." : "Approve"}</button>
+                <button type="button" onClick={() => doAction("approve", {})} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "approve" ? "..." : t("common.approve")}</button>
               </div>
             </div>}
 
@@ -472,7 +488,7 @@ export default function CustomerDetailPage() {
             fontSize: 22,
             fontWeight: 700,
             color: "var(--color-primary)"
-          }}>{(c.loyalty?.points_balance || 0).toLocaleString("en-MY")}{t("customers_[id].pts_2")}</span></div>
+          }}>{(c.loyalty?.points_balance || 0).toLocaleString(locale)}{t("customers_[id].pts_2")}</span></div>
             <div style={{
           display: "flex",
           gap: 8,
@@ -504,7 +520,7 @@ export default function CustomerDetailPage() {
               <button type="button" onClick={() => doAction("points", {
             points: Number(pointsAmt),
             reason: pointsReason
-          })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "points" ? "..." : "Apply"}</button>
+          })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "points" ? "..." : t("common.apply")}</button>
             </div>
           </div>
 
@@ -553,7 +569,7 @@ export default function CustomerDetailPage() {
               <button type="button" onClick={() => doAction("wallet", {
             amount: walletAmt,
             reason: walletReason
-          })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "wallet" ? "..." : "Apply"}</button>
+          })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "wallet" ? "..." : t("common.apply")}</button>
             </div>
           </div>
 
@@ -602,7 +618,7 @@ export default function CustomerDetailPage() {
               <button type="button" onClick={() => doAction("voucher", {
             voucher_id: selVoucher,
             reason: voucherReason
-          })} disabled={!!actionLoading || !selVoucher} className="btn btn-sm btn-primary">{actionLoading === "voucher" ? "..." : "Award"}</button>
+          })} disabled={!!actionLoading || !selVoucher} className="btn btn-sm btn-primary">{actionLoading === "voucher" ? "..." : t("common.award")}</button>
             </div>
           </div>
 
@@ -651,12 +667,12 @@ export default function CustomerDetailPage() {
               <button type="button" onClick={() => doAction("tier", {
             tier: tierVal,
             reason: tierReason
-          })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "tier" ? "..." : "Set"}</button>
+          })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "tier" ? "..." : t("common.set")}</button>
             </div>
           </div>
         </div>}
 
-      {tab === "orders" && <PaginatedTable<OrderItem> data={orders} cols={["Order #", "Status", "Total", "Date"]} render={(o: OrderItem) => {
+      {tab === "orders" && <PaginatedTable<OrderItem> data={orders} cols={[t("customers.col_order_number"), t("customers.col_status"), t("customers.col_total"), t("customers.col_date")]} render={(o: OrderItem) => {
       const sm: Record<string, string> = {
         pending: "badge-yellow",
         confirmed: "badge-blue",
@@ -679,14 +695,14 @@ export default function CustomerDetailPage() {
         }}>{dt(o.created_at)}</td></>;
     }} onChange={(p: number) => fetchTab("orders", p)} />}
 
-      {tab === "loyalty" && <PaginatedTable<LoyaltyEventItem> data={loyalty} cols={["Event", "Delta", "Balance", "Date"]} render={(e: LoyaltyEventItem) => <><td>{e.event_type?.replace(/_/g, " ")}</td><td style={{
+      {tab === "loyalty" && <PaginatedTable<LoyaltyEventItem> data={loyalty} cols={[t("customers.col_event"), t("customers.col_delta"), t("customers.col_balance"), t("customers.col_date")]} render={(e: LoyaltyEventItem) => <><td>{e.event_type?.replace(/_/g, " ")}</td><td style={{
         fontWeight: 600,
         color: (e.points_delta ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"
       }}>{(e.points_delta ?? 0) > 0 ? `+${e.points_delta}` : e.points_delta}</td><td>{e.running_balance}</td><td style={{
         fontSize: 12
       }}>{dt(e.created_at)}</td></>} onChange={(p: number) => fetchTab("loyalty", p)} />}
 
-      {tab === "wallet" && <PaginatedTable<WalletTxItem> data={walletTx} cols={["Type", "Amount", "Balance", "Date"]} render={(t: WalletTxItem) => <><td>{t.transaction_type}</td><td style={{
+      {tab === "wallet" && <PaginatedTable<WalletTxItem> data={walletTx} cols={[t("customers.col_type"), t("customers.col_amount"), t("customers.col_balance"), t("customers.col_date")]} render={(t: WalletTxItem) => <><td>{t.transaction_type}</td><td style={{
         fontWeight: 600,
         color: (t.amount ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)"
       }}>{(t.amount ?? 0) > 0 ? `+${t.amount}` : t.amount}</td><td>{(Number(t.running_balance) || 0).toFixed(2)}</td><td style={{
@@ -723,7 +739,7 @@ export default function CustomerDetailPage() {
                 textTransform: "capitalize"
               }}>{x.consent_type?.replace(/_/g, " ")}</td><td><span className={`badge badge-sm ${x.status === "granted" ? "badge-green" : "badge-red"}`}>{x.status}</span></td><td style={{
                 fontSize: 12
-              }}>{x.granted_at ? new Date(x.granted_at).toLocaleString("en-MY") : "—"}</td></tr>)}</>)(c.consents || [])}
+              }}>{x.granted_at ? new Date(x.granted_at).toLocaleString(locale) : "—"}</td></tr>)}</>)(c.consents || [])}
         </tbody></table></div>}
 
       {tab === "devices" && <div className="table-container"><table className="data-table"><thead><tr><th>{t("customers_[id].platform")}</th><th>{t("customers_[id].model")}</th><th style={{
@@ -733,9 +749,9 @@ export default function CustomerDetailPage() {
                 textTransform: "capitalize"
               }}>{d.platform}</td><td style={{
                 fontSize: 12
-              }}>{d.device_model || "—"}</td><td><span className={`badge badge-sm ${d.is_active ? "badge-green" : "badge-gray"}`}>{d.is_active ? "Active" : "Inactive"}</span></td><td style={{
+                }}>{d.device_model || "—"}</td><td><span className={`badge badge-sm ${d.is_active ? "badge-green" : "badge-gray"}`}>{d.is_active ? t("customers.status_active") : t("customers.status_inactive")}</span></td><td style={{
                 fontSize: 12
-              }}>{d.last_seen_at ? new Date(d.last_seen_at).toLocaleString("en-MY") : "—"}</td></tr>)}</>)(c.devices || [])}
+              }}>{d.last_seen_at ? new Date(d.last_seen_at).toLocaleString(locale) : "—"}</td></tr>)}</>)(c.devices || [])}
         </tbody></table></div>}
     </div>;
 }

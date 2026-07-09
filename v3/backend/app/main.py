@@ -1,10 +1,11 @@
 """FNB Enterprise v3 — FastAPI application entrypoint."""
-
+from decimal import Decimal
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
@@ -18,6 +19,27 @@ from app.core.middleware import (
 from app.core.rate_limiter import limiter, rate_limit_exceeded_handler
 
 settings = get_settings()
+
+
+class DecimalEncoder:
+    @staticmethod
+    def default(obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+class DecimalSafeJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        import json
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+            default=DecimalEncoder.default,
+        ).encode("utf-8")
 
 
 @asynccontextmanager
@@ -37,6 +59,7 @@ app = FastAPI(
     redoc_url="/redoc" if settings.is_development else None,
     openapi_url="/openapi.json" if settings.is_development else None,
     lifespan=lifespan,
+    default_response_class=DecimalSafeJSONResponse,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
@@ -48,11 +71,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"] if not settings.is_production else ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"] if not settings.is_production else [
-        "Authorization", "Content-Type", "Accept", "Origin",
-        "X-Requested-With", "X-Request-ID", "X-Forwarded-For",
-    ],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 app.add_middleware(RequestLoggingMiddleware)
 

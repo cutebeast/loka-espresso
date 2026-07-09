@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import "@/lib/logger";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import { LangAttribute } from "@/components/shared/LangAttribute";
 import { LocaleProviderWrapper } from "@/components/LocaleProviderWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://app.lokaespresso.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://app.loyaltysystem.uk"),
   title: "LOKA Espresso",
   description: "Artisan Coffee · Community · Culture",
   manifest: "/manifest.json",
@@ -84,6 +85,8 @@ export default function RootLayout({
         {/* Preconnect for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://js.stripe.com" />
+        <link rel="preconnect" href="https://hooks.stripe.com" />
       </head>
       <body className="antialiased">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:text-gray-900 focus:px-4 focus:py-2 focus:rounded focus:shadow-lg">Skip to content</a>

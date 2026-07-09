@@ -169,7 +169,7 @@ class OrderLineItem(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     menu_item_id: Mapped[int] = mapped_column(
         ForeignKey("menu_items.id", ondelete="RESTRICT"), nullable=False
@@ -179,9 +179,9 @@ class OrderLineItem(Base):
     )
     item_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    unit_price: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    modifier_total: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    line_total: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    modifier_total: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     selected_modifiers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     special_instructions: Mapped[str | None] = mapped_column(String(255), nullable=True)
     fulfillment_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
@@ -224,7 +224,7 @@ class OrderStatusLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     from_status: Mapped[str | None] = mapped_column(OrderStatus, nullable=True)
     to_status: Mapped[str] = mapped_column(OrderStatus, nullable=False)
@@ -260,10 +260,10 @@ class OrderAdjustment(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     adjustment_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    amount_delta: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    amount_delta: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     approved_by: Mapped[int | None] = mapped_column(
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
@@ -317,7 +317,7 @@ class OrderFulfillment(Base, TimestampMixin):
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    delivery_fee_snapshot: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    delivery_fee_snapshot: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     delivery_distance_km: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     provider_quote_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     webhook_events: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)

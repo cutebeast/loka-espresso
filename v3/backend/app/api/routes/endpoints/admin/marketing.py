@@ -245,7 +245,7 @@ async def list_analytics(
             "opens_count": a.opens_count,
             "clicks_count": a.clicks_count,
             "conversions_count": a.conversions_count,
-            "conversion_revenue": float(a.conversion_revenue or 0),
+            "conversion_revenue": str(a.conversion_revenue or 0),
             "unsubscribes": a.unsubscribes,
         })
     return APIResponse(

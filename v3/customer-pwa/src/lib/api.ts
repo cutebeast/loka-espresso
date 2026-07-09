@@ -41,7 +41,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-let _refreshPromise: Promise<{ access_token?: string; refresh_token?: string }> | null = null;
+let _refreshPromise: Promise<{ access_token?: string; refresh_token?: string } | undefined> | null = null;
 
 api.interceptors.response.use(
   (res) => {
@@ -65,7 +65,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh')) {
       originalRequest._retry = true;
       let tokens: { access_token?: string; refresh_token?: string } | undefined;
-      let currentPromise: Promise<any>;
+      let currentPromise: Promise<{ access_token?: string; refresh_token?: string } | undefined>;
       try {
         if (!_refreshPromise) {
           currentPromise = axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true }).then((res) => {
@@ -82,7 +82,7 @@ api.interceptors.response.use(
         if (tokens?.access_token) {
           return api(originalRequest);
         }
-      } catch (refreshError: any) {
+      } catch (refreshError: unknown) {
         if (_refreshPromise && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth:expired'));
         }
@@ -708,7 +708,7 @@ export interface DeliveryAddress {
   lng?: number;
 }
 
-export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'events' | 'checkin';
+export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'guest-pay' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'events' | 'checkin';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
 export function cacheBust(url: string, ts?: number): string {

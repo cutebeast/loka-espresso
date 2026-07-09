@@ -42,14 +42,14 @@ export default function TaxCategoriesPage() {
               fontWeight: 600
             }}>{item.category_name}</td>
                 <td>{typeof item.rate === 'number' ? (item.rate * 100).toFixed(0) : 0}%</td>
-                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/tax-categories/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-info)",
                 marginRight: 4
               }}><Edit2 size={14} /></button>
                   <button onClick={async () => {
-                if (confirm("Delete?")) {
+                if (confirm(t("common.confirm_delete"))) {
                   await api.del(`/admin/menu/tax-categories/${item.id}`);
                   refresh();
                 }

@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, sendCampaign } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
@@ -32,21 +34,24 @@ const LOCALES: {
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "campaign_name",
-  label: "Campaign Name"
-}, {
-  key: "body_content",
-  label: "Content"
-}];
+
 export default function CampaignEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "campaign_name",
+  label: t("admin.form.campaignName")
+}, {
+  key: "body_content",
+  label: "Content"
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const {
     allSegments
   } = useAudienceSegments();
@@ -82,13 +87,15 @@ export default function CampaignEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,23 +104,19 @@ export default function CampaignEditPage() {
     setSaving(true);
     try {
       await api.put(`/admin/marketing/campaigns/${id}`, form);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
   const handleSend = async () => {
-    if (!confirm("Send this campaign now?")) return;
+    if (!confirm(t("common.confirm_send"))) return;
     try {
       await sendCampaign(Number(id));
       setMsg("Campaign sent!");
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
     const all = await api.getRaw<any>(`/admin/translations?table_name=marketing_campaigns&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
@@ -159,9 +162,7 @@ export default function CampaignEditPage() {
             [`${locale}:${f.key}`]: r.translated_text
           }));
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     for (const r of results) {
       await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text);
@@ -187,6 +188,7 @@ export default function CampaignEditPage() {
       setSaving(false);
     }
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}><p>{t("marketing_campaigns_[id].loading")}</p></div>;
@@ -272,7 +274,7 @@ export default function CampaignEditPage() {
         </div>
         <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/marketing/campaigns")} className="btn btn-ghost">{t("marketing_campaigns_[id].cancel")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/marketing/campaigns")} className="btn btn-ghost">{t("marketing_campaigns_[id].cancel")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
       </div>}
 
       {loc !== "en" && <div className="card" style={{

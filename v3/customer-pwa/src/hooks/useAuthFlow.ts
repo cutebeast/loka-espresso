@@ -11,7 +11,7 @@ import { autoDetectStore } from '@/lib/geolocation';
 import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
-  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events',
+  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'guest-pay',
 ];
 
 function isPublicPage(page: PageId): boolean {
@@ -100,9 +100,15 @@ export function useAuthFlow() {
     }
   }, [isGuest, page, authDone]);
 
-  // Validate session on mount — restores user after page reload
+  // Validate session on mount — restores user after page reload.
+  // Skip for guest mode and the standalone guest-pay page (walk-in customers
+  // paying via QR have no session to validate and must not hit /me).
   useEffect(() => {
-    if (useUIStore.getState().isGuest) return;
+    const ui = useUIStore.getState();
+    if (ui.isGuest || ui.page === 'guest-pay') {
+      setAuthDone(true);
+      return;
+    }
     const abortCtrl = new AbortController();
     let cancelled = false;
     const validate = async () => {

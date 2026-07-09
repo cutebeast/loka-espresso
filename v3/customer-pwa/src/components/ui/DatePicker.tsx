@@ -4,10 +4,9 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
+const MONTHS = Array.from({ length: 12 }, (_, i) =>
+  new Intl.DateTimeFormat(typeof navigator !== 'undefined' ? navigator.language : 'en', { month: 'long' }).format(new Date(2024, i, 1))
+);
 
 const DAYS_PER_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -25,9 +24,10 @@ interface DatePickerProps {
   label?: string;
 }
 
-export default function DatePicker({ value, onChange, placeholder = 'Select date', label }: DatePickerProps) {
+export default function DatePicker({ value, onChange, placeholder, label }: DatePickerProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const _placeholder = placeholder ?? t('common.selectDate');
 
   const parsed = value ? value.split('-').map(Number) : null;
   const [month, setMonth] = useState(parsed && parsed[1] != null ? parsed[1] - 1 : 0);
@@ -95,7 +95,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
         onClick={() => setOpen(true)}
       >
         <span className={displayText ? 'datepicker-value' : 'datepicker-placeholder'}>
-          {displayText || placeholder}
+          {displayText || _placeholder}
         </span>
         <ChevronDown size={16} className="datepicker-chevron" />
       </button>

@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 const LOCALES = [{
   code: "en",
@@ -26,22 +28,25 @@ const LOCALES = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "category_name",
-  label: "Category Name"
-}, {
-  key: "description",
-  label: "Description"
-}];
+
 export default function CategoryEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "category_name",
+  label: t("admin.form.categoryName")
+}, {
+  key: "description",
+  label: t("admin.form.description")
+}];
   const params = useParams();
   const router = useRouter();
   const catId = params.id as string;
   const [form, setForm] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [activeLocale, setActiveLocale] = useState<string>("en");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -81,7 +86,11 @@ export default function CategoryEditPage() {
       }
       setTranslations(tr);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,10 +106,10 @@ export default function CategoryEditPage() {
       if (!payload.available_from_date) payload.available_from_date = null;
       if (!payload.available_to_date) payload.available_to_date = null;
       await api.patch(`/admin/menu/categories/${catId}`, payload);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
     } catch (e: any) {
-      setMsg(e.message || "Save failed");
+      setMsg(e.message || t("admin.errors.saveFailed"));
       console.error(e);
     } finally {
       setSaving(false);
@@ -146,9 +155,7 @@ export default function CategoryEditPage() {
           await upsertTr(f.key, activeLocale, src, r.translated_text);
           count++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${count} ${activeLocale.toUpperCase()} translations`);
     setTimeout(() => setMsg(""), 2500);
@@ -159,9 +166,10 @@ export default function CategoryEditPage() {
       const text = translations[`${activeLocale}:${f.key}`] || "";
       if (text) await upsertTr(f.key, activeLocale, (form[f.key] || "").trim(), text);
     }
-    setMsg("Translations saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("menu_categories_[id].loading")}</div>;
@@ -275,7 +283,7 @@ export default function CategoryEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 16
-      }}><button type="button" onClick={() => router.push("/menu/categories")} className="btn btn-ghost">{t("menu_categories_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save"}</button></div>
+      }}><button type="button" onClick={() => router.push("/menu/categories")} className="btn btn-ghost">{t("menu_categories_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.save")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 600

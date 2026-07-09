@@ -58,7 +58,7 @@ export default function HygienePage() {
     }
   }, [storeFilter, reportType, statusFilter, page]);
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch((e: unknown) => console.error("hygiene stores load:", e));
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch((e: any) => { console.error("hygiene stores load:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   useEffect(() => {
     fetchData();

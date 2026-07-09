@@ -1,5 +1,6 @@
 """Menu domain models."""
 
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
@@ -82,8 +83,8 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     long_description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    base_price: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    cost_price: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    base_price: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    cost_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -101,7 +102,7 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     is_bundle_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_addon_deal_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     addon_discount_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    addon_discount_value: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    addon_discount_value: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     eligible_bundle_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     category: Mapped["MenuCategory"] = relationship(
@@ -143,7 +144,7 @@ class TaxCategory(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     category_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    rate: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
+    rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
@@ -210,7 +211,7 @@ class MenuModifierOption(Base):
         ForeignKey("menu_modifier_groups.id", ondelete="CASCADE"), nullable=False
     )
     option_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    price_adjustment: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    price_adjustment: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -234,7 +235,7 @@ class MenuVariant(Base):
     )
     variant_name: Mapped[str] = mapped_column(String(100), nullable=False)
     variant_sku: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    price_adjustment: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    price_adjustment: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -304,10 +305,10 @@ class MenuItemRecipe(Base):
     inventory_item_id: Mapped[int] = mapped_column(
         ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False
     )
-    quantity_required: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
+    quantity_required: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     unit_of_measure: Mapped[str] = mapped_column(String(20), nullable=False)
     is_primary_component: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    waste_factor: Mapped[float] = mapped_column(Numeric(4, 3), nullable=False, default=0.050)
+    waste_factor: Mapped[Decimal] = mapped_column(Numeric(4, 3), nullable=False, default=0.050)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

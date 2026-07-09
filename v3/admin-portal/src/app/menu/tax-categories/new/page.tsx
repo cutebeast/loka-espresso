@@ -72,7 +72,7 @@ export default function TaxCategoryNewPage() {
           </div>
           <div className="df-actions">
             <button type="button" onClick={() => r.push("/menu/tax-categories")} className="btn btn-ghost">{t("menu_tax-categories_new.cancel")}</button>
-            <button type="submit" disabled={s} className="btn btn-primary"><Save size={16} />{s ? "Creating..." : "Create"}</button>
+            <button type="submit" disabled={s} className="btn btn-primary"><Save size={16} />{s ? t("admin.common.creating") : t("admin.common.create")}</button>
           </div>
         </div>
       </form>

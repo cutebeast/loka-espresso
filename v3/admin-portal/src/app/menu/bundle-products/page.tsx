@@ -56,7 +56,7 @@ export default function BundleProductsPage() {
     }
   }, [searchParams]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this bundle product?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/menu/bundle-products/${id}`);
       fetchItems();
@@ -167,7 +167,7 @@ export default function BundleProductsPage() {
               textAlign: "right",
               fontWeight: 600
             }}>{format(b.bundle_price)}</td>
-                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? "Active" : "Inactive"}</span></td>
+                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{
                 display: "flex",

@@ -65,15 +65,11 @@ export default function PurchaseOrdersPage() {
       try {
         const d = await api.getRaw<any>("/admin/inventory/suppliers");
         setSuppliers(Array.isArray(d) ? d : d.items || []);
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
       try {
         const d = await api.getRaw<any>("/admin/stores?per_page=50");
         setStores(d.items || []);
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     })();
   }, []);
   const loadItems = async (sid: string) => {
@@ -86,9 +82,7 @@ export default function PurchaseOrdersPage() {
     try {
       const d = await api.getRaw<any>(`/admin/inventory/items?store_id=${sid}&per_page=100`);
       setInvItems(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const resetForm = () => {
     setForm({
@@ -158,23 +152,19 @@ export default function PurchaseOrdersPage() {
     }
   };
   const handleReceive = async (id: number) => {
-    if (!confirm("Confirm receipt of this PO?")) return;
+    if (!confirm(t("common.confirm_receipt"))) return;
     try {
       await receivePurchaseOrder(id);
       fetchData();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const handleCancel = async (id: number) => {
-    if (!confirm("Cancel this PO?")) return;
+    if (!confirm(t("common.confirm_cancel"))) return;
     try {
       await cancelPurchaseOrder(id);
       fetchData();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const sb = (s: string) => {

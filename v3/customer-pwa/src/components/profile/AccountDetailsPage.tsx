@@ -41,7 +41,7 @@ export default function AccountDetailsPage() {
         setEmail((profile as { email_address?: string }).email_address || '');
         setDob((profile as { date_of_birth?: string }).date_of_birth || '');
       }
-    }).catch((err) => console.error('[AccountDetails] Profile fetch failed:', err));
+    }).catch((err) => { console.error('[AccountDetails] Profile fetch failed:', err); showToast(t('toast.loadProfileFailed'), 'error'); });
   }, [setUser]);
 
   const handleSave = async () => {

@@ -1,6 +1,7 @@
 """Marketing Automation models."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
     CHAR,
@@ -55,12 +56,12 @@ class MarketingCampaign(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(CampaignStatus, nullable=False, default="draft")
     provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
     provider_campaign_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    budget_allocated: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
-    budget_spent: Mapped[float] = mapped_column(
+    budget_allocated: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    budget_spent: Mapped[Decimal] = mapped_column(
         Numeric(12, 4), nullable=False, default=0
     )
-    target_roi: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
-    actual_roi: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    target_roi: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    actual_roi: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     created_by: Mapped[int | None] = mapped_column(
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -106,13 +107,13 @@ class CampaignAnalytics(Base):
     clicks_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     unique_clicks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     conversions_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    conversion_revenue: Mapped[float] = mapped_column(
+    conversion_revenue: Mapped[Decimal] = mapped_column(
         Numeric(12, 4), nullable=False, default=0
     )
     unsubscribes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     spam_reports: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    cost_per_send: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
-    cost_total: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    cost_per_send: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
+    cost_total: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

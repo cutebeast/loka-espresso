@@ -67,9 +67,9 @@ export default function PosUnpaidOrdersDrawer({
               }}>
                         {(order as {
                   order_type?: string;
-                }).order_type === "takeaway" ? "Takeaway" : "Delivery"} · {(order as {
+                }).order_type === "takeaway" ? t("orders.type_takeaway") : t("orders.type_delivery")} · {(order as {
                   customer_name?: string;
-                }).customer_name || "Walk-in"} · {(order as {
+                }).customer_name || t("pos.walk_in")} · {(order as {
                   item_count?: number;
                 }).item_count}{t("pos.items")}</div>
                     </div>
@@ -78,7 +78,7 @@ export default function PosUnpaidOrdersDrawer({
             }}>
                       <div style={{
                 fontWeight: 700
-              }}>{t("pos.rm")}{((order as {
+              }}>{t("pos.currency_symbol")}{((order as {
                   total_amount?: number;
                 }).total_amount ?? 0).toFixed(2)}</div>
                       <button className="btn btn-sm btn-primary" style={{
@@ -121,19 +121,16 @@ export default function PosUnpaidOrdersDrawer({
                 color: "var(--color-text-muted)"
               }}>{t("pos.dine_in")}{(order as {
                   customer_name?: string;
-                }).customer_name || "Walk-in"} · {(order as {
+                }).customer_name || t("pos.walk_in")} · {(order as {
                   table_number?: string;
-                }).table_number ? `Table ${(order as {
-                  table_number?: string;
-                }).table_number}` : "No table"}
-                      </div>
+                }).table_number ? t("pos.table_n", { n: (order as { table_number?: string; }).table_number || "" }) : t("pos.no_table")}                      </div>
                     </div>
                     <div style={{
               textAlign: "right"
             }}>
                       <div style={{
                 fontWeight: 700
-              }}>{t("pos.rm_2")}{((order as {
+              }}>{t("pos.currency_symbol")}{((order as {
                   total_amount?: number;
                 }).total_amount ?? 0).toFixed(2)}</div>
                       <button className="btn btn-sm btn-primary" style={{

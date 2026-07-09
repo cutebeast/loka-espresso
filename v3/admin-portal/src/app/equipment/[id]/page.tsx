@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 interface MaintenanceLog {
@@ -31,6 +33,7 @@ export default function EquipmentEditPage() {
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [showLogForm, setShowLogForm] = useState(false);
@@ -51,15 +54,17 @@ export default function EquipmentEditPage() {
       setForm(d);
       setLogs(d.maintenance_logs || []);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
   };
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => {
-      console.error('stores:', e);
-    });
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('stores:', e); setMsg(e.message || t("admin.errors.loadFailed")); });
     loadEquipment();
   }, [id]);
   const update = (k: string, v: unknown) => setForm(p => ({
@@ -77,11 +82,9 @@ export default function EquipmentEditPage() {
       delete payload.updated_at;
       delete payload.maintenance_logs;
       await api.patch(`/admin/equipment/${id}`, payload);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -106,25 +109,22 @@ export default function EquipmentEditPage() {
       loadEquipment();
       setMsg("Maintenance log added");
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const handleDeleteLog = async (logId: number) => {
-    if (!confirm("Delete this maintenance log?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingLogId(logId);
     try {
       await api.del(`/admin/equipment/${id}/maintenance-logs/${logId}`);
       loadEquipment();
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingLogId(null);
     }
   };
   const [deletingLogId, setDeletingLogId] = useState<number | null>(null);
   const inputClass = "w-full border rounded px-3 py-2 text-sm";
   const labelClass = "block text-xs font-semibold text-gray-500 uppercase mb-1";
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("equipment_[id].loading")}</div>;
@@ -222,7 +222,7 @@ export default function EquipmentEditPage() {
         marginTop: 16
       }}>
           <button type="button" onClick={() => router.push("/equipment")} className="btn btn-ghost">{t("equipment_[id].cancel")}</button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button>
+          <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button>
         </div>
       </div>
 
@@ -241,7 +241,7 @@ export default function EquipmentEditPage() {
           margin: 0,
           fontSize: 16
         }}>{t("equipment_[id].maintenance_logs")}</h3>
-          <button onClick={() => setShowLogForm(!showLogForm)} className="btn btn-sm btn-outline"><Plus size={14} /> {showLogForm ? "Cancel" : "Add Log"}</button>
+          <button onClick={() => setShowLogForm(!showLogForm)} className="btn btn-sm btn-outline"><Plus size={14} /> {showLogForm ? t("admin.common.cancel") : t("admin.common.addLog")}</button>
         </div>
 
         {showLogForm && <div style={{
@@ -360,7 +360,7 @@ export default function EquipmentEditPage() {
                 fontSize: 12,
                 color: "var(--color-text-muted)",
                 marginTop: 2
-              }}>{log.description || "No description"}</div>
+              }}>{log.description || t("admin.common.noDescription")}</div>
                     {log.performed_by && <div style={{
                 fontSize: 11,
                 marginTop: 4

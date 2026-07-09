@@ -1,5 +1,5 @@
 """Information cards — product info, events, system content, popups."""
-
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
@@ -55,7 +55,7 @@ class ProductCard(Base):
     short_description: Mapped[str | None] = mapped_column(String(500))
     long_description: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(String(500))
-    price: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     action_url: Mapped[str | None] = mapped_column(String(500))
     action_label: Mapped[str | None] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

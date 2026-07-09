@@ -68,12 +68,8 @@ export default function BundleProductNewPage() {
   const _tempIdCounter = useRef(0);
   const nextTempId = () => ++_tempIdCounter.current;
   useEffect(() => {
-    api.getRaw<any>("/admin/menu/items?per_page=500").then(d => setMenuItems((d?.items || []).filter((mi: any) => mi.is_bundle_eligible))).catch((e: unknown) => {
-      console.error('menu items:', e);
-    });
-    api.getRaw<any>("/admin/menu/categories?per_page=100").then(d => setCategories(d?.items || [])).catch((e: unknown) => {
-      console.error('menu categories:', e);
-    });
+    api.getRaw<any>("/admin/menu/items?per_page=500").then(d => setMenuItems((d?.items || []).filter((mi: any) => mi.is_bundle_eligible))).catch((e: any) => { console.error('menu items:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/menu/categories?per_page=100").then(d => setCategories(d?.items || [])).catch((e: any) => { console.error('menu categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const selectMode = (m: BundleMode) => {
     setMode(m);
@@ -712,7 +708,7 @@ export default function BundleProductNewPage() {
 
           <div className="df-actions" style={{
           marginTop: 20
-        }}><button type="button" onClick={() => router.push("/menu/bundle-products")} className="btn btn-ghost">{t("menu_bundle-products_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} /> {saving ? "Creating..." : "Create Bundle"}</button></div>
+        }}><button type="button" onClick={() => router.push("/menu/bundle-products")} className="btn btn-ghost">{t("menu_bundle-products_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} /> {saving ? t("admin.common.creating") : t("admin.common.create")}</button></div>
         </form>
       </div>
     </div>;

@@ -39,7 +39,7 @@ export default function StaffTranslationsTab() {
         if (r?.items) all.push(...r.items);
       }
       setItems(all);
-    } catch (e) { console.error(e); }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     finally { setLoading(false); }
   }, []);
 
@@ -186,7 +186,7 @@ export default function StaffTranslationsTab() {
                                 await upsertTranslation(key, loc, newVal, existing);
                                 setMsg(t("admin.translations.saved"));
                                 setTimeout(() => setMsg(""), 2000);
-                              } catch (err) { console.error(err); }
+                              } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
                             }
                           }}
                           onKeyDown={async (e) => {
@@ -198,7 +198,7 @@ export default function StaffTranslationsTab() {
                                   await upsertTranslation(key, loc, newVal, existing);
                                   setMsg(t("admin.translations.saved"));
                                   setTimeout(() => setMsg(""), 2000);
-                                } catch (err) { console.error(err); }
+                                } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
                               }
                               (e.target as HTMLInputElement).blur();
                             }

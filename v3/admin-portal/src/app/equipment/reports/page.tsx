@@ -19,7 +19,8 @@ interface ReportEntry {
 }
 export default function EquipmentReportsPage() {
   const {
-    t
+    t,
+    locale
   } = useTranslation();
   const [items, setItems] = useState<ReportEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,14 +56,14 @@ export default function EquipmentReportsPage() {
     }
   }, [storeFilter, typeFilter, dateFrom, dateTo, page]);
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch((e: unknown) => console.error("equipment stores load:", e));
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch((e: any) => { console.error("equipment stores load:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   useEffect(() => {
     fetchData();
   }, [fetchData]);
   const typeLabel = (t: string) => t?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   const statusLabel = (s: string) => s?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-  const formatDt = (s: string) => s ? new Date(s).toLocaleString("en-MY") : "—";
+  const formatDt = (s: string) => s ? new Date(s).toLocaleString(locale) : "—";
   return <div style={{
     padding: 32
   }}>

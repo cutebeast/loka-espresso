@@ -33,9 +33,7 @@ export default function LoyaltySettingsPage() {
       });
       setConfigs(map);
       setValues(vals);
-    }).catch(e => {
-      console.error('loyalty config:', e);
-    }).finally(() => setLoading(false));
+    }).catch(e => { console.error('loyalty config:', e); setMsg(e.message || t("admin.errors.loadFailed")); }).finally(() => setLoading(false));
   }, []);
   const save = async (key: string, value: string) => {
     setSaving(key);

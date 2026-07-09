@@ -1,5 +1,5 @@
 """Staff domain schemas."""
-
+from decimal import Decimal
 from datetime import date, datetime, time
 
 from pydantic import Field
@@ -17,7 +17,7 @@ class StaffProfileBase(BaseSchema):
     role: str | None = None  # uses StaffRole enum values
     hire_date: date | None = None
     termination_date: date | None = None
-    hourly_rate: float | None = None
+    hourly_rate: Decimal | None = None
     tip_eligible: bool = True
     is_active: bool = True
 
@@ -34,7 +34,7 @@ class StaffProfileUpdate(BaseSchema):
     role: str | None = None
     hire_date: date | None = None
     termination_date: date | None = None
-    hourly_rate: float | None = None
+    hourly_rate: Decimal | None = None
     tip_eligible: bool | None = None
     is_active: bool | None = None
 
@@ -104,8 +104,8 @@ class StaffChangePasswordRequest(BaseSchema):
 
 
 class StaffChangePinRequest(BaseSchema):
-    current_pin: str
-    new_pin: str
+    current_pin: str = Field(..., pattern=r"^\d{6}$")
+    new_pin: str = Field(..., pattern=r"^\d{6}$")
 
 
 class POSLineItem(BaseSchema):
@@ -118,7 +118,7 @@ class POSLineItem(BaseSchema):
 
 
 class POSPayment(BaseSchema):
-    amount_tendered: float | None = None
+    amount_tendered: Decimal | None = None
     method: str = "cash"
 
 
@@ -135,7 +135,7 @@ class POSOrderCreateRequest(BaseSchema):
 class StaffCreateRequest(BaseSchema):
     email: str | None = None
     password: str | None = None
-    pin: str = "000000"
+    pin: str | None = None
     display_name: str
     store_id: int
     phone_number: str | None = None

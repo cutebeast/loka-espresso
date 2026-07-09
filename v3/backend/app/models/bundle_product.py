@@ -1,5 +1,5 @@
 """Bundle product (combo meal) models."""
-
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
@@ -18,7 +18,7 @@ class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    bundle_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    bundle_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_categories.id", ondelete="SET NULL"), nullable=True
     )
@@ -111,7 +111,7 @@ class BundleComponentModifier(Base):
     modifier_option_id: Mapped[int] = mapped_column(
         ForeignKey("menu_modifier_options.id", ondelete="RESTRICT"), nullable=False
     )
-    price_adjustment: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    price_adjustment: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     component: Mapped["BundleProductComponent"] = relationship(

@@ -1,5 +1,6 @@
 """Admin authentication endpoints."""
 
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
@@ -20,6 +21,7 @@ from app.core.rate_limiter import limiter
 from app.core.security import hash_password, verify_password, decode_token
 
 router = APIRouter(prefix="/admin/auth", tags=["admin — authentication"])
+logger = logging.getLogger(__name__)
 
 
 class AdminMeOut(BaseSchema):
@@ -224,7 +226,7 @@ async def admin_logout(
         except HTTPException:
             raise
         except Exception:
-            pass
+            logger.exception("Failed to blacklist token during logout")
     clear_admin_auth_cookies(response)
 
 

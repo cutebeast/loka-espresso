@@ -127,9 +127,7 @@ export default function CampaignSettingsPage() {
       setValues({
         ...m
       });
-    }).catch(e => {
-      console.error('campaign settings:', e);
-    }).finally(() => setLoading(false));
+    }).catch(e => { console.error('campaign settings:', e); setMsg(e.message || t("admin.errors.loadFailed")); }).finally(() => setLoading(false));
   }, []);
   const save = async (key: string, val: string) => {
     setSaving(key);

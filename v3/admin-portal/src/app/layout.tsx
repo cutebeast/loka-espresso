@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import "@/lib/logger";
 import LoggerInit from "@/components/LoggerInit";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { TranslationProvider, useTranslation } from "@/lib/i18n";

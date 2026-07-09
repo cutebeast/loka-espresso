@@ -40,7 +40,7 @@ export default function NewCategoryPage() {
       const id = r?.id;
       if (id) router.push(`/menu/categories/${id}`);
     } catch (e: any) {
-      setError(e.message || "Save failed");
+      setError(e.message || t("admin.errors.saveFailed"));
       console.error(e);
     } finally {
       setSaving(false);

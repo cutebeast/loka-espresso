@@ -26,6 +26,7 @@ import { usePosCustomer } from "./usePosCustomer";
 import { usePosCheckout } from "./usePosCheckout";
 import { usePosScanner } from "./usePosScanner";
 import { parseApiError } from "@/lib/errors";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export type PosMode = "new_order" | "checkout";
 export type PosState = "menu" | "payment" | "qr_payment" | "done";
@@ -34,6 +35,8 @@ export type { HeldOrder };
 
 export interface QrPaymentState {
   paymentUrl: string;
+  pwaPayUrl?: string;
+  payToken?: string;
   orderId: string;
   orderNumber?: string;
   total: number;
@@ -95,11 +98,12 @@ export function usePosState() {
   const [stripeEnabled, setStripeEnabled] = useState<boolean | null>(null);
 
   // Runtime helpers
+  const { t } = useTranslation();
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
-  const crewName = typeof window !== "undefined" ? localStorage.getItem("staffName") || "Staff" : "Staff";
+  const crewName = typeof window !== "undefined" ? localStorage.getItem("staffName") || t("common.staff") : t("common.staff");
 
   // ── Composed hooks ──
-  const cartHook = usePosCart(storeId, crewName);
+  const cartHook = usePosCart(crewName);
   const customerHook = usePosCustomer();
   const checkoutHook = usePosCheckout(checkoutOrderId);
 
@@ -107,17 +111,17 @@ export function usePosState() {
   const handleCustomerScannerCb = useCallback((customer: Customer) => {
     if (mode === "checkout") {
       checkoutHook.loadCheckoutCustomerData(customer);
-      setMsg("Customer linked for checkout");
+      setMsg(t("pos.customer_linked"));
     } else {
       cartHook.setSelectedCustomer(customer);
       customerHook.loadCustomerWallet(customer.id);
     }
-  }, [mode, checkoutHook, cartHook, customerHook]);
+  }, [mode, checkoutHook, cartHook, customerHook, t]);
 
   const handleTableScannerCb = useCallback((table: Table) => {
     cartHook.setTableId(table.id);
-    setMsg(`Table ${table.table_number} selected`);
-  }, [cartHook]);
+    setMsg(t("pos.table_selected", { number: table.table_number }));
+  }, [cartHook, t]);
 
   const scannerHook = usePosScanner(tables, handleCustomerScannerCb, handleTableScannerCb);
 
@@ -129,8 +133,16 @@ export function usePosState() {
         const [itemsData, catsData, tablesData, bpData] = await Promise.all([
           getMenuItems(),
           getMenuCategories(),
-          getTables(storeId).catch((err) => { console.error("Failed to load tables:", err); return []; }),
-          getBundleProducts().catch(() => []),
+          getTables(storeId).catch((err) => {
+            console.error("Failed to load tables:", err);
+            setError(parseApiError(err, t("staff.errors.load_failed", { resource: t("tables.tables") })));
+            return [];
+          }),
+          getBundleProducts().catch((err) => {
+            console.error("Failed to load bundle products:", err);
+            setError(parseApiError(err, t("staff.errors.load_failed", { resource: t("pos.combo") })));
+            return [];
+          }),
         ]);
         if (!mounted) return;
         setItems((Array.isArray(itemsData) ? itemsData : []).filter((i: { is_available?: boolean }) => i.is_available));
@@ -151,6 +163,7 @@ export function usePosState() {
           setStripeEnabled(Boolean(cfg.stripe_enabled));
         } catch (cfgErr) {
           console.error("Failed to load payment gateway config:", cfgErr);
+          setError(parseApiError(cfgErr, t("staff.errors.load_failed", { resource: t("pos.payment") })));
           setStripeEnabled(false);
         }
       } catch (e: unknown) {
@@ -326,9 +339,9 @@ export function usePosState() {
       const customer = await customerHook.handleCustomerQrScan(code);
       handleCustomerSelect(customer);
     } catch (e: unknown) {
-      setError((e as Error).message || "Invalid customer QR");
+      setError((e as Error).message || t("pos.invalid_customer_qr"));
     }
-  }, [customerHook, handleCustomerSelect]);
+  }, [customerHook, handleCustomerSelect, t]);
 
   // ── Order actions ──
   const isKitchenProcessingRef = useRef(false);
@@ -336,8 +349,8 @@ export function usePosState() {
 
   const handleSendToKitchen = async () => {
     if (isKitchenProcessingRef.current) return;
-    if (cartHook.cart.length === 0) { setError("Cart is empty"); return; }
-    if (cartHook.orderType === "dine_in" && !cartHook.tableId) { setError("Please assign a table for dine-in orders"); return; }
+    if (cartHook.cart.length === 0) { setError(t("pos.err_cart_empty")); return; }
+    if (cartHook.orderType === "dine_in" && !cartHook.tableId) { setError(t("pos.err_table_required")); return; }
 
     // Validate bundle completeness before sending
     const bundleErrors: string[] = [];
@@ -391,7 +404,7 @@ export function usePosState() {
       }
     }
     if (bundleErrors.length > 0) {
-      setError(`Complete the combo before sending:\n${bundleErrors.join("\n")}`);
+      setError(t("pos.complete_combo", { errors: bundleErrors.join("\n") }));
       return;
     }
 
@@ -430,7 +443,7 @@ export function usePosState() {
     try {
       const walletPaid = checkoutHook.checkoutDiscountsApplied.wallet || 0;
       const orderBase = checkoutHook.checkoutOrder?.total_amount ?? 0;
-      const discountBase = (checkoutHook.checkoutOrder as any)?.items_subtotal ?? orderBase;
+      const discountBase = checkoutHook.checkoutOrder?.items_subtotal ?? orderBase;
       const manualDisc = discountType === "percentage" ? discountBase * (discountAmount / 100) : discountAmount;
       const checkoutTotal = Math.max(0, orderBase - manualDisc + tipAmount - walletPaid);
       // If wallet (or a 100% discount) covers the whole bill, record the wallet payment once.
@@ -439,10 +452,10 @@ export function usePosState() {
           let walletRes: Record<string, unknown>;
           if (walletPaid > 0) {
             // Wallet payment already applied via handleCheckoutWalletPayment; just finalize.
-            walletRes = { message: "Paid with wallet", payment_status: "paid" };
+            walletRes = { message: t("pos.paid_with_wallet"), payment_status: "paid" };
           } else {
             // Fully discounted order; no wallet payment required.
-            walletRes = { message: "No payment required", payment_status: "paid" };
+            walletRes = { message: t("pos.no_payment_required"), payment_status: "paid" };
           }
           setResult({
             order_id: checkoutOrderId,
@@ -451,7 +464,7 @@ export function usePosState() {
             payment_status: walletRes.payment_status,
           });
         } catch (e: unknown) {
-          setError(parseApiError(e, "Wallet payment failed"));
+          setError(parseApiError(e, t("pos.wallet_payment_failed")));
           return;
         } finally {
           isCheckoutProcessingRef.current = false;
@@ -466,8 +479,18 @@ export function usePosState() {
       );
       const resRecord = res as Record<string, unknown>;
       if (resRecord.payment_url && typeof resRecord.payment_url === "string") {
+        // Build the PWA deep-link so the staff-facing QR opens the PWA guest-pay
+        // page (no login required).  The signed pay_token authorises the
+        // walk-in customer to view + pay for this specific order only.
+        const pwaBase = typeof window !== "undefined" ? window.location.origin.replace("://staff.", "://app.") : "https://app.loyaltysystem.uk";
+        const payToken = (resRecord.pay_token as string | undefined) || "";
+        const pwaPayUrl = payToken
+          ? `${pwaBase}/#guest-pay?orderId=${checkoutOrderId}&token=${payToken}`
+          : `${pwaBase}/#order-detail?orderId=${checkoutOrderId}`;
         setQrPayment({
           paymentUrl: resRecord.payment_url,
+          pwaPayUrl,
+          payToken,
           orderId: checkoutOrderId,
           orderNumber: (resRecord.order_number as string | undefined) || checkoutHook.checkoutOrder?.order_number,
           total: (resRecord.total as number | undefined) || total,
@@ -497,7 +520,7 @@ export function usePosState() {
   const holdOrder = () => {
     const held = cartHook.holdOrder();
     if (held) {
-      setMsg("Order parked successfully");
+      setMsg(t("pos.order_parked"));
     }
   };
 
@@ -524,18 +547,18 @@ export function usePosState() {
     for (const comp of bp.components) {
       const menuItem = items.find(i => i.id === comp.menu_item_id);
       if (!menuItem || !menuItem.is_available) {
-        unavailable.push(comp.menu_item_name || menuItem?.item_name || `Item #${comp.menu_item_id}`);
+        unavailable.push(comp.menu_item_name || menuItem?.item_name || t("common.item_n", { id: comp.menu_item_id }));
       }
     }
     if (unavailable.length > 0) {
-      setError(`Cannot add ${bp.title}: ${unavailable.join(", ")} unavailable`);
+      setError(t("pos.bundle_unavailable", { title: bp.title, items: unavailable.join(", ") }));
       return;
     }
     for (const comp of bp.components) {
       const menuItem = items.find(i => i.id === comp.menu_item_id)!;
       cartHook.addToCart(menuItem, {}, "", comp.default_quantity || 1, bp.id, comp.id);
     }
-    setMsg(`${bp.title} added`);
+    setMsg(t("pos.bundle_added", { title: bp.title }));
   };
 
   const handleBundlePickerAdd = (selections: Array<{ menu_item_id: number; quantity: number; bundle_component_id?: number }>) => {
@@ -545,7 +568,7 @@ export function usePosState() {
       if (!menuItem || !menuItem.is_available) continue;
       cartHook.addToCart(menuItem, {}, "", sel.quantity, pickerBundle.id, sel.bundle_component_id);
     }
-    setMsg(`${pickerBundle.title} added`);
+    setMsg(t("pos.bundle_added", { title: pickerBundle.title }));
     setPickerBundle(null);
   };
 
@@ -601,13 +624,13 @@ export function usePosState() {
     handleBurnReward: (reward: Reward) =>
       cartHook.selectedCustomer
         ? customerHook.handleBurnReward(cartHook.selectedCustomer, reward)
-            .then(() => { setMsg("Reward redeemed!"); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
+            .then(() => { setMsg(t("wallet.reward_used", { message: t("wallet.reward_used_success") })); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
             .catch((e) => setError((e as Error).message))
         : undefined,
     handleBurnVoucher: (voucher: Voucher) =>
       cartHook.selectedCustomer
         ? customerHook.handleBurnVoucher(cartHook.selectedCustomer, voucher)
-            .then(() => { setMsg("Voucher redeemed!"); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
+            .then(() => { setMsg(t("wallet.voucher_used", { message: t("wallet.voucher_used_success") })); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
             .catch((e) => setError((e as Error).message))
         : undefined,
 
@@ -625,16 +648,16 @@ export function usePosState() {
     handleCheckoutCustomerQrScan: checkoutHook.handleCheckoutCustomerQrScan,
     handleApplyCheckoutVoucher: (voucherCode: string) =>
       checkoutHook.handleApplyCheckoutVoucher(voucherCode)
-        .then((res) => { setMsg((res as { message?: string }).message || "Voucher applied"); })
-        .catch((e) => setError((e as Error).message || "Failed to apply voucher")),
+        .then((res) => { setMsg((res as { message?: string }).message || t("pos.apply")); })
+        .catch((e) => setError((e as Error).message || t("staff.errors.update_failed", { resource: t("pos.vouchers") }))),
     handleApplyCheckoutReward: (rewardId: number) =>
       checkoutHook.handleApplyCheckoutReward(rewardId)
-        .then((res) => { setMsg((res as { message?: string }).message || "Reward applied"); })
-        .catch((e) => setError((e as Error).message || "Failed to apply reward")),
+        .then((res) => { setMsg((res as { message?: string }).message || t("pos.apply_2")); })
+        .catch((e) => setError((e as Error).message || t("staff.errors.update_failed", { resource: t("pos.rewards") }))),
     handleCheckoutWalletPayment: (amount: number) =>
       checkoutHook.handleCheckoutWalletPayment(amount)
-        .then((res) => { setMsg((res as { message?: string }).message || "Wallet payment applied"); })
-        .catch((e) => setError((e as Error).message || "Wallet payment failed")),
+        .then((res) => { setMsg((res as { message?: string }).message || t("pos.wallet_payment")); })
+        .catch((e) => setError((e as Error).message || t("pos.wallet_payment_failed"))),
     fetchUnpaidOrders: () => checkoutHook.fetchUnpaidOrders(storeId, getOrders),
 
     // Scanner (from usePosScanner)

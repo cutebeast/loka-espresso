@@ -29,7 +29,7 @@ class Payment(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     payment_method_id: Mapped[int | None] = mapped_column(
         ForeignKey("payment_methods.id", ondelete="SET NULL"), nullable=True, index=True
@@ -87,7 +87,7 @@ class PaymentEvent(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     payment_id: Mapped[int] = mapped_column(
-        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
     )
     from_status: Mapped[str | None] = mapped_column(PaymentStatus, nullable=True)
     to_status: Mapped[str] = mapped_column(PaymentStatus, nullable=False)
@@ -154,10 +154,10 @@ class Refund(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     payment_id: Mapped[int] = mapped_column(
-        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
     )
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)

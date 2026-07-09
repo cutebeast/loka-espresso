@@ -56,15 +56,13 @@ export default function RewardsPage() {
     };
   }, [fetchData]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this reward?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/rewards/${id}`);
       const d = await fetchData(page);
       setItems(d.items || []);
       setTotalPages(d.total_pages || 1);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const typeLabel = (t: string) => {
     const map: Record<string, string> = {
@@ -115,7 +113,7 @@ export default function RewardsPage() {
               fontWeight: 600
             }}>{(item.points_cost ?? 0).toLocaleString()}{t("rewards.pts")}</td>
                 <td>{item.minimum_order_value != null ? `${symbol} ${item.minimum_order_value}` : "—"}</td>
-                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{
                 display: "flex",

@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import type { Reservation, Store } from '@/lib/api';
 import { formatStoreAddress } from '@/lib/storeHelpers';
 import { GuestGate } from '@/components/auth/GuestGate';
+import { useUIStore } from '@/stores/uiStore';
 
 interface ReservationsPageProps {
   onBack: () => void;
@@ -16,6 +17,7 @@ interface ReservationsPageProps {
 
 export default function ReservationsPage({ onBack }: ReservationsPageProps) {
   const { t } = useTranslation();
+  const { showToast } = useUIStore();
   const { isAuthenticated } = useAuthStore();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -36,6 +38,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
       const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
       setReservations(data);
     } catch {
+      showToast(t('toast.loadReservationsFailed'), 'error');
       setReservations([]);
     }
   }, []);
@@ -47,6 +50,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
       setStores(data);
       if (data.length > 0 && !formStoreId) setFormStoreId(String(data[0].id));
     } catch {
+      showToast(t('toast.loadStoresFailed'), 'error');
       setStores([]);
     }
   }, [formStoreId]);
@@ -61,7 +65,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
     e.preventDefault();
     setFormError('');
     if (!formStoreId || !formDate || !formTime) {
-      setFormError(t('reservations.fillRequired') || 'Please fill all required fields');
+      setFormError(t('reservations.fillRequired'));
       return;
     }
     setSubmitting(true);
@@ -76,7 +80,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
       setShowForm(false);
       await fetchReservations();
     } catch (err: unknown) {
-      setFormError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (t('reservations.submitFailed') || 'Failed to create reservation'));
+      setFormError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('reservations.submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -87,7 +91,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
       await api.delete(`/reservations/${id}`);
       await fetchReservations();
     } catch {
-      // ignore
+      showToast(t('toast.reservationCancelFailed'), 'error');
     }
   };
 
@@ -113,7 +117,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
       <div className="h-full bg-bg flex flex-col">
         <div className="loka-page-header">
           <button className="loka-back-btn" onClick={onBack} aria-label={t('common.back')}><ArrowLeft size={20} /></button>
-          <h1 className="text-lg font-bold text-text-primary">{t('reservations.title') || 'Reservations'}</h1>
+          <h1 className="text-lg font-bold text-text-primary">{t('reservations.title')}</h1>
         </div>
         <GuestGate><div /></GuestGate>
       </div>
@@ -124,7 +128,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
     <div className="h-full bg-bg flex flex-col">
       <div className="loka-page-header">
         <button className="loka-back-btn" onClick={onBack} aria-label={t('common.back')}><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-bold text-text-primary">{t('reservations.title') || 'Reservations'}</h1>
+        <h1 className="text-lg font-bold text-text-primary">{t('reservations.title')}</h1>
         <button onClick={() => setShowForm(true)} className="ml-auto w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
           <Plus size={20} />
         </button>
@@ -144,10 +148,10 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
         ) : reservations.length === 0 ? (
           <div className="text-center pt-16">
             <CalendarCheck size={48} className="mx-auto text-text-muted mb-4" />
-            <p className="text-text-secondary font-medium">{t('reservations.emptyTitle') || 'No reservations yet'}</p>
-            <p className="text-text-muted text-sm mt-1">{t('reservations.emptySubtitle') || 'Book a table at your favourite store'}</p>
+            <p className="text-text-secondary font-medium">{t('reservations.emptyTitle')}</p>
+            <p className="text-text-muted text-sm mt-1">{t('reservations.emptySubtitle')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mt-6 px-6">
-              {t('reservations.bookNow') || 'Book Now'}
+              {t('reservations.bookNow')}
             </button>
           </div>
         ) : (
@@ -173,7 +177,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
                 {r.special_requests && <p className="text-xs text-text-muted mt-2 italic">{r.special_requests}</p>}
                 {(r.status === 'requested' || r.status === 'confirmed') && (
                   <button onClick={() => handleCancel(r.id)} className="mt-3 text-xs text-danger flex items-center gap-1">
-                    <Trash2 size={12} /> {t('common.cancel') || 'Cancel'}
+                    <Trash2 size={12} /> {t('common.cancel')}
                   </button>
                 )}
               </div>
@@ -200,10 +204,10 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
-              <h2 className="text-lg font-bold text-text-primary mb-4">{t('reservations.newReservation') || 'New Reservation'}</h2>
+              <h2 className="text-lg font-bold text-text-primary mb-4">{t('reservations.newReservation')}</h2>
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.store') || 'Store'}</label>
+                  <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.store')}</label>
                   <select value={formStoreId} onChange={(e) => setFormStoreId(e.target.value)} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary">
                     {stores.map((s) => (
                       <option key={s.id} value={s.id}>{s.store_name}</option>
@@ -212,21 +216,21 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.date') || 'Date'}</label>
+                    <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.date')}</label>
                     <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.time') || 'Time'}</label>
+                    <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.time')}</label>
                     <input type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.partySize') || 'Party Size'}</label>
+                  <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.partySize')}</label>
                   <input type="number" min={1} max={20} value={formPartySize} onChange={(e) => setFormPartySize(e.target.value)} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.notes') || 'Notes'}</label>
-                  <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} placeholder={t('reservations.notesPlaceholder') || 'Any special requests...'} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary resize-none" />
+                  <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.notes')}</label>
+                  <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} placeholder={t('reservations.notesPlaceholder')} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary resize-none" />
                 </div>
                 {formError && <p className="text-sm text-danger font-bold">{formError}</p>}
                 <button type="submit" disabled={submitting} className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-1">

@@ -63,7 +63,7 @@ export default function PwaTranslationsTab() {
         if (r?.items) all.push(...r.items);
       }
       setItems(all);
-    } catch (e) { console.error(e); }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     finally { setLoading(false); }
   }, []);
 
@@ -120,7 +120,7 @@ export default function PwaTranslationsTab() {
       setMsg(t("admin.translations.saved"));
       setTimeout(() => setMsg(""), 2000);
       fetchAll(); // Refresh
-    } catch (e) { console.error(e); }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     finally { setSaving(null); }
   };
 

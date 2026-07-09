@@ -225,7 +225,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
                   {img && !brokenImages.has(event.id) ? (
                     <img
                       src={img}
-                      alt={event.title || 'Event image'}
+                      alt={event.title || t('events.eventImageFallback')}
                       loading="lazy"
                       onError={() => { setBrokenImages(prev => new Set(prev).add(event.id)); }}
                     />

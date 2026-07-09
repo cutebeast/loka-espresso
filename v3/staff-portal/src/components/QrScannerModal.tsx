@@ -25,11 +25,12 @@ export default function QrScannerModal({
   open,
   onClose,
   onScan,
-  title = "Scan QR Code"
+  title: titleProp
 }: QrScannerModalProps) {
   const {
     t
   } = useTranslation();
+  const title = titleProp ?? t("common.scan_customer_qr");
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const decodedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -78,11 +79,11 @@ export default function QrScannerModal({
         console.error("QR scanner failed:", err);
         const msg = (err as Error)?.message || String(err);
         if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("notallowed") || msg.toLowerCase().includes("denied")) {
-          setError("Camera permission denied. Please allow camera access in your browser settings, then try again.");
+          setError(t("qr.err_camera_permission"));
         } else if (msg.toLowerCase().includes("notfound") || msg.toLowerCase().includes("no camera")) {
-          setError("No camera found. Please connect a camera device.");
+          setError(t("qr.err_no_camera"));
         } else {
-          setError("Could not start camera. " + msg);
+          setError(t("qr.err_camera_start") + " " + msg);
         }
       }
     };
@@ -93,7 +94,7 @@ export default function QrScannerModal({
         scannerRef.current = null;
       }
     };
-  }, [open, onScan]);
+  }, [open, onScan, t]);
   return <Modal open={open} onClose={onClose} title={title} size="sm">
       {error ? <div style={{
       padding: 20,

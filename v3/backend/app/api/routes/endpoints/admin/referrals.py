@@ -106,7 +106,16 @@ async def fulfill_referral(
     referral_id: int,
 ):
     """Mark referral event as fulfilled / rewarded — credits referrer loyalty points."""
-    referral = await _get_referral_or_404(db, referral_id)
+    result = await db.execute(
+        select(ReferralEvent).where(ReferralEvent.id == referral_id).with_for_update()
+    )
+    referral = result.scalar_one_or_none()
+    if referral is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Referral event not found")
+    if referral.status == "rewarded":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Referral already fulfilled")
+    if referral.status != "converted":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Referral is not in converted status")
 
     from app.services.commerce import credit_referral_points
     await credit_referral_points(db, referral.referrer_customer_id, referral.invitee_customer_id)

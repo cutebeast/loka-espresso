@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 
 import anyio
 
@@ -12,12 +13,17 @@ logger = logging.getLogger(__name__)
 import stripe
 from stripe._error import SignatureVerificationError
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.models.order import Order
+from app.models.customer import Customer
 from app.models.payment import Payment, PaymentMethod, Refund
 from app.services.platform_config import PlatformConfigService
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.core.security import decode_guest_pay_token, create_guest_pay_token
 from app.schemas.payment import (
     CheckoutSessionRequest,
     CheckoutSessionResponse,
@@ -28,7 +34,7 @@ from app.schemas.payment import (
     RefundCreate,
     RefundOut,
 )
-from app.services.hitpay import verify_hitpay_signature
+from app.services.hitpay import verify_hitpay_signature, create_hitpay_payment_request
 from app.core.rate_limiter import limiter
 from app.services.webhook import (
     extract_event_id,
@@ -74,7 +80,7 @@ def _build_payment_out(payment: Payment) -> PaymentOut:
         else:
             value = getattr(payment, c.key)
         if isinstance(value, Decimal):
-            value = float(value)
+            value = str(value)
         payment_dict[c.name] = value
     return PaymentOut.model_validate(payment_dict)
 
@@ -85,7 +91,7 @@ def _build_refund_out(refund: Refund) -> RefundOut:
         id=refund.id,
         payment_id=refund.payment_id,
         order_id=refund.order_id,
-        amount=float(refund.amount),
+        amount=str(refund.amount),
         reason=refund.reason,
         status=refund.status,
         approved_by=refund.approved_by,
@@ -100,6 +106,189 @@ async def _get_payment_or_404(db, payment_id: int) -> Payment:
     if payment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     return payment
+
+
+# ---------------------------------------------------------------------------
+# Guest payment (walk-in dine-in customers — no login required)
+# ---------------------------------------------------------------------------
+
+
+async def _validate_guest_token_or_404(order_id: int, token: str, db) -> Order:
+    """Validate a guest-pay token and return the order, or 404/403."""
+    payload = decode_guest_pay_token(token)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or expired payment link")
+    token_oid = int(payload.get("oid", 0))
+    if token_oid != order_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Payment link does not match order")
+    result = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.line_items),
+            selectinload(Order.store),
+            selectinload(Order.dining_table),
+        )
+        .where(Order.id == order_id, Order.deleted_at.is_(None))
+    )
+    order = result.unique().scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    return order
+
+
+@router.get("/guest-pay/{order_id}", response_model=APIResponse[dict])
+async def guest_pay_summary(
+    order_id: int,
+    db: DBDependency,
+    token: str = Query(..., description="Guest payment token from QR code"),
+):
+    """Return an order summary for a walk-in customer scanning a QR code.
+
+    No authentication required — the signed token authorises access to this
+    specific order only.  The customer sees items + total and can pay with
+    Stripe or HitPay without creating an account.
+    """
+    order = await _validate_guest_token_or_404(order_id, token, db)
+    from decimal import Decimal
+
+    line_items = []
+    for li in order.line_items:
+        snap = li.item_snapshot or {}
+        line_items.append({
+            "name": snap.get("item_name") or snap.get("name") or "Item",
+            "quantity": li.quantity,
+            "unit_price": str(li.unit_price),
+            "line_total": str(li.line_total),
+            "modifiers_label": snap.get("modifiers_label") or "",
+            "image_url": snap.get("image_url"),
+        })
+
+    config_service = PlatformConfigService(db)
+    stripe_enabled = await config_service.get_bool("stripe.enabled", default=False)
+    hitpay_enabled = await config_service.get_bool("hitpay.enabled", default=False)
+
+    return APIResponse(data={
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "order_type": order.order_type,
+        "table_number": order.dining_table.table_number if order.dining_table else None,
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "total_amount": str(order.total_amount),
+        "currency_code": order.total_amount_currency,
+        "store_name": order.store.store_name if order.store else None,
+        "store_logo": order.store.logo_url if order.store and hasattr(order.store, "logo_url") else None,
+        "line_items": line_items,
+        "can_pay": order.payment_status not in ("captured", "settled", "paid")
+                   and order.status not in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"),
+        "stripe_enabled": stripe_enabled,
+        "hitpay_enabled": hitpay_enabled,
+    })
+
+
+class GuestPayRequest(BaseModel):
+    """Schema for guest pay request — defined inline to avoid import cycles."""
+    pass
+
+
+@router.post("/guest-pay/{order_id}", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def guest_pay(
+    order_id: int,
+    db: DBDependency,
+    token: str = Query(..., description="Guest payment token from QR code"),
+    provider: str = Query("stripe", pattern="^(stripe|hitpay)$"),
+    phone_number: str | None = Query(None, max_length=20, description="Optional — for loyalty registration"),
+):
+    """Create a Stripe/HitPay payment session for a guest (walk-in) customer.
+
+    No auth required.  The signed token authorises payment for this order only.
+    If ``phone_number`` is provided, the customer is registered/linked so they
+    earn loyalty points and receive a receipt — but registration is optional.
+    """
+    order = await _validate_guest_token_or_404(order_id, token, db)
+    from decimal import Decimal
+
+    if order.payment_status in ("captured", "settled", "paid"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
+    if order.status in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is cancelled/refunded")
+
+    # Optionally link a customer by phone (passwordless — phone only).
+    customer_id = order.customer_id
+    if phone_number:
+        phone = phone_number.strip()
+        if phone:
+            existing = await db.execute(select(Customer).where(Customer.phone_number == phone))
+            customer = existing.scalar_one_or_none()
+            if customer is None:
+                # Register a new passwordless customer — no OTP here because the
+                # customer is paying in-store; we trust the staff-issued token.
+                customer = Customer(
+                    phone_number=phone,
+                    display_name=phone,
+                    phone_verified_at=datetime.now(timezone.utc),
+                )
+                db.add(customer)
+                await db.flush()
+                await db.refresh(customer)
+            # Link the customer to the order so they earn loyalty + get a receipt.
+            order.customer_id = customer.id
+            customer_id = customer.id
+
+    config_service = PlatformConfigService(db)
+    app_public_url = await config_service.get_app_public_url()
+    # Return to a guest-friendly hash page (no login required).
+    base_return = f"{app_public_url}/#guest-pay".rstrip("/")
+    success_url = f"{base_return}?orderId={order.id}&token={token}&status=success"
+    cancel_url = f"{base_return}?orderId={order.id}&token={token}&status=cancel"
+
+    payment = Payment(
+        order_id=order.id,
+        provider=provider,
+        payment_method_type="credit_card" if provider == "stripe" else "qr_pay",
+        amount=order.total_amount,
+        currency_code=order.total_amount_currency,
+        status="pending_authorization",
+        net_amount=Decimal(0),
+        idempotency_key=f"guest-pay-{order.id}-{uuid.uuid4().hex}",
+    )
+    db.add(payment)
+    await db.flush()
+    await db.refresh(payment)
+    payment_id = payment.id
+
+    redirect_url: str | None = None
+    if provider == "stripe":
+        try:
+            checkout = await create_stripe_checkout_session(
+                db, payment, order, success_url=success_url, cancel_url=cancel_url, customer_id=customer_id,
+            )
+        except PaymentError as exc:
+            await db.rollback()
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        payment.provider_transaction_id = checkout["id"]
+        redirect_url = checkout["url"]
+    else:  # hitpay
+        try:
+            resp = await create_hitpay_payment_request(db, payment, order, None, return_url=success_url)
+        except Exception as exc:
+            await db.rollback()
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        redirect_url = resp.get("redirect_url")
+
+    order.payment_status = "pending_authorization"
+    await _add_payment_event(
+        db, payment, to_status="pending_authorization", from_status="initiated",
+        amount=order.total_amount, provider_response={"guest_pay": True},
+    )
+    await db.commit()
+
+    return APIResponse(data={
+        "payment_id": payment_id,
+        "order_id": order.id,
+        "redirect_url": redirect_url,
+        "provider": provider,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +360,7 @@ async def create_intent(
             client_secret=client_secret,
             redirect_url=redirect_url,
             status=payment.status,
-            amount=float(payment.amount),
+            amount=str(payment.amount),
             currency_code=payment.currency_code,
         )
     )
@@ -216,9 +405,11 @@ async def create_checkout_session(
 
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
-    base_return = (data.return_url or f"{app_public_url}/order-detail").rstrip("/")
-    success_url = f"{base_return}?order_id={order.id}&status=success"
-    cancel_url = f"{base_return}?order_id={order.id}&status=cancel"
+    # Use hash-based routing (#order-detail) and camelCase param names matching
+    # the PWA's hash router. Include paymentId so OrderDetailPage can confirm/cancel.
+    base_return = (data.return_url or f"{app_public_url}/#order-detail").rstrip("/")
+    success_url = f"{base_return}?orderId={order.id}&paymentId={payment.id}&status=success"
+    cancel_url = f"{base_return}?orderId={order.id}&paymentId={payment.id}&status=cancel"
 
     try:
         checkout = await create_stripe_checkout_session(db, payment, order, success_url=success_url, cancel_url=cancel_url, customer_id=order.customer_id)
@@ -243,7 +434,7 @@ async def create_checkout_session(
             payment_id=payment.id,
             checkout_url=checkout["url"],
             status=payment.status,
-            amount=float(payment.amount),
+            amount=str(payment.amount),
             currency_code=payment.currency_code,
         )
     )
@@ -508,6 +699,7 @@ def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str
         expected = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, sig_header)
     except Exception:
+        logger.debug("Signature verification failed", exc_info=True)
         return False
 
 

@@ -189,8 +189,10 @@
     "outOfRange": "Kedai ini hanya menghantar dalam radius {radius} km. Alamat penghantaran berada di luar kawasan ini. Sila pilih kedai yang lebih dekat atau tukar kepada ambil sendiri.",
     "payAtCounter": "Bayar di Kaunter",
     "payAtStore": "Bayar di Kedai",
+    "payNow": "Bayar Sekarang",
     "payOnline": "Bayar Secara Online",
     "paymentMethod": "Kaedah Pembayaran",
+    "payment_retry_toast": "Penyediaan pembayaran gagal. Ketik cuba lagi untuk mencuba semula.",
     "percentageOff": "{value}% diskaun",
     "pickupAt": "Ambil di",
     "pickupTime": "Masa Ambil",
@@ -203,6 +205,7 @@
     "recipientPhone": "Telefon Penerima",
     "removeRewardHint": "Buang ganjaran untuk menggunakan kod baucar",
     "removeVoucherHint": "Buang baucar untuk menggunakan ganjaran",
+    "retryPayment": "Cuba Lagi Pembayaran",
     "reward": "Ganjaran",
     "rewardFallback": "Ganjaran",
     "rewardSelected": "Ganjaran dipilih:",
@@ -222,7 +225,8 @@
     "voucherSelected": "Baucar dipilih:",
     "walletBalance": "Baki Dompet",
     "yourRewards": "Ganjaran Anda",
-    "yourVouchers": "Baucar Anda"
+    "yourVouchers": "Baucar Anda",
+    "recipientPhonePlaceholder": "60123456789"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "Bayar Dalam Talian (Kad / FPX / GrabPay)",
@@ -280,6 +284,7 @@
     "refresh": "Muat semula",
     "remove": "Buang",
     "retry": "Cuba semula",
+    "retrying": "Mencuba semula...",
     "retryingIn": "Mencuba semula dalam {seconds}s",
     "rotateToPortrait": "Sila putar peranti anda ke mod potret",
     "save": "Simpan",
@@ -287,6 +292,7 @@
     "search": "Cari",
     "seeAll": "Lihat Semua",
     "selectCountry": "Pilih negara",
+    "selectDate": "Pilih tarikh",
     "share": "Kongsi",
     "skip": "Langkau",
     "stepCount": "Langkah {current} daripada {total}",
@@ -298,7 +304,10 @@
     "tomorrow": "Esok",
     "view": "Lihat",
     "year": "Tahun",
-    "yourCode": "Kod anda"
+    "yourCode": "Kod anda",
+    "menuItem": "Menu item",
+    "reward": "Reward",
+    "welcome": "Welcome"
   },
   "errorBoundary": {
     "message": "Ralat tidak dijangka berlaku. Sila cuba lagi.",
@@ -317,7 +326,8 @@
     "rsvpTag": "RSVP",
     "rsvpd": "Anda akan pergi!",
     "title": "Acara",
-    "upcoming": "Akan Datang"
+    "upcoming": "Akan Datang",
+    "eventImageFallback": "Event image"
   },
   "helpSupport": {
     "backToHome": "Kembali ke Laman Utama",
@@ -509,7 +519,12 @@
     "specialInstructions": "Arahan Khas",
     "specialInstructionsPlaceholder": "arahan khas...",
     "title": "Menu",
-    "viewCart": "Lihat Troli"
+    "viewCart": "Lihat Troli",
+    "multiCourseSubtitle": "Build your combo",
+    "customizeItemAriaLabel": "Customize item",
+    "itemFallback": "Item",
+    "moreCount": "+{count} more",
+    "bundleIncompleteToast": "Bundle unavailable:"
   },
   "menu_page": {
     "kcal": "kcal",
@@ -614,6 +629,7 @@
     "orderProcessing": "Pesanan anda sedang diproses",
     "orderStatus": "Status Pesanan",
     "orderType": "Jenis Pesanan",
+    "payNow": "Bayar Sekarang",
     "payment": "Pembayaran",
     "phonePrefix": "+60 {phone}",
     "preparingDelivery": "Pasukan kami sedang menyediakan pesanan anda",
@@ -681,7 +697,8 @@
     "setAsDefault": "Tetapkan Sebagai Lalai",
     "title": "Kaedah Pembayaran",
     "topUpWallet": "Top Up Dompet",
-    "walletBalance": "Baki Dompet"
+    "walletBalance": "Baki Dompet",
+    "cardFallback": "Card"
   },
   "profile": {
     "editProfile": "Edit Profil",
@@ -880,12 +897,16 @@
     "state": "Negeri",
     "title": "Alamat Disimpan",
     "unit": "Unit",
-    "unitPlaceholder": "unit..."
+    "unitPlaceholder": "unit...",
+    "labelHome": "Home",
+    "labelOffice": "Office",
+    "labelOther": "Other"
   },
   "settings": {
     "about": "Tentang",
     "aboutFallback": "Lahir daripada minat terhadap budaya kopi Turki yang tulen, LOKA Espresso membawa kehangatan tradisi kopi berabad-abad ke setiap cawan. Biji kopi kami diperoleh dari kawasan terbaik — dipanggang dalam kumpulan kecil untuk menghormati kraf tersebut.",
     "attribution": "Dibuat dengan penuh kasih oleh LOKA Espresso",
+    "enable_notifications": "Dayakan pemberitahuan",
     "language": "Bahasa",
     "languages": {
       "en": "English",
@@ -894,6 +915,7 @@
       "tr": "Türkçe",
       "zh": "中文"
     },
+    "notifications": "Pemberitahuan",
     "privacyLegal": "Privasi & Undang-undang",
     "privacyPolicy": "Dasar Privasi",
     "termsOfService": "Syarat Perkhidmatan",
@@ -983,6 +1005,11 @@
     "otpResendFailed": "Gagal menghantar semula OTP",
     "otpResent": "OTP berjaya dihantar semula",
     "outOfRange": "Alamat penghantaran di luar kawasan perkhidmatan kedai",
+    "paymentCancelled": "Pembayaran dibatalkan.",
+    "paymentFailed": "Pembayaran gagal. Sila cuba lagi.",
+    "paymentGatewayUnavailable": "Get pembayaran tidak tersedia. Sila cuba kemudian.",
+    "paymentSuccessful": "Pembayaran berjaya.",
+    "payment_failed_refunded": "Pembayaran gagal — pesanan anda telah dibatalkan dan dompet dikembalikan.",
     "photoUpdated": "Foto Dikemas Kini",
     "photoUploadFailed": "Muat Naik Foto Gagal",
     "profileFailed": "Gagal menyimpan profil. Sila cuba lagi.",
@@ -996,6 +1023,7 @@
     "selectStore": "Sila pilih kedai",
     "selectTime": "Sila pilih masa",
     "sessionExpired": "Sesi anda telah tamat. Sila log masuk semula.",
+    "share_failed": "Perkongsian gagal.",
     "signInToClaim": "Log masuk untuk menuntut tawaran",
     "storesLoadFailed": "Muat Naik Kedai Gagal",
     "surveySubmitted": "Kaji selidik dihantar! Terima kasih.",
@@ -1004,7 +1032,23 @@
     "topUpSuccess": "Berjaya top-up {amount}",
     "topUpSuccessReturn": "Dompet berjaya ditambah nilai",
     "verificationFailed": "OTP tidak sah. Sila cuba lagi.",
-    "verificationFailedTitle": "Pengesahan Gagal"
+    "verificationFailedTitle": "Pengesahan Gagal",
+    "loadPromotionsFailed": "Failed to load promotions",
+    "loadSurveyFailed": "Failed to load survey",
+    "loadBalanceFailed": "Failed to load wallet balance",
+    "loadTransactionsFailed": "Failed to load transactions",
+    "loadRewardsFailed": "Failed to load rewards",
+    "loadPastOrdersFailed": "Failed to load past orders",
+    "loadProfileFailed": "Failed to load profile",
+    "loadPaymentConfigFailed": "Payment setup failed",
+    "loadBundleProductsFailed": "Failed to load bundle products",
+    "loadSavedAddressesFailed": "Failed to load addresses",
+    "loadNotificationsFailed": "Failed to load notifications",
+    "loadReservationsFailed": "Failed to load reservations",
+    "loadStoresFailed": "Failed to load stores",
+    "qrGenerationFailed": "Failed to generate QR code",
+    "markReadFailed": "Failed to mark as read",
+    "reservationCancelFailed": "Failed to cancel reservation"
   },
   "ui": {
     "action_sheet": {
@@ -1052,5 +1096,26 @@
     "recentTransactions": "Transaksi Terkini",
     "selectPaymentMethod": "Pilih kaedah pembayaran untuk menambah nilai",
     "topUpTitle": "Tambah Nilai"
+  },
+  "guestPay": {
+    "payForOrder": "Bayar Pesanan",
+    "error": "Ralat",
+    "invalidLink": "Pautan pembayaran ini tidak sah atau telah tamat tempoh. Sila minta pelayan anda untuk kod QR baru.",
+    "loadFailed": "Tidak dapat memuatkan pesanan anda. Sila cuba lagi.",
+    "paymentSuccessful": "Pembayaran Berjaya",
+    "paymentCancelled": "Pembayaran Dibatalkan",
+    "cancelMsg": "Pembayaran anda telah dibatalkan. Tiada caj dibuat.",
+    "tryAgain": "Cuba Lagi",
+    "alreadyPaid": "Pesanan Telah Dibayar",
+    "thankYou": "Terima kasih kerana makan di kedai kami!",
+    "phoneOptional": "Nombor telefon (pilihan)",
+    "phoneHint": "Masukkan nombor anda untuk mendapatkan mata kesetiaan dan resit. Tidak perlu kata laluan.",
+    "payWithCard": "Bayar dengan Kad",
+    "payWithHitPay": "Bayar dengan HitPay",
+    "processing": "Memproses...",
+    "payFailed": "Pembayaran gagal. Sila cuba lagi.",
+    "noRedirect": "Tidak dapat memulakan pembayaran. Sila cuba lagi.",
+    "noProvider": "Pembayaran dalam talian tidak tersedia. Sila bayar di kaunter.",
+    "browseMenu": "Lihat Menu Kami"
   }
 }

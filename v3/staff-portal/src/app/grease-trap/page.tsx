@@ -36,11 +36,11 @@ export default function GreaseTrapPage() {
   };
   const handleSubmit = useCallback(async () => {
     if (beforeFiles.length === 0) {
-      setError("Please upload at least one 'before' image");
+      setError(t("grease_trap.err_before_image"));
       return;
     }
     if (afterFiles.length === 0) {
-      setError("Please upload at least one 'after' image");
+      setError(t("grease_trap.err_after_image"));
       return;
     }
     setSubmitting(true);
@@ -58,7 +58,7 @@ export default function GreaseTrapPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [desc, beforeFiles, afterFiles]);
+  }, [desc, beforeFiles, afterFiles, t]);
   if (success) {
     return <div style={{
       padding: 24
@@ -180,7 +180,7 @@ export default function GreaseTrapPage() {
           alignItems: "center",
           gap: 6
         }}>
-            <Camera size={16} /> {beforeFiles.length > 0 ? "Add More" : "Upload Before Images"}
+            <Camera size={16} /> {beforeFiles.length > 0 ? t("grease_trap.add_more") : t("grease_trap.upload_before_images")}
           </button>
         </div>
         <div className="card" style={{
@@ -242,7 +242,7 @@ export default function GreaseTrapPage() {
           alignItems: "center",
           gap: 6
         }}>
-            <Camera size={16} /> {afterFiles.length > 0 ? "Add More" : "Upload After Images"}
+            <Camera size={16} /> {afterFiles.length > 0 ? t("grease_trap.add_more") : t("grease_trap.upload_after_images")}
           </button>
         </div>
         <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary" style={{
@@ -251,7 +251,7 @@ export default function GreaseTrapPage() {
         fontSize: 15,
         fontWeight: 600
       }}>
-          {submitting ? "Submitting..." : "Submit Grease Trap Report"}
+          {submitting ? t("common.submitting") : t("grease_trap.submit_report")}
         </button>
       </div>
     </div>;

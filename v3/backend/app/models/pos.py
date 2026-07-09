@@ -1,5 +1,5 @@
 """POS (Point of Sale) domain models."""
-
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
@@ -57,14 +57,14 @@ class PosSession(Base, TimestampMixin):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    opening_cash: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    closing_cash: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
-    expected_cash: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
-    discrepancy: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    opening_cash: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    closing_cash: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    expected_cash: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    discrepancy: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     discrepancy_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    total_sales_cash: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    total_sales_card: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    total_sales_qr: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    total_sales_cash: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    total_sales_card: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    total_sales_qr: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { MapPin, Home, Building2, HelpCircle } from 'lucide-react';
 import { LOKA } from '@/lib/tokens';
 import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/stores/uiStore';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import api from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -25,6 +26,7 @@ const STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Neg
 
 export default function DeliveryAddressCard({ value, onChange }: Props) {
   const { t } = useTranslation();
+  const { showToast } = useUIStore();
   const LABELS = [t('checkout.labelHome'), t('checkout.labelOffice'), t('checkout.labelOther')] as const;
 
   /* Sheet state */
@@ -50,7 +52,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   /* Fetch */
   const fetchSaved = async () => {
     if (!user) return;
-    const r = await api.get('/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); return { data: [] as SavedAddress[] }; });
+    const r = await api.get('/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); showToast(t('toast.loadSavedAddressesFailed'), 'error'); return { data: [] as SavedAddress[] }; });
     if (Array.isArray(r.data)) {
       setSaved(r.data.map((a: Record<string, unknown>) => ({
         id: a.id as number,
@@ -168,6 +170,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
       await fetchSaved();
     } catch (e) {
       console.error('[DeliveryAddressCard] Failed to save:', e);
+      showToast(t('toast.addressSaveFailed'), 'error');
     }
     onChange({ address: full, lat, lng });
     setSaving(false);

@@ -4,7 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { parseApiError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
+import { parseApiError, isNotFoundError } from "@/lib/errors";
 import { ArrowLeft, Plus, Trash2, Save, Upload, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 type Group = {
@@ -42,13 +43,7 @@ const LOCALES: {
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "title",
-  label: "Title"
-}, {
-  key: "description",
-  label: "Description"
-}];
+
 interface MenuItemOption {
   id: number;
   item_name: string;
@@ -64,6 +59,14 @@ export default function BundleProductEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "title",
+  label: t("admin.form.title")
+}, {
+  key: "description",
+  label: t("admin.form.description")
+}];
   const {
     symbol,
     format
@@ -72,6 +75,7 @@ export default function BundleProductEditPage() {
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingTr, setSavingTr] = useState(false);
   const [loc, setLoc] = useState<LocaleTab>("en");
@@ -95,15 +99,11 @@ export default function BundleProductEditPage() {
     try {
       const d = await api.getRaw<any>("/admin/menu/items?per_page=500");
       setMenuItems(d?.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/menu/categories?per_page=100");
       setCategories(d?.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const selectedItemIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));
   const itemsForComponent = (catFilter: string) => {
@@ -190,13 +190,15 @@ export default function BundleProductEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -215,9 +217,7 @@ export default function BundleProductEditPage() {
         image_url: url
       });
       setImg(url);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setUploading(false);
     }
   };
@@ -389,7 +389,7 @@ export default function BundleProductEditPage() {
     setComponents(sorted);
   };
   const handleDelete = async () => {
-    if (!confirm("Delete this bundle product? This cannot be undone.")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/menu/bundle-products/${id}`);
       r.push("/menu/bundle-products");
@@ -461,16 +461,12 @@ export default function BundleProductEditPage() {
               [`${locale}:${f.key}`]: r.translated_text!
             }));
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
       }
       for (const r of results) {
         try {
           await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text);
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
       }
       setSuccessMsg(results.length > 0 ? `Regenerated ${results.length} translations` : "No translatable content");
       setTimeout(() => setSuccessMsg(""), 2500);
@@ -492,6 +488,7 @@ export default function BundleProductEditPage() {
       setSavingTr(false);
     }
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}><p>{t("menu_bundle-products_[id].loading")}</p></div>;
@@ -900,7 +897,7 @@ export default function BundleProductEditPage() {
           color: "var(--color-error)",
           marginLeft: "auto",
           marginRight: 8
-        }}>{t("menu_bundle-products_[id].delete_bundle")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
+        }}>{t("menu_bundle-products_[id].delete_bundle")}</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
       </div>}
 
       {loc !== "en" && <div className="card" style={{
@@ -964,7 +961,7 @@ export default function BundleProductEditPage() {
       }}><button onClick={() => saveAllTr(loc)} disabled={savingTr} className="btn btn-primary" style={{
           fontSize: 13,
           padding: "10px 24px"
-        }}><Save size={16} /> {savingTr ? "Saving..." : "Save All Translations"}</button></div>
+        }}><Save size={16} /> {savingTr ? t("admin.common.saving") : t("admin.common.save")}</button></div>
       </div>}
     </div>;
 }

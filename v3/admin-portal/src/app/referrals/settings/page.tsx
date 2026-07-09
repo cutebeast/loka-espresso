@@ -21,9 +21,7 @@ export default function ReferralSettingsPage() {
         map[c.config_key] = c.config_value;
       });
       setPoints(map["loyalty.referral_reward_points"] || "50");
-    }).catch(e => {
-      console.error('referral config:', e);
-    }).finally(() => setLoading(false));
+    }).catch(e => { console.error('referral config:', e); setMsg(e.message || t("admin.errors.loadFailed")); }).finally(() => setLoading(false));
   }, []);
   const save = async (key: string, val: string) => {
     setSaving(key);

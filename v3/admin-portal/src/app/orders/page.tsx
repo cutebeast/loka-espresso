@@ -24,7 +24,8 @@ interface Store {
 const PAGE_SIZE = 20;
 export default function OrdersPage() {
   const {
-    t
+    t,
+    locale
   } = useTranslation();
   const router = useRouter();
   const {
@@ -49,9 +50,7 @@ export default function OrdersPage() {
       const list = d.items || [];
       setStores(list);
       if (!storeId) setStoreId("");
-    } catch (e: any) {
-      console.error("Failed to load stores:", e);
-    }
+    } catch (e: any) {console.error("Failed to load stores:", e); setError(e.message || t("admin.errors.loadFailed")); }
   }, []);
   useEffect(() => {
     fetchStores();
@@ -196,7 +195,7 @@ export default function OrdersPage() {
             }}>{format(o.total_amount)}</td>
               <td style={{
               fontSize: 12
-            }}>{o.created_at ? new Date(o.created_at).toLocaleDateString("en-MY") : "—"}</td>
+            }}>{o.created_at ? new Date(o.created_at).toLocaleDateString(locale) : "—"}</td>
               <td><button type="button" onClick={e => {
                 e.stopPropagation();
                 router.push(`/orders/${o.id}`);

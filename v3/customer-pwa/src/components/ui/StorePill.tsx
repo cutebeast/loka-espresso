@@ -22,7 +22,7 @@ export function StorePill({
   }} onClick={onClick} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-border-subtle text-text-secondary text-xs font-medium cursor-pointer max-w-[160px]" aria-label={t('storePicker.title')} title={t("ui.store_pill.switch_store")}>
       <MapPin size={12} className="text-copper shrink-0" />
       <span className="truncate">
-        {store?.store_name || 'Select store'}
+        {store?.store_name || t('cart.selectStore')}
       </span>
       {distance && <span className="opacity-60 shrink-0">· {distance}</span>}
       <ChevronDown size={12} className="shrink-0 opacity-60" />

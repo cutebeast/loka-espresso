@@ -39,15 +39,11 @@ export default function ReportsPage() {
       items: Store[];
     }>("/admin/stores?per_page=50").then(d => {
       if (mountedRef.current) setStores(Array.isArray(d) ? d : d.items || []);
-    }).catch(e => {
-      console.error('stores:', e);
-    });
+    }).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
     setAnalyticsLoading(true);
     api.get<any>("/admin/marketing/analytics").then(d => {
       if (mountedRef.current) setAnalytics(Array.isArray(d) ? d : []);
-    }).catch(e => {
-      console.error('analytics:', e);
-    }).finally(() => {
+    }).catch(e => { console.error('analytics:', e); setError(e.message || t("admin.errors.loadFailed")); }).finally(() => {
       if (mountedRef.current) setAnalyticsLoading(false);
     });
     return () => {
@@ -94,11 +90,11 @@ export default function ReportsPage() {
     }}>
         {[{
         key: "sales" as const,
-        label: "Sales Reports",
+        label: t("reports.sales_reports"),
         icon: BarChart3
       }, {
         key: "marketing" as const,
-        label: "Marketing ROI",
+        label: t("reports.marketing_roi"),
         icon: TrendingUp
       }].map(tab => <button type="button" key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
         padding: "10px 20px",

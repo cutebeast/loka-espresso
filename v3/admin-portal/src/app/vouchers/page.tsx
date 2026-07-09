@@ -61,7 +61,7 @@ export default function VouchersPage() {
     };
   }, [fetchData, pagination.setTotalPages, pagination.setPage, pagination.setTotal]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this voucher?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/vouchers/${id}`);
@@ -69,9 +69,7 @@ export default function VouchersPage() {
       setItems(d.items || []);
       pagination.setTotalPages(d.total_pages || 1);
       pagination.setTotal(d.total || 0);
-    } catch (e: any) {
-      console.error("Failed to delete voucher:", e);
-    } finally {
+    } catch (e: any) {console.error("Failed to delete voucher:", e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };
@@ -129,7 +127,7 @@ export default function VouchersPage() {
                 <td style={{
               fontSize: 12
             }}>{item.global_use_count || 0}/{item.max_global_uses || "∞"}</td>
-                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{
                 display: "flex",

@@ -32,7 +32,7 @@ export default function RewardsPage() {
       const res = await api.get('/rewards/catalog');
       const data = res.data as { items?: RewardCatalogItem[] } | RewardCatalogItem[];
       setRewards(Array.isArray(data) ? data : (data?.items ?? []));
-    } catch (err) { console.error('[RewardsPage] fetch failed:', err); setRewards([]); }
+    } catch (err) { console.error('[RewardsPage] fetch failed:', err); showToast(t('toast.loadRewardsFailed'), 'error'); setRewards([]); }
     finally { setLoading(false); }
   }, []);
 
@@ -179,7 +179,7 @@ export default function RewardsPage() {
               return (
                 <div key={reward.id} className="reward-card-improved" onClick={() => setSelectedReward(reward)}>
                   <div className="reward-thumb">
-                    {img ? <img src={img} alt={reward.reward_name || 'Reward'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Gift size={24} color={LOKA.border} />}
+                    {img ? <img src={img} alt={reward.reward_name || t('common.reward')} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Gift size={24} color={LOKA.border} />}
                   </div>
                   <div className="reward-info">
                     <div className="reward-points-tag">{reward.points_cost.toLocaleString()} {t('common.pointsAbbr')}</div>

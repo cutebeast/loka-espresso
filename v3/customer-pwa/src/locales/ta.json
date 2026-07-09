@@ -189,8 +189,10 @@
     "outOfRange": "இந்த கடை {radius} கிமீ ஆரத்திற்குள் மட்டுமே டெலிவரி செய்கிறது. டெலிவரி முகவரி இந்த பகுதிக்கு வெளியே உள்ளது. அருகிலுள்ள கடையைத் தேர்வுசெய்யவும் அல்லது பிக்கப்பிற்கு மாறவும்.",
     "payAtCounter": "கவுண்டரில் செலுத்தவும்",
     "payAtStore": "கடையில் செலுத்தவும்",
+    "payNow": "இப்போது செலுத்தவும்",
     "payOnline": "ஆன்லைனில் செலுத்தவும்",
     "paymentMethod": "கட்டண முறை",
+    "payment_retry_toast": "கட்டண அமைப்பு தோல்வியடைந்தது. மீண்டும் முயற்சிக்க தட்டவும்.",
     "percentageOff": "{value}% தள்ளுபடி",
     "pickupAt": "இதில் பிக்கப் செய்யவும்",
     "pickupTime": "பிக்கப் நேரம்",
@@ -203,6 +205,7 @@
     "recipientPhone": "பெறுநரின் தொலைபேசி எண்",
     "removeRewardHint": "வவுச்சர் குறியீட்டைப் பயன்படுத்த ரிவார்டை அகற்றவும்",
     "removeVoucherHint": "ரிவார்டைப் பயன்படுத்த வவுச்சரை அகற்றவும்",
+    "retryPayment": "கட்டணத்தை மீண்டும் முயற்சிக்கவும்",
     "reward": "ரிவார்டு",
     "rewardFallback": "ரிவார்டு",
     "rewardSelected": "தேர்ந்தெடுக்கப்பட்ட ரிவார்டு:",
@@ -222,7 +225,8 @@
     "voucherSelected": "தேர்ந்தெடுக்கப்பட்ட வவுச்சர்:",
     "walletBalance": "வாலட் இருப்பு",
     "yourRewards": "உங்கள் வெகுமதிகள்",
-    "yourVouchers": "உங்கள் வவுச்சர்கள்"
+    "yourVouchers": "உங்கள் வவுச்சர்கள்",
+    "recipientPhonePlaceholder": "60123456789"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "ஆன்லைனில் செலுத்தவும் (கார்டு / FPX / GrabPay)",
@@ -280,6 +284,7 @@
     "refresh": "புதுப்பி",
     "remove": "அகற்று",
     "retry": "மீண்டும் முயற்சி செய்",
+    "retrying": "மீண்டும் முயற்சிக்கிறது...",
     "retryingIn": "{seconds} வினாடிகளில் மீண்டும் முயற்சிக்கிறது",
     "rotateToPortrait": "உங்கள் சாதனத்தை கிடைமட்ட நிலைக்கு சுழற்றவும்",
     "save": "சேமி",
@@ -287,6 +292,7 @@
     "search": "தேடு",
     "seeAll": "அனைத்தையும் காண்க",
     "selectCountry": "நாட்டைத் தேர்ந்தெடுக்கவும்",
+    "selectDate": "தேதியைத் தேர்ந்தெடுக்கவும்",
     "share": "பகிர்",
     "skip": "தவிர்",
     "stepCount": "படி {current} / {total}",
@@ -298,7 +304,10 @@
     "tomorrow": "நாளை",
     "view": "காண்க",
     "year": "ஆண்டு",
-    "yourCode": "உங்கள் குறியீடு"
+    "yourCode": "உங்கள் குறியீடு",
+    "menuItem": "Menu item",
+    "reward": "Reward",
+    "welcome": "Welcome"
   },
   "errorBoundary": {
     "message": "எதிர்பாராத பிழை ஏற்பட்டது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.",
@@ -317,7 +326,8 @@
     "rsvpTag": "RSVP",
     "rsvpd": "நீங்கள் வருகிறீர்கள்!",
     "title": "நிகழ்வுகள்",
-    "upcoming": "வரவிருக்கும்"
+    "upcoming": "வரவிருக்கும்",
+    "eventImageFallback": "Event image"
   },
   "helpSupport": {
     "backToHome": "முகப்புக்குத் திரும்பு",
@@ -509,7 +519,12 @@
     "specialInstructions": "சிறப்பு அறிவுறுத்தல்கள்",
     "specialInstructionsPlaceholder": "சிறப்பு அறிவுறுத்தல்கள்...",
     "title": "மெனு",
-    "viewCart": "வண்டியைப் பார்க்கவும்"
+    "viewCart": "வண்டியைப் பார்க்கவும்",
+    "multiCourseSubtitle": "Build your combo",
+    "customizeItemAriaLabel": "Customize item",
+    "itemFallback": "Item",
+    "moreCount": "+{count} more",
+    "bundleIncompleteToast": "Bundle unavailable:"
   },
   "menu_page": {
     "kcal": "கிலோ கலோரி",
@@ -614,6 +629,7 @@
     "orderProcessing": "உங்கள் ஆர்டர் செயலாக்கப்படுகிறது",
     "orderStatus": "ஆர்டர் நிலை",
     "orderType": "ஆர்டர் வகை",
+    "payNow": "இப்போது செலுத்தவும்",
     "payment": "கட்டணம்",
     "phonePrefix": "+60 {phone}",
     "preparingDelivery": "எங்கள் குழு உங்கள் ஆர்டரை தயாரிக்கிறது",
@@ -681,7 +697,8 @@
     "setAsDefault": "இயல்புநிலையாக அமைக்கவும்",
     "title": "கட்டண முறைகள்",
     "topUpWallet": "வாலட்டில் தொகை சேர்க்கவும்",
-    "walletBalance": "வாலட் இருப்பு"
+    "walletBalance": "வாலட் இருப்பு",
+    "cardFallback": "Card"
   },
   "profile": {
     "editProfile": "சுயவிவரத்தைத் திருத்தவும்",
@@ -880,12 +897,16 @@
     "state": "மாநிலம்",
     "title": "சேமித்த முகவரிகள்",
     "unit": "அலகு",
-    "unitPlaceholder": "அலகு..."
+    "unitPlaceholder": "அலகு...",
+    "labelHome": "Home",
+    "labelOffice": "Office",
+    "labelOther": "Other"
   },
   "settings": {
     "about": "பற்றி",
     "aboutFallback": "உண்மையான துருக்கிய காபி கலாச்சாரத்தின் மீதான ஆர்வத்திலிருந்து பிறந்த LOKA Espresso, பல நூற்றாண்டுகள் பழமையான காபி மரபுகளின் அரவணைப்பை ஒவ்வொரு கோப்பையிலும் கொண்டு வருகிறது. எங்கள் பீன்கள் சிறந்த பகுதிகளிலிருந்து பெறப்படுகின்றன - கைவினையை மதித்து சிறிய தொகுதிகளில் வறுக்கப்படுகின்றன.",
     "attribution": "LOKA Espresso ஆல் அன்புடன் தயாரிக்கப்பட்டது",
+    "enable_notifications": "அறிவிப்புகளை இயக்கு",
     "language": "மொழி",
     "languages": {
       "en": "ஆங்கிலம்",
@@ -894,6 +915,7 @@
       "tr": "துர்க்கே",
       "zh": "சீனம்"
     },
+    "notifications": "அறிவிப்புகள்",
     "privacyLegal": "தனியுரிமை மற்றும் சட்டம்",
     "privacyPolicy": "தனியுரிமைக் கொள்கை",
     "termsOfService": "சேவை விதிமுறைகள்",
@@ -983,6 +1005,11 @@
     "otpResendFailed": "OTP மீண்டும் அனுப்ப முடியவில்லை",
     "otpResent": "OTP வெற்றிகரமாக மீண்டும் அனுப்பப்பட்டது",
     "outOfRange": "டெலிவரி முகவரி கடை சேவை பகுதிக்கு வெளியே உள்ளது",
+    "paymentCancelled": "கட்டணம் ரத்து செய்யப்பட்டது.",
+    "paymentFailed": "கட்டணம் தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.",
+    "paymentGatewayUnavailable": "கட்டண நுழைவாயில் கிடைக்கவில்லை. மீண்டும் முயற்சிக்கவும்.",
+    "paymentSuccessful": "கட்டணம் வெற்றி.",
+    "payment_failed_refunded": "கட்டணம் தோல்வியடைந்தது — உங்கள் ஆர்டர் ரத்து செய்யப்பட்டு வாலட் திருப்பிச் செலுத்தப்பட்டது.",
     "photoUpdated": "புகைப்படம் புதுப்பிக்கப்பட்டது",
     "photoUploadFailed": "புகைப்பட பதிவேற்றம் தோல்வி",
     "profileFailed": "சுயவிவரத்தை சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
@@ -996,6 +1023,7 @@
     "selectStore": "தயவுசெய்து ஒரு கடையைத் தேர்ந்தெடுக்கவும்",
     "selectTime": "தயவுசெய்து ஒரு நேரத்தைத் தேர்ந்தெடுக்கவும்",
     "sessionExpired": "உங்கள் அமர்வு காலாவதியாகிவிட்டது. மீண்டும் உள்நுழையவும்.",
+    "share_failed": "பகிர்வு தோல்வியடைந்தது.",
     "signInToClaim": "சலுகைகளைக் கோர உள்நுழையவும்",
     "storesLoadFailed": "கடைகள் ஏற்றம் தோல்வியடைந்தது",
     "surveySubmitted": "கணக்கெடுப்பு சமர்ப்பிக்கப்பட்டது! நன்றி.",
@@ -1004,7 +1032,23 @@
     "topUpSuccess": "{amount} வெற்றிகரமாக டாப் அப் செய்யப்பட்டது",
     "topUpSuccessReturn": "வாலட் வெற்றிகரமாக டாப் அப் செய்யப்பட்டது",
     "verificationFailed": "தவறான OTP. மீண்டும் முயற்சிக்கவும்.",
-    "verificationFailedTitle": "சரிபார்ப்பு தோல்வியடைந்தது"
+    "verificationFailedTitle": "சரிபார்ப்பு தோல்வியடைந்தது",
+    "loadPromotionsFailed": "Failed to load promotions",
+    "loadSurveyFailed": "Failed to load survey",
+    "loadBalanceFailed": "Failed to load wallet balance",
+    "loadTransactionsFailed": "Failed to load transactions",
+    "loadRewardsFailed": "Failed to load rewards",
+    "loadPastOrdersFailed": "Failed to load past orders",
+    "loadProfileFailed": "Failed to load profile",
+    "loadPaymentConfigFailed": "Payment setup failed",
+    "loadBundleProductsFailed": "Failed to load bundle products",
+    "loadSavedAddressesFailed": "Failed to load addresses",
+    "loadNotificationsFailed": "Failed to load notifications",
+    "loadReservationsFailed": "Failed to load reservations",
+    "loadStoresFailed": "Failed to load stores",
+    "qrGenerationFailed": "Failed to generate QR code",
+    "markReadFailed": "Failed to mark as read",
+    "reservationCancelFailed": "Failed to cancel reservation"
   },
   "ui": {
     "action_sheet": {
@@ -1052,5 +1096,26 @@
     "recentTransactions": "சமீபத்திய பரிவர்த்தனைகள்",
     "selectPaymentMethod": "பணம் சேர்க்க ஒரு கட்டண முறையைத் தேர்ந்தெடுக்கவும்",
     "topUpTitle": "பணம் சேர்க்கவும்"
+  },
+  "guestPay": {
+    "payForOrder": "ஆர்டருக்கு பணம் செலுத்தவும்",
+    "error": "பிழை",
+    "invalidLink": "இந்த கட்டண இணைப்பு செல்லுபடியற்றது அல்லது காலாவதியானது. புதிய QR குறியீட்டைக் கேட்கவும்.",
+    "loadFailed": "உங்கள் ஆர்டரை ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+    "paymentSuccessful": "கட்டணம் வெற்றி",
+    "paymentCancelled": "கட்டணம் ரத்து செய்யப்பட்டது",
+    "cancelMsg": "உங்கள் கட்டணம் ரத்து செய்யப்பட்டது. எந்தக் கட்டணமும் வசூலிக்கப்படவில்லை.",
+    "tryAgain": "மீண்டும் முயற்சிக்கவும்",
+    "alreadyPaid": "ஆர்டர் ஏற்கனவே செலுத்தப்பட்டது",
+    "thankYou": "எங்களுடன் உண்பதற்கு நன்றி!",
+    "phoneOptional": "தொலைபேசி எண் (விருப்பமானது)",
+    "phoneHint": "லயால்டி புள்ளிகள் மற்றும் ரசீதைப் பெற உங்கள் எண்ணை உள்ளிடவும். கடவுச்சொல் தேவையில்லை.",
+    "payWithCard": "அட்டையுடன் செலுத்தவும்",
+    "payWithHitPay": "HitPay உடன் செலுத்தவும்",
+    "processing": "செயலாக்கம்...",
+    "payFailed": "கட்டணம் தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.",
+    "noRedirect": "கட்டணத்தைத் தொடங்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+    "noProvider": "ஆன்லைன் கட்டணம் கிடைக்கவில்லை. கவுண்டரில் செலுத்தவும்.",
+    "browseMenu": "எங்கள் மெனுவை உலாவவும்"
   }
 }

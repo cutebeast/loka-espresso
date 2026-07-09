@@ -35,7 +35,7 @@ const DEFAULT_STATE: DisplayState = {
 };
 
 export default function CustomerDisplayPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [state, setState] = useState<DisplayState>(DEFAULT_STATE);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [now, setNow] = useState(0);
@@ -77,7 +77,7 @@ export default function CustomerDisplayPage() {
     return () => { cancelled = true; };
   }, [state.pwaPayUrl, state.paymentUrl]);
 
-  const fmt = useCallback((amt: number) => `RM ${amt.toFixed(2)}`, []);
+  const fmt = useCallback((amt: number) => `${t("pos.currency_symbol")}${amt.toFixed(2)}`, [t]);
 
   // ── IDLE / WELCOME ──────────────────────────────────────────────
   if (state.phase === "idle" || (state.phase === "browsing" && state.cart.length === 0)) {
@@ -87,7 +87,7 @@ export default function CustomerDisplayPage() {
           <div style={styles.logo}>{state.storeName}</div>
           <div style={styles.welcomeText}>{t("pos.display_welcome")}</div>
           <div style={styles.clock}>
-            {new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            {new Date(now).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
           </div>
           <div style={styles.hint}>
             <ShoppingBag size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
@@ -182,7 +182,7 @@ export default function CustomerDisplayPage() {
             </div>
             <div style={styles.qrImageWrap}>
               {qrDataUrl ? (
-                <img src={qrDataUrl} alt="Payment QR" style={styles.qrImage} />
+                <img src={qrDataUrl} alt={t("pos.payment_qr_alt")} style={styles.qrImage} />
               ) : (
                 <Loader2 size={48} className="animate-spin" style={{ color: "var(--color-primary)" }} />
               )}

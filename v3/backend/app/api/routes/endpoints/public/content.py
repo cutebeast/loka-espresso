@@ -145,7 +145,7 @@ async def claim_promo_banner(
         status="active",
         voucher_snapshot={
             "display_title": vd.display_title,
-            "discount_value": float(vd.discount_value),
+            "discount_value": str(vd.discount_value),
             "voucher_type": str(vd.voucher_type),
         },
         expires_at=vd.valid_until or datetime.now(timezone.utc),
@@ -407,8 +407,8 @@ async def get_config_bootstrap(
     return APIResponse(data={
         "currency": currency,
         "currency_symbol": currency_symbol,
-        "delivery_fee": float(delivery_fee) if delivery_fee else 0,
-        "minimum_order_amount": float(min_order) if min_order else 0,
+        "delivery_fee": str(delivery_fee) if delivery_fee else "0",
+        "minimum_order_amount": str(min_order) if min_order else "0",
         "loyalty_tiers": [
             {"name": t["display_name"], "min_points": t["min_points"], "color": t["color"]}
             for t in tier_dicts

@@ -9,6 +9,9 @@ function resolveApiBase(): string {
   if (envUrl && envUrl.startsWith("http")) {
     return envUrl;
   }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_API_URL not configured for production");
+  }
   return "http://127.0.0.1:13800/api";
 }
 
@@ -40,15 +43,6 @@ function clearAuthStorage(): void {
   localStorage.removeItem("pos_held_orders");
 }
 
-/** @deprecated Token is no longer stored client-side; kept for compatibility. */
-export function getToken(): string | null {
-  return null;
-}
-
-/** @deprecated Auth state is server-side; kept for compatibility. */
-export function isLoggedIn(): boolean {
-  return false;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Token refresh with mutex (prevents race conditions)               */
@@ -116,6 +110,18 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
       }
       throw new Error("Session expired. Please log in again.");
     }
+    if (res.status === 403) {
+      const errText = await res.text();
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.detail === "must_change_pin" || errJson.error === "must_change_pin") {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("must-change-pin"));
+          }
+          throw new Error("must_change_pin");
+        }
+      } catch { /* not JSON */ }
+    }
     return res;
   };
 
@@ -165,6 +171,18 @@ async function requestPaginated<T>(method: string, path: string, body?: unknown,
       }
       throw new Error("Session expired");
     }
+    if (res.status === 403) {
+      const errText = await res.text();
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.detail === "must_change_pin" || errJson.error === "must_change_pin") {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("must-change-pin"));
+          }
+          throw new Error("must_change_pin");
+        }
+      } catch { /* not JSON */ }
+    }
     return res;
   };
   const res = await makeRequest();
@@ -212,6 +230,18 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, signa
         window.location.replace("/login");
       }
       throw new Error("Session expired");
+    }
+    if (res.status === 403) {
+      const errText = await res.text();
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.detail === "must_change_pin" || errJson.error === "must_change_pin") {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("must-change-pin"));
+          }
+          throw new Error("must_change_pin");
+        }
+      } catch { /* not JSON */ }
     }
     return res;
   };
@@ -287,6 +317,18 @@ export const api = {
         }
         throw new Error("Session expired");
       }
+      if (res.status === 403) {
+        const errText = await res.text();
+        try {
+          const errJson = JSON.parse(errText);
+          if (errJson.detail === "must_change_pin" || errJson.error === "must_change_pin") {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("must-change-pin"));
+            }
+            throw new Error("must_change_pin");
+          }
+        } catch { /* not JSON */ }
+      }
       return res;
     };
     return makeRequest();
@@ -321,7 +363,6 @@ export async function staffLogin(email: string, password: string, storeId?: numb
     if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
     if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
     if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
-    if (data.profile.is_admin) localStorage.setItem("isAdmin", String(data.profile.is_admin));
   }
   return data;
 }
@@ -350,7 +391,6 @@ export async function staffLoginByName(name: string, pin: string, storeId: numbe
     if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
     if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
     if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
-    if (data.profile.is_admin) localStorage.setItem("isAdmin", String(data.profile.is_admin));
   }
   return data;
 }
@@ -881,4 +921,28 @@ export function scanVoucherCode(code: string) {
     customer_id?: number;
     valid: boolean;
   }>(`/admin/scan/voucher/${code}`, { store_id: null });
+}
+
+
+// ── Help Center / Internal Wiki ──
+
+export interface HelpArticle {
+  id: number;
+  slug: string;
+  title: string;
+  audience: "admin" | "staff" | "customer";
+  category: string | null;
+  body_text: string | null;
+  position: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getHelpArticles(audience: "staff" = "staff") {
+  return api.get<PaginatedResponse<HelpArticle>>(`/public/help/articles?audience=${audience}&per_page=500`);
+}
+
+export function getHelpArticle(slug: string) {
+  return api.get<HelpArticle>(`/public/help/articles/${slug}`);
 }

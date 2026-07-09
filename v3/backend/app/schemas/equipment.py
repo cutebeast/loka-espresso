@@ -1,6 +1,7 @@
 """Equipment and maintenance tracking schemas."""
 
 from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import Field
 
@@ -12,7 +13,7 @@ class EquipmentMaintenanceLogBase(BaseSchema):
     status: str = Field(default="scheduled", pattern=r"^(scheduled|in_progress|completed|cancelled)$")
     description: str | None = None
     performed_by: str | None = None
-    cost: float | None = Field(None, ge=0)
+    cost: Decimal | None = Field(None, ge=0)
     started_at: datetime | None = None
     completed_at: datetime | None = None
     notes: str | None = None
@@ -27,7 +28,7 @@ class EquipmentMaintenanceLogUpdate(BaseSchema):
     status: str | None = Field(None, pattern=r"^(scheduled|in_progress|completed|cancelled)$")
     description: str | None = None
     performed_by: str | None = None
-    cost: float | None = Field(None, ge=0)
+    cost: Decimal | None = Field(None, ge=0)
     started_at: datetime | None = None
     completed_at: datetime | None = None
     notes: str | None = None

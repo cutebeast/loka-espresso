@@ -8,7 +8,7 @@ import { useStaffRole, canUsePOS, canUseKitchen, canUseOps, type StaffRole } fro
 import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
 import Alert from "@/components/Alert";
-import { Armchair, CreditCard, CalendarCheck, CalendarDays, Clock, UserCircle, Wallet, ChefHat, ClipboardList, Wrench, Package, AlertTriangle, Droplets, Trash2 } from "lucide-react";
+import { Armchair, CreditCard, CalendarCheck, CalendarDays, Clock, UserCircle, Wallet, ChefHat, ClipboardList, Wrench, Package, AlertTriangle, Droplets, Trash2, HelpCircle } from "lucide-react";
 interface DashboardData {
   pending_orders: number;
   occupied_tables: number;
@@ -19,140 +19,149 @@ interface DashboardData {
 }
 const ORDER_BUTTONS = [{
   key: "pos",
-  label: "New Order",
+  labelKey: "dashboard.new_order",
   icon: CreditCard,
   badge: null,
   route: "/pos",
   cls: "home-btn--primary",
-  desc: "POS",
+  descKey: "dashboard.pos",
   allowed: (role: string | null, isAdmin: boolean) => canUsePOS(role as StaffRole | null, isAdmin)
 }, {
   key: "orders",
-  label: "Orders",
+  labelKey: "dashboard.orders",
   icon: ClipboardList,
   badge: null,
   route: "/orders",
   cls: "",
-  desc: "Queue & History",
+  descKey: "dashboard.queue_history",
   allowed: () => true
 }, {
   key: "kitchen",
-  label: "Kitchen",
+  labelKey: "dashboard.kitchen",
   icon: ChefHat,
   badge: "pending_orders",
   route: "/kitchen",
   cls: "",
-  desc: "KDS",
+  descKey: "dashboard.kds",
   allowed: (role: string | null, isAdmin: boolean) => canUseKitchen(role as StaffRole | null, isAdmin)
 }, {
   key: "tables",
-  label: "Tables",
+  labelKey: "dashboard.tables",
   icon: Armchair,
   badge: "occupied_tables",
   route: "/tables",
   cls: "",
-  desc: "Floor",
+  descKey: "dashboard.floor",
   allowed: () => true
 }, {
   key: "reservations",
-  label: "Bookings",
+  labelKey: "dashboard.bookings",
   icon: CalendarCheck,
   badge: "today_reservations",
   route: "/reservations",
   cls: "",
-  desc: "Reservations",
+  descKey: "dashboard.reservations",
   allowed: () => true
 }, {
   key: "wallet",
-  label: "Member",
+  labelKey: "dashboard.member",
   icon: Wallet,
   badge: null,
   route: "/wallet",
   cls: "",
-  desc: "Wallet & Rewards",
+  descKey: "dashboard.wallet_rewards",
   allowed: () => true
 }];
 const OPS_BUTTONS = [{
   key: "equipment",
-  label: "Equipment",
+  labelKey: "dashboard.equipment",
   icon: Wrench,
   badge: null,
   route: "/equipment",
   cls: "",
-  desc: "Maintenance",
+  descKey: "dashboard.maintenance",
   allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
 }, {
   key: "grease-trap",
-  label: "Grease Trap",
+  labelKey: "dashboard.grease_trap",
   icon: Droplets,
   badge: null,
   route: "/grease-trap",
   cls: "",
-  desc: "Cleaning",
+  descKey: "dashboard.cleaning",
   allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
 }, {
   key: "garbage",
-  label: "Garbage",
+  labelKey: "dashboard.garbage",
   icon: Trash2,
   badge: null,
   route: "/garbage",
   cls: "",
-  desc: "Disposal",
+  descKey: "dashboard.disposal",
   allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
 }, {
   key: "inventory",
-  label: "Inventory",
+  labelKey: "dashboard.inventory",
   icon: Package,
   badge: null,
   route: "/inventory",
   cls: "",
-  desc: "Stock Count",
+  descKey: "dashboard.stock_count",
   allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
 }, {
   key: "wastage",
-  label: "Wastage",
+  labelKey: "dashboard.wastage",
   icon: AlertTriangle,
   badge: null,
   route: "/wastage",
   cls: "",
-  desc: "Report Waste",
+  descKey: "dashboard.report_waste",
   allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
 }];
 const SELF_BUTTONS = [{
   key: "clock",
-  label: "Clock In",
+  labelKey: "dashboard.clock_in",
   icon: Clock,
   badge: "clock_status",
   route: "/time-clock",
   cls: "",
-  desc: "Time Clock",
+  descKey: "dashboard.time_clock",
   allowed: () => true
 }, {
   key: "shifts",
-  label: "Shifts",
+  labelKey: "dashboard.shifts",
   icon: CalendarDays,
   badge: null,
   route: "/shifts",
   cls: "",
-  desc: "My Schedule",
+  descKey: "dashboard.my_schedule",
   allowed: () => true
 }, {
   key: "tasks",
-  label: "Tasks",
+  labelKey: "dashboard.tasks",
   icon: ClipboardList,
   badge: null,
   route: "/tasks",
   cls: "",
-  desc: "To-do",
+  descKey: "dashboard.to_do",
+  allowed: () => true
+}, {
+  key: "help",
+  labelKey: "header.help",
+  icon: HelpCircle,
+  badge: null,
+  route: "/help",
+  cls: "",
+  descKey: "dashboard.help",
   allowed: () => true
 }, {
   key: "profile",
-  label: "Me",
+  labelKey: "dashboard.me",
   icon: UserCircle,
   badge: null,
   route: "/profile",
   cls: "",
-  desc: "Profile",
+  descKey: "dashboard.profile",
   allowed: () => true
 }];
 export default function HomePage() {
@@ -173,7 +182,7 @@ export default function HomePage() {
       if (data) setData(data);
     } catch (e) {
       console.error("Dashboard fetch failed:", e);
-      setError("Unable to load dashboard");
+      setError(t("dashboard.err_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -183,7 +192,7 @@ export default function HomePage() {
   });
   const getBadge = (b: string | null): string | number | null => {
     if (!b || !data) return null;
-    if (b === "clock_status") return data.clock_status === "in" ? "IN" : data.clock_status === "break" ? "BRK" : "OUT";
+    if (b === "clock_status") return data.clock_status === "in" ? t("time_clock.clock_in_label") : data.clock_status === "break" ? t("time_clock.on_break") : t("time_clock.not_clocked_in");
     return data[b as keyof DashboardData] as string | number ?? null;
   };
   return <div style={{
@@ -200,7 +209,7 @@ export default function HomePage() {
         fontWeight: 800,
         margin: 0,
         color: "var(--color-text-primary)"
-      }}>{data?.store_name || "Loka Espresso"}</h1>
+      }}>{data?.store_name || t("common.store_name")}</h1>
         {data?.staff_name && <p style={{
         fontSize: 13,
         color: "var(--color-text-muted)",
@@ -230,12 +239,12 @@ export default function HomePage() {
             return <button key={btn.key} onClick={() => router.push(btn.route)} className={`home-btn ${btn.cls}`}>
                     {badge !== null && badge !== undefined && badge !== 0 && <span className="home-btn-badge">{badge}</span>}
                     <span className="home-btn-icon"><btn.icon size={btn.key === "pos" ? 42 : 32} /></span>
-                    <span className="home-btn-label">{btn.label}</span>
+                    <span className="home-btn-label">{t((btn as { labelKey: string }).labelKey)}</span>
                     {btn.key === "pos" && <span style={{
                 fontSize: 11,
                 opacity: 0.6,
                 fontWeight: 400
-              }}>{btn.desc}</span>}
+              }}>{t((btn as { descKey: string }).descKey)}</span>}
                   </button>;
           })}
             </div>
@@ -259,7 +268,7 @@ export default function HomePage() {
             return <button key={btn.key} onClick={() => router.push(btn.route)} className="home-btn">
                     {badge !== null && badge !== undefined && badge !== 0 && <span className="home-btn-badge">{badge}</span>}
                     <span className="home-btn-icon"><btn.icon size={32} /></span>
-                    <span className="home-btn-label">{btn.label}</span>
+                    <span className="home-btn-label">{t((btn as { labelKey: string }).labelKey)}</span>
                   </button>;
           })}
             </div>
@@ -281,7 +290,7 @@ export default function HomePage() {
             return <button key={btn.key} onClick={() => router.push(btn.route)} className="home-btn">
                     {badge !== null && badge !== undefined && badge !== 0 && <span className="home-btn-badge">{badge}</span>}
                     <span className="home-btn-icon"><btn.icon size={32} /></span>
-                    <span className="home-btn-label">{btn.label}</span>
+                    <span className="home-btn-label">{t((btn as { labelKey: string }).labelKey)}</span>
                   </button>;
           })}
             </div>

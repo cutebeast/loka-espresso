@@ -165,7 +165,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
                 {isVideo ? (
                   <video src={imageUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
                 ) : (
-                  <img src={imageUrl} alt={popup.title || 'Promotion'} className="w-full h-full object-cover" loading="eager" />
+                  <img src={imageUrl} alt={popup.title || t('promotions.promo')} className="w-full h-full object-cover" loading="eager" />
                 )}
 
                 {/* Text overlay on top of image/video */}

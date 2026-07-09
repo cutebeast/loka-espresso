@@ -66,7 +66,7 @@ export default function EquipmentPage() {
   };
   const handleReport = async () => {
     if (!reporting || reportDesc.trim().length < 5) {
-      setError("Please enter a note (min 5 characters)");
+      setError(t("equipment.err_note"));
       return;
     }
     setSubmitting(true);
@@ -81,7 +81,7 @@ export default function EquipmentPage() {
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await api.upload<any>(`/staff/equipment/${reporting}/report`, formData);
-      setSuccess(`Report submitted — ${reportStatus}`);
+      setSuccess(`${t("equipment.report_submitted")} — ${reportStatus}`);
       setReporting(null);
       setReportDesc("");
       setReportStatus("operational");
@@ -130,7 +130,7 @@ export default function EquipmentPage() {
     maxWidth: 900,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("equipment.equipment")} subtitle="Daily equipment check and issue reporting" />
+      <PageHeader title={t("equipment.equipment")} subtitle={t("equipment.daily_equipment_check")} />
       {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
       {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
 
@@ -161,7 +161,7 @@ export default function EquipmentPage() {
               <select className="form-input" value={reportStatus} onChange={e => {
             setReportStatus(e.target.value);
             if (e.target.value === "operational" && reportDesc.trim().length < 2) {
-              setReportDesc("Checked OK");
+              setReportDesc(t("equipment.checked_ok"));
             }
           }}>
                 <option value="operational">{t("equipment.operational_checked_ok")}</option>
@@ -248,7 +248,7 @@ export default function EquipmentPage() {
         }}>
               <button type="button" onClick={() => setReporting(null)} className="btn btn-ghost btn-sm">{t("equipment.cancel")}</button>
               <button type="button" onClick={handleReport} disabled={submitting || reportDesc.trim().length < 5} className="btn btn-primary btn-sm">
-                {submitting ? "Submitting..." : "Submit Report"}
+                {submitting ? t("common.submitting") : t("equipment.submit_report")}
               </button>
             </div>
           </div>
@@ -270,7 +270,7 @@ export default function EquipmentPage() {
                 <div style={{
             fontWeight: 700,
             fontSize: 15
-          }}>{e.name || "Unnamed Equipment"}</div>
+          }}>{e.name || t("common.unnamed_equipment")}</div>
                 <div style={{
             fontSize: 12,
             color: "var(--color-text-muted)"

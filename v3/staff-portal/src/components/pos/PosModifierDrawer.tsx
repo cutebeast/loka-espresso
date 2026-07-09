@@ -60,7 +60,7 @@ export default function PosModifierDrawer({
             justifyContent: "space-between"
           }} onClick={() => onToggleModifier(group.id, mod.id, group.selection_type || "single", group.max_selections || 1)}>
                   <span>{mod.option_name}</span>
-                  {mod.price_adjustment > 0 && <span>{t("pos.rm")}{mod.price_adjustment.toFixed(2)}</span>}
+                  {mod.price_adjustment > 0 && <span>{t("pos.currency_symbol")}{mod.price_adjustment.toFixed(2)}</span>}
                 </button>;
         })}
           </div>
@@ -117,7 +117,7 @@ export default function PosModifierDrawer({
             fontSize: 18,
             fontWeight: 800,
             color: "var(--color-primary)"
-          }}>{t("pos.rm_2")}{totalPrice}
+          }}>{t("pos.currency_symbol")}{totalPrice}
             </div>
           </div>
         </div>

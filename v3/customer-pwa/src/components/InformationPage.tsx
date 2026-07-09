@@ -10,10 +10,10 @@ import { useTranslation } from '@/hooks/useTranslation';
 type InformationCard = ApiInformationCard;
 const CONTENT_TYPES = [{
   id: 'information',
-  label: 'Experiences'
+  labelKey: 'information.tabExperiences'
 }, {
   id: 'product',
-  label: 'Products'
+  labelKey: 'information.tabProducts'
 }];
 interface InformationPageProps {
   onBack: () => void;
@@ -24,15 +24,15 @@ interface InformationPageProps {
 function resolveCardImage(card: InformationCard): string | null {
   return resolveAssetUrl(card.image_url) || resolveAssetUrl(card.icon) || null;
 }
-function estimateReadTime(text: string | null | undefined): string {
-  if (!text) return '1 min read';
+function estimateReadTime(text: string | null | undefined, t: (key: string, options?: Record<string, string | number>) => string): string {
+  if (!text) return t('information.readTimeMin');
   const words = text.trim().split(/\s+/).length;
   const mins = Math.max(1, Math.ceil(words / 200));
-  return `${mins} min read`;
+  return t('information.readTimeMins', { mins });
 }
-function tagLabel(contentType?: string | null): string {
-  if (!contentType) return 'Article';
-  return contentType === 'product' ? 'Product' : 'Experience';
+function tagLabel(contentType?: string | null, t?: (key: string) => string): string {
+  if (!contentType) return t ? t('information.tagArticle') : 'Article';
+  return contentType === 'product' ? (t ? t('information.tagProduct') : 'Product') : (t ? t('information.tagExperience') : 'Experience');
 }
 export default function InformationPage({
   onBack,
@@ -52,7 +52,7 @@ export default function InformationPage({
   const [selectedCard, setSelectedCard] = useState<InformationCard | null>(null);
   const preselectedConsumed = useRef(false);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
-  const pageLabel = CONTENT_TYPES.find(t => t.id === activeTab)?.label || 'Articles';
+  const pageLabel = activeTab === 'product' ? t('information.tabProducts') : t('information.tabExperiences');
   const loadCards = useCallback(async (type: string) => {
     setLoading(true);
     try {
@@ -61,6 +61,7 @@ export default function InformationPage({
       setCards(data);
       return data;
     } catch {
+      showToast(t('toast.failedToLoad'), 'error');
       setCards([]);
       return [];
     } finally {
@@ -90,6 +91,7 @@ export default function InformationPage({
         preselectedConsumed.current = true;
       }
     } catch {
+      showToast(t('toast.failedToLoad'), 'error');
       await loadCards(type);
     } finally {
       setLoading(false);
@@ -108,7 +110,7 @@ export default function InformationPage({
     const img = resolveCardImage(selectedCard);
     const gallery = (selectedCard.image_gallery_urls || []).map(resolveAssetUrl).filter(Boolean) as string[];
     const allImages = img ? [img, ...gallery] : gallery;
-    const tag = tagLabel(selectedCard.content_type);
+    const tag = tagLabel(selectedCard.content_type, t);
     const handleShare = async () => {
       const shareData: ShareData = {
         title: selectedCard.title,
@@ -150,7 +152,7 @@ export default function InformationPage({
 
           <div className="info-detail-meta">
             <span className="info-detail-meta-item">
-              <Clock size={16} /> {estimateReadTime(selectedCard.long_description || selectedCard.short_description)}
+              <Clock size={16} /> {estimateReadTime(selectedCard.long_description || selectedCard.short_description, t)}
             </span>
             <span className="info-detail-meta-item">
               <Star size={16} /> {tag}
@@ -158,7 +160,7 @@ export default function InformationPage({
           </div>
 
           <p className="info-detail-desc">
-            {selectedCard.long_description || selectedCard.short_description || 'No content available.'}
+            {selectedCard.long_description || selectedCard.short_description || t('information.noContent')}
           </p>
         </div>
 
@@ -185,8 +187,8 @@ export default function InformationPage({
 
       {/* Tab bar */}
       <div className="info-tab-bar">
-        {CONTENT_TYPES.map(t => <button key={t.id} className={`info-tab ${activeTab === t.id ? 'active' : ''}`} onClick={() => handleTabChange(t.id)}>
-            {t.label}
+        {CONTENT_TYPES.map(tab => <button key={tab.id} className={`info-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => handleTabChange(tab.id)}>
+            {t(tab.labelKey)}
           </button>)}
       </div>
 
@@ -206,7 +208,7 @@ export default function InformationPage({
         const tagClass = card.content_type === 'product' ? 'product' : 'experience';
         return <div key={card.id} className="info-card" onClick={() => setSelectedCard(card)}>
                 <div className="info-card-thumb">
-                  {img && !brokenImages.has(card.id) ? <img src={img} alt={card.title || 'Information card'} loading="lazy" onError={() => {
+                  {img && !brokenImages.has(card.id) ? <img src={img} alt={card.title || t('information.tagArticle')} loading="lazy" onError={() => {
               setBrokenImages(prev => new Set(prev).add(card.id));
             }} /> : <div className="info-card-thumb-fallback">
                       <Info size={24} strokeWidth={1.5} color={LOKA.border} />

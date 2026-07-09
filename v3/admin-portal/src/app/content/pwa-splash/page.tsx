@@ -35,13 +35,11 @@ export default function SplashScreensPage() {
     })();
   }, [fetch]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     try {
       await api.del(`/admin/content/splash-screens/${id}`);
       fetch();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   return <div style={{
@@ -72,7 +70,7 @@ export default function SplashScreensPage() {
           <td style={{
               fontSize: 12
             }}>{item.active_from?.slice(0, 10) || "—"} → {item.active_until?.slice(0, 10) || "—"}</td>
-          <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+          <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
           <td onClick={e => e.stopPropagation()}><div style={{
                 display: "flex",
                 gap: 4,

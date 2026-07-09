@@ -83,7 +83,7 @@ export default function NotificationsPage() {
     api.get('/config/bootstrap').then((res) => {
       const v = parseInt((res.data as Record<string, unknown> | undefined)?.notification_retention_days as string, 10);
       if (!isNaN(v) && v > 0) setRetentionDays(v);
-    }).catch((err) => console.error('[Notifications] Config fetch failed:', err));
+    }).catch((err) => { console.error('[Notifications] Config fetch failed:', err); showToast(t('toast.loadNotificationsFailed'), 'error'); });
   }, []);
 
   const fetchNotifications = useCallback(() => {
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
         const items = Array.isArray(data) ? data : (data?.items ?? []);
         setNotifications(items.map((n) => ({ id: n.id, title: n.title, body: n.body, type: n.message_type, is_read: n.is_read, created_at: n.created_at })));
       })
-      .catch((err) => { console.error('[Notifications] Fetch failed:', err); setNotifications([]); })
+      .catch((err) => { console.error('[Notifications] Fetch failed:', err); showToast(t('toast.loadNotificationsFailed'), 'error'); setNotifications([]); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -103,7 +103,7 @@ export default function NotificationsPage() {
     try {
       await api.patch(`/notifications/me/${id}/read`);
       setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-    } catch { console.error('[Notifications] Failed to mark read'); }
+    } catch { console.error('[Notifications] Failed to mark read'); showToast(t('toast.markReadFailed'), 'error'); }
   };
 
   const [markingAll, setMarkingAll] = useState(false);

@@ -26,6 +26,11 @@ const STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Neg
 export default function SavedAddressesPage() {
   const { setPage, showToast, selectedStore } = useUIStore();
   const { t } = useTranslation();
+  const LABEL_DISPLAY: Record<string, string> = {
+    Home: t('checkout.labelHome'),
+    Office: t('checkout.labelOffice'),
+    Other: t('checkout.labelOther'),
+  };
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,7 +67,7 @@ export default function SavedAddressesPage() {
         list.sort((a: Address, b: Address) => order.indexOf(a.label) - order.indexOf(b.label));
         setAddresses(list);
       })
-      .catch((err) => { console.error('[SavedAddresses] Fetch failed:', err); setAddresses([]); })
+      .catch((err) => { console.error('[SavedAddresses] Fetch failed:', err); showToast(t('toast.loadSavedAddressesFailed'), 'error'); setAddresses([]); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { fetchAddresses(); }, []);
@@ -172,7 +177,7 @@ export default function SavedAddressesPage() {
                 <div className="sav2-card-top">
                   <div className="sav2-pin-icon"><Icon size={20} /></div>
                   <div className="sav2-card-main">
-                    <div className="sav2-card-name-row"><span className="sav2-card-name">{addr.label}</span></div>
+                    <div className="sav2-card-name-row"><span className="sav2-card-name">{LABEL_DISPLAY[addr.label] || addr.label}</span></div>
                     <div className="sav2-card-address">{fullDisplay(addr)}</div>
                     {dist && <span className="sav2-distance-badge"><Clock size={12} />{dist}</span>}
                   </div>
@@ -208,7 +213,7 @@ export default function SavedAddressesPage() {
               return (
                 <button key={lbl} onClick={() => { if (!locked) setFormLabel(lbl); }} disabled={locked}
                   className={`sav2-label-pill${formLabel === lbl ? ' active' : ''}${locked ? ' disabled' : ''}`}>
-                  <I size={16} />{lbl}{exists ? ' ✓' : ''}
+                  <I size={16} />{LABEL_DISPLAY[lbl] || lbl}{exists ? ' ✓' : ''}
                 </button>
               );
             })}

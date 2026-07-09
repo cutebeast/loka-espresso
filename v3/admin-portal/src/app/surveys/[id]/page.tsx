@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Plus } from "lucide-react";
 const LOCALES = [{
   code: "en",
@@ -26,22 +28,25 @@ const LOCALES = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "survey_name",
-  label: "Title"
-}, {
-  key: "description",
-  label: "Description"
-}];
+
 const MAX_Q = 5;
 export default function SurveyEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "survey_name",
+  label: t("admin.form.title")
+}, {
+  key: "description",
+  label: t("admin.form.description")
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [loc, setLoc] = useState("en");
   const [saving, setSaving] = useState(false);
   const [savingTr, setSavingTr] = useState(false);
@@ -91,9 +96,7 @@ export default function SurveyEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
         try {
           const qt = await api.getRaw<any>(`/admin/translations?table_name=survey_questions&locale=${lc.code}&per_page=100`);
           if (qt?.items) for (const t of qt.items) {
@@ -103,13 +106,15 @@ export default function SurveyEditPage() {
               x[`${lc.code}:qopt:${t.record_id}_${oi}`] = t.translated_text || "";
             }
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -216,11 +221,9 @@ export default function SurveyEditPage() {
       setQTr({
         questions: qs
       });
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -240,9 +243,7 @@ export default function SurveyEditPage() {
         record_id: recordId,
         column_name: field
       });
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const regenAll = async () => {
     setRegen(true);
@@ -264,9 +265,7 @@ export default function SurveyEditPage() {
           await upsertTr(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     for (const q of qTr.questions) {
       const src = (q.text || "").trim();
@@ -285,9 +284,7 @@ export default function SurveyEditPage() {
           await upsertTr("question_text", loc, src, rt.translated_text, "survey_questions", q.id);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       for (let oi = 0; oi < (q.options || []).length; oi++) {
         const opt = q.options?.[oi]?.trim();
         if (!opt) continue;
@@ -305,9 +302,7 @@ export default function SurveyEditPage() {
             await upsertTr(`option_${oi}`, loc, opt, rt.translated_text, "survey_questions", q.id);
             c++;
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
     }
     setMsg(`Regenerated ${c} fields & options`);
@@ -328,10 +323,11 @@ export default function SurveyEditPage() {
         if (ot) await upsertTr(`option_${oi}`, loc, q.options?.[oi]?.trim() || "", ot, "survey_questions", q.id);
       }
     }
-    setMsg("Translations saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
     setSavingTr(false);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("surveys_[id].loading")}</div>;
@@ -482,7 +478,7 @@ export default function SurveyEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/surveys")} className="btn btn-ghost">{t("surveys_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/surveys")} className="btn btn-ghost">{t("surveys_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 700

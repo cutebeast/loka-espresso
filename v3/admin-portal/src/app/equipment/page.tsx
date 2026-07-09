@@ -60,7 +60,7 @@ export default function EquipmentPage() {
     }
   }, [storeFilter, statusFilter, page]);
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => console.error("Failed to load stores list for equipment page", e));
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error("Failed to load stores list for equipment page", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   useEffect(() => {
     fetchData();
@@ -70,14 +70,12 @@ export default function EquipmentPage() {
     if (next >= 1 && next <= totalPages) setPage(next);
   };
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this equipment record?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/equipment/${id}`);
       fetchData();
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };

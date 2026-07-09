@@ -140,7 +140,7 @@ export default function ItemCustomizeSheet({
       opacity: 1
     }} exit={{
       opacity: 0
-    }} onClick={onClose} className="ics-overlay" role="dialog" aria-label={item?.item_name || 'Customize item'}>
+    }} onClick={onClose} className="ics-overlay" role="dialog" aria-label={item?.item_name || t('menu.customizeItemAriaLabel')}>
           <motion.div initial={{
         y: '100%'
       }} animate={{

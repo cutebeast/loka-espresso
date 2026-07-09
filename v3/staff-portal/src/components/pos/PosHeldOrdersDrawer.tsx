@@ -59,8 +59,8 @@ export default function PosHeldOrdersDrawer({
                 {held.cart.length}{t("pos.items_rm")}{(() => {
             const sum = held.cart.reduce((s: number, ci: CartItem) => s + (ci.price != null && !isNaN(ci.price) ? ci.price : 0) * ci.qty, 0);
             return isNaN(sum) ? "0.00" : sum.toFixed(2);
-          })()} · {held.orderType.replace("_", "-")}
-                {held.tableId && ` · Table ${tables.find(t => t.id === held.tableId)?.table_number || held.tableId}`}
+          })()} · {held.orderType === "dine_in" ? t("pos.dine_in_label") : held.orderType === "takeaway" ? t("pos.takeaway_label") : held.orderType === "delivery" ? t("pos.delivery_label") : held.orderType.replace("_", "-")}
+                {held.tableId && ` · ${t("common.table")}${tables.find(t => t.id === held.tableId)?.table_number || held.tableId}`}
               </div>
               <div style={{
           display: "flex",

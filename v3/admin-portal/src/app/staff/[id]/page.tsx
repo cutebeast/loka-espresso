@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save } from "lucide-react";
 export default function EditStaffPage() {
   const {
@@ -13,6 +15,7 @@ export default function EditStaffPage() {
   const r = useRouter();
   const id = p.id as string;
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState<Record<string, any>>({});
@@ -28,7 +31,11 @@ export default function EditStaffPage() {
         is_active: d.is_active
       });
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -40,14 +47,13 @@ export default function EditStaffPage() {
     setSaving(true);
     try {
       await api.patch(`/admin/staff/${id}`, form);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("staff_[id].loading")}</div>;
@@ -99,7 +105,7 @@ export default function EditStaffPage() {
         </div>
         <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/staff")} className="btn btn-ghost">{t("staff_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/staff")} className="btn btn-ghost">{t("staff_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
       </div>
     </div>;
 }

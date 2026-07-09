@@ -226,8 +226,8 @@ async def reorder(
     for li in line_items:
         if li.menu_item_id not in available_ids:
             continue
-        unit_price = float(li.unit_price)
-        modifier_total = float(li.modifier_total or 0)
+        unit_price = li.unit_price
+        modifier_total = li.modifier_total or 0
         qty = li.quantity
         line_total = (unit_price + modifier_total) * qty
         cart_item = CartLineItem(

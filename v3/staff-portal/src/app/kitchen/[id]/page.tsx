@@ -13,62 +13,62 @@ import SkeletonCard from "@/components/SkeletonCard";
 import { ArrowLeft, CheckCircle, Clock, Printer, XCircle, MoveRight } from "lucide-react";
 const STATUS_FLOW: Record<string, {
   next: OrderStatus[];
-  label: string;
+  labelKey: string;
   color: BadgeVariant;
 }> = {
   pending: {
     next: ["confirmed", "cancelled_by_merchant"],
-    label: "Pending",
+    labelKey: "staff.status.pending",
     color: "yellow"
   },
   confirmed: {
     next: ["preparing", "cancelled_by_merchant"],
-    label: "Confirmed",
+    labelKey: "staff.status.confirmed",
     color: "blue"
   },
   preparing: {
     next: ["ready_for_pickup", "out_for_delivery", "cancelled_by_merchant"],
-    label: "Preparing",
+    labelKey: "staff.status.preparing",
     color: "orange"
   },
   ready_for_pickup: {
     next: ["delivered", "cancelled_by_merchant"],
-    label: "Ready",
+    labelKey: "staff.status.ready",
     color: "green"
   },
   out_for_delivery: {
     next: ["delivered", "cancelled_by_merchant"],
-    label: "Out for Delivery",
+    labelKey: "staff.status.out_for_delivery",
     color: "blue"
   },
   delivered: {
     next: [],
-    label: "Delivered",
+    labelKey: "staff.status.delivered",
     color: "green"
   },
   cancelled_by_customer: {
     next: [],
-    label: "Cancelled (Customer)",
+    labelKey: "staff.status.cancelled_by_customer",
     color: "red"
   },
   cancelled_by_merchant: {
     next: [],
-    label: "Cancelled (Merchant)",
+    labelKey: "staff.status.cancelled_by_merchant",
     color: "red"
   },
   refunded: {
     next: [],
-    label: "Refunded",
+    labelKey: "staff.status.refunded",
     color: "purple"
   },
   partially_refunded: {
     next: [],
-    label: "Partially Refunded",
+    labelKey: "staff.status.partially_refunded",
     color: "yellow"
   },
   disputed: {
     next: [],
-    label: "Disputed",
+    labelKey: "staff.status.disputed",
     color: "orange"
   }
 };
@@ -107,7 +107,7 @@ export default function KitchenDetailPage() {
     setUpdating(true);
     try {
       await updateOrderStatus(id, status, status.includes("cancelled") ? cancelReason : undefined);
-      setMsg(`Order updated to ${status}`);
+      setMsg(t("kitchen.order_updated", { status: t(`staff.status.${status.replace(/-/g, "_")}`) }));
       setCancelReason("");
       const updated = await getOrderById(id);
       setOrder(updated);
@@ -121,7 +121,7 @@ export default function KitchenDetailPage() {
     setTransferring(true);
     try {
       await transferTable(id, newTableId);
-      setMsg("Table transferred successfully");
+      setMsg(t("kitchen.table_transferred"));
       setShowTableTransfer(false);
       const updated = await getOrderById(id);
       setOrder(updated);
@@ -134,7 +134,7 @@ export default function KitchenDetailPage() {
   const loadTables = async () => {
     const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
     if (!storeId) {
-      setError("Store not selected — please log in again");
+      setError(t("kitchen.err_store_not_selected"));
       return;
     }
     try {
@@ -142,7 +142,7 @@ export default function KitchenDetailPage() {
       setAvailableTables(Array.isArray(items) ? items.filter(t => t.current_status === "available") : []);
       setShowTableTransfer(true);
     } catch {
-      setError("Failed to load tables");
+      setError(t("kitchen.err_load_tables"));
     }
   };
   const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
@@ -166,7 +166,7 @@ export default function KitchenDetailPage() {
       maxWidth: 800,
       margin: "0 auto"
     }}>
-        <Alert variant="error">{error || "Order not found"}</Alert>
+        <Alert variant="error">{error || t("kitchen.order_not_found")}</Alert>
         <button className="btn btn-primary" onClick={() => router.push("/orders")} style={{
         marginTop: 16
       }}>
@@ -174,12 +174,25 @@ export default function KitchenDetailPage() {
       </div>;
   }
   const flow = STATUS_FLOW[order.status] || STATUS_FLOW.pending!;
+  const statusLabelMap: Record<string, string> = {
+    pending: t("kitchen.status_pending"),
+    confirmed: t("kitchen.status_confirmed"),
+    preparing: t("kitchen.status_preparing"),
+    ready_for_pickup: t("kitchen.status_ready"),
+    out_for_delivery: t("kitchen.status_out_for_delivery"),
+    delivered: t("kitchen.status_delivered"),
+    cancelled_by_customer: t("kitchen.status_cancelled_customer"),
+    cancelled_by_merchant: t("kitchen.status_cancelled_merchant"),
+    refunded: t("kitchen.status_refunded"),
+    partially_refunded: t("kitchen.status_partially_refunded"),
+    disputed: t("kitchen.status_disputed"),
+  };
   return <div style={{
     padding: 24,
     maxWidth: 800,
     margin: "0 auto"
   }}>
-      <PageHeader title={order.order_number} subtitle={`${order.customer_name || "Walk-in"} · ${dt(order.created_at)}`} back="/orders" action={<Badge variant={flow.color}>{flow.label}</Badge>} />
+      <PageHeader title={order.order_number} subtitle={`${order.customer_name || t("kitchen.walk_in")} · ${dt(order.created_at)}`} back="/orders" action={<Badge variant={flow.color}>{statusLabelMap[order.status] || t(flow.labelKey)}</Badge>} />
 
       {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
       {msg && <Alert variant="success" onDismiss={() => setMsg("")} autoDismiss={3000}>{msg}</Alert>}
@@ -201,7 +214,7 @@ export default function KitchenDetailPage() {
       }}>
             {flow.next.map(s => <button key={s} onClick={() => handleUpdate(s)} disabled={updating} className={`btn btn-sm ${s.includes("cancelled") ? "btn-danger" : "btn-primary"}`}>
                 {s.includes("cancelled") ? <XCircle size={14} /> : <CheckCircle size={14} />}
-                {s.replace("_", " ")}
+                {t(`staff.status.${s.replace(/-/g, "_")}`)}
               </button>)}
             {flow.next.some(s => s.includes("cancelled")) && <input className="form-input" style={{
           minWidth: 200
@@ -261,7 +274,7 @@ export default function KitchenDetailPage() {
         gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
         gap: 12
       }}>
-          {[["Order Type", order.order_type?.replace(/_/g, " ")], ["Payment", order.payment_method || "—"], ["Payment Status", order.payment_status || "—"], ["Subtotal", fmt(order.items_subtotal || 0)], ["Tax", fmt(order.tax_amount || 0)], ["Delivery Fee", fmt(order.delivery_fee || 0)], ["Discount", fmt(order.discount_amount || 0)], ["Total", fmt(order.total_amount || 0)]].map(([label, value]) => <div key={label as string} style={{
+          {[[t("kitchen.order_type"), order.order_type?.replace(/_/g, " ")], [t("kitchen.payment"), order.payment_method || "—"], [t("kitchen.payment_status"), order.payment_status || "—"], [t("kitchen.subtotal"), fmt(order.items_subtotal || 0)], [t("kitchen.tax"), fmt(order.tax_amount || 0)], [t("kitchen.delivery_fee"), fmt(order.delivery_fee || 0)], [t("kitchen.discount"), fmt(order.discount_amount || 0)], [t("kitchen.total"), fmt(order.total_amount || 0)]].map(([label, value]) => <div key={label as string} style={{
           textAlign: "center",
           padding: 10,
           background: "var(--color-bg-muted)",
@@ -384,7 +397,7 @@ export default function KitchenDetailPage() {
               paddingBottom: isLast ? 0 : 16
             }}>
                     <Badge variant={STATUS_FLOW[sl.to_status]?.color || "gray"} size="sm">
-                      {sl.to_status?.replace(/_/g, " ")}
+                      {statusLabelMap[sl.to_status] || sl.to_status?.replace(/_/g, " ")}
                     </Badge>
                     <div style={{
                 fontSize: 12,
@@ -414,12 +427,7 @@ export default function KitchenDetailPage() {
       display: "flex",
       gap: 8
     }}>
-        <button className="btn btn-outline" onClick={() => window.dispatchEvent(new CustomEvent("pos:toast", {
-        detail: {
-          message: "Printer integration pending",
-          type: "info"
-        }
-      }))} title={t("kitchen.printer_integration_pending")}>
+        <button className="btn btn-outline" disabled title={t("kitchen.printer_integration_pending")}>
           <Printer size={16} />{t("kitchen.print_kitchen_ticket")}</button>
       </div>
     </div>;

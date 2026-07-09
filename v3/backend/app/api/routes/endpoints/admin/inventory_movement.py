@@ -154,7 +154,7 @@ async def create_movement(
         await db.flush()
 
     # Calculate new stock after movement
-    new_stock = float(stock.current_stock) + data.quantity_delta
+    new_stock = stock.current_stock + data.quantity_delta
     if new_stock < 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -172,7 +172,7 @@ async def create_movement(
         quantity_delta=data.quantity_delta,
         stock_after=new_stock,
         reserved_delta=0,
-        reserved_after=float(stock.reserved_stock),
+        reserved_after=str(stock.reserved_stock),
         reason=data.reason,
         reference_type=data.reference_type,
         reference_id=data.reference_id,

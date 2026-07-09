@@ -1,5 +1,5 @@
 """Tip allocation endpoints."""
-
+from decimal import Decimal
 from datetime import date, datetime, time, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/admin/staff", tags=["admin — staff"])
 class TipAllocationCreate(BaseModel):
     order_id: int
     staff_id: int
-    tip_amount: float = Field(..., ge=0)
+    tip_amount: Decimal = Field(..., ge=0)
     tip_percentage: float | None = Field(None, ge=0, le=1)
     allocation_type: str = "even_split"
 
@@ -33,7 +33,7 @@ class TipAllocationOut(BaseModel):
     id: int
     order_id: int
     staff_id: int
-    tip_amount: float
+    tip_amount: Decimal
     tip_percentage: float | None
     allocation_type: str
     created_at: datetime
@@ -96,7 +96,7 @@ async def list_tip_allocations(
         if a.staff and a.staff.store:
             out.store_id = a.staff.store.id
             out.store_name = a.staff.store.store_name
-        out.total_tip = float(a.tip_amount)
+        out.total_tip = a.tip_amount
         items_out.append(out)
 
     return APIResponse(

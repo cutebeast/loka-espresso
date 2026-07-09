@@ -401,7 +401,7 @@ async def create_wallet_topup_checkout_session(
     assert api_key is not None
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
-    base = success_url or f"{app_public_url}/wallet"
+    base = success_url or f"{app_public_url}/#wallet"
     params: dict = {
         "payment_method_types": await _get_myr_payment_method_types(db),
         "line_items": [
@@ -511,7 +511,7 @@ def _simulate_grabpay_intent(payment: Payment, return_url: str | None) -> dict:
         "session_id": session_id,
         "redirect_url": template.format(session_id=session_id, return_url=redirect),
         "status": "pending",
-        "amount": float(payment.amount),
+        "amount": str(payment.amount),
         "currency": payment.currency_code,
     }
 
@@ -585,7 +585,7 @@ async def create_payment_intent(
                     "id": existing_payment.provider_transaction_id,
                     "redirect_url": existing_payment.extra_metadata.get("redirect_url") if existing_payment.extra_metadata else None,
                     "status": existing_payment.status,
-                    "amount": float(existing_payment.amount),
+                    "amount": str(existing_payment.amount),
                     "currency": existing_payment.currency_code,
                 }
             return existing_payment, provider_response
@@ -955,7 +955,7 @@ def _parse_hitpay_fee(data: dict) -> Decimal | None:
             try:
                 return to_decimal(fees)
             except Exception:
-                pass
+                logger.debug("Failed to parse HitPay fee", exc_info=True)
         payment_type = payments[0].get("payment_type", "")
     else:
         payment_type = ""
@@ -976,6 +976,7 @@ def _parse_hitpay_fee(data: dict) -> Decimal | None:
     try:
         amount = to_decimal(data.get("amount", 0))
     except Exception:
+        logger.debug("Failed to parse payment amount", exc_info=True)
         return None
     return money_round(amount * percent / Decimal("100") + fixed, 4, "ROUND_HALF_UP")
 

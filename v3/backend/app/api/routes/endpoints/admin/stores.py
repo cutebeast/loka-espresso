@@ -505,7 +505,7 @@ async def list_tables(
                     "order_number": o[1],
                     "status": o[2],
                     "payment_status": o[3],
-                    "total_amount": float(o[4]) if o[4] else 0,
+                    "total_amount": str(o[4]) if o[4] else "0",
                 }
         items.append(out)
     return APIResponse(data=items)

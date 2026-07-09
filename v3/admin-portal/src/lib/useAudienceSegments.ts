@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { useTranslation } from "./i18n";
 
 export interface Segment {
   value: string;
@@ -12,11 +13,12 @@ export interface TierSegment extends Segment {
 }
 
 export function useAudienceSegments() {
+  const { t } = useTranslation();
   const [allSegments, setAllSegments] = useState<Segment[]>([
-    { value: "all_users", label: "All Users" },
-    { value: "new_users", label: "New Users" },
-    { value: "loyal_customers", label: "Loyal Customers" },
-    { value: "inactive_users", label: "Inactive Users" },
+    { value: "all_users", label: t("segments.all_users") },
+    { value: "new_users", label: t("segments.new_users") },
+    { value: "loyal_customers", label: t("segments.loyal_customers") },
+    { value: "inactive_users", label: t("segments.inactive_users") },
   ]);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,12 +28,12 @@ export function useAudienceSegments() {
       .then(d => {
         if (cancelled) return;
         const tiers = (d?.items || []) as { tier_key: string; display_name: string }[];
-        const tSegments: Segment[] = tiers.map(t => ({ value: `tier:${t.tier_key}`, label: `${t.display_name} Members` }));
+        const tSegments: Segment[] = tiers.map(tier => ({ value: `tier:${tier.tier_key}`, label: t("segments.tier_members", { name: tier.display_name }) }));
         setAllSegments([
-          { value: "all_users", label: "All Users" },
-          { value: "new_users", label: "New Users" },
-          { value: "loyal_customers", label: "Loyal Customers" },
-          { value: "inactive_users", label: "Inactive Users" },
+          { value: "all_users", label: t("segments.all_users") },
+          { value: "new_users", label: t("segments.new_users") },
+          { value: "loyal_customers", label: t("segments.loyal_customers") },
+          { value: "inactive_users", label: t("segments.inactive_users") },
           ...tSegments,
         ]);
         setError(null);

@@ -13,21 +13,12 @@ import EmptyState from "@/components/EmptyState";
 import SkeletonCard from "@/components/SkeletonCard";
 import { Play, Pause, Coffee, LogOut, Timer, AlertCircle } from "lucide-react";
 type ShiftStatus = "out" | "in" | "break";
-interface ActionConfig {
-  key: string;
-  label: string;
-  sublabel: string;
-  icon: typeof Play;
-  color: string;
-  bg: string;
-  border: string;
-  action: () => Promise<TimeEvent>;
-}
-const ACTIONS: Record<ShiftStatus, ActionConfig> = {
+
+const ACTIONS: Record<ShiftStatus, { key: string; labelKey: string; sublabelKey: string; icon: typeof Play; color: string; bg: string; border: string; action: () => Promise<TimeEvent> }> = {
   out: {
     key: "clock_in",
-    label: "CLOCK IN",
-    sublabel: "Tap to start your shift",
+    labelKey: "time_clock.clock_in_label",
+    sublabelKey: "time_clock.clock_in_sublabel",
     icon: Play,
     color: "#166534",
     bg: "#DCFCE7",
@@ -36,8 +27,8 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
   },
   in: {
     key: "break_start",
-    label: "START BREAK",
-    sublabel: "Tap for break time",
+    labelKey: "time_clock.start_break_label",
+    sublabelKey: "time_clock.start_break_sublabel",
     icon: Coffee,
     color: "#92400E",
     bg: "#FEF3C7",
@@ -46,8 +37,8 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
   },
   break: {
     key: "break_end",
-    label: "END BREAK",
-    sublabel: "Tap to resume work",
+    labelKey: "time_clock.end_break_label",
+    sublabelKey: "time_clock.end_break_sublabel",
     icon: Pause,
     color: "#1E40AF",
     bg: "#DBEAFE",
@@ -153,7 +144,7 @@ export default function TimeClockPage() {
   };
   const verifyAndExecute = async () => {
     if (!pendingAction || !pin || pin.length < 4) {
-      setError("Enter 4-digit PIN");
+      setError(t("time_clock.err_enter_pin"));
       return;
     }
     setActionLoading(true);
@@ -170,14 +161,14 @@ export default function TimeClockPage() {
       });
       if (!(vd?.valid || vd?.data?.valid)) {
         setAttemptCount(c => c + 1);
-        setError("Wrong PIN. Try again.");
+        setError(t("time_clock.err_wrong_pin"));
         setActionLoading(false);
         return;
       }
       setAttemptCount(0);
       const actionFn = ALL_ACTIONS[pendingAction];
       if (!actionFn) {
-        setError("Invalid action selected");
+        setError(t("time_clock.err_invalid_action"));
         setActionLoading(false);
         return;
       }
@@ -257,7 +248,7 @@ export default function TimeClockPage() {
         fontWeight: 800,
         color: "var(--color-text-primary)"
       }}>
-          {shiftStatus === "in" ? "Working Now" : shiftStatus === "break" ? "On Break" : "Not Clocked In"}
+          {shiftStatus === "in" ? t("time_clock.working_now") : shiftStatus === "break" ? t("time_clock.on_break") : t("time_clock.not_clocked_in")}
         </div>
         {shiftStatus === "in" && <div style={{
         display: "inline-flex",
@@ -299,12 +290,12 @@ export default function TimeClockPage() {
         cursor: isAdmin ? "not-allowed" : "pointer"
       }}>
             {actionLoading ? <Timer size={40} /> : <cfg.icon size={40} />}
-            {actionLoading ? "Please wait..." : cfg?.label}
+            {actionLoading ? t("time_clock.please_wait") : t(cfg?.labelKey || "")}
             <span style={{
           fontSize: 13,
           fontWeight: 400,
           opacity: 0.7
-        }}>{cfg?.sublabel}</span>
+        }}>{t(cfg?.sublabelKey || "")}</span>
           </button>
 
           {/* Clock Out button - only when clocked in */}
@@ -360,7 +351,7 @@ export default function TimeClockPage() {
           setPendingAction(null);
         }}>{t("time_clock.cancel")}</button>
             <button className="btn btn-primary flex-1" onClick={verifyAndExecute} disabled={actionLoading || pin.length < 4}>
-              {actionLoading ? "Checking..." : "OK"}
+              {actionLoading ? t("time_clock.checking") : t("time_clock.ok")}
             </button>
           </div>
         </Card>}
@@ -385,7 +376,7 @@ export default function TimeClockPage() {
             fontWeight: 600,
             textTransform: "capitalize"
           }}>
-                  {evt.event_type.replace(/_/g, " ")}
+                  {t(`staff.status.${evt.event_type.replace(/-/g, "_")}`)}
                 </span>
                 <span style={{
             fontSize: 13,

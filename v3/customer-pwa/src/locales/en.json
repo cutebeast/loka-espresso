@@ -189,8 +189,10 @@
     "outOfRange": "This store only delivers within a {radius} km radius. The delivery address is outside this area. Please choose a closer store or switch to pickup.",
     "payAtCounter": "Pay at Counter",
     "payAtStore": "Pay at Store",
+    "payNow": "Pay Now",
     "payOnline": "Pay Online",
     "paymentMethod": "Payment Method",
+    "payment_retry_toast": "Payment setup failed. Tap retry to try again.",
     "percentageOff": "{value}% off",
     "pickupAt": "Pickup at",
     "pickupTime": "Pickup Time",
@@ -203,6 +205,7 @@
     "recipientPhone": "Recipient's Phone",
     "removeRewardHint": "Remove reward to use a voucher code",
     "removeVoucherHint": "Remove voucher to use a reward",
+    "retryPayment": "Retry Payment",
     "reward": "Reward",
     "rewardFallback": "Reward",
     "rewardSelected": "Reward selected:",
@@ -222,7 +225,8 @@
     "voucherSelected": "Voucher selected:",
     "walletBalance": "Wallet Balance",
     "yourRewards": "Your Rewards",
-    "yourVouchers": "Your Vouchers"
+    "yourVouchers": "Your Vouchers",
+    "recipientPhonePlaceholder": "60123456789"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "Pay Online (Card / FPX / GrabPay)",
@@ -280,6 +284,7 @@
     "refresh": "Refresh",
     "remove": "Remove",
     "retry": "Retry",
+    "retrying": "Retrying...",
     "retryingIn": "Retrying in {seconds}s",
     "rotateToPortrait": "Please rotate your device to portrait",
     "save": "Save",
@@ -287,6 +292,7 @@
     "search": "Search",
     "seeAll": "See All",
     "selectCountry": "Select country",
+    "selectDate": "Select date",
     "share": "Share",
     "skip": "Skip",
     "stepCount": "Step {current} of {total}",
@@ -298,7 +304,10 @@
     "tomorrow": "Tomorrow",
     "view": "View",
     "year": "Year",
-    "yourCode": "Your code"
+    "yourCode": "Your code",
+    "menuItem": "Menu item",
+    "reward": "Reward",
+    "welcome": "Welcome"
   },
   "errorBoundary": {
     "message": "An unexpected error occurred. Please try again.",
@@ -317,7 +326,8 @@
     "rsvpTag": "RSVP",
     "rsvpd": "You're going!",
     "title": "Events",
-    "upcoming": "Upcoming"
+    "upcoming": "Upcoming",
+    "eventImageFallback": "Event image"
   },
   "helpSupport": {
     "backToHome": "Back To Home",
@@ -509,7 +519,12 @@
     "specialInstructions": "Special Instructions",
     "specialInstructionsPlaceholder": "special instructions...",
     "title": "Menu",
-    "viewCart": "View Cart"
+    "viewCart": "View Cart",
+    "multiCourseSubtitle": "Build your combo",
+    "customizeItemAriaLabel": "Customize item",
+    "itemFallback": "Item",
+    "moreCount": "+{count} more",
+    "bundleIncompleteToast": "Bundle unavailable:"
   },
   "menu_page": {
     "kcal": "kcal",
@@ -614,6 +629,7 @@
     "orderProcessing": "Your order is being processed",
     "orderStatus": "Order Status",
     "orderType": "Order Type",
+    "payNow": "Pay Now",
     "payment": "Payment",
     "phonePrefix": "+60 {phone}",
     "preparingDelivery": "Our team is preparing your order",
@@ -681,7 +697,8 @@
     "setAsDefault": "Set As Default",
     "title": "Payment Methods",
     "topUpWallet": "Top Up Wallet",
-    "walletBalance": "Wallet Balance"
+    "walletBalance": "Wallet Balance",
+    "cardFallback": "Card"
   },
   "profile": {
     "editProfile": "Edit Profile",
@@ -880,12 +897,16 @@
     "state": "State",
     "title": "Saved Addresses",
     "unit": "Unit",
-    "unitPlaceholder": "unit..."
+    "unitPlaceholder": "unit...",
+    "labelHome": "Home",
+    "labelOffice": "Office",
+    "labelOther": "Other"
   },
   "settings": {
     "about": "About",
     "aboutFallback": "Born from a passion for authentic Turkish coffee culture, LOKA Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft.",
     "attribution": "Made with care by LOKA Espresso",
+    "enable_notifications": "Enable notifications",
     "language": "Language",
     "languages": {
       "en": "English",
@@ -894,6 +915,7 @@
       "tr": "Türkçe",
       "zh": "中文"
     },
+    "notifications": "Notifications",
     "privacyLegal": "Privacy & Legal",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms Of Service",
@@ -983,6 +1005,11 @@
     "otpResendFailed": "Failed to resend OTP",
     "otpResent": "OTP resent successfully",
     "outOfRange": "Delivery address is outside store service area",
+    "paymentCancelled": "Payment cancelled.",
+    "paymentFailed": "Payment failed. Please try again.",
+    "paymentGatewayUnavailable": "Payment gateway unavailable. Please try again later.",
+    "paymentSuccessful": "Payment successful.",
+    "payment_failed_refunded": "Payment failed — your order was cancelled and wallet refunded.",
     "photoUpdated": "Photo Updated",
     "photoUploadFailed": "Photo Upload Failed",
     "profileFailed": "Failed to save profile. Please try again.",
@@ -996,6 +1023,7 @@
     "selectStore": "Please select a store",
     "selectTime": "Please select a time",
     "sessionExpired": "Your session has expired. Please sign in again.",
+    "share_failed": "Sharing failed.",
     "signInToClaim": "Sign in to claim offers",
     "storesLoadFailed": "Stores Load Failed",
     "surveySubmitted": "Survey submitted! Thank you.",
@@ -1004,7 +1032,23 @@
     "topUpSuccess": "Successfully topped up {amount}",
     "topUpSuccessReturn": "Wallet topped up successfully",
     "verificationFailed": "Invalid OTP. Please try again.",
-    "verificationFailedTitle": "Verification Failed"
+    "verificationFailedTitle": "Verification Failed",
+    "loadPromotionsFailed": "Failed to load promotions",
+    "loadSurveyFailed": "Failed to load survey",
+    "loadBalanceFailed": "Failed to load wallet balance",
+    "loadTransactionsFailed": "Failed to load transactions",
+    "loadRewardsFailed": "Failed to load rewards",
+    "loadPastOrdersFailed": "Failed to load past orders",
+    "loadProfileFailed": "Failed to load profile",
+    "loadPaymentConfigFailed": "Payment setup failed",
+    "loadBundleProductsFailed": "Failed to load bundle products",
+    "loadSavedAddressesFailed": "Failed to load addresses",
+    "loadNotificationsFailed": "Failed to load notifications",
+    "loadReservationsFailed": "Failed to load reservations",
+    "loadStoresFailed": "Failed to load stores",
+    "qrGenerationFailed": "Failed to generate QR code",
+    "markReadFailed": "Failed to mark as read",
+    "reservationCancelFailed": "Failed to cancel reservation"
   },
   "ui": {
     "action_sheet": {
@@ -1052,5 +1096,26 @@
     "recentTransactions": "Recent Transactions",
     "selectPaymentMethod": "Select a payment method to top up",
     "topUpTitle": "Top Up"
+  },
+  "guestPay": {
+    "payForOrder": "Pay for Order",
+    "error": "Error",
+    "invalidLink": "This payment link is invalid or expired. Please ask your server for a new QR code.",
+    "loadFailed": "Could not load your order. Please try again.",
+    "paymentSuccessful": "Payment Successful",
+    "paymentCancelled": "Payment Cancelled",
+    "cancelMsg": "Your payment was cancelled. No charge was made.",
+    "tryAgain": "Try Again",
+    "alreadyPaid": "Order Already Paid",
+    "thankYou": "Thank you for dining with us!",
+    "phoneOptional": "Phone number (optional)",
+    "phoneHint": "Enter your number to earn loyalty points and get a receipt. No password needed.",
+    "payWithCard": "Pay with Card",
+    "payWithHitPay": "Pay with HitPay",
+    "processing": "Processing...",
+    "payFailed": "Payment failed. Please try again.",
+    "noRedirect": "Could not start payment. Please try again.",
+    "noProvider": "Online payment is not available. Please pay at the counter.",
+    "browseMenu": "Browse Our Menu"
   }
 }

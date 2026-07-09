@@ -189,8 +189,10 @@
     "outOfRange": "Bu mağaza yalnızca {radius} km yarıçapında teslimat yapmaktadır. Teslimat adresi bu alanın dışında. Lütfen daha yakın bir mağaza seçin veya teslim almaya geçin.",
     "payAtCounter": "Kasadan Öde",
     "payAtStore": "Mağazada Öde",
+    "payNow": "Şimdi Öde",
     "payOnline": "Online Öde",
     "paymentMethod": "Ödeme Yöntemi",
+    "payment_retry_toast": "Ödeme kurulumu başarısız oldu. Tekrar denemek için dokunun.",
     "percentageOff": "%{value} indirim",
     "pickupAt": "Şuradan teslim al",
     "pickupTime": "Teslim Alma Zamanı",
@@ -203,6 +205,7 @@
     "recipientPhone": "Alıcının Telefonu",
     "removeRewardHint": "Kupon kodu kullanmak için ödülü kaldırın",
     "removeVoucherHint": "Ödül kullanmak için kuponu kaldırın",
+    "retryPayment": "Ödemeyi Tekrar Dene",
     "reward": "Ödül",
     "rewardFallback": "Ödül",
     "rewardSelected": "Seçilen ödül:",
@@ -222,7 +225,8 @@
     "voucherSelected": "Seçilen kupon:",
     "walletBalance": "Cüzdan Bakiyesi",
     "yourRewards": "Ödülleriniz",
-    "yourVouchers": "Kuponlarınız"
+    "yourVouchers": "Kuponlarınız",
+    "recipientPhonePlaceholder": "60123456789"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "Çevrimiçi Öde (Kart / FPX / GrabPay)",
@@ -280,6 +284,7 @@
     "refresh": "Yenile",
     "remove": "Kaldır",
     "retry": "Tekrar Dene",
+    "retrying": "Tekrar deneniyor...",
     "retryingIn": "{seconds}s sonra tekrar deneniyor",
     "rotateToPortrait": "Lütfen cihazınızı dikey konuma çevirin",
     "save": "Kaydet",
@@ -287,6 +292,7 @@
     "search": "Ara",
     "seeAll": "Tümünü Gör",
     "selectCountry": "Ülke seçin",
+    "selectDate": "Tarih seçin",
     "share": "Paylaş",
     "skip": "Atla",
     "stepCount": "Adım {current} / {total}",
@@ -298,7 +304,10 @@
     "tomorrow": "Yarın",
     "view": "Görüntüle",
     "year": "Yıl",
-    "yourCode": "Kodunuz"
+    "yourCode": "Kodunuz",
+    "menuItem": "Menu item",
+    "reward": "Reward",
+    "welcome": "Welcome"
   },
   "errorBoundary": {
     "message": "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
@@ -317,7 +326,8 @@
     "rsvpTag": "RSVP",
     "rsvpd": "Gidiyorsun!",
     "title": "Etkinlikler",
-    "upcoming": "Yaklaşan"
+    "upcoming": "Yaklaşan",
+    "eventImageFallback": "Event image"
   },
   "helpSupport": {
     "backToHome": "Ana Sayfaya Dön",
@@ -509,7 +519,12 @@
     "specialInstructions": "Özel Talimatlar",
     "specialInstructionsPlaceholder": "özel talimatlar...",
     "title": "Menü",
-    "viewCart": "Sepeti Görüntüle"
+    "viewCart": "Sepeti Görüntüle",
+    "multiCourseSubtitle": "Build your combo",
+    "customizeItemAriaLabel": "Customize item",
+    "itemFallback": "Item",
+    "moreCount": "+{count} more",
+    "bundleIncompleteToast": "Bundle unavailable:"
   },
   "menu_page": {
     "kcal": "kcal",
@@ -614,6 +629,7 @@
     "orderProcessing": "Siparişiniz işleniyor",
     "orderStatus": "Sipariş Durumu",
     "orderType": "Sipariş Türü",
+    "payNow": "Şimdi Öde",
     "payment": "Ödeme",
     "phonePrefix": "+60 {phone}",
     "preparingDelivery": "Ekibimiz siparişinizi hazırlıyor",
@@ -681,7 +697,8 @@
     "setAsDefault": "Varsayılan Yap",
     "title": "Ödeme Yöntemleri",
     "topUpWallet": "Cüzdanı Doldur",
-    "walletBalance": "Cüzdan Bakiyesi"
+    "walletBalance": "Cüzdan Bakiyesi",
+    "cardFallback": "Card"
   },
   "profile": {
     "editProfile": "Profili Düzenle",
@@ -880,12 +897,16 @@
     "state": "Eyalet",
     "title": "Kayıtlı Adresler",
     "unit": "Daire",
-    "unitPlaceholder": "daire..."
+    "unitPlaceholder": "daire...",
+    "labelHome": "Home",
+    "labelOffice": "Office",
+    "labelOther": "Other"
   },
   "settings": {
     "about": "Hakkında",
     "aboutFallback": "Otantik Türk kahvesi kültürüne olan tutkudan doğan LOKA Espresso, asırlık kahve geleneklerinin sıcaklığını her fincana taşır. Çekirdeklerimiz en iyi bölgelerden temin edilir — zanaata saygı göstermek için küçük partiler halinde kavrulur.",
     "attribution": "LOKA Espresso özenle hazırlamıştır",
+    "enable_notifications": "Bildirimleri etkinleştir",
     "language": "Dil",
     "languages": {
       "en": "İngilizce",
@@ -894,6 +915,7 @@
       "tr": "Türkçe",
       "zh": "中文"
     },
+    "notifications": "Bildirimler",
     "privacyLegal": "Gizlilik ve Yasal",
     "privacyPolicy": "Gizlilik Politikası",
     "termsOfService": "Hizmet Şartları",
@@ -983,6 +1005,11 @@
     "otpResendFailed": "OTP yeniden gönderilemedi",
     "otpResent": "OTP başarıyla yeniden gönderildi",
     "outOfRange": "Teslimat adresi mağaza hizmet alanı dışında",
+    "paymentCancelled": "Ödeme iptal edildi.",
+    "paymentFailed": "Ödeme başarısız. Lütfen tekrar deneyin.",
+    "paymentGatewayUnavailable": "Ödeme ağ geçidi kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "paymentSuccessful": "Ödeme başarılı.",
+    "payment_failed_refunded": "Ödeme başarısız oldu — siparişiniz iptal edildi ve cüzdan bakiyeniz iade edildi.",
     "photoUpdated": "Fotoğraf Güncellendi",
     "photoUploadFailed": "Fotoğraf Yükleme Başarısız",
     "profileFailed": "Profil kaydedilemedi. Lütfen tekrar deneyin.",
@@ -996,6 +1023,7 @@
     "selectStore": "Lütfen bir mağaza seçin",
     "selectTime": "Lütfen bir saat seçin",
     "sessionExpired": "Oturumunuz süresi doldu. Lütfen tekrar giriş yapın.",
+    "share_failed": "Paylaşım başarısız.",
     "signInToClaim": "Fırsatları talep etmek için giriş yapın",
     "storesLoadFailed": "Mağazalar Yüklenemedi",
     "surveySubmitted": "Anket gönderildi! Teşekkür ederiz.",
@@ -1004,7 +1032,23 @@
     "topUpSuccess": "{amount} başarıyla yüklendi",
     "topUpSuccessReturn": "Cüzdan başarıyla yüklendi",
     "verificationFailed": "Geçersiz OTP. Lütfen tekrar deneyin.",
-    "verificationFailedTitle": "Doğrulama Başarısız"
+    "verificationFailedTitle": "Doğrulama Başarısız",
+    "loadPromotionsFailed": "Failed to load promotions",
+    "loadSurveyFailed": "Failed to load survey",
+    "loadBalanceFailed": "Failed to load wallet balance",
+    "loadTransactionsFailed": "Failed to load transactions",
+    "loadRewardsFailed": "Failed to load rewards",
+    "loadPastOrdersFailed": "Failed to load past orders",
+    "loadProfileFailed": "Failed to load profile",
+    "loadPaymentConfigFailed": "Payment setup failed",
+    "loadBundleProductsFailed": "Failed to load bundle products",
+    "loadSavedAddressesFailed": "Failed to load addresses",
+    "loadNotificationsFailed": "Failed to load notifications",
+    "loadReservationsFailed": "Failed to load reservations",
+    "loadStoresFailed": "Failed to load stores",
+    "qrGenerationFailed": "Failed to generate QR code",
+    "markReadFailed": "Failed to mark as read",
+    "reservationCancelFailed": "Failed to cancel reservation"
   },
   "ui": {
     "action_sheet": {
@@ -1052,5 +1096,26 @@
     "recentTransactions": "Son İşlemler",
     "selectPaymentMethod": "Bakiyenizi artırmak için bir ödeme yöntemi seçin",
     "topUpTitle": "Bakiye Yükle"
+  },
+  "guestPay": {
+    "payForOrder": "Sipariş için ödeyin",
+    "error": "Hata",
+    "invalidLink": "Bu ödeme bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir QR kodu isteyin.",
+    "loadFailed": "Siparişiniz yüklenemedi. Lütfen tekrar deneyin.",
+    "paymentSuccessful": "Ödeme başarılı",
+    "paymentCancelled": "Ödeme iptal edildi",
+    "cancelMsg": "Ödemeniz iptal edildi. Hiçbir ücret alınmadı.",
+    "tryAgain": "Tekrar dene",
+    "alreadyPaid": "Sipariş zaten ödendi",
+    "thankYou": "Bizimle yediğiniz için teşekkürler!",
+    "phoneOptional": "Telefon numarası (opsiyonel)",
+    "phoneHint": "Sadakat puanları ve makbuz almak için numaranızı girin. Şifre gerekmez.",
+    "payWithCard": "Kartla Öde",
+    "payWithHitPay": "HitPay ile Öde",
+    "processing": "İşleniyor...",
+    "payFailed": "Ödeme başarısız. Lütfen tekrar deneyin.",
+    "noRedirect": "Ödeme başlatılamadı. Lütfen tekrar deneyin.",
+    "noProvider": "Çevrimiçi ödeme mevcut değil. Lütfen kasada ödeyin.",
+    "browseMenu": "Menümüze Göz Atın"
   }
 }

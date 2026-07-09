@@ -1,5 +1,5 @@
 """Authentication, authorization, and cryptography."""
-
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
@@ -8,6 +8,8 @@ import bcrypt
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+
+logger = logging.getLogger(__name__)
 
 from app.core.config import get_settings
 
@@ -51,6 +53,7 @@ def verify_password_staff(password: str, hash_: str) -> bool:
         hash_bytes = hash_.encode() if isinstance(hash_, str) else hash_
         return bcrypt.checkpw(pw_bytes, hash_bytes)
     except Exception:
+        logger.debug("Password verification error", exc_info=True)
         return False
 
 
@@ -136,6 +139,40 @@ def decode_token(token: str) -> Dict[str, Any]:
                 audience="fnb-app",
             )
         raise
+
+
+# ── Guest payment tokens ──────────────────────────────────────────────
+# Short-lived signed tokens that let a walk-in customer view and pay for a
+# dine-in POS order via the PWA without logging in. The token is embedded in
+# the QR code so only someone who scans it (near the table) can pay — there is
+# no way to enumerate or guess other orders' tokens.
+
+GUEST_PAY_TOKEN_TYPE = "guest_pay"
+
+
+def create_guest_pay_token(order_id: int, store_id: int) -> str:
+    """Create a signed, 24-hour token authorising guest payment for an order."""
+    return create_access_token(
+        subject=order_id,
+        token_type=GUEST_PAY_TOKEN_TYPE,
+        extra_claims={"sid": store_id, "oid": order_id},
+        expires_delta=timedelta(hours=24),
+    )
+
+
+def decode_guest_pay_token(token: str) -> dict[str, Any] | None:
+    """Validate a guest-pay token. Returns the decoded payload or None."""
+    try:
+        payload = decode_token(token)
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+    if payload.get("type") != GUEST_PAY_TOKEN_TYPE:
+        return None
+    if "oid" not in payload:
+        return None
+    return payload
 
 
 def generate_otp(length: int = 6) -> str:

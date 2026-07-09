@@ -57,14 +57,14 @@ export default function AllergensPage() {
               fontSize: 12
             }}>{item.allergen_key}</td>
                 <td><span className={`badge badge-sm ${item.severity === "high" || item.severity === "critical" ? "badge-red" : "badge-yellow"}`}>{item.severity}</span></td>
-                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/allergens/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                 color: "var(--color-info)",
                 marginRight: 4
               }}><Edit2 size={14} /></button>
                   <button onClick={async () => {
-                if (confirm("Delete?")) {
+                if (confirm(t("common.confirm_delete"))) {
                   await api.del(`/admin/menu/allergens/${item.id}`);
                   refresh();
                 }

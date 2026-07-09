@@ -72,14 +72,12 @@ export default function StaffPage() {
     fetchData();
   }, [fetchData]);
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this staff member?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/staff/${id}`);
       fetchData();
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };

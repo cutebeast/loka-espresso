@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 const L = [{
   code: "en",
@@ -26,20 +28,23 @@ const L = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const F = [{
-  key: "display_name",
-  label: "Display Name"
-}];
+
 const EMOJIS = ["🥬", "🥗", "🌾", "🥛", "🥜", "✅", "🔥", "❄️", "☕", "💤", "🍬", "🌶️", "🥐", "⭐", "🌸", "🆕", "🚫", "💪", "🥩", "🧀", "🍳", "🍞", "🍪", "🍩", "🧁", "🎂", "🍫", "🍯", "🥤", "🧊", "🍵", "🌿", "🍃", "🍓", "🍒", "🍎", "🍊", "🍋", "🍌", "🥭", "🥥", "🥑", "🌽", "🥕", "🧄", "🧅", "🍕", "🍔", "🌮", "🥪", "🍜", "🍝", "🥟", "🍱", "🍲", "🥘", "🍿", "🧈", "🫒", "🧂", "🥄"];
 export default function DietaryTagEditPage() {
   const {
     t
   } = useTranslation();
+
+  const F = [{
+  key: "display_name",
+  label: t("admin.form.displayName")
+}];
   const p = useParams();
   const r = useRouter();
   const id = p.id as string;
   const [form, setForm] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [loc, setLoc] = useState("en");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -65,13 +70,15 @@ export default function DietaryTagEditPage() {
             const fk = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${fk}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTr(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -85,11 +92,9 @@ export default function DietaryTagEditPage() {
     setSaving(true);
     try {
       await api.patch(`/admin/dietary-tags/${id}`, form);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -129,9 +134,7 @@ export default function DietaryTagEditPage() {
           await upsert(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${c}`);
     setTimeout(() => setMsg(""), 2500);
@@ -142,9 +145,10 @@ export default function DietaryTagEditPage() {
       const t = tr[`${loc}:${f.key}`] || "";
       if (t) await upsert(f.key, loc, (form[f.key] || "").trim(), t);
     }
-    setMsg("Saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("menu_dietary-tags_[id].loading")}</div>;
@@ -272,7 +276,7 @@ export default function DietaryTagEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 16
-      }}><button type="button" onClick={() => r.push("/menu/dietary-tags")} className="btn btn-ghost">{t("menu_dietary-tags_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save"}</button></div>
+      }}><button type="button" onClick={() => r.push("/menu/dietary-tags")} className="btn btn-ghost">{t("menu_dietary-tags_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.save")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 600

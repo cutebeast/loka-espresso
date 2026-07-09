@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n";
 
 export default function AdminError({
@@ -11,6 +12,7 @@ export default function AdminError({
   reset: () => void;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   useEffect(() => {
     console.error("Admin page error:", error);
   }, [error]);
@@ -49,7 +51,7 @@ export default function AdminError({
         </button>
         <button
           type="button"
-          onClick={() => window.location.href = "/"}
+          onClick={() => router.push("/")}
           className="btn btn-outline"
           style={{ padding: "8px 20px" }}
         >

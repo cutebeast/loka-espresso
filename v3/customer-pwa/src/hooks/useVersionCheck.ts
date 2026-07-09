@@ -55,9 +55,9 @@ export function useVersionCheck() {
         showToast(t('notifications.newCount', { count: items.length }), 'info');
       }
       return items;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      console.error('[PWA] Notification check failed:', err?.response?.status || err?.message || err);
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number }; message?: string } | undefined;
+      console.error('[PWA] Notification check failed:', e?.response?.status || e?.message || err);
       return [];
     }
   }, [showToast, t]);

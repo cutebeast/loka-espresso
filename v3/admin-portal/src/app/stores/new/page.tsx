@@ -295,7 +295,7 @@ export default function NewStorePage() {
 
           <div className="df-actions">
             <button type="button" onClick={() => router.push("/stores")} className="btn btn-ghost">{t("stores_new.cancel")}</button>
-            <button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Creating..." : "Create Store"}</button>
+            <button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.creating") : t("admin.common.create")}</button>
           </div>
         </div>
       </form>

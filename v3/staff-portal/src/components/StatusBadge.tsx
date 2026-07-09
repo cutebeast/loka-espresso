@@ -1,31 +1,32 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { OrderStatus, ReservationStatus } from "@/lib/api";
 
-const STATUS_MAP: Record<string, { label: string; variant: "green" | "yellow" | "red" | "blue" | "gray" | "orange" }> = {
-  pending: { label: "Pending", variant: "yellow" },
-  confirmed: { label: "Confirmed", variant: "blue" },
-  preparing: { label: "Preparing", variant: "orange" },
-  ready_for_pickup: { label: "Ready", variant: "green" },
-  out_for_delivery: { label: "Out for Delivery", variant: "blue" },
-  delivered: { label: "Delivered", variant: "green" },
-  cancelled_by_customer: { label: "Cancelled", variant: "red" },
-  cancelled_by_merchant: { label: "Cancelled", variant: "red" },
-  refunded: { label: "Refunded", variant: "gray" },
-  partially_refunded: { label: "Partial Refund", variant: "gray" },
-  disputed: { label: "Disputed", variant: "orange" },
+const STATUS_MAP: Record<string, { labelKey: string; variant: "green" | "yellow" | "red" | "blue" | "gray" | "orange" }> = {
+  pending: { labelKey: "staff.status.pending", variant: "yellow" },
+  confirmed: { labelKey: "staff.status.confirmed", variant: "blue" },
+  preparing: { labelKey: "staff.status.preparing", variant: "orange" },
+  ready_for_pickup: { labelKey: "staff.status.ready", variant: "green" },
+  out_for_delivery: { labelKey: "staff.status.out_for_delivery", variant: "blue" },
+  delivered: { labelKey: "staff.status.delivered", variant: "green" },
+  cancelled_by_customer: { labelKey: "staff.status.cancelled_by_customer", variant: "red" },
+  cancelled_by_merchant: { labelKey: "staff.status.cancelled_by_merchant", variant: "red" },
+  refunded: { labelKey: "staff.status.refunded", variant: "gray" },
+  partially_refunded: { labelKey: "staff.status.partially_refunded", variant: "gray" },
+  disputed: { labelKey: "staff.status.disputed", variant: "orange" },
   // Legacy aliases
-  ready: { label: "Ready", variant: "green" },
-  completed: { label: "Completed", variant: "green" },
-  cancelled: { label: "Cancelled", variant: "red" },
-  requested: { label: "Requested", variant: "yellow" },
-  seated: { label: "Seated", variant: "blue" },
-  no_show: { label: "No Show", variant: "red" },
-  available: { label: "Available", variant: "green" },
-  occupied: { label: "Occupied", variant: "red" },
-  reserved: { label: "Reserved", variant: "yellow" },
-  cleaning: { label: "Cleaning", variant: "gray" },
-  cancelled_by_guest: { label: "Cancelled", variant: "red" },
+  ready: { labelKey: "staff.status.ready", variant: "green" },
+  completed: { labelKey: "staff.status.completed", variant: "green" },
+  cancelled: { labelKey: "staff.status.cancelled", variant: "red" },
+  requested: { labelKey: "staff.status.requested", variant: "yellow" },
+  seated: { labelKey: "staff.status.seated", variant: "blue" },
+  no_show: { labelKey: "staff.status.no_show", variant: "red" },
+  available: { labelKey: "staff.status.available", variant: "green" },
+  occupied: { labelKey: "staff.status.occupied", variant: "red" },
+  reserved: { labelKey: "staff.status.reserved", variant: "yellow" },
+  cleaning: { labelKey: "staff.status.cleaning", variant: "gray" },
+  cancelled_by_guest: { labelKey: "staff.status.cancelled", variant: "red" },
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -43,12 +44,14 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status, className = "" }: StatusBadgeProps) {
+  const { t } = useTranslation();
   const safeStatus = status == null ? "" : String(status);
-  const mapped = STATUS_MAP[safeStatus] || { label: safeStatus.replace(/_/g, " "), variant: "gray" as const };
+  const normalizedStatus = safeStatus.replace(/-/g, "_");
+  const mapped = STATUS_MAP[normalizedStatus] || { labelKey: `staff.status.${normalizedStatus}`, variant: "gray" as const };
 
   return (
     <span className={`badge badge-sm ${STATUS_COLORS[mapped.variant]} ${className}`}>
-      {mapped.label}
+      {t(mapped.labelKey)}
     </span>
   );
 }

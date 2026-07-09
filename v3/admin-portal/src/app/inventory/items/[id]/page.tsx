@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 const LOCALES = [{
@@ -27,17 +29,19 @@ const LOCALES = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "item_name",
-  label: "Item Name"
-}, {
-  key: "description",
-  label: "Description"
-}];
+
 export default function InventoryItemEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "item_name",
+  label: t("admin.form.itemName")
+}, {
+  key: "description",
+  label: t("admin.form.description")
+}];
   const {
     symbol
   } = useCurrency();
@@ -46,6 +50,7 @@ export default function InventoryItemEditPage() {
   const itemId = p.id as string;
   const [form, setForm] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [activeLocale, setActiveLocale] = useState("en");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -63,15 +68,11 @@ export default function InventoryItemEditPage() {
     try {
       const d = await api.getRaw<any>("/admin/inventory/categories?per_page=50");
       setCategories(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/inventory/suppliers?per_page=50");
       setSuppliers(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const load = async () => {
     setLoading(true);
@@ -98,13 +99,15 @@ export default function InventoryItemEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTranslations(x);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -119,11 +122,9 @@ export default function InventoryItemEditPage() {
         unit_cost: Number(form.unit_cost)
       };
       await api.patch(`/admin/inventory/items/${itemId}`, pl);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -143,9 +144,7 @@ export default function InventoryItemEditPage() {
         record_id: Number(itemId),
         column_name: field
       });
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const regenerateAll = async () => {
     setRegenerating(true);
@@ -167,9 +166,7 @@ export default function InventoryItemEditPage() {
           await upsertTr(f.key, activeLocale, src, r.translated_text);
           count++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${count} ${activeLocale.toUpperCase()} translations`);
     setTimeout(() => setMsg(""), 2500);
@@ -180,9 +177,10 @@ export default function InventoryItemEditPage() {
       const text = translations[`${activeLocale}:${f.key}`] || "";
       if (text) await upsertTr(f.key, activeLocale, (form[f.key] || "").trim(), text);
     }
-    setMsg("Translations saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("inventory_items_[id].loading")}</div>;
@@ -279,9 +277,7 @@ export default function InventoryItemEditPage() {
                   ...form,
                   image_url: url
                 });
-              } catch (e) {
-                console.error(e);
-              } finally {
+              } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
                 setUploading(false);
               }
             }} style={{
@@ -302,7 +298,7 @@ export default function InventoryItemEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 16
-      }}><button type="button" onClick={() => router.push("/inventory/items")} className="btn btn-ghost">{t("inventory_items_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save"}</button></div>
+      }}><button type="button" onClick={() => router.push("/inventory/items")} className="btn btn-ghost">{t("inventory_items_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.save")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 600

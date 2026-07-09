@@ -9,6 +9,9 @@ if (!API_PROXY) {
 
 const nextConfig: NextConfig = {
   // output: "standalone", // disabled for 'next start' compatibility
+  experimental: {
+    workerThreads: false,
+  },
   async rewrites() {
     return {
       beforeFiles: [

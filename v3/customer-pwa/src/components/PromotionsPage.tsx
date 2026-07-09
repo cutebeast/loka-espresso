@@ -66,7 +66,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         statuses.forEach((s) => { if (s) map[s.id] = s.status; });
         setBannerStatus(map);
       }
-    } catch (err) { console.error('[PromotionsPage] Failed to load promotions:', err); setPromotions([]); }
+    } catch (err) { console.error('[PromotionsPage] Failed to load promotions:', err); showToast(t('toast.loadPromotionsFailed'), 'error'); setPromotions([]); }
     finally { setLoading(false); }
   }, []);
 
@@ -78,7 +78,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     try {
       const res = await api.get(`/surveys/${surveyId}`);
       setSurveyQuestions(res.data.questions || []);
-    } catch (err) { console.error('[PromotionsPage] Failed to load survey questions:', err);
+    } catch (err) { console.error('[PromotionsPage] Failed to load survey questions:', err); showToast(t('toast.loadSurveyFailed'), 'error');
       setSurveyQuestions([]);
     }
   }, []);
@@ -210,7 +210,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           <div className="promotions-carousel">
             {promotions.map(promo => (
               <div key={promo.id} className="promotions-promo-card" onClick={() => handleSelectPromo(promo)}>
-                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt={promo.title || 'Promotion'} className="promotions-card-bg-img" loading="lazy" />}
+                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt={promo.title || t('promotions.promo')} className="promotions-card-bg-img" loading="lazy" />}
                 <div className="promotions-promo-content">
                   <div className="promotions-promo-title">{promo.title}</div>
                   {promo.short_description && <div className="promotions-promo-sub">{promo.short_description}</div>}
@@ -245,7 +245,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
             return (
               <div key={promo.id} className="promotions-list-card" onClick={() => handleSelectPromo(promo)}>
                 <div className="promotions-card-thumb">
-                  {img ? <img src={img} alt={promo.title || 'Promotion'} loading="lazy" /> : <Gift size={24} color={LOKA.border} />}
+                  {img ? <img src={img} alt={promo.title || t('promotions.promo')} loading="lazy" /> : <Gift size={24} color={LOKA.border} />}
                 </div>
                 <div className="promotions-card-body">
                   <div className="promotions-card-title">{promo.title}</div>

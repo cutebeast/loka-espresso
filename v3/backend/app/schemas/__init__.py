@@ -184,6 +184,13 @@ from app.schemas.content import (
     ContentSectionBase,
     ContentSectionOut,
 )
+from app.schemas.help import (
+    HelpArticleBase,
+    HelpArticleCreate,
+    HelpArticleOut,
+    HelpArticlePublicOut,
+    HelpArticleUpdate,
+)
 from app.schemas.marketing import (
     MarketingCampaignCreate,
     MarketingCampaignOut,
@@ -349,6 +356,12 @@ __all__ = [
     "PromoBannerOut",
     "ContentSectionBase",
     "ContentSectionOut",
+    # Help
+    "HelpArticleBase",
+    "HelpArticleCreate",
+    "HelpArticleOut",
+    "HelpArticlePublicOut",
+    "HelpArticleUpdate",
     # Marketing
     "MarketingCampaignCreate",
     "MarketingCampaignOut",

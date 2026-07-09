@@ -23,9 +23,7 @@ export default function StaffTimeEventsPage() {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => {
       const l = d.items || [];
       setStores(l);
-    }).catch(e => {
-      console.error('stores:', e);
-    });
+    }).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -49,9 +47,7 @@ export default function StaffTimeEventsPage() {
     try {
       await verifyTimeEvent(id);
       fetchData();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     ;
   };
   const typeBadge = (t: string) => {

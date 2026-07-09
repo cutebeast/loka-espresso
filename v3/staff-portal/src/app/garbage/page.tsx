@@ -33,7 +33,7 @@ export default function GarbagePage() {
   };
   const handleSubmit = useCallback(async () => {
     if (files.length === 0) {
-      setError("Please upload at least one image");
+      setError(t("garbage.err_image"));
       return;
     }
     setSubmitting(true);
@@ -50,7 +50,7 @@ export default function GarbagePage() {
     } finally {
       setSubmitting(false);
     }
-  }, [desc, files]);
+  }, [desc, files, t]);
   if (success) {
     return <div style={{
       padding: 24
@@ -170,7 +170,7 @@ export default function GarbagePage() {
           alignItems: "center",
           gap: 6
         }}>
-            <Camera size={16} /> {files.length > 0 ? "Add More" : "Upload Images"}
+            <Camera size={16} /> {files.length > 0 ? t("garbage.add_more") : t("garbage.upload_images")}
           </button>
         </div>
         <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary" style={{
@@ -179,7 +179,7 @@ export default function GarbagePage() {
         fontSize: 15,
         fontWeight: 600
       }}>
-          {submitting ? "Submitting..." : "Submit Garbage Report"}
+          {submitting ? t("common.submitting") : t("garbage.submit_report")}
         </button>
       </div>
     </div>;

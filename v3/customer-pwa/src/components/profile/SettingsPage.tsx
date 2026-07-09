@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, FileText, Shield, ChevronRight, Coffee, Globe } from 'lucide-react';
+import { ArrowLeft, FileText, Shield, ChevronRight, Coffee, Globe, Bell } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSelectorModal } from '@/components/shared/LanguageSelectorModal';
+import { requestWebPushPermission } from '@/hooks/useWebPush';
 import api from '@/lib/api';
 export default function SettingsPage() {
   const {
-    setPage
+    setPage,
+    showToast
   } = useUIStore();
   const {
     t,
@@ -17,6 +19,12 @@ export default function SettingsPage() {
   const [showLangSheet, setShowLangSheet] = useState(false);
   const [aboutText, setAboutText] = useState('');
   const [appVersion, setAppVersion] = useState('0.1.0');
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
   useEffect(() => {
     api.get('/content/legal/about').then(res => {
       // v3 returns array of content blocks; find the "about" or "system" type
@@ -38,12 +46,14 @@ export default function SettingsPage() {
       if (desc) setAboutText(desc);else setAboutText(t('settings.aboutFallback'));
     }).catch(err => {
       console.error('[Settings] About fetch failed:', err);
+      showToast(t('toast.failedToLoad'), 'error');
       setAboutText(t('settings.aboutFallback'));
     });
     fetch('/version.json').then(res => res.ok ? res.json() : null).then(data => {
       if (data?.version) setAppVersion(data.version);
     }).catch(err => {
       console.error('[Settings] Version fetch failed:', err);
+      showToast(t('toast.failedToLoad'), 'error');
     });
   }, [t]);
   return <div className="settings-screen">
@@ -71,6 +81,23 @@ export default function SettingsPage() {
             <ChevronRight size={16} className="settings-menu-arrow" />
           </button>
         </div>
+
+        {/* Notifications */}
+        {notifPermission === 'default' && (
+          <>
+            <div className="settings-section-title">{t('settings.notifications')}</div>
+            <div className="settings-menu-card">
+              <button className="settings-menu-item" onClick={() => {
+                requestWebPushPermission().then(() => setNotifPermission(Notification.permission));
+              }}>
+                <div className="settings-menu-icon settings-icon-language">
+                  <Bell size={18} />
+                </div>
+                <span className="settings-menu-label">{t('settings.enable_notifications')}</span>
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Privacy & Legal */}
         <div className="settings-section-title">{t('settings.privacyLegal')}</div>

@@ -37,9 +37,7 @@ export default function RefundsPage() {
     mountedRef.current = true;
     api.get<Store[]>("/admin/stores?per_page=50").then(d => {
       if (mountedRef.current) setStores(Array.isArray(d) ? d : []);
-    }).catch(e => {
-      console.error('stores:', e);
-    });
+    }).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
     return () => {
       mountedRef.current = false;
     };

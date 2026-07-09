@@ -30,7 +30,7 @@ export default function MyCardPage() {
         if (created) {
           setMemberSince(new Date(created).toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' }));
         }
-      }).catch((err) => console.error('[MyCard] Failed to load user:', err));
+      }).catch((err) => { console.error('[MyCard] Failed to load user:', err); showToast(t('toast.loadProfileFailed'), 'error'); });
   }, []);
 
   /* Generate QR code for the user's ID to be scanned by staff */
@@ -41,7 +41,7 @@ export default function MyCardPage() {
       width: 120,
       margin: 0,
       color: { dark: LOKA.textPrimary, light: LOKA.white },
-    }).then(setQrDataUrl).catch((err) => console.error('[MyCard] QR generation failed:', err));
+    }).then(setQrDataUrl).catch((err) => { console.error('[MyCard] QR generation failed:', err); showToast(t('toast.qrGenerationFailed'), 'error'); });
   }, [user?.id]);
 
   const handleShare = async () => {
@@ -61,7 +61,7 @@ export default function MyCardPage() {
 
   const memberId = user?.id ? `${t('myCard.memberIdPrefix')}${String(user.id).padStart(6, '0')}` : '';
 
-  const displayTiers = tiersFromStore.length > 0 ? tiersFromStore.map(t => t.name) : [tier || 'Member'];
+  const displayTiers = tiersFromStore.length > 0 ? tiersFromStore.map(t => t.name) : [tier || t('myCard.member')];
 
   return (
     <div className="mycard-screen">

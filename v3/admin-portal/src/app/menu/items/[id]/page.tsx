@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Upload, Plus, Trash2 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 const LOCALES = [{
@@ -27,20 +29,22 @@ const LOCALES = [{
   label: "TR",
   flag: "🇹🇷"
 }];
-const TR_FIELDS = [{
-  key: "item_name",
-  label: "Item Name"
-}, {
-  key: "description",
-  label: "Description"
-}, {
-  key: "long_description",
-  label: "Long Description"
-}];
+
 export default function ItemEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TR_FIELDS = [{
+  key: "item_name",
+  label: t("admin.form.itemName")
+}, {
+  key: "description",
+  label: t("admin.form.description")
+}, {
+  key: "long_description",
+  label: t("admin.form.longDescription")
+}];
   const {
     symbol
   } = useCurrency();
@@ -49,6 +53,7 @@ export default function ItemEditPage() {
   const id = p.id as string;
   const [form, setForm] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [loc, setLoc] = useState("en");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -81,39 +86,27 @@ export default function ItemEditPage() {
     try {
       const d = await api.getRaw<any>("/admin/menu/categories?per_page=50");
       setCategories(raw(d));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/menu/allergens");
       setAllergens(raw(d));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/dietary-tags?per_page=50");
       setDietaryTags(raw(d));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/menu/tax-categories");
       setTaxCategories(raw(d));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/loyalty/tiers");
       setLoyaltyTiers(raw(d));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/menu/bundle-products?per_page=500");
       setBundleProducts(Array.isArray(d) ? d : []);
-    } catch (e) {
-      console.error('bundles:', e);
-    }
+    } catch (e: any) {console.error('bundles:', e); setMsg(e.message || t("admin.errors.loadFailed")); }
   }, []);
   const loadItem = useCallback(async () => {
     setLoading(true);
@@ -216,7 +209,11 @@ export default function ItemEditPage() {
         ...x
       });
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -365,10 +362,10 @@ export default function ItemEditPage() {
       pl.prep_time_minutes = Number(pl.prep_time_minutes) || 10;
       pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
       await api.patch(`/admin/menu/items/${id}`, pl);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
     } catch (e: any) {
-      setMsg(e.message || "Save failed");
+      setMsg(e.message || t("admin.errors.saveFailed"));
       console.error(e);
     } finally {
       setSaving(false);
@@ -390,9 +387,7 @@ export default function ItemEditPage() {
         record_id: Number(id),
         column_name: field
       });
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
   const regenAll = async () => {
     setRegen(true);
@@ -414,9 +409,7 @@ export default function ItemEditPage() {
           await upsertTr(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     setMsg(`Regenerated ${c}`);
     setTimeout(() => setMsg(""), 2500);
@@ -429,11 +422,9 @@ export default function ItemEditPage() {
         const t = tr[`${loc}:${f.key}`] || "";
         if (t) await upsertTr(f.key, loc, (form[f.key] || "").trim(), t);
       }
-      setMsg("Translations saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSavingTr(false);
     }
   };
@@ -450,9 +441,7 @@ export default function ItemEditPage() {
         image_url: j.url || j.filename
       });
       if (fileRef.current) fileRef.current.value = "";
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setUploading(false);
     }
   };
@@ -479,6 +468,7 @@ export default function ItemEditPage() {
     background: active ? "rgba(59,74,26,0.08)" : "var(--color-bg-white)",
     color: active ? "var(--color-primary)" : "var(--color-text-muted)"
   }}>{icon && <span>{icon}</span>}{label}</button>;
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => r.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}>{t("menu_items_[id].loading")}</div>;
@@ -900,7 +890,7 @@ export default function ItemEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 16
-      }}><button type="button" onClick={() => r.push("/menu/items")} className="btn btn-ghost">{t("menu_items_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save Changes"}</button></div>
+      }}><button type="button" onClick={() => r.push("/menu/items")} className="btn btn-ghost">{t("menu_items_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 700

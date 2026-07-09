@@ -169,7 +169,7 @@ export default function SplashScreenNewPage() {
               })} />{t("content_pwa-splash_new.active")}</label></div>
         </div><div className="df-actions" style={{
           marginTop: 20
-        }}><button type="button" onClick={() => router.push("/content/pwa-splash")} className="btn btn-ghost">{t("content_pwa-splash_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? "Creating..." : "Create Splash"}</button></div></form>
+        }}><button type="button" onClick={() => router.push("/content/pwa-splash")} className="btn btn-ghost">{t("content_pwa-splash_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div></form>
       </div>
     </div>;
 }

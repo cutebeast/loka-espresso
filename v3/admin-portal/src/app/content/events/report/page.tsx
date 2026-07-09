@@ -81,7 +81,7 @@ export default function EventRsvpReportPage() {
                 fontWeight: 600
               }}>{e.rsvp_count}</td>
               <td><span className={`badge badge-sm ${pct >= 80 ? "badge-red" : pct >= 50 ? "badge-yellow" : "badge-green"}`}>{pct}%</span></td>
-              <td><span className={`badge badge-sm ${e.is_active ? "badge-green" : "badge-gray"}`}>{e.is_active ? "Active" : "Inactive"}</span></td>
+              <td><span className={`badge badge-sm ${e.is_active ? "badge-green" : "badge-gray"}`}>{e.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
             </tr>;
           })}
         </tbody>

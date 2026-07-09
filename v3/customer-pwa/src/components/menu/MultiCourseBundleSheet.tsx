@@ -144,7 +144,7 @@ export default function MultiCourseBundleSheet({
           <div className="bps-header">
             <div className="bps-header-text">
               <h3 id="mcb-title" className="bps-title">{bundle.title}</h3>
-              <p className="bps-subtitle">{t('menu.multiCourseSubtitle') || 'Build your combo'}</p>
+              <p className="bps-subtitle">{t('menu.multiCourseSubtitle')}</p>
             </div>
             <button className="bps-close-btn" onClick={onClose} aria-label={t('common.close')}>
               <X size={20} />

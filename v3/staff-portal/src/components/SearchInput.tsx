@@ -11,12 +11,13 @@ interface SearchInputProps {
 export default function SearchInput({
   value,
   onChange,
-  placeholder = "Search...",
+  placeholder: placeholderProp,
   className = ""
 }: SearchInputProps) {
   const {
     t
   } = useTranslation();
+  const placeholder = placeholderProp ?? t("common.search_ellipsis");
   return <div className={`search-input-wrap ${className}`}>
       <Search size={16} />
       <input className="search-input" type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />

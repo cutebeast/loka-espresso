@@ -1,5 +1,5 @@
 """Staff & Workforce models."""
-
+from decimal import Decimal
 from datetime import date, datetime, time, timezone
 from typing import List
 
@@ -42,7 +42,7 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(StaffRole, nullable=False)
-    hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    hourly_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     hire_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     termination_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     pin_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -207,7 +207,7 @@ class TipAllocation(Base):
     staff_id: Mapped[int | None] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True
     )
-    tip_amount: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
+    tip_amount: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     tip_percentage: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
     allocation_type: Mapped[str] = mapped_column(String(20), nullable=False, default="even_split")
     created_at: Mapped[datetime] = mapped_column(

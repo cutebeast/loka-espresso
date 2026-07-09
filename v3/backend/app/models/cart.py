@@ -57,7 +57,7 @@ class CartLineItem(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     cart_id: Mapped[int] = mapped_column(
-        ForeignKey("customer_carts.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customer_carts.id", ondelete="CASCADE"), nullable=False, index=True
     )
     menu_item_id: Mapped[int] = mapped_column(
         ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False

@@ -15,7 +15,7 @@ ADMIN_ACCESS_COOKIE_NAME = "admin_token"
 ADMIN_REFRESH_COOKIE_NAME = "admin_refresh_token"
 
 # Max-age values (seconds)
-ACCESS_MAX_AGE = 60 * 15  # 15 minutes
+ACCESS_MAX_AGE = 60 * 480  # 8 hours — matches jwt_expire_minutes
 REFRESH_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 
 

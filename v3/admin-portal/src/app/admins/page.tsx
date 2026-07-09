@@ -51,8 +51,8 @@ export default function AdminUsersPage() {
   };
   useEffect(() => {
     fetch();
-    api.get<any>("/admin/auth/roles").then(d => setRoles(Array.isArray(d) ? d : d.items || [])).catch((e: any) => console.error("Failed to load roles:", e));
-    api.get<any>("/admin/stores?per_page=100").then(d => setAllStores(Array.isArray(d) ? d : d.items || [])).catch((e: any) => console.error("Failed to load stores:", e));
+    api.get<any>("/admin/auth/roles").then(d => setRoles(Array.isArray(d) ? d : d.items || [])).catch((e: any) => { console.error("Failed to load roles:", e); setMsg(e.message || t("admin.errors.loadFailed")); });
+    api.get<any>("/admin/stores?per_page=100").then(d => setAllStores(Array.isArray(d) ? d : d.items || [])).catch((e: any) => { console.error("Failed to load stores:", e); setMsg(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const validateForm = (): string | null => {
     if (!form.display_name.trim()) return "Display name is required.";
@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
     }
   };
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this admin account?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/auth/users/${id}`);
@@ -170,7 +170,7 @@ export default function AdminUsersPage() {
                 </select>
               </div>
             </div>
-            <div className="df-actions"><button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost">{t("admins.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Plus size={14} />{saving ? "Creating..." : "Create"}</button></div>
+            <div className="df-actions"><button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost">{t("admins.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Plus size={14} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div>
           </form>
         </div>}
 
@@ -205,7 +205,7 @@ export default function AdminUsersPage() {
                 fontSize: 10
               }}>{t("admins.all")}</span>}
               </td>
-              <td><span className={`badge badge-sm ${a.is_active ? "badge-green" : "badge-gray"}`}>{a.is_active ? "Active" : "Inactive"}</span></td>
+              <td><span className={`badge badge-sm ${a.is_active ? "badge-green" : "badge-gray"}`}>{a.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
               <td><button type="button" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn btn-ghost btn-sm" style={{
                 color: deletingId === a.id ? "var(--color-text-muted)" : "var(--color-error)"
               }}><Trash2 size={14} /></button></td>

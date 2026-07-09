@@ -38,26 +38,30 @@ export default function ProfilePage() {
       if (mounted) setProfile(d);
     }).catch(e => {
       console.error("Failed to load profile:", e);
-      if (mounted) setProfile(null);
+      if (mounted) {
+        setProfile(null);
+        setMsg(t("profile.load_failed"));
+        setIsError(true);
+      }
     }).finally(() => {
       if (mounted) setLoading(false);
     });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [t]);
   const roles = profile?.roles || [];
-  const name = profile?.display_name || (typeof window !== "undefined" ? localStorage.getItem("staffName") || "Staff Member" : "Staff Member");
+  const name = profile?.display_name || (typeof window !== "undefined" ? localStorage.getItem("staffName") || t("profile.staff_member") : t("profile.staff_member"));
   const email = profile?.email || (typeof window !== "undefined" ? localStorage.getItem("staffEmail") || "" : "");
   const storeId = profile?.store_id;
   const handlePasswordChange = async () => {
     if (!currentPw) {
-      setMsg("Current password is required");
+      setMsg(t("profile.err_current_password_required"));
       setIsError(true);
       return;
     }
     if (!newPw || newPw.length < 6) {
-      setMsg("Password must be at least 6 characters");
+      setMsg(t("profile.err_password_too_short"));
       setIsError(true);
       return;
     }
@@ -67,14 +71,14 @@ export default function ProfilePage() {
         current_password: currentPw,
         new_password: newPw
       });
-      setMsg("Password updated");
+      setMsg(t("profile.password_updated"));
       setIsError(false);
       setShowPw(false);
       setCurrentPw("");
       setNewPw("");
     } catch (e: unknown) {
       console.error("Password change failed:", e);
-      setMsg(parseApiError(e, "Failed"));
+      setMsg(parseApiError(e, t("common.failed")));
       setIsError(true);
     } finally {
       setSaving(false);
@@ -82,12 +86,12 @@ export default function ProfilePage() {
   };
   const handlePinChange = async () => {
     if (!currentPin || currentPin.length < 4) {
-      setMsg("Current PIN is required");
+      setMsg(t("profile.err_current_pin_required"));
       setIsError(true);
       return;
     }
-    if (!newPin || newPin.length < 4) {
-      setMsg("PIN must be at least 4 digits");
+    if (!newPin || newPin.length !== 6) {
+      setMsg(t("profile.err_pin_6_digits"));
       setIsError(true);
       return;
     }
@@ -97,14 +101,14 @@ export default function ProfilePage() {
         current_pin: currentPin,
         new_pin: newPin
       });
-      setMsg("PIN updated");
+      setMsg(t("profile.pin_updated"));
       setIsError(false);
       setShowPin(false);
       setCurrentPin("");
       setNewPin("");
     } catch (e: unknown) {
       console.error("PIN change failed:", e);
-      setMsg(parseApiError(e, "Failed"));
+      setMsg(parseApiError(e, t("common.failed")));
       setIsError(true);
     } finally {
       setSaving(false);
@@ -127,7 +131,7 @@ export default function ProfilePage() {
   }}>
       <PageHeader title={t("profile.my_profile_2")} />
 
-      {msg && <Alert variant={isError ? "error" : "success"} onDismiss={() => setMsg("")} autoDismiss={msg.includes("Failed") ? undefined : 3000}>
+      {msg && <Alert variant={isError ? "error" : "success"} onDismiss={() => setMsg("")} autoDismiss={isError ? undefined : 3000}>
           {msg}
         </Alert>}
 
@@ -168,7 +172,7 @@ export default function ProfilePage() {
             flexWrap: "wrap"
           }}>
               {roles.map((r: string) => <span key={r} className="badge badge-sm badge-outline">{r}</span>)}
-              {roles.length === 0 && <span className="badge badge-sm badge-outline">{isAdmin ? "Administrator" : "Staff"}</span>}
+              {roles.length === 0 && <span className="badge badge-sm badge-outline">{isAdmin ? t("profile.administrator") : t("profile.staff")}</span>}
             </div>
           </div>
         </div>
@@ -200,7 +204,7 @@ export default function ProfilePage() {
           }}>{t("profile.role")}</span>
             <span style={{
             fontWeight: 600
-          }}>{roles.length > 0 ? roles.join(", ") : isAdmin ? "Administrator" : "Staff"}</span>
+          }}>{roles.length > 0 ? roles.join(", ") : isAdmin ? t("profile.administrator") : t("profile.staff")}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Store size={16} style={{
@@ -212,7 +216,7 @@ export default function ProfilePage() {
           }}>{t("profile.store")}</span>
             <span style={{
             fontWeight: 600
-          }}>{storeId ? `Store #${storeId}` : "All Stores"}</span>
+          }}>{storeId ? t("profile.store_n", { id: storeId }) : t("profile.all_stores")}</span>
           </div>
         </div>
       </Card>
@@ -246,7 +250,7 @@ export default function ProfilePage() {
                   <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder={t("profile.new_password_min_6_chars")} className="form-input" />
                   <div className="flex items-center gap-2">
                     <button className="btn btn-primary btn-sm" onClick={handlePasswordChange} disabled={saving}>
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? t("common.saving") : t("common.save")}
                     </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => {
                 setShowPw(false);
@@ -273,7 +277,7 @@ export default function ProfilePage() {
             }} />
                   <div className="flex items-center gap-2">
                     <button className="btn btn-primary btn-sm" onClick={handlePinChange} disabled={saving}>
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? t("common.saving") : t("common.save")}
                     </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => {
                 setShowPin(false);

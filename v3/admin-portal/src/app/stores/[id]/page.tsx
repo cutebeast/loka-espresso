@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const labelClass = "block text-xs font-semibold text-gray-500 uppercase mb-1";
@@ -50,30 +52,38 @@ const LOCALES: {
   label: "TR",
   flag: "🇹🇷"
 }];
-const TRANSLATABLE_FIELDS = [
+
+
+export default function StoreEditPage() {
+  const {
+    t
+  } = useTranslation();
+
+  const TRANSLATABLE_FIELDS = [
 // Basic (except store_code, slug)
 {
   key: "store_name",
-  label: "Store Name"
+  label: t("admin.form.storeName")
 }, {
   key: "brand_name",
-  label: "Brand Name"
+  label: t("admin.form.brandName")
 },
 // Address
 {
   key: "address_line_1",
-  label: "Address Line 1"
+  label: t("admin.form.addressLine1")
 }, {
   key: "address_line_2",
-  label: "Address Line 2"
+  label: t("admin.form.addressLine2")
 }, {
   key: "city",
-  label: "City"
+  label: t("admin.form.city")
 }, {
   key: "state_province",
-  label: "State/Province"
+  label: t("admin.form.stateProvince")
 }];
-const ALL_FIELDS: {
+
+  const ALL_FIELDS: {
   section: string;
   fields: {
     key: string;
@@ -84,121 +94,118 @@ const ALL_FIELDS: {
   section: "Basic",
   fields: [{
     key: "store_name",
-    label: "Store Name"
+    label: t("admin.form.storeName")
   }, {
     key: "store_code",
-    label: "Store Code"
+    label: t("admin.form.storeCode")
   }, {
     key: "slug",
-    label: "Slug"
+    label: t("admin.form.slug")
   }, {
     key: "brand_name",
-    label: "Brand Name"
+    label: t("admin.form.brandName")
   }]
 }, {
   section: "Sort Order",
   fields: [{
     key: "position",
-    label: "Position",
+    label: t("admin.form.position"),
     type: "number"
   }]
 }, {
   section: "Address",
   fields: [{
     key: "address_line_1",
-    label: "Address Line 1"
+    label: t("admin.form.addressLine1")
   }, {
     key: "address_line_2",
-    label: "Address Line 2"
+    label: t("admin.form.addressLine2")
   }, {
     key: "city",
-    label: "City"
+    label: t("admin.form.city")
   }, {
     key: "state_province",
-    label: "State/Province"
+    label: t("admin.form.stateProvince")
   }, {
     key: "postal_code",
-    label: "Postal Code"
+    label: t("admin.form.postalCode")
   }, {
     key: "country_code",
-    label: "Country (2-letter)",
+    label: t("admin.form.country"),
     type: "country"
   }]
 }, {
   section: "Contact",
   fields: [{
     key: "phone_number",
-    label: "Phone"
+    label: t("admin.form.phone")
   }, {
     key: "email_address",
-    label: "Email"
+    label: t("admin.form.email")
   }, {
     key: "timezone",
-    label: "Timezone"
+    label: t("admin.form.timezone")
   }, {
     key: "currency_code",
-    label: "Currency"
+    label: t("admin.form.currency")
   }]
 }, {
   section: "Location",
   fields: [{
     key: "latitude",
-    label: "Latitude",
+    label: t("admin.form.latitude"),
     type: "number"
   }, {
     key: "longitude",
-    label: "Longitude",
+    label: t("admin.form.longitude"),
     type: "number"
   }]
 }, {
   section: "Operations",
   fields: [{
     key: "pickup_lead_minutes",
-    label: "Pickup Lead (min)",
+    label: t("admin.form.pickupLeadMinutes"),
     type: "number"
   }, {
     key: "delivery_radius_km",
-    label: "Delivery Radius (km)",
+    label: t("admin.form.deliveryRadiusKm"),
     type: "number"
   }, {
     key: "first_order_minutes_after_open",
-    label: "First Order After Open (min)",
+    label: t("admin.form.firstOrderMinutesAfterOpen"),
     type: "number"
   }, {
     key: "last_order_minutes_before_close",
-    label: "Last Order Before Close (min)",
+    label: t("admin.form.lastOrderMinutesBeforeClose"),
     type: "number"
   }]
 }, {
   section: "Media",
   fields: [{
     key: "logo_url",
-    label: "Logo URL"
+    label: t("admin.form.logoUrl")
   }, {
     key: "banner_image_url",
-    label: "Banner Image URL"
+    label: t("admin.form.bannerImageUrl")
   }]
 }, {
   section: "Settings",
   fields: [{
     key: "is_active",
-    label: "Active",
+    label: t("admin.form.active"),
     type: "checkbox"
   }, {
     key: "is_accepting_orders",
-    label: "Accepting Orders",
+    label: t("admin.form.acceptingOrders"),
     type: "checkbox"
   }]
 }];
-export default function StoreEditPage() {
-  const {
-    t
-  } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const storeId = params.id as string;
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeLocale, setActiveLocale] = useState<LocaleTab>("en");
   const [regenerating, setRegenerating] = useState<string>(""); // "field:locale"
@@ -275,7 +282,11 @@ export default function StoreEditPage() {
       }
       setTranslations(allTr);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -298,11 +309,9 @@ export default function StoreEditPage() {
       payload.operating_hours = hours;
       payload.special_hours = specialHours;
       await api.patch(`/admin/stores/${storeId}`, payload);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -333,9 +342,7 @@ export default function StoreEditPage() {
             [`${locale}:${field.key}`]: translated
           }));
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     // Step 2: Save all in one batch
     if (results.length > 0) {
@@ -378,10 +385,11 @@ export default function StoreEditPage() {
   const handleSaveTranslation = async (locale: string, field: string, text: string) => {
     const sourceText = form[field] || "";
     await upsertTranslation(field, locale, sourceText, text);
-    setMsg("Translation saved");
+    setMsg(t("admin.common.saved"));
     setTimeout(() => setMsg(""), 2000);
   };
   void handleSaveTranslation;
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}><p>{t("stores_[id].loading")}</p></div>;
@@ -678,7 +686,7 @@ export default function StoreEditPage() {
           </div>
           <div className="df-actions">
             <button type="button" onClick={() => router.push("/stores")} className="btn btn-ghost">{t("stores_[id].cancel")}</button>
-            <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button>
+            <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button>
           </div>
         </div>}
 

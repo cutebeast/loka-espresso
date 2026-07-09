@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
+import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield, Copy, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
@@ -164,56 +164,79 @@ export default function MyRewardsPage({
       })}
       </div>
 
-      {/* Reward detail sheet — NO CODE SHOWN */}
-      {selectedReward && <div className="myrv-sheet-overlay" onClick={e => {
-      if (e.target === e.currentTarget) setSelectedReward(null);
-    }}>
-          <div className="myrv-sheet">
-            <div className="myrv-sheet-handle" />
-            <div className="myrv-sheet-title">{selectedReward.reward_name}</div>
-            <div className="myrv-sheet-sub">{t('myRewards.showToCashier')}</div>
-            <div className="myrv-sheet-info">
-              <div className="myrv-sheet-info-icon">
-                <QrCode size={40} color="var(--loka-primary)" />
-              </div>
-              <div className="myrv-sheet-info-text">
-                {t('myRewards.redemptionInfo')}
-              </div>
-            </div>
-            {selectedReward.expires_at && <div className="myrv-sheet-expiry">{t('myRewards.expires', {
-            date: formatDate(selectedReward.expires_at)
-          })}</div>}
-            <button className="myrv-sheet-close-btn" onClick={() => setSelectedReward(null)}>{t('common.done')}</button>
-          </div>
-        </div>}
+      {/* Reward detail sheet */}
+      {selectedReward && <RewardDetailSheet reward={selectedReward} onClose={() => setSelectedReward(null)} t={t} formatDate={formatDate} />}
 
-      {/* Voucher detail sheet — NO CODE SHOWN */}
-      {selectedVoucher && <div className="myrv-sheet-overlay" onClick={e => {
-      if (e.target === e.currentTarget) setSelectedVoucher(null);
-    }}>
-          <div className="myrv-sheet">
-            <div className="myrv-sheet-handle" />
-            <div className="myrv-sheet-title">
-              {selectedVoucher.discount_type === 'percentage_off' ? `${selectedVoucher.discount_value}% OFF` : selectedVoucher.discount_type === 'free_item' ? t('myRewards.freeItem') : `${formatPrice(Number(selectedVoucher.discount_value))} OFF`}
-            </div>
-            <div className="myrv-sheet-sub">
-              {selectedVoucher.source || t('myRewards.promoVoucher')} · {t('myRewards.minSpend', {
-            amount: formatPrice(Number(selectedVoucher.min_spend || 0))
-          })}
-            </div>
-            <div className="myrv-sheet-info">
-              <div className="myrv-sheet-info-icon">
-                <Shield size={40} color="var(--loka-primary)" />
-              </div>
-              <div className="myrv-sheet-info-text">
-                {t('myRewards.voucherInfo')}
-              </div>
-            </div>
-            {selectedVoucher.expires_at && <div className="myrv-sheet-expiry">{t('myRewards.expires', {
-            date: formatDate(selectedVoucher.expires_at)
-          })}</div>}
-            <button className="myrv-sheet-close-btn" onClick={() => setSelectedVoucher(null)}>{t('common.done')}</button>
-          </div>
-        </div>}
+      {/* Voucher detail sheet */}
+      {selectedVoucher && <VoucherDetailSheet voucher={selectedVoucher} onClose={() => setSelectedVoucher(null)} t={t} formatDate={formatDate} />}
     </div>;
+}
+
+function CopyCode({ code, t }: { code: string; t: ReturnType<typeof useTranslation>['t'] }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToastStatic(t('common.codeCopyFailed'), 'error');
+    }
+  };
+  return <div className="myrv-code-box">
+    <span className="myrv-code">{code}</span>
+    <button className="myrv-copy-btn" onClick={handleCopy} aria-label={t('common.copy')}>
+      {copied ? <Check size={16} /> : <Copy size={16} />}
+      <span>{copied ? t('common.copied') : t('common.copy')}</span>
+    </button>
+  </div>;
+}
+
+function RewardDetailSheet({ reward, onClose, t, formatDate }: { reward: UserReward; onClose: () => void; t: ReturnType<typeof useTranslation>['t']; formatDate: (s: string | null | undefined) => string }) {
+  return <div className="myrv-sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="myrv-sheet">
+      <div className="myrv-sheet-handle" />
+      <div className="myrv-sheet-title">{reward.reward_name}</div>
+      <div className="myrv-sheet-sub">{t('myRewards.showToCashier')}</div>
+      <div className="myrv-sheet-info">
+        <div className="myrv-sheet-info-icon"><QrCode size={40} color="var(--loka-primary)" /></div>
+        <div className="myrv-sheet-info-text">{t('common.yourCode')}</div>
+        <CopyCode code={reward.redemption_code} t={t} />
+      </div>
+      {reward.expires_at && <div className="myrv-sheet-expiry">{t('myRewards.expires', { date: formatDate(reward.expires_at) })}</div>}
+      <button className="myrv-sheet-close-btn" onClick={onClose}>{t('common.done')}</button>
+    </div>
+  </div>;
+}
+
+function VoucherDetailSheet({ voucher, onClose, t, formatDate }: { voucher: UserVoucher; onClose: () => void; t: ReturnType<typeof useTranslation>['t']; formatDate: (s: string | null | undefined) => string }) {
+  return <div className="myrv-sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="myrv-sheet">
+      <div className="myrv-sheet-handle" />
+      <div className="myrv-sheet-title">
+        {voucher.discount_type === 'percentage_off' ? `${voucher.discount_value}% OFF` : voucher.discount_type === 'free_item' ? t('myRewards.freeItem') : `${formatPrice(Number(voucher.discount_value))} OFF`}
+      </div>
+      <div className="myrv-sheet-sub">
+        {voucher.source || t('myRewards.promoVoucher')} · {t('myRewards.minSpend', { amount: formatPrice(Number(voucher.min_spend || 0)) })}
+      </div>
+      <div className="myrv-sheet-info">
+        <div className="myrv-sheet-info-icon"><Shield size={40} color="var(--loka-primary)" /></div>
+        <div className="myrv-sheet-info-text">{t('common.yourCode')}</div>
+        <CopyCode code={voucher.code} t={t} />
+      </div>
+      {voucher.expires_at && <div className="myrv-sheet-expiry">{t('myRewards.expires', { date: formatDate(voucher.expires_at) })}</div>}
+      <button className="myrv-sheet-close-btn" onClick={onClose}>{t('common.done')}</button>
+    </div>
+  </div>;
+}
+
+function showToastStatic(message: string, type: 'success' | 'error' = 'success') {
+  // Lightweight fallback used outside React tree; full app should use useUIStore.
+  const existing = document.querySelector('.myrv-static-toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = `myrv-static-toast ${type}`;
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
 }

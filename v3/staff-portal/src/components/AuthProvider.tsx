@@ -4,6 +4,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import StoreHeader from "@/components/StoreHeader";
+import MustChangePinScreen from "@/components/MustChangePinScreen";
 import { staffLogout, refreshToken as apiRefreshToken } from "@/lib/api";
 export default function AuthProvider({
   children
@@ -17,6 +18,7 @@ export default function AuthProvider({
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [mustChangePin, setMustChangePin] = useState(false);
   const [authError, setAuthError] = useState(false);
   const [showIdleWarning, setShowIdleWarning] = useState(false);
   const [toast, setToast] = useState<{
@@ -108,6 +110,16 @@ export default function AuthProvider({
       if (warnTimer) clearTimeout(warnTimer);
     };
   }, [isLoginPage, isDisplayPage, router]);
+
+  // ── Listen for "must-change-pin" custom event from api.ts 403 interceptor ──
+  useEffect(() => {
+    const handler = () => {
+      setMustChangePin(true);
+    };
+    window.addEventListener("must-change-pin", handler);
+    return () => window.removeEventListener("must-change-pin", handler);
+  }, []);
+
   useEffect(() => {
     if (isLoginPage || isDisplayPage) {
       setChecked(true);
@@ -122,7 +134,6 @@ export default function AuthProvider({
         });
         if (cancelled) return;
         if (res.status === 401) {
-          // Try refresh once
           const refreshed = await apiRefreshToken();
           if (refreshed) {
             const retry = await fetch("/api/staff/auth/me", {
@@ -133,6 +144,12 @@ export default function AuthProvider({
               staffLogout();
               router.replace("/login");
               return;
+            }
+            if (retry.ok) {
+              const retryJson = await retry.json().catch(() => ({}));
+              if (retryJson?.data?.must_change_pin || retryJson?.must_change_pin) {
+                setMustChangePin(true);
+              }
             }
             setChecked(true);
             return;
@@ -151,10 +168,15 @@ export default function AuthProvider({
           }, 3000);
           return;
         }
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json?.data?.must_change_pin || json?.must_change_pin) {
+            setMustChangePin(true);
+          }
+        }
         setChecked(true);
       } catch (err) {
         console.error("Auth verification failed:", err);
-        // Network error — retry up to 3 times with backoff, then show error
         if (!cancelled) {
           setAuthError(true);
         }
@@ -166,9 +188,33 @@ export default function AuthProvider({
       if (redirectTimer) clearTimeout(redirectTimer);
     };
   }, [pathname, router, isLoginPage, isDisplayPage]);
+
   if (isLoginPage || isDisplayPage) {
     return <>{children}</>;
   }
+
+  if (!checked) {
+    return <div className="app-shell">
+      <main className="app-main">
+        <div className="loading-screen">
+          <div className="animate-spin" style={{
+            width: 24,
+            height: 24,
+            border: "2px solid var(--color-border-light)",
+            borderTopColor: "var(--color-primary)",
+            borderRadius: "50%"
+          }} />
+        </div>
+      </main>
+    </div>;
+  }
+
+  if (mustChangePin) {
+    return <div className="app-shell">
+      <MustChangePinScreen onPinChanged={() => setMustChangePin(false)} />
+    </div>;
+  }
+
   return <div className="app-shell">
       <StoreHeader />
       {showIdleWarning && <div style={{
@@ -235,15 +281,7 @@ export default function AuthProvider({
             window.location.reload();
           }}>{t("common.retry")}</button>
             </div>
-          </div> : checked ? children : <div className="loading-screen">
-            <div className="animate-spin" style={{
-          width: 24,
-          height: 24,
-          border: "2px solid var(--color-border-light)",
-          borderTopColor: "var(--color-primary)",
-          borderRadius: "50%"
-        }} />
-          </div>}
+          </div> : children}
       </main>
     </div>;
 }

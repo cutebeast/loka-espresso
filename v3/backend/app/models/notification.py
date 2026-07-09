@@ -110,7 +110,7 @@ class NotificationMessage(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     message_type: Mapped[str] = mapped_column(String(50), nullable=False)
     priority: Mapped[str] = mapped_column(NotificationPriority, nullable=False, default="normal")

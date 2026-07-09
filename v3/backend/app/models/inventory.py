@@ -1,4 +1,5 @@
 """Inventory & Supply Chain models."""
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
@@ -50,7 +51,7 @@ class InventoryItem(Base, SoftDeleteMixin, TimestampMixin):
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     unit_of_measure: Mapped[str] = mapped_column(String(20), nullable=False)
-    unit_cost: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     supplier_id: Mapped[int | None] = mapped_column(
         ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True
     )
@@ -91,11 +92,11 @@ class InventoryStock(Base, TimestampMixin):
     store_id: Mapped[int] = mapped_column(
         ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    current_stock: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    reserved_stock: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    reorder_level: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    reorder_quantity: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    par_level: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    current_stock: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    reserved_stock: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    reorder_level: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    reorder_quantity: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    par_level: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     storage_location: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     item: Mapped["InventoryItem"] = relationship("InventoryItem", back_populates="stock_levels")
@@ -151,15 +152,15 @@ class InventoryMovementLog(Base):
         ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False
     )
     movement_type: Mapped[str] = mapped_column(InventoryMovementType, nullable=False)
-    quantity_delta: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    stock_after: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    reserved_delta: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    reserved_after: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    quantity_delta: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    stock_after: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    reserved_delta: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    reserved_after: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     reference_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reference_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    unit_cost_at_movement: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
-    movement_cost: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    unit_cost_at_movement: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    movement_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     performed_by: Mapped[int | None] = mapped_column(
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -193,7 +194,7 @@ class PurchaseOrder(Base, TimestampMixin):
     )
     po_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
-    total_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     expected_delivery: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -230,10 +231,10 @@ class PurchaseOrderLine(Base):
     inventory_item_id: Mapped[int] = mapped_column(
         ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False
     )
-    quantity_ordered: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    quantity_received: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    unit_cost: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    line_total: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    quantity_ordered: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    quantity_received: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False,
     )

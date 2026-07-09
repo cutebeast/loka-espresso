@@ -23,7 +23,8 @@ interface CustomerSummary {
 }
 export default function CustomersPage() {
   const {
-    t
+    t,
+    locale
   } = useTranslation();
   const router = useRouter();
   const {
@@ -60,7 +61,7 @@ export default function CustomersPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  const formatDate = (s: string | null) => s ? new Date(s).toLocaleDateString("en-MY") : "—";
+  const formatDate = (s: string | null) => s ? new Date(s).toLocaleDateString(locale) : "—";
   return <div style={{
     padding: 32
   }}>

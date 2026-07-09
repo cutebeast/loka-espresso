@@ -71,10 +71,10 @@ export default function AdminProfilePage() {
     }
   };
   const roleLabels: Record<string, string> = {
-    system_admin: "System Admin",
-    regional_manager: "Regional Manager",
-    store_manager: "Store Manager",
-    readonly_analyst: "Read-only Analyst"
+    system_admin: t("profile.role_system_admin"),
+    regional_manager: t("profile.role_regional_manager"),
+    store_manager: t("profile.role_store_manager"),
+    readonly_analyst: t("profile.role_readonly_analyst"),
   };
   if (loading) {
     return <div style={{
@@ -166,7 +166,7 @@ export default function AdminProfilePage() {
             }}>{t("profile.status")}</td>
               <td>
                 <span className={`badge ${profile.is_active ? "badge-success" : "badge-error"}`}>
-                  {profile.is_active ? "Active" : "Inactive"}
+                  {profile.is_active ? t("profile.active") : t("profile.inactive")}
                 </span>
               </td>
             </tr>
@@ -176,7 +176,7 @@ export default function AdminProfilePage() {
             }}>{t("profile.mfa")}</td>
               <td>
                 <span className={`badge ${profile.mfa_enabled ? "badge-success" : "badge-muted"}`}>
-                  {profile.mfa_enabled ? "Enabled" : "Disabled"}
+                  {profile.mfa_enabled ? t("profile.enabled") : t("profile.disabled")}
                 </span>
               </td>
             </tr>
@@ -219,7 +219,7 @@ export default function AdminProfilePage() {
           gap: 8
         }}>
               <button type="button" className="btn btn-primary" onClick={handlePasswordChange} disabled={saving}>
-                <Lock size={14} /> {saving ? "Updating..." : "Update Password"}
+                <Lock size={14} /> {saving ? t("profile.updating") : t("profile.update_password")}
               </button>
               <button type="button" className="btn btn-outline" onClick={() => {
             setShowPw(false);

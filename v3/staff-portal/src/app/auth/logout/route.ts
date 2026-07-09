@@ -6,10 +6,18 @@ const REFRESH_COOKIE_NAME = "staff_refresh_token";
 function getBackendUrl(): string {
   const direct = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (direct && direct.startsWith("http")) return direct;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("API_URL / NEXT_PUBLIC_API_URL not configured for production");
+  }
   return "http://127.0.0.1:13800/api";
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin && host && new URL(origin).host !== host) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
   const token = request.cookies.get(ACCESS_COOKIE_NAME)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value;
 

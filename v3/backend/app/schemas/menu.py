@@ -1,5 +1,5 @@
 """Menu domain schemas."""
-
+from decimal import Decimal
 from datetime import datetime
 from typing import Literal
 
@@ -64,7 +64,7 @@ class MenuModifierOptionOut(BaseSchema):
     id: int
     modifier_group_id: int
     option_name: str
-    price_adjustment: float
+    price_adjustment: Decimal
     is_default: bool
     is_available: bool
     display_order: int
@@ -89,7 +89,7 @@ class MenuVariantOut(BaseSchema):
     parent_item_id: int
     variant_name: str
     variant_sku: str
-    price_adjustment: float
+    price_adjustment: Decimal
     is_default: bool
     is_available: bool
     created_at: datetime
@@ -100,10 +100,10 @@ class MenuItemRecipeOut(BaseSchema):
     menu_item_id: int
     menu_variant_id: int | None
     inventory_item_id: int
-    quantity_required: float
+    quantity_required: Decimal
     unit_of_measure: str
     is_primary_component: bool
-    waste_factor: float
+    waste_factor: Decimal
     created_at: datetime
 
 
@@ -112,8 +112,8 @@ class MenuItemBase(BaseSchema):
     item_name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     long_description: str | None = Field(None, max_length=2000)
-    base_price: float = Field(..., ge=0)
-    cost_price: float | None = Field(None, ge=0)
+    base_price: Decimal = Field(..., ge=0)
+    cost_price: Decimal | None = Field(None, ge=0)
     image_url: str | None = Field(None, max_length=500)
     is_available: bool = True
     is_featured: bool = False
@@ -126,7 +126,7 @@ class MenuItemBase(BaseSchema):
     is_bundle_eligible: bool = False
     is_addon_deal_eligible: bool = False
     addon_discount_type: str | None = None
-    addon_discount_value: float | None = None
+    addon_discount_value: Decimal | None = None
     eligible_bundle_ids: list | None = None
 
 
@@ -139,8 +139,8 @@ class MenuItemUpdate(BaseSchema):
     item_name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     long_description: str | None = Field(None, max_length=2000)
-    base_price: float | None = Field(None, ge=0)
-    cost_price: float | None = Field(None, ge=0)
+    base_price: Decimal | None = Field(None, ge=0)
+    cost_price: Decimal | None = Field(None, ge=0)
     image_url: str | None = Field(None, max_length=500)
     is_available: bool | None = None
     is_featured: bool | None = None
@@ -154,7 +154,7 @@ class MenuItemUpdate(BaseSchema):
     is_bundle_eligible: bool | None = None
     is_addon_deal_eligible: bool | None = None
     addon_discount_type: str | None = None
-    addon_discount_value: float | None = None
+    addon_discount_value: Decimal | None = None
     eligible_bundle_ids: list | None = None
     category_id: int | None = None
     modifier_groups: list[dict] | None = None
@@ -183,7 +183,7 @@ class MenuItemPublicOut(BaseSchema):
     item_name: str
     description: str | None
     long_description: str | None
-    base_price: float
+    base_price: Decimal
     image_url: str | None
     prep_time_minutes: int
     calories: int | None
@@ -194,7 +194,7 @@ class MenuItemPublicOut(BaseSchema):
     display_order: int
     is_addon_deal_eligible: bool = False
     addon_discount_type: str | None = None
-    addon_discount_value: float | None = None
+    addon_discount_value: Decimal | None = None
     eligible_bundle_ids: list | None = None
     dietary_tags: list[str] | None = None
     allergens: list[AllergenOut] = []
@@ -215,7 +215,7 @@ class MenuPublicOut(BaseSchema):
 
 class TaxCategoryBase(BaseSchema):
     category_name: str = Field(..., min_length=1, max_length=50)
-    rate: float = Field(..., ge=0, le=1)
+    rate: Decimal = Field(..., ge=0, le=1)
     is_active: bool = True
 
 class TaxCategoryCreate(TaxCategoryBase):
@@ -223,7 +223,7 @@ class TaxCategoryCreate(TaxCategoryBase):
 
 class TaxCategoryUpdate(BaseSchema):
     category_name: str | None = Field(None, min_length=1, max_length=50)
-    rate: float | None = Field(None, ge=0, le=1)
+    rate: Decimal | None = Field(None, ge=0, le=1)
     is_active: bool | None = None
 
 class TaxCategoryOut(TaxCategoryBase, TimestampedSchema):

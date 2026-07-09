@@ -149,7 +149,7 @@ export default function NewDietaryTagPage() {
           </div>
           <div className="df-actions">
             <button type="button" onClick={() => r.push("/menu/dietary-tags")} className="btn btn-ghost">{t("menu_dietary-tags_new.cancel")}</button>
-            <button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Creating..." : "Create"}</button>
+            <button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.creating") : t("admin.common.create")}</button>
           </div>
         </div>
       </form>

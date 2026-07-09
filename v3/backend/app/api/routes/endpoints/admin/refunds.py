@@ -37,7 +37,7 @@ async def list_refunds(
             "order_id": r.order_id,
             "order_number": r.order.order_number if r.order else None,
             "store_id": r.order.store_id if r.order else None,
-            "amount": float(r.amount or 0),
+            "amount": str(r.amount or 0),
             "reason": r.reason or "",
             "status": r.status or "pending",
             "created_at": r.created_at.isoformat() if r.created_at else None,

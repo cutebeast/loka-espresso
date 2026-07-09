@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { isNotFoundError } from "@/lib/errors";
+import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -33,22 +35,7 @@ const LOCALES: {
   label: "TR",
   flag: "🇹🇷"
 }];
-const TRANSLATABLE_FIELDS = [{
-  key: "display_title",
-  label: "Display Title"
-}, {
-  key: "short_description",
-  label: "Short Description"
-}, {
-  key: "long_description",
-  label: "Full Description"
-}, {
-  key: "how_to_redeem",
-  label: "How to Redeem"
-}, {
-  key: "terms_and_conditions",
-  label: "Terms & Conditions"
-}];
+
 interface Voucher {
   id: number;
   voucher_code: string;
@@ -75,6 +62,23 @@ export default function VoucherEditPage() {
   const {
     t
   } = useTranslation();
+
+  const TRANSLATABLE_FIELDS = [{
+  key: "display_title",
+  label: "Display Title"
+}, {
+  key: "short_description",
+  label: t("admin.form.shortDescription")
+}, {
+  key: "long_description",
+  label: t("admin.form.fullDescription")
+}, {
+  key: "how_to_redeem",
+  label: "How to Redeem"
+}, {
+  key: "terms_and_conditions",
+  label: "Terms & Conditions"
+}];
   const params = useParams();
   const router = useRouter();
   const voucherId = params.id as string;
@@ -86,6 +90,7 @@ export default function VoucherEditPage() {
   } = useCurrency();
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeLocale, setActiveLocale] = useState<LocaleTab>("en");
   const [regenerating, setRegenerating] = useState<string>("");
@@ -141,13 +146,15 @@ export default function VoucherEditPage() {
               allTr[`${loc.code}:${field}`] = t.translated_text || "";
             }
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
       }
       setTranslations(allTr);
     } catch (e) {
-      console.error(e);
+      if (isNotFoundError(e)) {
+        setNotFound(true);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -172,11 +179,9 @@ export default function VoucherEditPage() {
       // Discount value stored as-is (percentage: 50 means 50%, backend divides by 100)
       payload.discount_value = Number(form.discount_value);
       await api.put(`/admin/vouchers/${voucherId}`, payload);
-      setMsg("Saved");
+      setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -231,9 +236,7 @@ export default function VoucherEditPage() {
             [`${locale}:${field.key}`]: translated
           }));
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     }
     for (const r of results) {
       await upsertTranslation(r.field, locale, (form[r.field] || "").trim(), r.text);
@@ -255,6 +258,7 @@ export default function VoucherEditPage() {
     setTimeout(() => setMsg(""), 2000);
     setSaving(false);
   };
+  if (notFound) return <NotFoundState title={t("notFound.title", "Not Found")} message={t("notFound.message", "The requested record could not be found.")} onBack={() => router.back()} />;
   if (loading) return <div style={{
     padding: 32
   }}><p>{t("vouchers_[id].loading")}</p></div>;
@@ -456,7 +460,7 @@ export default function VoucherEditPage() {
         marginTop: 20
       }}>
              <button type="button" onClick={() => router.push("/vouchers")} className="btn btn-ghost">{t("vouchers_[id].cancel")}</button>
-             <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button>
+             <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button>
            </div>
         </div>}
 

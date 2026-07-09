@@ -57,9 +57,7 @@ export default function StaffShiftsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((err: any) => {
-      console.error("Failed to load stores:", err);
-    });
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load stores:", err); setError(err.message || t("admin.errors.loadFailed")); });
   }, []);
   useEffect(() => {
     if (!storeId) return;
@@ -67,12 +65,8 @@ export default function StaffShiftsPage() {
       setError("Failed to load shifts");
       console.error(err);
     }).finally(() => setLoading(false));
-    api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => {
-      console.error("Failed to load templates:", err);
-    });
-    api.get<any>(`/admin/staff?store_id=${storeId}&per_page=200`).then(d => setStaffList(Array.isArray(d) ? d : d.items || [])).catch((err: any) => {
-      console.error("Failed to load staff list:", err);
-    });
+    api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load templates:", err); setError(err.message || t("admin.errors.loadFailed")); });
+    api.get<any>(`/admin/staff?store_id=${storeId}&per_page=200`).then(d => setStaffList(Array.isArray(d) ? d : d.items || [])).catch((err: any) => { console.error("Failed to load staff list:", err); setError(err.message || t("admin.errors.loadFailed")); });
   }, [storeId]);
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,12 +86,8 @@ export default function StaffShiftsPage() {
         shift_date: ""
       });
       // refresh
-      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : d.items || [])).catch((err: any) => {
-        console.error("Failed to refresh shifts after create:", err);
-      });
-    } catch (e: any) {
-      console.error("Failed to create shift:", e);
-    } finally {
+      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : d.items || [])).catch((err: any) => { console.error("Failed to refresh shifts after create:", err); setError(err.message || t("admin.errors.loadFailed")); });
+    } catch (e: any) {console.error("Failed to create shift:", e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
@@ -116,26 +106,18 @@ export default function StaffShiftsPage() {
         end_time: "",
         store_id: ""
       });
-      api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => {
-        console.error("Failed to refresh templates:", err);
-      });
-    } catch (e: any) {
-      console.error("Failed to create template:", e);
-    } finally {
+      api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to refresh templates:", err); setError(err.message || t("admin.errors.loadFailed")); });
+    } catch (e: any) {console.error("Failed to create template:", e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setSaving(false);
     }
   };
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete?")) return;
+    if (!confirm(t("common.confirm_delete"))) return;
     setDeletingId(id);
     try {
       await api.del(`/admin/staff/shifts/${id}`);
-      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : d.items || [])).catch((err: any) => {
-        console.error("Failed to refresh shifts after delete:", err);
-      });
-    } catch (e: any) {
-      console.error("Failed to delete shift:", e);
-    } finally {
+      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : d.items || [])).catch((err: any) => { console.error("Failed to refresh shifts after delete:", err); setError(err.message || t("admin.errors.loadFailed")); });
+    } catch (e: any) {console.error("Failed to delete shift:", e); setError(e.message || t("admin.errors.loadFailed")); } finally {
       setDeletingId(null);
     }
   };

@@ -136,7 +136,7 @@ function WebhookHint({
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
+      setOrigin(process.env.NEXT_PUBLIC_ADMIN_DOMAIN || (typeof window !== "undefined" ? window.location.origin : ""));
     }
   }, []);
   const isStripe = provider === "stripe";

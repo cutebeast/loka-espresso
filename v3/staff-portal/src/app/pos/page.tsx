@@ -16,6 +16,7 @@ import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
+import { api } from "@/lib/api";
 export default function PosPage() {
   const {
     t
@@ -23,6 +24,21 @@ export default function PosPage() {
   const pos = usePosState();
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
+  const [storeConfig, setStoreConfig] = useState<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number } | null>(null);
+
+  // Load store config for customer display branding and fees
+  useEffect(() => {
+    let cancelled = false;
+    api.get<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number }>("/staff/store")
+      .then((cfg) => {
+        if (!cancelled) setStoreConfig(cfg);
+      })
+      .catch((err) => {
+        console.error("[POS] Failed to load store config:", err);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -33,22 +49,34 @@ export default function PosPage() {
   useEffect(() => {
     const tableObj = pos.tableId ? pos.tables.find(t => t.id === pos.tableId) : null;
     const tableNum = pos.tableId ? (tableObj?.table_number || String(pos.tableId)) : null;
-    // Derive PWA deep-link: customer scans QR → opens PWA order detail → pays from their phone
+    // Derive PWA deep-link: customer scans QR → opens PWA guest-pay page →
+    // pays from their phone without logging in.  Uses the signed pay_token
+    // returned by the POS order endpoint so only this QR's scanner can pay.
     const pwaBase = typeof window !== "undefined" ? window.location.origin.replace("://staff.", "://app.") : "https://app.loyaltysystem.uk";
     const orderId = pos.qrPayment?.orderId || (pos.result as Record<string, unknown>)?.order_id?.toString() || "";
-    const pwaPayUrl = orderId ? `${pwaBase}/order-detail?order_id=${orderId}` : undefined;
+    const payToken = pos.qrPayment?.payToken || "";
+    const pwaPayUrl = orderId
+      ? (payToken
+        ? `${pwaBase}/#guest-pay?orderId=${orderId}&token=${payToken}`
+        : `${pwaBase}/#order-detail?orderId=${orderId}`)
+      : undefined;
+
+    const storeName = storeConfig?.store_name || t("common.store_name");
+    const serviceCharge = storeConfig?.service_charge || 0;
+    const taxAmount = Math.round(pos.subtotal * (storeConfig?.tax_rate || 0) * 100) / 100;
+    const displayTotal = Number((pos.total + serviceCharge + taxAmount).toFixed(2));
 
     if (pos.state === "done" && pos.result) {
       // Order confirmed / paid
       broadcastDisplay({
-        storeName: "LOKA Espresso",
+        storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
         cart: pos.cart,
         subtotal: pos.subtotal,
-        serviceCharge: 0,
-        taxAmount: 0,
-        total: pos.total,
+        serviceCharge,
+        taxAmount,
+        total: ((pos.result as Record<string, unknown>)?.total as number | undefined) || displayTotal,
         itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
         phase: "paid",
         orderNumber: (pos.result as Record<string, unknown>)?.order_number?.toString(),
@@ -60,7 +88,7 @@ export default function PosPage() {
     } else if (pos.state === "qr_payment" && pos.qrPayment) {
       // Stripe QR payment — show QR linking to PWA
       broadcastDisplay({
-        storeName: "LOKA Espresso",
+        storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
         cart: pos.cart,
@@ -78,14 +106,14 @@ export default function PosPage() {
     } else if (pos.mode === "checkout" || pos.state === "payment") {
       // Checkout in progress (non-QR payment like cash)
       broadcastDisplay({
-        storeName: "LOKA Espresso",
+        storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
         cart: pos.cart,
         subtotal: pos.subtotal,
-        serviceCharge: 0,
-        taxAmount: 0,
-        total: pos.total,
+        serviceCharge,
+        taxAmount,
+        total: displayTotal,
         itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
         phase: "payment",
         orderNumber: pos.checkoutOrder?.order_number,
@@ -94,21 +122,21 @@ export default function PosPage() {
     } else if (pos.cart.length > 0) {
       // Browsing — cart building
       broadcastDisplay({
-        storeName: "LOKA Espresso",
+        storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
         cart: pos.cart,
         subtotal: pos.subtotal,
-        serviceCharge: 0,
-        taxAmount: 0,
-        total: pos.total,
+        serviceCharge,
+        taxAmount,
+        total: displayTotal,
         itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
         phase: "browsing",
       });
     } else {
       broadcastReset();
     }
-  }, [pos.state, pos.mode, pos.cart, pos.subtotal, pos.total, pos.orderType, pos.tableId, pos.tables, pos.qrPayment, pos.result, pos.successChange, pos.paymentMethod, pos.checkoutOrder, pos.checkoutOrderId]);
+  }, [pos.state, pos.mode, pos.cart, pos.subtotal, pos.total, pos.orderType, pos.tableId, pos.tables, pos.qrPayment, pos.result, pos.successChange, pos.paymentMethod, pos.checkoutOrder, pos.checkoutOrderId, storeConfig, t]);
   const handleToggleModifier = useCallback((groupId: number, modId: number, selectionType: string, maxSelections: number) => {
     pos.setSelectedModifiers(prev => {
       const current = prev[groupId] || [];
@@ -136,7 +164,7 @@ export default function PosPage() {
 
   // ── QR Payment Screen ──
   if (pos.state === "qr_payment" && pos.qrPayment) {
-    return <PosQrPaymentScreen paymentUrl={pos.qrPayment.paymentUrl} orderId={pos.qrPayment.orderId} orderNumber={pos.qrPayment.orderNumber} total={pos.qrPayment.total} onComplete={pos.completeQrPayment} onCancel={pos.cancelQrPayment} onError={message => pos.setError(message)} />;
+    return <PosQrPaymentScreen paymentUrl={pos.qrPayment.pwaPayUrl || pos.qrPayment.paymentUrl} orderId={pos.qrPayment.orderId} orderNumber={pos.qrPayment.orderNumber} total={pos.qrPayment.total} onComplete={pos.completeQrPayment} onCancel={pos.cancelQrPayment} onError={message => pos.setError(message)} />;
   }
 
   // ── Checkout Mode ──
@@ -170,8 +198,8 @@ export default function PosPage() {
           display: "flex",
           gap: 6
         }}>
-            {(["dine_in", "takeaway", "delivery"] as const).map(t => <button key={t} className={`btn btn-sm ${pos.orderType === t ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setOrderType(t)}>
-                {t === "dine_in" ? "Dine-in" : t === "takeaway" ? "Takeaway" : "Delivery"}
+                      {(["dine_in", "takeaway", "delivery"] as const).map(orderType => <button key={orderType} className={`btn btn-sm ${pos.orderType === orderType ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setOrderType(orderType)}>
+                {orderType === "dine_in" ? t("pos.dine_in_label") : orderType === "takeaway" ? t("pos.takeaway_label") : t("pos.delivery_label")}
               </button>)}
           </div>
           {pos.selectedCustomer && <span className="badge badge-primary badge-sm flex items-center gap-1">
@@ -188,7 +216,7 @@ export default function PosPage() {
           {pos.cart.length > 0 && <span style={{
           fontSize: 15,
           fontWeight: 700
-        }}>{t("pos.rm")}{pos.total.toFixed(2)}</span>}
+        }}>{t("pos.currency_symbol")}{pos.total.toFixed(2)}</span>}
         </div>
 
         {/* Customer Search */}
@@ -265,7 +293,7 @@ export default function PosPage() {
           gap: 4,
           fontSize: 12,
           padding: "6px 10px"
-        }} onClick={() => openCustomerDisplay()} aria-label={t("pos.display_open_customer_screen")}>
+        }} onClick={() => openCustomerDisplay(storeConfig?.display_left ?? 1920)} aria-label={t("pos.display_open_customer_screen")}>
             <Monitor size={16} />{t("pos.display_customer_screen")}</button>
         </div>
         {pos.searchResults.length > 0 && <div style={{
@@ -428,7 +456,7 @@ export default function PosPage() {
                 padding: "2px 8px",
                 borderRadius: 20
               }}>
-                      {bp.pick_count && bp.pick_count > 0 ? `Pick ${bp.pick_count}` : 'COMBO'}
+                      {bp.pick_count && bp.pick_count > 0 ? `${t("pos.pick")}${bp.pick_count}` : t("pos.combo")}
                     </span>
                   </div>
                   <div style={{
@@ -444,14 +472,14 @@ export default function PosPage() {
                 color: "var(--color-text-muted)",
                 marginTop: 2
               }}>
-                      {bp.pick_count && bp.pick_count > 0 ? `Pick ${bp.pick_count} items` : `${(bp.components || []).map(c => c.menu_item_name || 'Item').slice(0, 3).join(" + ")}${(bp.components || []).length > 3 ? ` +${(bp.components || []).length - 3} more` : ""}`}
+                      {bp.pick_count && bp.pick_count > 0 ? t("pos.pick_n_items", { count: bp.pick_count }) : `${(bp.components || []).map(c => c.menu_item_name || t("pos.item_fallback")).slice(0, 3).join(" + ")}${(bp.components || []).length > 3 ? ` ${t("pos.more_components", { count: (bp.components || []).length - 3 })}` : ""}`}
                     </div>
                     <div style={{
                 fontWeight: 700,
                 fontSize: 15,
                 color: "var(--color-primary)",
                 marginTop: 4
-              }}>{t("pos.rm_2")}{Number(bp.bundle_price ?? 0).toFixed(2)}</div>
+              }}>{t("pos.currency_symbol")}{Number(bp.bundle_price ?? 0).toFixed(2)}</div>
                   </div>
                 </button>)}
             {pos.filteredItems.map(item => <button key={item.id} onClick={() => pos.handleItemClick(item)} className="card" style={{
@@ -516,7 +544,7 @@ export default function PosPage() {
                 fontSize: 14,
                 color: "var(--color-primary)",
                 fontWeight: 700
-              }}>{t("pos.rm_3")}{Number(item.base_price ?? 0).toFixed(2)}</span>
+              }}>{t("pos.currency_symbol")}{Number(item.base_price ?? 0).toFixed(2)}</span>
                 </div>
               </button>)}
             {pos.filteredItems.length === 0 && <div style={{
@@ -581,13 +609,13 @@ export default function PosPage() {
                 fontSize: 13,
                 fontWeight: 700,
                 color: "var(--color-primary)"
-              }}>{t("pos.rm_4")}{(item.addon_discount_type === "percentage" ? item.base_price * (1 - (item.addon_discount_value ?? 0) / 100) : Math.max(0, item.base_price - (item.addon_discount_value ?? 0))).toFixed(2)}
+              }}>{t("pos.currency_symbol")}{(item.addon_discount_type === "percentage" ? item.base_price * (1 - (item.addon_discount_value ?? 0) / 100) : Math.max(0, item.base_price - (item.addon_discount_value ?? 0))).toFixed(2)}
                     </span>
                     <span style={{
                 fontSize: 10,
                 color: "var(--color-text-muted)",
                 textDecoration: "line-through"
-              }}>{t("pos.rm_5")}{Number(item.base_price).toFixed(2)}</span>
+              }}>{t("pos.currency_symbol")}{Number(item.base_price).toFixed(2)}</span>
                   </div>
                 </button>)}
             </div>
@@ -668,7 +696,7 @@ export default function PosPage() {
             textAlign: "right",
             fontSize: 14,
             fontWeight: 700
-          }}>{t("pos.rm_6")}{((c.price ?? 0) * c.qty).toFixed(2)}</span>
+          }}>{t("pos.currency_symbol")}{((c.price ?? 0) * c.qty).toFixed(2)}</span>
                 <button className="btn btn-ghost btn-icon btn-sm" style={{
             color: "var(--color-error)",
             width: 32,
@@ -712,7 +740,7 @@ export default function PosPage() {
               }}>{t("pos.combo_price")}<span style={{
                   fontWeight: 700,
                   color: "var(--color-primary)"
-                }}>{t("pos.rm_7")}{(bp?.bundle_price ?? 0).toFixed(2)}</span>
+                }}>{t("pos.currency_symbol")}{(bp?.bundle_price ?? 0).toFixed(2)}</span>
                       </div>
                     </div>;
           })}
@@ -728,15 +756,15 @@ export default function PosPage() {
               {pos.discountValue > 0 && <div style={{
           display: "flex",
           justifyContent: "space-between"
-        }}><span>{t("pos.voucher_reward_discount")}</span><span>{t("pos.rm_8")}{pos.discountValue.toFixed(2)}</span></div>}
+        }}><span>{t("pos.voucher_reward_discount")}</span><span>{t("pos.currency_symbol")}{pos.discountValue.toFixed(2)}</span></div>}
               {pos.bundleDiscountPreview.bundleDiscount > 0 && <div style={{
           display: "flex",
           justifyContent: "space-between"
-        }}><span>{t("pos.combo_discount")}</span><span>{t("pos.rm_9")}{pos.bundleDiscountPreview.bundleDiscount.toFixed(2)}</span></div>}
+        }}><span>{t("pos.combo_discount")}</span><span>{t("pos.currency_symbol")}{pos.bundleDiscountPreview.bundleDiscount.toFixed(2)}</span></div>}
               {pos.bundleDiscountPreview.addonDiscount > 0 && <div style={{
           display: "flex",
           justifyContent: "space-between"
-        }}><span>{t("pos.add_on_discount")}</span><span>{t("pos.rm_10")}{pos.bundleDiscountPreview.addonDiscount.toFixed(2)}</span></div>}
+        }}><span>{t("pos.add_on_discount")}</span><span>{t("pos.currency_symbol")}{pos.bundleDiscountPreview.addonDiscount.toFixed(2)}</span></div>}
             </div>}
           <div style={{
         display: "flex",
@@ -750,7 +778,7 @@ export default function PosPage() {
               <span style={{
             fontSize: 18,
             fontWeight: 700
-          }}>{t("pos.rm_11")}{pos.total.toFixed(2)}</span>
+          }}>{t("pos.currency_symbol")}{pos.total.toFixed(2)}</span>
               <span style={{
             fontSize: 12,
             color: "var(--color-text-muted)",
@@ -763,7 +791,7 @@ export default function PosPage() {
         }}>
               <button className="btn btn-ghost btn-sm" onClick={pos.holdOrder}><Pause size={14} />{t("pos.park")}</button>
               <button className="btn btn-primary" onClick={pos.handleSendToKitchen} disabled={pos.saving}>
-                <Send size={16} /> {pos.saving ? "Sending..." : "Send to Kitchen"}
+                <Send size={16} /> {pos.saving ? t("common.sending") : t("common.send_to_kitchen")}
               </button>
             </div>
           </div>

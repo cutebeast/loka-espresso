@@ -87,10 +87,10 @@ export default function LoginPage() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [storeError, setStoreError] = useState("");
   const [nameList, setNameList] = useState<{ id: number; display_name: string }[]>([]);
   const [namesLoading, setNamesLoading] = useState(false);
   const [selectedName, setSelectedName] = useState("");
-  const [_attemptCount, setAttemptCount] = useState(0);
   const attemptCountRef = useRef(0);
 
   useEffect(() => {
@@ -101,9 +101,16 @@ export default function LoginPage() {
         const list = Array.isArray(d) ? d : (d?.items || []);
         if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
       })
-      .catch((err: unknown) => { console.error("Store fetch failed:", err); if (mounted) { setStores([]); setSelectedStore(""); } });
+      .catch((err: unknown) => {
+        console.error("Store fetch failed:", err);
+        if (mounted) {
+          setStores([]);
+          setSelectedStore("");
+          setStoreError(parseApiError(err, t("staff.errors.load_failed", { resource: t("login.store_label") })));
+        }
+      });
     return () => { mounted = false; };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!selectedStore || mode !== "name") return;
@@ -113,10 +120,16 @@ export default function LoginPage() {
       .then((nameData: { id: number; display_name: string }[]) => {
         if (mounted) setNameList(Array.isArray(nameData) ? nameData : []);
       })
-      .catch((err: unknown) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); })
+      .catch((err: unknown) => {
+        console.error("Staff names fetch failed:", err);
+        if (mounted) {
+          setNameList([]);
+          setStoreError(parseApiError(err, t("staff.errors.load_failed", { resource: t("login.name_label") })));
+        }
+      })
       .finally(() => { if (mounted) setNamesLoading(false); });
     return () => { mounted = false; };
-  }, [selectedStore, mode]);
+  }, [selectedStore, mode, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,13 +154,11 @@ export default function LoginPage() {
         await staffLogin(email, password || pin, Number(selectedStore));
       }
       attemptCountRef.current = 0;
-      setAttemptCount(0);
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect") || "/";
       router.replace(redirect);
     } catch (err: unknown) {
       attemptCountRef.current += 1;
-      setAttemptCount((c) => c + 1);
       setError(parseApiError(err, "Login failed"));
     } finally {
       setLoading(false);
@@ -164,6 +175,8 @@ export default function LoginPage() {
           <h1 className="login-brand-title">{t("login.title")}</h1>
           <p className="login-brand-subtitle">{t("login.subtitle")}</p>
         </div>
+
+        {storeError && <div className="alert alert-error mb-4">{storeError}</div>}
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
           <LanguageSelector />
@@ -209,7 +222,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Enter your email"
+                placeholder={t("login.email_placeholder")}
                 className="form-input"
               />
             </div>
@@ -235,7 +248,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={mode === "email" ? password : pin}
               onChange={e => mode === "email" ? setPassword(e.target.value) : setPin(e.target.value)}
-              placeholder={mode === "email" ? "Enter your password" : "Enter 6-digit PIN"}
+              placeholder={mode === "email" ? t("login.password_placeholder") : t("login.pin_placeholder")}
               maxLength={mode === "email" ? 50 : 6}
               className={`form-input ${mode === "name" ? "login-input-center" : ""}`}
             />

@@ -24,7 +24,7 @@ STAFF = [
         "employee_id": "EMP001",
         "role": "cashier",
         "password": os.getenv("SEED_STAFF_PASS", "TestStaff123!"),
-        "pin": os.getenv("SEED_STAFF_PIN", "1234"),
+        "pin": os.getenv("SEED_STAFF_PIN", "123456"),
         "role_key": "cashier",
     },
 ]

@@ -40,11 +40,13 @@ from app.api.routes.endpoints.admin import orders as admin_orders
 from app.api.routes.endpoints.admin import customers as admin_customers
 from app.api.routes.endpoints.admin import feedback as admin_feedback
 from app.api.routes.endpoints.public import content as public_content
+from app.api.routes.endpoints.public import help as public_help
 from app.api.routes.endpoints.admin import config as admin_config
 from app.api.routes.endpoints.admin import system as admin_system
 from app.api.routes.endpoints.admin import dietary_tags as admin_dietary_tags
 from app.api.routes.endpoints.admin import info_cards as admin_info_cards
 from app.api.routes.endpoints.admin import system_pages as admin_system_pages
+from app.api.routes.endpoints.admin import help_articles as admin_help_articles
 from app.api.routes.endpoints.admin import product_cards as admin_product_cards
 from app.api.routes.endpoints.admin import event_cards as admin_event_cards
 from app.api.routes.endpoints.admin import promo_banners as admin_promo_banners
@@ -113,6 +115,7 @@ api_router.include_router(admin_notifications.public_router, tags=["notification
 api_router.include_router(public_store.router, tags=["public — stores"])
 api_router.include_router(public_menu.router, tags=["public — menu"])
 api_router.include_router(public_content.router, tags=["public — content"])
+api_router.include_router(public_help.router, prefix="/public", tags=["public — help center"])
 api_router.include_router(public_ui_translations.router, prefix="/public/translations", tags=["public — translations"])
 api_router.include_router(public_marketing.router, tags=["public — marketing"])
 api_router.include_router(staff_operations.router, tags=["staff — operations"])
@@ -178,6 +181,7 @@ api_router.include_router(admin_dietary_tags.router, tags=["admin — dietary ta
 # Info Cards
 api_router.include_router(admin_info_cards.router, tags=["admin — information cards"])
 api_router.include_router(admin_system_pages.router, tags=["admin — system pages"])
+api_router.include_router(admin_help_articles.router, tags=["admin — help center"])
 api_router.include_router(admin_product_cards.router, tags=["admin — product cards"])
 api_router.include_router(admin_event_cards.router, tags=["admin — event cards"])
 api_router.include_router(admin_promo_banners.router, tags=["admin — promo banners"])
