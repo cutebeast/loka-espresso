@@ -39,6 +39,7 @@ ARTICLES = [
     ("admin-reports-audit", "admin", "Admin Portal", "admin/reports-and-audit.md"),
     ("admin-settings", "admin", "Admin Portal", "admin/settings.md"),
     ("admin-translations", "admin", "Admin Portal", "admin/translations.md"),
+    ("admin-notifications", "admin", "Admin Portal", "admin/notifications.md"),
     # Staff portal
     ("staff-index", "staff", "Staff Portal", "staff/index.md"),
     ("staff-role-access", "staff", "Staff Portal", "staff/role-access-matrix.md"),

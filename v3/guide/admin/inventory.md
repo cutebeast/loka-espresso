@@ -7,9 +7,11 @@
 - `/inventory/suppliers` — Suppliers
 - `/inventory/movements` — Stock Movements
 - `/inventory/purchase-orders` — Purchase Orders
+- `/equipment` — Equipment
+- `/hygiene` — Hygiene Reports
 
 ## Purpose
-Track ingredients and retail stock across stores, record stock movements, manage suppliers, and create purchase orders.
+Track ingredients and retail stock across stores, record stock movements, manage suppliers, create purchase orders, monitor equipment health, and verify hygiene compliance reports.
 
 ## Inventory structure
 
@@ -110,6 +112,45 @@ Items below their reorder level appear highlighted. Replenish via purchase order
 
 ## Staff inventory tasks
 Staff can also update stock from the Staff Portal under **Inventory** and report wastage under **Wastage**.
+
+## Equipment (`/equipment`)
+
+### What it shows
+Store equipment records with name, type, status, and maintenance history.
+
+### Equipment statuses
+- **Operational** — working normally.
+- **Needs Maintenance** — reported issue, awaiting service.
+- **Out of Service** — decommissioned or broken.
+
+### Actions
+- **Add equipment** — Click **New Equipment**, enter name, type, store, and notes.
+- **Edit equipment** — Update name, type, status, and notes.
+- **View maintenance logs** — Open a record to see all maintenance reports submitted by staff.
+- **View reports ledger** — Go to `/equipment/reports` for a chronological list of all maintenance reports across all equipment.
+
+### Staff workflow
+Staff submit equipment reports from the Staff Portal under **Equipment**. Each report includes a photo, condition description, and result (checked OK or reported issue). These appear in the admin equipment reports ledger for review.
+
+> Equipment that is marked **Needs Maintenance** should be checked and resolved before the next operating day.
+
+## Hygiene Reports (`/hygiene`)
+
+### What it shows
+Hygiene cleaning reports submitted by staff, with photos and status.
+
+### Report types
+- Grease trap cleaning (before/after photos).
+- Garbage disposal (before/after photos).
+- Surface sanitisation.
+- General cleanliness check.
+
+### Actions
+- **Verify** — Approve the report. Status changes to *Verified*.
+- **Flag** — Mark a report as incomplete or needing follow-up.
+
+### Staff workflow
+Staff submit hygiene reports from the Staff Portal under **Grease Trap** and **Garbage**. Each report requires before and after photos. Admins review and verify these reports to maintain compliance records.
 
 ## Related
 - [Menu](menu.md)

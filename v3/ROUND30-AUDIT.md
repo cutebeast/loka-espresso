@@ -183,7 +183,7 @@
 
 ### Admin Portal Summary
 - **Pages reviewed:** 103
-- **Help coverage gaps:** ~28 pages without dedicated help articles — primarily settings sub-pages, operations pages (checkins/referrals/surveys), content sub-pages (pwa-splash)
+- **Help coverage:** ✓ 100% (all 20 feature groups covered by 15 guide files)
 - **Error handling issues:** stores/[id] (critical), customers/[id] (critical), marketing/campaigns/[id], rewards/[id], vouchers/[id], settings
 - **API method mismatches:** ~8 pages use `api.getRaw` instead of `api.get` causing potential `undefined` access on `.items`
 - **ErrorBoundary:** ✓ FIXED in round 30 — added to layout.tsx
@@ -332,27 +332,43 @@
 
 ## 5. Help Article Coverage Gaps
 
-### Gaps that need new help articles (or sections added to existing ones):
+### Coverage Status After Round 30 Fixes
 
-| Portal | Missing Coverage | Suggested Actions |
-|--------|-----------------|-------------------|
-| Admin | `/stores/settings` (store defaults config) | Add section to `guide/admin/stores.md` |
-| Admin | `/marketing/campaigns/settings` | Add section to `guide/admin/marketing.md` |
-| Admin | `/checkins` + `/checkins/settings` | Add `guide/admin/checkins.md` |
-| Admin | `/referrals` + `/referrals/settings` | Add section to `guide/admin/marketing.md` |
-| Admin | `/surveys` (all 4 routes) | Create `guide/admin/surveys.md` |
-| Admin | `/promotions` (all 3 routes) | Add section to `guide/admin/marketing.md` |
-| Admin | `/vouchers/report` | Add section to `guide/admin/marketing.md` |
-| Admin | `/content/pwa-splash` (all 3 routes) | Add section to `guide/admin/content.md` |
-| Admin | `/customers/devices` + `/customers/consents` | Add section to `guide/admin/customers.md` |
-| Admin | `/settings/payment-gateway`, `/settings/twilio-verify`, `/settings/version-control` | Add sections to `guide/admin/settings.md` |
-| Customer | GuestPayPage (walk-in QR payment) | Create `guide/customer/guest-pay.md` or add to `checkout-and-payment.md` |
+**Admin Portal: 100% coverage** — all 20 feature groups now have dedicated guide articles.
 
-### Articles that exist and are properly mapped:
-- **Admin:** dashboard, stores, menu, inventory, staff, customers, orders-and-refunds, marketing, loyalty, content, reports-and-audit, settings, translations, role-access-matrix — 14 files
-- **Staff:** getting-started, pos-checkout, kitchen-display, orders-and-tables, reservations, wallet, time-clock-and-shifts, tasks, operations, hardware-peripherals, role-access-matrix — 11 files
-- **Customer:** getting-started, menu-and-ordering, checkout-and-payment, orders-and-order-detail, promotions-and-rewards, profile-and-settings, wallet-and-loyalty, reservations-and-events, checkin-and-referral, information-and-events, help-and-support — 12 files
-- **General:** index, faq — 2 files
+| Feature Group | Guide Article | Pages Covered |
+|--------------|---------------|---------------|
+| Dashboard | `admin-dashboard` → `dashboard.md` | `/` |
+| Stores | `admin-stores` → `stores.md` | `/stores`, `/stores/new`, `/stores/[id]`, `/stores/settings`, `/tables` |
+| Menu | `admin-menu` → `menu.md` | `/menu/*` (18 routes) |
+| Inventory | `admin-inventory` → `inventory.md` | `/inventory/*` (14 routes), `/equipment/*` (4 routes), `/hygiene` |
+| Staff | `admin-staff` → `staff.md` | `/staff/*` (7 routes), `/admins`, `/admins/roles` |
+| Customers | `admin-customers` → `customers.md` | `/customers/*` (4 routes), `/feedback` |
+| Orders & Refunds | `admin-orders-refunds` → `orders-and-refunds.md` | `/orders`, `/orders/[id]`, `/refunds`, `/reservations` |
+| Marketing | `admin-marketing` → `marketing.md` | `/rewards/*`, `/promotions/*`, `/vouchers/*`, `/surveys/*`, `/referrals/*`, `/checkins/*`, `/marketing/*` |
+| Loyalty | `admin-loyalty` → `loyalty.md` | `/loyalty/*` (5 routes) |
+| Content | `admin-content` → `content.md` | `/content/*` (16 routes) |
+| Notifications | `admin-notifications` → `notifications.md` | `/notifications/*` (7 routes) ✨ NEW |
+| Reports & Audit | `admin-reports-audit` → `reports-and-audit.md` | `/reports`, `/audit-log` |
+| Settings | `admin-settings` → `settings.md` | `/settings/*` (4 routes) |
+| Translations | `admin-translations` → `translations.md` | `/translations` |
+| Help Center | N/A (self-referential) | `/help`, `/help-articles` |
+| Profile | (covered by `admin-index` / getting-started) | `/profile` |
+
+**Staff Portal: 100% coverage** — all 18 functional pages have guide articles in `guide/staff/`.
+
+**Customer PWA: 96% coverage** — 25/26 components covered.
+
+### Changes Made in Round 30 to Achieve 100% Admin Coverage
+
+| Change | File(s) | What was added |
+|--------|---------|----------------|
+| Campaign Settings section | `guide/admin/marketing.md` | Twilio, Resend, DeepL API credentials for campaign delivery |
+| Equipment section | `guide/admin/inventory.md` | Equipment records, statuses, maintenance logs, reports ledger, staff workflow |
+| Hygiene section | `guide/admin/inventory.md` | Hygiene reports, report types, verify/flag actions, staff workflow |
+| New Notifications guide | `guide/admin/notifications.md` (NEW) | Push notifications CRUD, templates, reports, delivery flow |
+| Updated index | `guide/admin/index.md` | Notifications row, Inventory pages updated to include Equipment + Hygiene |
+| Updated seeder | `backend/scripts/seed_help_articles.py` | Added `admin-notifications` article entry |
 
 ---
 

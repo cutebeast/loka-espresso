@@ -25,13 +25,14 @@ The Admin Portal (`admin.loyaltysystem.uk`) is the back-office control centre fo
 | [Dashboard](dashboard.md) | Dashboard | Business overview and KPIs. |
 | [Stores](stores.md) | Locations, Settings, Tables | Store configuration, operating hours, table layout, QR codes. |
 | [Menu](menu.md) | Categories, Items, Bundle Products, Allergens, Dietary Tags, Tax Categories | Build and maintain the customer-facing menu. |
-| [Inventory](inventory.md) | Categories, Items, Stock Levels, Suppliers, Movements, Purchase Orders | Track ingredients, stock, suppliers, and orders. |
+| [Inventory](inventory.md) | Categories, Items, Stock Levels, Suppliers, Movements, Purchase Orders, Equipment, Hygiene | Track ingredients, stock, suppliers, equipment health, and hygiene compliance. |
 | [Staff](staff.md) | Staff Profiles, Attendance, Shifts, Tips, Roles | Manage staff, schedules, attendance, and tip allocation. |
 | [Customers](customers.md) | Customers, Consents, Devices, Feedback | View customer data, consents, devices, and feedback. |
 | [Orders & Refunds](orders-and-refunds.md) | Orders, Refunds, Reservations | Manage orders, process refunds, handle reservations. |
 | [Marketing](marketing.md) | Rewards, Promotions, Vouchers, Surveys, Referrals, Campaigns, Check-ins | Create offers, campaigns, surveys, and referral programs. |
 | [Loyalty](loyalty.md) | Tiers, Accounts, Ledger, Settings | Configure points, tiers, and customer loyalty accounts. |
 | [Content](content.md) | Info Cards, Products, Events, System Pages, PWA Splash | Manage in-app content and legal pages. |
+| [Notifications](notifications.md) | Notifications, Templates, Reports | Create and send push notifications to customers. |
 | [Reports & Audit](reports-and-audit.md) | Reports, Audit Log | Sales reports and account activity logs. |
 | [Settings](settings.md) | App Settings, Payment Gateway, Twilio Verify, Version Control | Platform configuration. |
 | [Translations](translations.md) | Translations | Manage UI and content translations. |

@@ -133,6 +133,23 @@ Customers check in via the PWA to earn bonus points or streak rewards.
 ### Campaign results
 Open the campaign detail to view delivery stats, open rates, and conversions.
 
+### Campaign Settings (`/marketing/campaigns/settings`)
+
+Configure the API credentials that power campaign delivery:
+
+- **Twilio SMS & WhatsApp** — sends SMS and WhatsApp campaigns. Requires Account SID, Auth Token, and a verified From Number. Toggle between test and live credentials.
+- **Resend Email** — sends email campaigns. Requires an API key and a verified From Email. Toggle between test and live credentials.
+- **Translation APIs** — DeepL API key and DeepSeek API key for auto-translating campaign content into other locales.
+
+#### How to use
+1. Navigate to **Marketing → Campaign Settings**.
+2. Enter the API credentials for each provider you use.
+3. Toggle `Use Test Credentials` ON during development; switch to OFF for production.
+4. Click **Save** on each row.
+5. **Always send a test campaign** after updating credentials to verify delivery works.
+
+> Sensitive fields (Auth Tokens, API keys) are stored as `***` in the database after first save. If you need to rotate a key, replace the value and save again.
+
 ## Related
 - [Loyalty](loyalty.md)
 - [Customer PWA — Promotions & Rewards](../customer/promotions-and-rewards.md)
