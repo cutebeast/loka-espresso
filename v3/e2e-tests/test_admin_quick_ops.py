@@ -177,7 +177,7 @@ async def test_staff_login_and_token_refresh(
     # Login
     r2 = await client.post(f"{base_url}/staff/auth/login", json={
         "display_name": staff["display_name"],
-        "password": "1234",
+        "password": "123456",
         "store_id": staff.get("store_id", 1),
     })
     assert r2.status_code == 200

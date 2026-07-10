@@ -1,6 +1,7 @@
 """POS domain schemas."""
 
 from datetime import datetime
+from app.schemas.base import Money
 from decimal import Decimal
 from typing import Literal
 
@@ -37,7 +38,7 @@ class PosSessionBase(BaseSchema):
     terminal_id: int = Field(..., gt=0)
     staff_id: int | None = None
     status: Literal["open", "closed", "paused"] = "open"
-    opening_cash: Decimal = Field(default=Decimal(0), ge=0)
+    opening_cash: Money = Field(default=Decimal(0), ge=0)
 
 
 class PosSessionCreate(PosSessionBase):
@@ -45,7 +46,7 @@ class PosSessionCreate(PosSessionBase):
 
 
 class PosSessionClose(BaseSchema):
-    closing_cash: Decimal = Field(..., ge=0)
+    closing_cash: Money = Field(..., ge=0)
     discrepancy_notes: str | None = Field(None, max_length=500)
 
 
@@ -56,14 +57,14 @@ class PosSessionOut(BaseSchema):
     status: str
     opened_at: datetime
     closed_at: datetime | None
-    opening_cash: Decimal
-    closing_cash: Decimal | None
-    expected_cash: Decimal | None
-    discrepancy: Decimal | None
+    opening_cash: Money
+    closing_cash: Money | None
+    expected_cash: Money | None
+    discrepancy: Money | None
     discrepancy_notes: str | None
-    total_sales_cash: Decimal
-    total_sales_card: Decimal
-    total_sales_qr: Decimal
+    total_sales_cash: Money
+    total_sales_card: Money
+    total_sales_qr: Money
     order_count: int
     created_at: datetime
     updated_at: datetime

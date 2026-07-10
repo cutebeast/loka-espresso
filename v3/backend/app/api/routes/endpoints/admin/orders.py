@@ -160,8 +160,8 @@ async def list_orders(
             "id": li.id,
             "name": (li.item_snapshot or {}).get("item_name") or (li.item_snapshot or {}).get("name") or f"Item #{li.menu_item_id}",
             "quantity": li.quantity,
-            "unit_price": str(li.unit_price),
-            "line_total": str(li.line_total),
+            "unit_price": float(li.unit_price),
+            "line_total": float(li.line_total),
             "special_instructions": li.special_instructions,
         })
 
@@ -908,8 +908,8 @@ async def pay_with_wallet(
     return APIResponse(
         data={
             "order_id": order.id,
-            "amount_paid": amount,
-            "wallet_balance_remaining": new_balance,
+            "amount_paid": float(amount),
+            "wallet_balance_remaining": float(new_balance),
             "payment_status": order.payment_status,
             "message": f"RM {amount:.2f} paid from wallet. Remaining balance: RM {new_balance:.2f}",
         }
@@ -997,12 +997,12 @@ async def add_order_line_item(
         order_id=order.id,
         staff_id=admin.id,
         modification_type="add_item",
-        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": str(price)},
+        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": float(price)},
     )
     db.add(log)
     await db.commit()
     await db.refresh(line_item)
-    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": str(total)}, status_code=201)
+    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": float(total)}, status_code=201)
 
 
 @router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])

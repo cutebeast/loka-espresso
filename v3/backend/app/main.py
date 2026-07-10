@@ -25,7 +25,7 @@ class DecimalEncoder:
     @staticmethod
     def default(obj):
         if isinstance(obj, Decimal):
-            return str(obj)
+            return float(obj)
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 

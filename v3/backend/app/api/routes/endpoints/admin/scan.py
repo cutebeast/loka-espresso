@@ -61,7 +61,7 @@ async def scan_customer_qr(admin: CurrentAdmin, db: DBDependency, data: ScanCust
             .limit(1)
         )
         entry = last_entry.scalar_one_or_none()
-        wallet_balance = str(entry.running_balance) if entry else 0
+        wallet_balance = float(entry.running_balance) if entry else 0
 
     loyalty_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id))
     loyalty = loyalty_result.scalar_one_or_none()

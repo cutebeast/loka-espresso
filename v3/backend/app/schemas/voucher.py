@@ -1,6 +1,7 @@
 """Voucher domain schemas."""
 
 from datetime import datetime
+from app.schemas.base import Money
 from decimal import Decimal
 from typing import Literal
 
@@ -20,10 +21,10 @@ class VoucherDefinitionBase(BaseSchema):
     minimum_tier_id: int | None = None
     display_title: str = Field(..., max_length=100)
     description: str | None = None
-    discount_value: Decimal = Field(..., ge=0)
-    discount_max_amount: Decimal | None = Field(None, ge=0)
-    minimum_order_value: Decimal = Field(default=Decimal(0), ge=0)
-    maximum_discount: Decimal | None = Field(None, ge=0)
+    discount_value: Money = Field(..., ge=0)
+    discount_max_amount: Money | None = Field(None, ge=0)
+    minimum_order_value: Money = Field(default=Decimal(0), ge=0)
+    maximum_discount: Money | None = Field(None, ge=0)
     max_global_uses: int | None = Field(None, gt=0)
     max_uses_per_customer: int = Field(default=1, gt=0)
     valid_from: datetime
@@ -56,10 +57,10 @@ class VoucherDefinitionUpdate(BaseSchema):
     minimum_tier_id: int | None = None
     display_title: str | None = Field(None, max_length=100)
     description: str | None = None
-    discount_value: Decimal | None = Field(None, ge=0)
-    discount_max_amount: Decimal | None = Field(None, ge=0)
-    minimum_order_value: Decimal | None = Field(None, ge=0)
-    maximum_discount: Decimal | None = Field(None, ge=0)
+    discount_value: Money | None = Field(None, ge=0)
+    discount_max_amount: Money | None = Field(None, ge=0)
+    minimum_order_value: Money | None = Field(None, ge=0)
+    maximum_discount: Money | None = Field(None, ge=0)
     max_global_uses: int | None = Field(None, gt=0)
     max_uses_per_customer: int | None = Field(None, gt=0)
     valid_from: datetime | None = None
@@ -98,9 +99,9 @@ class CustomerVoucherOut(BaseSchema):
     source_id: int | None = None
     created_at: datetime
     discount_type: str | None = None
-    discount_value: Decimal | None = None
-    min_spend: Decimal | None = None
-    max_discount: Decimal | None = None
+    discount_value: Money | None = None
+    min_spend: Money | None = None
+    max_discount: Money | None = None
     voucher_title: str | None = None
     voucher_image_url: str | None = None
 

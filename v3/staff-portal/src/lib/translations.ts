@@ -600,7 +600,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "dashboard.floor": "Floor",
   "dashboard.bookings": "Bookings",
   "dashboard.reservations": "Reservations",
-  "dashboard.member": "Member",
+  "dashboard.member": "Wallet & Rewards",
   "dashboard.wallet_rewards": "Wallet & Rewards",
   "dashboard.equipment": "Equipment",
   "dashboard.maintenance": "Maintenance",
@@ -618,7 +618,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "dashboard.my_schedule": "My Schedule",
   "dashboard.tasks": "Tasks",
   "dashboard.to_do": "To-do",
-  "dashboard.me": "Me",
+  "dashboard.me": "Profile",
   "dashboard.profile": "Profile",
   "dashboard.help": "Help articles and guides",
 

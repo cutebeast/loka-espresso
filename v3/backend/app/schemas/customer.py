@@ -1,6 +1,7 @@
 """Customer domain schemas."""
 
 from datetime import date, datetime
+from app.schemas.base import Money
 from decimal import Decimal
 from typing import Literal
 
@@ -125,9 +126,9 @@ class CustomerProfileOut(CustomerProfileBase, TimestampedSchema):
     referral_code: str | None
     referred_by_customer_id: int | None
     referral_count: int
-    referral_earnings_total: Decimal
+    referral_earnings_total: Money
     customer_segment: str | None
-    lifetime_value: Decimal
+    lifetime_value: Money
     order_count: int
     last_order_at: datetime | None
     is_active: bool

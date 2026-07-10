@@ -1,5 +1,6 @@
 """Inventory domain schemas."""
 from decimal import Decimal
+from app.schemas.base import Money
 from pydantic import ConfigDict, Field
 
 from app.schemas.base import BaseSchema, TimestampedSchema
@@ -41,7 +42,7 @@ class InventoryItemBase(BaseSchema):
     item_name: str
     description: str | None = None
     unit_of_measure: str
-    unit_cost: Decimal | None = None
+    unit_cost: Money | None = None
     shelf_life_days: int | None = None
     supplier_id: int | None = None
     item_type: str = "fnb"
@@ -59,7 +60,7 @@ class InventoryItemUpdate(BaseSchema):
     item_name: str | None = None
     description: str | None = None
     unit_of_measure: str | None = None
-    unit_cost: Decimal | None = None
+    unit_cost: Money | None = None
     shelf_life_days: int | None = None
     supplier_id: int | None = None
     item_type: str | None = None
@@ -72,11 +73,11 @@ class InventoryStockBase(BaseSchema):
 
     inventory_item_id: int
     store_id: int
-    current_stock: Decimal = 0
-    reserved_stock: Decimal = 0
-    reorder_level: Decimal = 0
-    reorder_quantity: Decimal = 0
-    par_level: Decimal = 0
+    current_stock: Money = 0
+    reserved_stock: Money = 0
+    reorder_level: Money = 0
+    reorder_quantity: Money = 0
+    par_level: Money = 0
     storage_location: str | None = None
 
 
@@ -87,11 +88,11 @@ class InventoryStockCreate(InventoryStockBase):
 class InventoryStockUpdate(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    current_stock: Decimal | None = None
-    reserved_stock: Decimal | None = None
-    reorder_level: Decimal | None = None
-    reorder_quantity: Decimal | None = None
-    par_level: Decimal | None = None
+    current_stock: Money | None = None
+    reserved_stock: Money | None = None
+    reorder_level: Money | None = None
+    reorder_quantity: Money | None = None
+    par_level: Money | None = None
     storage_location: str | None = None
 
 

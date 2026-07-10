@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
+import { renderMarkdown } from '@/lib/markdown';
 
 interface HelpArticle {
   id: number;
@@ -131,7 +132,7 @@ export default function HelpSupportPage() {
                             {isOpen && (
                               <div
                                 className="support-faq-answer"
-                                dangerouslySetInnerHTML={{ __html: renderSimpleMarkdown(item.body_text || '') }}
+                                dangerouslySetInnerHTML={{ __html: renderMarkdown(item.body_text || '') }}
                               />
                             )}
                           </div>
@@ -161,7 +162,7 @@ export default function HelpSupportPage() {
                             {isOpen && (
                               <div
                                 className="support-faq-answer"
-                                dangerouslySetInnerHTML={{ __html: renderSimpleMarkdown(item.body_text || '') }}
+                                dangerouslySetInnerHTML={{ __html: renderMarkdown(item.body_text || '') }}
                               />
                             )}
                           </div>
@@ -259,13 +260,4 @@ export default function HelpSupportPage() {
   );
 }
 
-function renderSimpleMarkdown(md: string): string {
-  return md
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    .replace(/^\> (.*$)/gim, "<blockquote>$1</blockquote>")
-    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
-    .replace(/\n/g, "<br />");
-}
+

@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.staff import StaffProfile, TipAllocation
 from app.models.store import Store
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, Money
 
 router = APIRouter(prefix="/admin/staff", tags=["admin — staff"])
 
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/admin/staff", tags=["admin — staff"])
 class TipAllocationCreate(BaseModel):
     order_id: int
     staff_id: int
-    tip_amount: Decimal = Field(..., ge=0)
+    tip_amount: Money = Field(..., ge=0)
     tip_percentage: float | None = Field(None, ge=0, le=1)
     allocation_type: str = "even_split"
 
@@ -33,7 +33,7 @@ class TipAllocationOut(BaseModel):
     id: int
     order_id: int
     staff_id: int
-    tip_amount: Decimal
+    tip_amount: Money
     tip_percentage: float | None
     allocation_type: str
     created_at: datetime

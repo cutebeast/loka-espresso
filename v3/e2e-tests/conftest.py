@@ -216,7 +216,7 @@ def staff_headers(base_url: str) -> dict:
     with httpx.Client(timeout=15.0) as c:
         r = c.post(
             f"{base_url}/staff/auth/login",
-            json={"display_name": "Test Staff", "store_id": 1, "password": "1234"},
+            json={"display_name": "Test Staff", "store_id": 1, "password": "123456"},
         )
         assert r.status_code == 200, f"Staff login failed: {r.text}"
         token = r.json()["tokens"]["access_token"]
@@ -417,7 +417,7 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
                     "display_name": "Test Staff",
                     "email": "teststaff@lokaespresso.my",
                     "password": "TestStaff123!",
-                    "pin": "1234",
+                    "pin": "123456",
                     "store_id": 1,
                     "role": "cashier",
                 })

@@ -1,11 +1,13 @@
 "use client";
 
 /**
- * BroadcastChannel-based bridge between the POS (staff-facing) and the
- * Customer Display (/pos/display, customer-facing second screen).
+ * Dual-channel bridge between POS (staff-facing) and Customer Display.
  *
- * The POS broadcasts state changes; the display listens and renders.
- * No backend round-trip needed — everything is same-origin real-time.
+ * 1. BroadcastChannel — instant same-browser sync (dual-screen setup)
+ * 2. Redis via API — cross-device sync (display on separate tablet/device)
+ *
+ * The POS writes state to both channels. The display reads from both:
+ * BroadcastChannel first (instant), then falls back to Redis polling.
  */
 
 export type DisplayCartItem = {
@@ -20,7 +22,8 @@ export type DisplayCartItem = {
 
 export type DisplayState = {
   storeName: string;
-  orderType: string; // "dine_in" | "takeaway" | "delivery"
+  storeId?: number;
+  orderType: string;
   tableNumber: string | null;
   cart: DisplayCartItem[];
   subtotal: number;
@@ -28,10 +31,9 @@ export type DisplayState = {
   taxAmount: number;
   total: number;
   itemCount: number;
-  // Payment phase
   phase: "browsing" | "payment" | "qr_payment" | "paid" | "idle";
-  paymentUrl?: string;        // Stripe Checkout URL (for QR generation)
-  pwaPayUrl?: string;         // PWA deep-link for customer to pay from their phone
+  paymentUrl?: string;
+  pwaPayUrl?: string;
   orderNumber?: string;
   orderId?: string;
   paidTotal?: number;
@@ -40,6 +42,8 @@ export type DisplayState = {
 };
 
 const CHANNEL = "pos-display";
+const STORAGE_KEY = "pos-display-state";
+const POLL_INTERVAL_MS = 2000;
 
 let _channel: BroadcastChannel | null = null;
 
@@ -51,27 +55,77 @@ function getChannel(): BroadcastChannel | null {
   return _channel;
 }
 
-/** POS side: broadcast state to the customer display. */
-export function broadcastDisplay(state: DisplayState): void {
+/** Save state to localStorage so display survives refresh */
+function saveToLocal(state: DisplayState): void {
   try {
-    const ch = getChannel();
-    if (!ch) return;
-    ch.postMessage({ type: "state", state, ts: Date.now() });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, ts: Date.now() }));
+  } catch { /* ignore */ }
+}
+
+/** Load last state from localStorage */
+export function loadFromLocal(): DisplayState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const { state, ts } = JSON.parse(raw);
+    // Expire after 5 minutes
+    if (Date.now() - ts > 5 * 60 * 1000) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return state;
   } catch {
-    /* display may not be open */
+    return null;
   }
 }
 
-/** POS side: tell the display to reset to idle. */
+/** Clear localStorage state */
+export function clearLocal(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch { /* ignore */ }
+}
+
+/** POS side: broadcast state to BroadcastChannel + Redis + localStorage */
+export function broadcastDisplay(state: DisplayState): void {
+  // 1. BroadcastChannel (instant, same-browser)
+  try {
+    const ch = getChannel();
+    if (ch) ch.postMessage({ type: "state", state, ts: Date.now() });
+  } catch { /* display may not be open */ }
+
+  // 2. localStorage (for refresh recovery)
+  saveToLocal(state);
+
+  // 3. Redis via API (cross-device) — fire and forget
+  try {
+    fetch("/api/staff/pos/display-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(state),
+    }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
+/** POS side: tell the display to reset to idle */
 export function broadcastReset(): void {
   try {
     const ch = getChannel();
-    if (!ch) return;
-    ch.postMessage({ type: "reset", ts: Date.now() });
+    if (ch) ch.postMessage({ type: "reset", ts: Date.now() });
   } catch { /* */ }
+
+  clearLocal();
+
+  try {
+    fetch("/api/staff/pos/display-state", {
+      method: "DELETE",
+      credentials: "include",
+    }).catch(() => {});
+  } catch { /* ignore */ }
 }
 
-/** Display side: subscribe to POS broadcasts. Returns an unsubscribe fn. */
+/** Display side: subscribe to POS broadcasts via BroadcastChannel */
 export function subscribeToPos(
   onState: (state: DisplayState) => void,
   onReset: () => void,
@@ -88,7 +142,43 @@ export function subscribeToPos(
   };
 }
 
-/** Open the customer display in a new browser window (fullscreen on dual-screen). */
+/** Display side: poll Redis for state (cross-device fallback) */
+export function pollRedisState(
+  storeId: number,
+  onState: (state: DisplayState) => void,
+  onNull: () => void,
+): () => void {
+  let active = true;
+  let lastTs = "";
+
+  const poll = async () => {
+    if (!active) return;
+    try {
+      const res = await fetch(`/api/staff/pos/display-state?store_id=${storeId}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const data = json?.data;
+      if (!data) {
+        if (lastTs) { onNull(); lastTs = ""; }
+        return;
+      }
+      const ts = data.updated_at || "";
+      if (ts !== lastTs) {
+        lastTs = ts;
+        onState(data as DisplayState);
+      }
+    } catch { /* transient — will retry */ }
+  };
+
+  poll();
+  const interval = setInterval(poll, POLL_INTERVAL_MS);
+  return () => {
+    active = false;
+    clearInterval(interval);
+  };
+}
+
+/** Open the customer display in a new browser window */
 export function openCustomerDisplay(left = 1920): void {
   if (typeof window === "undefined") return;
   const url = "/pos/display";

@@ -60,7 +60,8 @@ const pageImporters: Record<string, () => Promise<{
   'guest-pay': () => import('./GuestPayPage'),
   reservations: () => import('./ReservationsPage'),
   events: () => import('./EventsPage'),
-  checkin: () => import('./CheckinPage')
+  checkin: () => import('./CheckinPage'),
+  kiosk: () => import('./KioskPage')
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -292,6 +293,8 @@ export default function AppShell() {
         return <LazyRenderer pageKey="events" onBack={onBackProfile} />;
       case 'checkin':
         return <LazyRenderer pageKey="checkin" onBack={onBackHome} />;
+      case 'kiosk':
+        return <LazyRenderer pageKey="kiosk" />;
       default:
         return <HomePage />;
     }
@@ -327,9 +330,9 @@ export default function AppShell() {
         </motion.div>}
       {page === 'home' && authDone && <PromotionPopup />}
 
-      {/* Guest users skip auth flow entirely; guest-pay is a standalone public payment
-          page (walk-in dine-in customers scan a QR and pay without logging in) */}
-      {!isGuest && !authDone && page !== 'guest-pay' ? <AuthFlow onAuthDone={handleAuthDone} /> : <>
+      {/* Guest users skip auth flow entirely; guest-pay and kiosk are standalone public payment
+          / ordering pages that must not be blocked by authentication. */}
+      {!isGuest && !authDone && page !== 'guest-pay' && page !== 'kiosk' ? <AuthFlow onAuthDone={handleAuthDone} /> : <>
           {/* Toast */}
           {toast && <Toast toast={toast} onDismiss={() => useUIStore.getState().hideToast()} />}
 

@@ -42,3 +42,154 @@ button { font-family: inherit; }
 .language-selector-icon {
   opacity: 0.7;
 }
+
+/* ── Help Article Markdown Styles ── */
+.help-article-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+}
+.help-article-body h1 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 28px 0 12px;
+  color: var(--color-text-primary);
+}
+.help-article-body h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 24px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--color-border-light);
+  color: var(--color-text-primary);
+}
+.help-article-body h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 20px 0 8px;
+  color: var(--color-text-primary);
+}
+.help-article-body p {
+  margin: 8px 0;
+}
+.help-article-body ul,
+.help-article-body ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+.help-article-body ul { list-style: disc; }
+.help-article-body ol { list-style: decimal; }
+.help-article-body li {
+  margin: 4px 0;
+}
+.help-article-body blockquote {
+  margin: 12px 0;
+  padding: 10px 16px;
+  border-left: 4px solid var(--color-primary);
+  background: rgba(59, 74, 26, 0.04);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-secondary);
+}
+.help-article-body code {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  padding: 2px 6px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-sm);
+}
+.help-article-body pre {
+  margin: 12px 0;
+  padding: 14px 16px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.help-article-body pre code {
+  padding: 0;
+  background: none;
+  font-size: 13px;
+}
+.help-article-body hr {
+  border: none;
+  border-top: 1px solid var(--color-border-light);
+  margin: 20px 0;
+}
+.help-article-body a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.help-article-body a:hover {
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+/* Markdown tables */
+.help-article-body .md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 13px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.help-article-body .md-table thead {
+  background: var(--color-bg-muted);
+}
+.help-article-body .md-table th {
+  padding: 8px 12px;
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 2px solid var(--color-border-light);
+  white-space: nowrap;
+}
+.help-article-body .md-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: top;
+}
+.help-article-body .md-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.help-article-body .md-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* ── Floating Help Button ── */
+.floating-help-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.floating-help-btn:hover {
+  background: var(--color-primary-light);
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.floating-help-btn:active {
+  transform: scale(0.95);
+}
+
+/* Page header help link — auto-injected via CSS for existing page-header pattern */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.page-header > div:first-child {
+  min-width: 0;
+}

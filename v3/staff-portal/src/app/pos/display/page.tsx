@@ -3,23 +3,24 @@
 /**
  * Customer-facing POS display — designed for a second screen / counter tablet.
  *
- * Listens to BroadcastChannel "pos-display" for real-time cart + payment state
- * from the staff POS page. Shows:
- *  - Store branding + welcome
- *  - Order items + running total (live as staff adds items)
- *  - Payment QR (Stripe Checkout) for customer to scan with their phone
- *  - The QR deep-links to the PWA (app.loyaltysystem.uk) so the customer can
- *    pay from their own device — completes the order without staff intervention
- *  - Payment confirmed / thank-you screen
+ * Works in two modes:
+ * 1. Same-browser (dual-screen): listens to BroadcastChannel for instant updates
+ * 2. Cross-device (separate tablet): polls Redis via API every 2 seconds
  *
- * Usage: staff clicks "Customer Display" on the POS → this opens in a new
- * fullscreen window on the customer-facing monitor.
+ * Features:
+ * - Idle screen with welcome, clock, and wallet top-up QR
+ * - Live cart display as staff builds the order
+ * - Payment QR (Stripe) for customer to scan with their phone
+ * - Payment pending spinner (for cash/card)
+ * - Thank-you screen with order number and change
+ * - Fullscreen + Wake Lock for kiosk-like operation
+ * - localStorage persistence for refresh recovery
  */
 
-import { useEffect, useState, useCallback } from "react";
-import { subscribeToPos, type DisplayState } from "@/components/pos/usePosBroadcast";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { subscribeToPos, pollRedisState, loadFromLocal, clearLocal, type DisplayState } from "@/components/pos/usePosBroadcast";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon } from "lucide-react";
+import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Wallet, Maximize2 } from "lucide-react";
 
 const DEFAULT_STATE: DisplayState = {
   storeName: "LOKA Espresso",
@@ -34,22 +35,54 @@ const DEFAULT_STATE: DisplayState = {
   phase: "idle",
 };
 
+const TOPUP_QR_CACHE_KEY = "pos-display-topup-qr";
+
 export default function CustomerDisplayPage() {
   const { t, locale } = useTranslation();
   const [state, setState] = useState<DisplayState>(DEFAULT_STATE);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [now, setNow] = useState(0);
+  const [topUpQrUrl, setTopUpQrUrl] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [storeId, setStoreId] = useState<number>(1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Subscribe to POS broadcasts
+  // ── Determine store ID from URL or localStorage ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sid = parseInt(params.get("store") || "1", 10);
+    setStoreId(sid || 1);
+  }, []);
+
+  // ── Restore from localStorage on mount (refresh recovery) ──
+  useEffect(() => {
+    const saved = loadFromLocal();
+    if (saved && saved.phase !== "idle") {
+      setState(saved);
+    }
+  }, []);
+
+  // ── Subscribe to BroadcastChannel (same-browser, instant) ──
   useEffect(() => {
     const unsub = subscribeToPos(
       (s) => setState(s),
-      () => setState(DEFAULT_STATE),
+      () => { setState(DEFAULT_STATE); clearLocal(); },
     );
     return unsub;
   }, []);
 
-  // Clock for welcome screen
+  // ── Poll Redis (cross-device fallback) ──
+  useEffect(() => {
+    if (!storeId) return;
+    const stopPoll = pollRedisState(
+      storeId,
+      (s) => setState(s),
+      () => { setState(DEFAULT_STATE); clearLocal(); },
+    );
+    return stopPoll;
+  }, [storeId]);
+
+  // ── Clock for welcome screen ──
   useEffect(() => {
     if (state.phase === "idle") {
       setNow(Date.now());
@@ -58,7 +91,7 @@ export default function CustomerDisplayPage() {
     }
   }, [state.phase]);
 
-  // Generate QR from the PWA payment URL (customer scans → opens PWA → pays)
+  // ── Generate payment QR from PWA payment URL ──
   useEffect(() => {
     setQrDataUrl(null);
     if (!state.pwaPayUrl && !state.paymentUrl) return;
@@ -77,18 +110,127 @@ export default function CustomerDisplayPage() {
     return () => { cancelled = true; };
   }, [state.pwaPayUrl, state.paymentUrl]);
 
+  // ── Generate wallet top-up QR for idle screen ──
+  useEffect(() => {
+    // Build PWA wallet top-up URL
+    const pwaBase = typeof window !== "undefined"
+      ? window.location.origin.replace("://staff.", "://app.")
+      : "https://app.loyaltysystem.uk";
+    const topUpUrl = `${pwaBase}/#wallet?action=topup&store=${storeId}`;
+
+    // Check cache
+    const cacheKey = `${TOPUP_QR_CACHE_KEY}-${storeId}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      setTopUpQrUrl(cached);
+      return;
+    }
+
+    let cancelled = false;
+    import("qrcode").then(QRCode =>
+      QRCode.toDataURL(topUpUrl, {
+        width: 200,
+        margin: 1,
+        color: { dark: "#3B4A1A", light: "#FFFFFF" },
+        errorCorrectionLevel: "L",
+      }),
+    ).then(dataUrl => {
+      if (!cancelled) {
+        setTopUpQrUrl(dataUrl);
+        try { sessionStorage.setItem(cacheKey, dataUrl); } catch {}
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [storeId]);
+
+  // ── Fullscreen + Wake Lock ──
+  const enterFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement && containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      }
+    } catch { /* user gesture required on some browsers */ }
+
+    // Wake Lock — prevents screen from sleeping
+    try {
+      if ("wakeLock" in navigator) {
+        await (navigator as any).wakeLock.request("screen");
+      }
+    } catch { /* not supported */ }
+  }, []);
+
+  // Auto-attempt fullscreen on first user interaction
+  useEffect(() => {
+    const onFirstClick = () => {
+      enterFullscreen();
+      document.removeEventListener("click", onFirstClick);
+      document.removeEventListener("touchstart", onFirstClick);
+    };
+    document.addEventListener("click", onFirstClick);
+    document.addEventListener("touchstart", onFirstClick);
+    return () => {
+      document.removeEventListener("click", onFirstClick);
+      document.removeEventListener("touchstart", onFirstClick);
+    };
+  }, [enterFullscreen]);
+
+  // Re-acquire wake lock when page becomes visible again
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        try {
+          if ("wakeLock" in navigator) {
+            (navigator as any).wakeLock.request("screen").catch(() => {});
+          }
+        } catch { /* */ }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   const fmt = useCallback((amt: number) => `${t("pos.currency_symbol")}${amt.toFixed(2)}`, [t]);
 
-  // ── IDLE / WELCOME ──────────────────────────────────────────────
+  // ── IDLE / WELCOME ──
   if (state.phase === "idle" || (state.phase === "browsing" && state.cart.length === 0)) {
     return (
-      <div style={styles.container}>
+      <div ref={containerRef} style={styles.container} onClick={enterFullscreen}>
+        {/* Fullscreen button (top-right, subtle) */}
+        {!isFullscreen && (
+          <button style={styles.fullscreenBtn} onClick={(e) => { e.stopPropagation(); enterFullscreen(); }} aria-label="Fullscreen">
+            <Maximize2 size={20} />
+          </button>
+        )}
+
         <div style={styles.welcomeWrap}>
           <div style={styles.logo}>{state.storeName}</div>
           <div style={styles.welcomeText}>{t("pos.display_welcome")}</div>
           <div style={styles.clock}>
             {new Date(now).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
           </div>
+
+          {/* Wallet Top-Up QR */}
+          {topUpQrUrl && (
+            <div style={styles.topUpSection} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.topUpQrWrap}>
+                {topUpQrUrl ? (
+                  <img src={topUpQrUrl} alt="Top Up QR" style={styles.topUpQrImg} />
+                ) : (
+                  <Loader2 size={32} className="animate-spin" style={{ color: "var(--color-primary)" }} />
+                )}
+              </div>
+              <div style={styles.topUpLabel}>
+                <Wallet size={18} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                {t("pos.display_topup_qr_label")}
+              </div>
+              <div style={styles.topUpHint}>
+                <Smartphone size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                {t("pos.display_scan_to_topup")}
+              </div>
+            </div>
+          )}
+
           <div style={styles.hint}>
             <ShoppingBag size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
             <div style={{ fontSize: 18, color: "var(--color-text-muted)" }}>
@@ -100,10 +242,10 @@ export default function CustomerDisplayPage() {
     );
   }
 
-  // ── PAID / THANK YOU ────────────────────────────────────────────
+  // ── PAID / THANK YOU ──
   if (state.phase === "paid") {
     return (
-      <div style={styles.container}>
+      <div ref={containerRef} style={styles.container}>
         <div style={styles.thankYouWrap}>
           <CheckCircle size={80} style={{ color: "#16A34A", marginBottom: 24 }} />
           <div style={styles.thankYouTitle}>{t("pos.display_thank_you")}</div>
@@ -118,10 +260,10 @@ export default function CustomerDisplayPage() {
     );
   }
 
-  // ── BROWSING (cart building) + PAYMENT + QR PAYMENT ─────────────
+  // ── BROWSING + PAYMENT + QR PAYMENT ──
   const showPaymentQR = state.phase === "qr_payment" && qrDataUrl;
   return (
-    <div style={styles.container}>
+    <div ref={containerRef} style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.logo}>{state.storeName}</div>
@@ -211,17 +353,28 @@ export default function CustomerDisplayPage() {
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────────
+// ── Styles ──
 const styles: Record<string, React.CSSProperties> = {
   container: {
     width: "100vw", height: "100vh", display: "flex", flexDirection: "column",
     background: "var(--color-bg-page)", color: "var(--color-text-primary)",
     fontFamily: "var(--font-sans)", overflow: "hidden", userSelect: "none",
+    cursor: "default",
+  },
+  fullscreenBtn: {
+    position: "absolute", top: 12, right: 12, zIndex: 10,
+    background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 8,
+    padding: 8, cursor: "pointer", color: "var(--color-text-muted)",
   },
   welcomeWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
   logo: { fontSize: 36, fontWeight: 800, color: "var(--color-primary)" },
   welcomeText: { fontSize: 22, color: "var(--color-text-muted)", marginTop: 12 },
   clock: { fontSize: 48, fontWeight: 300, color: "var(--color-text-secondary)", marginTop: 24 },
+  topUpSection: { marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
+  topUpQrWrap: { width: 160, height: 160, background: "white", borderRadius: 12, padding: 8, boxShadow: "0 2px 12px rgba(0,0,0,0.08)" },
+  topUpQrImg: { width: "100%", height: "100%" },
+  topUpLabel: { fontSize: 16, fontWeight: 700, color: "var(--color-primary)", display: "flex", alignItems: "center" },
+  topUpHint: { fontSize: 13, color: "var(--color-text-muted)", display: "flex", alignItems: "center" },
   hint: { marginTop: 48, textAlign: "center" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: "1px solid var(--color-border-light)" },
   orderTypeBadge: { fontSize: 16, fontWeight: 600, color: "var(--color-text-muted)", background: "var(--color-bg-muted)", padding: "6px 16px", borderRadius: 20 },

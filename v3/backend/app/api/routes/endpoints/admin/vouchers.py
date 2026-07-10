@@ -189,3 +189,39 @@ async def list_voucher_redemptions(
     item["voucher_title"] = vd.display_title if vd else None
     item["voucher_image_url"] = vd.image_url if vd else None
     return APIResponse(data=item)
+
+
+@public_router.get("/me", response_model=APIResponse[PaginatedResponse[CustomerVoucherOut]])
+async def list_my_vouchers(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=500),
+):
+    """List current customer's vouchers."""
+    count_stmt = select(func.count(CustomerVoucher.id)).where(CustomerVoucher.customer_id == customer.id)
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    stmt = (
+        select(CustomerVoucher)
+        .options(selectinload(CustomerVoucher.voucher_definition))
+        .where(CustomerVoucher.customer_id == customer.id)
+        .order_by(CustomerVoucher.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    vouchers = result.unique().scalars().all()
+
+    items = [CustomerVoucherOut.model_validate(v) for v in vouchers]
+
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page if per_page else 0,
+        )
+    )

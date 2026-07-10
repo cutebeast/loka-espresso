@@ -77,8 +77,8 @@ function CustomSelect({
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const { t } = useTranslation();
+  const router = useRouter();
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
   const [mode, setMode] = useState<"email" | "name">("email");
@@ -156,7 +156,7 @@ export default function LoginPage() {
       attemptCountRef.current = 0;
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect") || "/";
-      router.replace(redirect);
+      router.push(redirect);
     } catch (err: unknown) {
       attemptCountRef.current += 1;
       setError(parseApiError(err, "Login failed"));

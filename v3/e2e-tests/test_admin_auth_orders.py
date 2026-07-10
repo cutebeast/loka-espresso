@@ -142,7 +142,7 @@ async def test_staff_clock_in_flow(client: httpx.AsyncClient, base_url: str, sto
         "display_name": f"Clock Staff {ts}",
         "email": staff_email,
         "password": "StaffPass123!",
-        "pin": "1234",
+        "pin": "123456",
         "role": "server",
         "store_id": store_id,
         "is_active": True,

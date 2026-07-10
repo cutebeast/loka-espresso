@@ -65,7 +65,7 @@ def _build_component_out(comp: BundleProductComponent) -> dict:
         "menu_item_id": comp.menu_item_id,
         "bundle_group_id": comp.bundle_group_id,
         "menu_item_name": item.item_name if item else None,
-        "menu_item_price": str(item.base_price) if item else None,
+        "menu_item_price": float(item.base_price) if item else None,
         "menu_item_image_url": item.image_url if item else None,
         "default_quantity": comp.default_quantity,
         "sort_order": comp.sort_order,
@@ -74,7 +74,7 @@ def _build_component_out(comp: BundleProductComponent) -> dict:
                 "id": mo.id,
                 "modifier_option_id": mo.modifier_option_id,
                 "modifier_option_name": mo.modifier_option.option_name if mo.modifier_option else None,
-                "price_adjustment": str(mo.price_adjustment) if mo.price_adjustment is not None else None,
+                "price_adjustment": float(mo.price_adjustment) if mo.price_adjustment is not None else None,
                 "is_default": mo.is_default,
             }
             for mo in (comp.modifier_overrides or [])
@@ -138,7 +138,7 @@ def _build_out(bp: BundleProduct) -> dict:
         "title": bp.title,
         "description": bp.description,
         "image_url": bp.image_url,
-        "bundle_price": str(bp.bundle_price),
+        "bundle_price": float(bp.bundle_price),
         "category_id": bp.category_id,
         "category_name": cat_name,
         "store_id": bp.store_id,

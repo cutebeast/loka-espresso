@@ -8,11 +8,8 @@ function isPublicPath(pathname: string): boolean {
 }
 
 function getBackendUrl(): string {
-  const direct = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+  const direct = process.env.API_URL || process.env.API_PROXY_URL || process.env.NEXT_PUBLIC_API_URL;
   if (direct && direct.startsWith("http")) return direct;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("API_URL / NEXT_PUBLIC_API_URL not configured for production");
-  }
   return "http://127.0.0.1:13800/api";
 }
 

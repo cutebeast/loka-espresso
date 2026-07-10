@@ -1,11 +1,14 @@
 """Base Pydantic schemas and common patterns."""
 
 from datetime import datetime
-from typing import Any, Generic, TypeVar
+from decimal import Decimal
+from typing import Annotated, Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 T = TypeVar("T")
+
+Money = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float, when_used="json")]
 
 
 class BaseSchema(BaseModel):

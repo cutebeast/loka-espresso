@@ -2,17 +2,15 @@
 function resolveApiBase(): string {
   const envUrl = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_API_URL : undefined;
   // Use the same-origin /api proxy so HttpOnly cookies are sent automatically.
-  // Server-side callers still need an absolute URL.
+  // Server-side callers need an absolute URL (API_PROXY_URL or API_URL).
   if (typeof window !== "undefined") {
     return "/api";
   }
   if (envUrl && envUrl.startsWith("http")) {
     return envUrl;
   }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("NEXT_PUBLIC_API_URL not configured for production");
-  }
-  return "http://127.0.0.1:13800/api";
+  // Server-side: use API_PROXY_URL or API_URL if available, otherwise fallback
+  return process.env.API_PROXY_URL || process.env.API_URL || "http://127.0.0.1:13800/api";
 }
 
 const BASE_URL = resolveApiBase();
@@ -595,29 +593,28 @@ export interface TimeEvent {
 /* ------------------------------------------------------------------ */
 
 export function getStores() {
-  return api.get<Store[]>("/admin/stores");
+  return api.get<Store[]>("/stores");
 }
 
-export function getTables(storeId: number) {
-  return api.get<Table[]>(`/admin/stores/${storeId}/tables`);
+export function getTables(_storeId: number) {
+  return api.get<Table[]>(`/staff/tables`);
 }
 
-export function getOrders(storeId?: number, status?: OrderStatus, paymentStatus?: string) {
+export function getOrders(_storeId?: number, status?: OrderStatus, paymentStatus?: string) {
   const params = new URLSearchParams();
   if (status) params.append("status", status);
   if (paymentStatus) params.append("payment_status", paymentStatus);
-  if (storeId != null && storeId > 0) params.append("store_id", String(storeId));
   params.append("per_page", "100");
   const qs = params.toString();
-  return api.get<Order[]>(`/admin/orders?${qs}`);
+  return api.get<Order[]>(`/staff/orders?${qs}`);
 }
 
 export function getOrderById(id: string | number) {
-  return api.get<OrderDetail>(`/admin/orders/${id}`);
+  return api.get<OrderDetail>(`/staff/orders/${id}`);
 }
 
 export function updateOrderStatus(id: string | number, status: OrderStatus, reason?: string) {
-  return api.patch(`/admin/orders/${id}/status`, { status, ...(reason ? { reason } : {}) });
+  return api.patch(`/staff/orders/${id}/status`, { status, ...(reason ? { reason } : {}) });
 }
 
 export function updateOrderPayment(id: string | number, payload: {
@@ -656,16 +653,15 @@ export function cancelOrder(orderId: string | number, reason?: string) {
 }
 
 export function transferTable(orderId: string | number, newTableId: number) {
-  return api.patch(`/admin/orders/${orderId}/transfer-table?new_table_id=${newTableId}`);
+  return api.patch(`/staff/orders/${orderId}/transfer-table?new_table_id=${newTableId}`);
 }
 
-export function getReservations(storeId: number, date?: string, status?: ReservationStatus) {
+export function getReservations(_storeId: number, date?: string, status?: ReservationStatus) {
   const params = new URLSearchParams();
   if (date) { params.append("date_from", date); params.append("date_to", date); }
   if (status) params.append("status", status);
-  if (storeId != null && storeId > 0) params.append("store_id", String(storeId));
   params.append("per_page", "100");
-  return api.get<Reservation[]>(`/admin/reservations?${params.toString()}`);
+  return api.get<Reservation[]>(`/staff/reservations?${params.toString()}`);
 }
 
 export function updateReservationStatus(id: number, status: ReservationStatus, tableId?: number | null) {
@@ -673,7 +669,7 @@ export function updateReservationStatus(id: number, status: ReservationStatus, t
   if (tableId != null) {
     body.dining_table_id = tableId;
   }
-  return api.patch(`/admin/reservations/${id}/status`, body);
+  return api.patch(`/staff/reservations/${id}/status`, body);
 }
 
 export function clockIn() {
@@ -752,11 +748,11 @@ export function completeMyTask(taskId: number) {
 /* ------------------------------------------------------------------ */
 
 export function getMenuItems(perPage = 100) {
-  return api.get<MenuItem[]>(`/admin/menu/items?per_page=${perPage}`);
+  return api.get<MenuItem[]>(`/staff/menu/items?per_page=${perPage}`);
 }
 
 export function getMenuCategories(perPage = 50) {
-  return api.get<Category[]>(`/admin/menu/categories?per_page=${perPage}`);
+  return api.get<Category[]>(`/staff/menu/categories?per_page=${perPage}`);
 }
 
 export interface BundleProduct {
@@ -819,12 +815,17 @@ export function createPosOrder(payload: {
   return api.post<{ order_id: number; order_number: string; total: number; change?: number }>("/staff/pos/orders", payload);
 }
 
-export function generateTableQr(storeId: number, tableId: number) {
-  return api.post<Table>(`/admin/stores/${storeId}/tables/${tableId}/generate-qr`);
+export async function generateTableQr(storeId: number, tableId: number): Promise<Table | null> {
+  try {
+    return await api.post<Table>(`/admin/stores/${storeId}/tables/${tableId}/generate-qr`);
+  } catch {
+    // QR generation requires admin permissions — not available for staff
+    return null;
+  }
 }
 
-export function updateTableStatus(storeId: number, tableId: number, status: string) {
-  return api.patch(`/admin/stores/${storeId}/tables/${tableId}`, { current_status: status });
+export function updateTableStatus(_storeId: number, tableId: number, status: string) {
+  return api.patch(`/staff/tables/${tableId}/status?current_status=${status}`);
 }
 
 /* ------------------------------------------------------------------ */

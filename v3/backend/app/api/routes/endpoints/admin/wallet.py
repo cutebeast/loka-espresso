@@ -291,7 +291,7 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupReq
         severity="warning",
         changes_summary={"amount": str(amount), "reason": reason, "new_balance": str(new_balance)},
     )); await db.commit(); await db.refresh(entry)
-    return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})
+    return APIResponse(data={"message": "Top-up complete", "new_balance": float(new_balance)})
 
 
 @wallet_alias_router.post("/topup", response_model=APIResponse[dict])
@@ -343,7 +343,7 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
         severity="warning",
         changes_summary={"amount": str(amount), "reason": reason, "new_balance": str(new_balance)},
     )); await db.commit(); await db.refresh(entry)
-    return APIResponse(data={"message": "Deducted", "new_balance": new_balance})
+    return APIResponse(data={"message": "Deducted", "new_balance": float(new_balance)})
 
 
 # ---------------------------------------------------------------------------
@@ -388,9 +388,9 @@ async def get_my_wallet(
             "id": cv.id,
             "code": cv.voucher_code,
             "discount_type": vd.voucher_type,
-            "discount_value": str(vd.discount_value) if vd else None,
-            "min_spend": str(vd.minimum_order_value or 0) if vd else "0",
-            "max_discount": str(vd.discount_max_amount) if vd and vd.discount_max_amount else None,
+            "discount_value": float(vd.discount_value) if vd else None,
+            "min_spend": float(vd.minimum_order_value or 0) if vd else 0,
+            "max_discount": float(vd.discount_max_amount) if vd and vd.discount_max_amount else None,
             "display_title": vd.display_title if vd else None,
             "image_url": vd.image_url if vd else None,
             "expires_at": cv.expires_at.isoformat() if cv.expires_at else None,
@@ -415,8 +415,8 @@ async def get_my_wallet(
             "code": cr.redemption_code,
             "reward_name": rc.reward_name if rc else None,
             "reward_type": rc.reward_type if rc else None,
-            "discount_value": str(rc.discount_value) if rc and rc.discount_value else None,
-            "discount_max_amount": str(rc.discount_max_amount) if rc and rc.discount_max_amount else None,
+            "discount_value": float(rc.discount_value) if rc and rc.discount_value else None,
+            "discount_max_amount": float(rc.discount_max_amount) if rc and rc.discount_max_amount else None,
             "points_spent": cr.points_spent,
             "expires_at": cr.expires_at.isoformat() if cr.expires_at else None,
             "status": cr.status,

@@ -1,5 +1,6 @@
 """Order domain schemas."""
 from decimal import Decimal
+from app.schemas.base import Money
 from datetime import datetime
 from typing import Literal
 
@@ -15,9 +16,9 @@ class OrderLineItemOut(BaseSchema):
     menu_variant_id: int | None
     item_snapshot: dict | None
     quantity: int
-    unit_price: Decimal
-    modifier_total: Decimal
-    line_total: Decimal
+    unit_price: Money
+    modifier_total: Money
+    line_total: Money
     selected_modifiers: dict | list = {}
     special_instructions: str | None
     bundle_product_id: int | None = None
@@ -45,7 +46,7 @@ class OrderAdjustmentOut(BaseSchema):
     id: int
     order_id: int
     adjustment_type: str
-    amount_delta: Decimal
+    amount_delta: Money
     reason: str
     approved_by: int | None
     created_at: datetime
@@ -73,7 +74,7 @@ class OrderFulfillmentOut(BaseSchema):
     assigned_at: datetime | None
     started_at: datetime | None
     completed_at: datetime | None
-    delivery_fee_snapshot: Decimal
+    delivery_fee_snapshot: Money
     delivery_distance_km: float | None
     notes: str | None
     created_at: datetime
@@ -95,7 +96,7 @@ class OrderCreate(BaseSchema):
     delivery_address: dict | str | None = None
     recipient_name: str | None = Field(None, max_length=100)
     recipient_phone: str | None = Field(None, max_length=20)
-    tip_amount: Decimal | None = Field(None, ge=0)
+    tip_amount: Money | None = Field(None, ge=0)
     idempotency_key: str | None = Field(None, max_length=255)
 
 
@@ -111,17 +112,17 @@ class OrderOut(BaseSchema):
     fulfillment_type: str
     dining_table_id: int | None
     item_count: int
-    items_subtotal: Decimal
-    modifier_subtotal: Decimal
-    delivery_fee: Decimal
-    service_charge: Decimal
-    tax_amount: Decimal
-    discount_amount: Decimal
-    voucher_discount: Decimal
-    reward_discount: Decimal
-    addon_discount: Decimal
-    tip_amount: Decimal
-    total_amount: Decimal
+    items_subtotal: Money
+    modifier_subtotal: Money
+    delivery_fee: Money
+    service_charge: Money
+    tax_amount: Money
+    discount_amount: Money
+    voucher_discount: Money
+    reward_discount: Money
+    addon_discount: Money
+    tip_amount: Money
+    total_amount: Money
     total_amount_currency: str
     loyalty_points_earned: int
     loyalty_points_redeemed: int
@@ -167,11 +168,11 @@ class UpdateOrderStatusRequest(BaseSchema):
 
 class ProcessOrderPaymentRequest(BaseSchema):
     payment_method: str = "cash"
-    amount_tendered: Decimal = Field(0, ge=0)
-    amount: Decimal | None = Field(None, ge=0)
-    discount_amount: Decimal = Field(0, ge=0)
+    amount_tendered: Money = Field(0, ge=0)
+    amount: Money | None = Field(None, ge=0)
+    discount_amount: Money = Field(0, ge=0)
     discount_type: str | None = None
-    tip_amount: Decimal = Field(0, ge=0)
+    tip_amount: Money = Field(0, ge=0)
 
 
 class ApplyOrderVoucherRequest(BaseSchema):
@@ -183,4 +184,4 @@ class ApplyOrderRewardRequest(BaseSchema):
 
 
 class PayWithWalletRequest(BaseSchema):
-    amount: Decimal = Field(..., gt=0)
+    amount: Money = Field(..., gt=0)

@@ -282,6 +282,7 @@ export async function adminLogin(email: string, password: string) {
   if (!res.ok) {
     throw new Error(data.detail || data.message || "Invalid email or password");
   }
+  localStorage.setItem(STORAGE_KEYS.ADMIN_EMAIL, email);
   return data;
 }
 export async function adminLogout() {

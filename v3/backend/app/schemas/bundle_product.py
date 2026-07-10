@@ -1,6 +1,7 @@
 """Bundle product schemas."""
 
 from datetime import datetime
+from app.schemas.base import Money
 from decimal import Decimal
 
 from pydantic import Field, model_validator
@@ -41,7 +42,7 @@ class BundleGroupOut(BaseSchema):
 
 class BundleComponentModifierIn(BaseSchema):
     modifier_option_id: int
-    price_adjustment: Decimal | None = None
+    price_adjustment: Money | None = None
     is_default: bool = False
 
 
@@ -49,7 +50,7 @@ class BundleComponentModifierOut(BaseSchema):
     id: int
     modifier_option_id: int
     modifier_option_name: str | None = None
-    price_adjustment: Decimal | None = None
+    price_adjustment: Money | None = None
     is_default: bool
 
 
@@ -66,7 +67,7 @@ class BundleProductComponentOut(BaseSchema):
     menu_item_id: int
     bundle_group_id: int | None = None
     menu_item_name: str | None = None
-    menu_item_price: Decimal | None = None
+    menu_item_price: Money | None = None
     menu_item_image_url: str | None = None
     default_quantity: int
     sort_order: int
@@ -78,7 +79,7 @@ class BundleProductCreate(BaseSchema):
     title: str = Field(..., max_length=255)
     description: str | None = None
     image_url: str | None = None
-    bundle_price: Decimal = Field(..., ge=0)
+    bundle_price: Money = Field(..., ge=0)
     category_id: int | None = None
     store_id: int | None = None
     is_active: bool = True
@@ -99,7 +100,7 @@ class BundleProductUpdate(BaseSchema):
     title: str | None = Field(None, max_length=255)
     description: str | None = None
     image_url: str | None = None
-    bundle_price: Decimal | None = Field(None, ge=0)
+    bundle_price: Money | None = Field(None, ge=0)
     category_id: int | None = None
     store_id: int | None = None
     is_active: bool | None = None
@@ -121,7 +122,7 @@ class BundleProductOut(TimestampedSchema):
     title: str
     description: str | None = None
     image_url: str | None = None
-    bundle_price: Decimal
+    bundle_price: Money
     category_id: int | None = None
     category_name: str | None = None
     is_active: bool

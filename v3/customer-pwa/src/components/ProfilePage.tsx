@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const configTiers = useConfigStore(s => s.tiers);
   const [showLogout, setShowLogout] = useState(false);
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   /* Tier progress — use configStore tiers, fall back to sensible defaults */
   const tierThresholds: Record<string, number> = configTiers?.length ? configTiers.reduce((acc: Record<string, number>, t) => {
@@ -58,6 +59,7 @@ export default function ProfilePage() {
   const ptsToNext = Math.max(0, nextThreshold - points);
   useEffect(() => {
     if (!useAuthStore.getState().isAuthenticated) return;
+    setLoadingOrders(true);
     api.get('/orders?per_page=3').then(res => {
       const data: Order[] = Array.isArray(res.data) ? res.data : res.data?.items ?? [];
       setRecentOrders(data.slice(0, 3).map(o => ({
@@ -77,7 +79,7 @@ export default function ProfilePage() {
       console.error('[Profile] Recent orders fetch failed:', err);
       showToast(t('toast.loadOrdersFailed'), 'error');
       setRecentOrders([]);
-    });
+    }).finally(() => setLoadingOrders(false));
   }, [t]);
   const handleLogout = async () => {
     logout();
@@ -216,7 +218,9 @@ export default function ProfilePage() {
             <button className="profile-see-all" onClick={() => setPage('orders')}>{t('common.seeAll')}</button>
           </div>
           <div className="profile-preview-card">
-            {recentOrders.length === 0 ? <div className="profile-empty-orders">
+            {loadingOrders ? <div className="profile-empty-orders">
+                {t('common.loading')}
+              </div> : recentOrders.length === 0 ? <div className="profile-empty-orders">
                 {t('profile.noOrders')}
               </div> : recentOrders.map(order => <div key={order.id} className="profile-order-item" onClick={() => setPage('order-detail', {
             orderId: order.id

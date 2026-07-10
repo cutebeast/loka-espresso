@@ -1,5 +1,6 @@
 """Staff domain schemas."""
 from decimal import Decimal
+from app.schemas.base import Money
 from datetime import date, datetime, time
 
 from pydantic import Field
@@ -17,7 +18,7 @@ class StaffProfileBase(BaseSchema):
     role: str | None = None  # uses StaffRole enum values
     hire_date: date | None = None
     termination_date: date | None = None
-    hourly_rate: Decimal | None = None
+    hourly_rate: Money | None = None
     tip_eligible: bool = True
     is_active: bool = True
 
@@ -34,7 +35,7 @@ class StaffProfileUpdate(BaseSchema):
     role: str | None = None
     hire_date: date | None = None
     termination_date: date | None = None
-    hourly_rate: Decimal | None = None
+    hourly_rate: Money | None = None
     tip_eligible: bool | None = None
     is_active: bool | None = None
 
@@ -118,7 +119,7 @@ class POSLineItem(BaseSchema):
 
 
 class POSPayment(BaseSchema):
-    amount_tendered: Decimal | None = None
+    amount_tendered: Money | None = None
     method: str = "cash"
 
 

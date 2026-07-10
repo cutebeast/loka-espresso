@@ -12,7 +12,7 @@ from app.models.menu import MenuItem
 from app.models.order import Order
 from app.models.staff import StaffProfile
 from app.models.store import Store
-from app.schemas.base import APIResponse, BaseSchema
+from app.schemas.base import APIResponse, BaseSchema, Money
 
 router = APIRouter(prefix="/admin/dashboard", tags=["admin — dashboard"])
 
@@ -24,10 +24,10 @@ class DashboardMetricsOut(BaseSchema):
     staff: int
     customers: int
     orders_today: int
-    revenue_today: Decimal
+    revenue_today: Money
     # Enhanced fields
     total_orders: int
-    total_revenue: Decimal
+    total_revenue: Money
     active_orders: int
     orders_by_type: dict
     monthly_data: list[dict]

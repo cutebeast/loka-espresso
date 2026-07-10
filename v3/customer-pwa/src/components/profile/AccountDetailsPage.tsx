@@ -23,6 +23,7 @@ export default function AccountDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initials = user?.display_name?.charAt(0)?.toUpperCase() || 'U';
@@ -41,7 +42,8 @@ export default function AccountDetailsPage() {
         setEmail((profile as { email_address?: string }).email_address || '');
         setDob((profile as { date_of_birth?: string }).date_of_birth || '');
       }
-    }).catch((err) => { console.error('[AccountDetails] Profile fetch failed:', err); showToast(t('toast.loadProfileFailed'), 'error'); });
+    }).catch((err) => { console.error('[AccountDetails] Profile fetch failed:', err); showToast(t('toast.loadProfileFailed'), 'error'); })
+      .finally(() => setLoadingProfile(false));
   }, [setUser]);
 
   const handleSave = async () => {
@@ -100,6 +102,16 @@ export default function AccountDetailsPage() {
       </div>
 
       <div className="edit-form-scroll">
+        {loadingProfile && (
+          <div className="edit-profile-loading">
+            <div className="skeleton" style={{ width: 96, height: 96, borderRadius: '50%', margin: '0 auto 16px' }} />
+            <div className="skeleton" style={{ width: '60%', height: 16, margin: '0 auto 24px' }} />
+            <div className="skeleton" style={{ width: '100%', height: 120, borderRadius: 16, marginBottom: 16 }} />
+            <div className="skeleton" style={{ width: '100%', height: 120, borderRadius: 16, marginBottom: 16 }} />
+          </div>
+        )}
+        {!loadingProfile && (
+          <>
         {/* Avatar upload section */}
         <div className="ad-avatar-section" onClick={() => fileInputRef.current?.click()}>
           <div className="ad-avatar-ring">
@@ -212,6 +224,8 @@ export default function AccountDetailsPage() {
             <CheckCircle size={16} className="ad-success-icon" />
             {t('accountDetails.saveSuccess')}
           </p>
+        )}
+          </>
         )}
       </div>
     </div>

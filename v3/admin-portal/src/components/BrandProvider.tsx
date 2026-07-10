@@ -27,6 +27,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (loadedRef.current) return;
+    // Skip branding fetch on login page — user is not authenticated yet
+    if (pathname === "/login") return;
 
     fetch("/api/admin/config?prefix=branding", { credentials: "include" })
       .then((res) => {
@@ -42,8 +44,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         if (favItem?.config_value) setFaviconUrl(favItem.config_value);
         loadedRef.current = true;
       })
-      .catch((e) => {
-        console.error('branding config:', e);
+      .catch(() => {
+        // Silently ignore — branding falls back to defaults
       });
   }, [pathname]);
 

@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [aboutText, setAboutText] = useState('');
   const [appVersion, setAppVersion] = useState('0.1.0');
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
+  const [aboutLoading, setAboutLoading] = useState(true);
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotifPermission(Notification.permission);
@@ -48,7 +49,7 @@ export default function SettingsPage() {
       console.error('[Settings] About fetch failed:', err);
       showToast(t('toast.failedToLoad'), 'error');
       setAboutText(t('settings.aboutFallback'));
-    });
+    }).finally(() => setAboutLoading(false));
     fetch('/version.json').then(res => res.ok ? res.json() : null).then(data => {
       if (data?.version) setAppVersion(data.version);
     }).catch(err => {
@@ -133,7 +134,7 @@ export default function SettingsPage() {
             </div>
             <h3 className="settings-about-title">{t("profile.settings_page.loka_espresso")}</h3>
           </div>
-          <p className="settings-about-desc">{aboutText}</p>
+          <p className="settings-about-desc">{aboutLoading ? t('common.loading') : aboutText}</p>
         </div>
 
         {/* App Info */}

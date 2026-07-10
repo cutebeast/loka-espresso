@@ -79,7 +79,7 @@ async def list_customers(
             "email_address": c.email_address,
             "referral_code": c.referral_code,
             "order_count": c.order_count,
-            "lifetime_value": str(c.lifetime_value),
+            "lifetime_value": float(c.lifetime_value),
             "is_active": c.is_active,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "last_order_at": c.last_order_at.isoformat() if c.last_order_at else None,
@@ -126,7 +126,7 @@ async def get_customer_detail(admin: CurrentAdmin, db: DBDependency, customer_id
                 else_=0,
             ))).where(WalletLedgerEntry.wallet_id == wallet.id)
         )
-        wallet_balance = str(balance_result.scalar() or 0)
+        wallet_balance = float(balance_result.scalar() or 0)
 
     # Addresses
     addr_result = await db.execute(
@@ -174,7 +174,7 @@ async def get_customer_detail(admin: CurrentAdmin, db: DBDependency, customer_id
             "referral_count": customer.referral_count,
             "preferred_language": customer.preferred_language,
             "order_count": customer.order_count,
-            "lifetime_value": str(customer.lifetime_value),
+            "lifetime_value": float(customer.lifetime_value),
             "is_active": customer.is_active,
             "created_at": customer.created_at.isoformat() if customer.created_at else None,
             "last_order_at": customer.last_order_at.isoformat() if customer.last_order_at else None,
@@ -206,7 +206,7 @@ async def get_customer_detail(admin: CurrentAdmin, db: DBDependency, customer_id
                     "id": o.id,
                     "order_number": o.order_number,
                     "status": o.status,
-                    "total_amount": str(o.total_amount),
+                    "total_amount": float(o.total_amount),
                     "created_at": o.created_at.isoformat() if o.created_at else None,
                 }
                 for o in orders
@@ -391,8 +391,8 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
         "display_title": vd.display_title or "",
         "voucher_code": vd.voucher_code or "",
         "voucher_type": vd.voucher_type or "",
-        "discount_value": str(vd.discount_value or 0),
-        "minimum_order_value": str(vd.minimum_order_value or 0),
+        "discount_value": float(vd.discount_value or 0),
+        "minimum_order_value": float(vd.minimum_order_value or 0),
     }
     store_result = await db.execute(
         select(Store.id).where(Store.deleted_at.is_(None), Store.is_active.is_(True)).limit(1)
@@ -564,7 +564,7 @@ async def customer_orders(admin: CurrentAdmin, db: DBDependency, customer_id: in
     cnt = select(func.count(Order.id)).where(Order.customer_id == customer_id, Order.deleted_at.is_(None))
     total = (await db.execute(cnt)).scalar() or 0
     result = await db.execute(base.order_by(Order.id.desc()).offset((page-1)*per_page).limit(per_page))
-    items = [{"id": o.id, "order_number": o.order_number, "status": o.status, "total_amount": str(o.total_amount), "created_at": o.created_at.isoformat() if o.created_at else None} for o in result.scalars().all()]
+    items = [{"id": o.id, "order_number": o.order_number, "status": o.status, "total_amount": float(o.total_amount), "created_at": o.created_at.isoformat() if o.created_at else None} for o in result.scalars().all()]
     return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page, total_pages=(total+per_page-1)//per_page if per_page else 0))
 
 
@@ -592,7 +592,7 @@ async def wallet_history(admin: CurrentAdmin, db: DBDependency, customer_id: int
     cnt = select(func.count(WalletLedgerEntry.id)).where(WalletLedgerEntry.wallet_id == wallet.id)
     total = (await db.execute(cnt)).scalar() or 0
     result = await db.execute(base.order_by(WalletLedgerEntry.id.desc()).offset((page-1)*per_page).limit(per_page))
-    items = [{"id": t.id, "entry_type": t.entry_type, "amount": str(t.amount), "running_balance": str(t.running_balance), "description": t.description, "created_at": t.created_at.isoformat() if t.created_at else None} for t in result.scalars().all()]
+    items = [{"id": t.id, "entry_type": t.entry_type, "amount": float(t.amount), "running_balance": float(t.running_balance), "description": t.description, "created_at": t.created_at.isoformat() if t.created_at else None} for t in result.scalars().all()]
     return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page, total_pages=(total+per_page-1)//per_page if per_page else 0))
 
 
@@ -632,8 +632,8 @@ async def customer_wallet_items(admin: CurrentAdmin, db: DBDependency, customer_
             "title": vd.display_title if vd else (v.voucher_snapshot.get("display_title") if v.voucher_snapshot else None),
             "code": v.voucher_code,
             "discount_type": vd.voucher_type.replace("_off", "").replace("fixed_amount", "fixed").replace("percentage", "percent") if vd else None,
-            "discount_value": str(vd.discount_value) if vd else None,
-            "min_spend": str(vd.minimum_order_value) if vd else None,
+            "discount_value": float(vd.discount_value) if vd else None,
+            "min_spend": float(vd.minimum_order_value) if vd else None,
             "expires_at": v.expires_at.isoformat() if v.expires_at else None,
         })
 
@@ -649,6 +649,6 @@ async def customer_wallet_items(admin: CurrentAdmin, db: DBDependency, customer_
                 else_=0,
             ))).where(WalletLedgerEntry.wallet_id == wallet.id)
         )
-        wallet_balance = str(balance_result.scalar() or 0)
+        wallet_balance = float(balance_result.scalar() or 0)
 
     return APIResponse(data={"balance": wallet_balance, "rewards": rewards, "vouchers": vouchers})

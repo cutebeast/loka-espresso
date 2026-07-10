@@ -10,6 +10,7 @@ import { TranslationProvider, useTranslation } from "@/lib/i18n";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 import { refreshToken, BASE_URL } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import FloatingHelpButton from "@/components/FloatingHelpButton";
 
 function clearSession() {
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
@@ -161,6 +162,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <TranslationProvider>
         <LoggerInit />
         <LayoutInner>{children}</LayoutInner>
+        <FloatingHelpButton />
       </TranslationProvider>
     </BrandProvider>
   );

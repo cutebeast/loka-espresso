@@ -1,6 +1,7 @@
 """Content domain schemas."""
 
 from datetime import datetime
+from app.schemas.base import Money
 from decimal import Decimal
 from typing import Literal
 
@@ -105,7 +106,7 @@ class ProductCardBase(BaseSchema):
     short_description: str | None = Field(None, max_length=500)
     long_description: str | None = None
     image_url: str | None = Field(None, max_length=500)
-    price: Decimal | None = Field(None, ge=0)
+    price: Money | None = Field(None, ge=0)
     action_url: str | None = Field(None, max_length=500)
     action_label: str | None = Field(None, max_length=100)
     is_active: bool = True
@@ -122,7 +123,7 @@ class ProductCardUpdate(BaseSchema):
     short_description: str | None = Field(None, max_length=500)
     long_description: str | None = None
     image_url: str | None = Field(None, max_length=500)
-    price: Decimal | None = Field(None, ge=0)
+    price: Money | None = Field(None, ge=0)
     action_url: str | None = Field(None, max_length=500)
     action_label: str | None = Field(None, max_length=100)
     is_active: bool | None = None

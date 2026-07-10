@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { logError } from "@/lib/logger";
+import { renderMarkdown } from "@/lib/markdown";
 
 interface HelpArticle {
   id: number;
@@ -79,18 +80,3 @@ export default function AdminHelpArticleDetailPage() {
   );
 }
 
-function renderMarkdown(md: string): string {
-  let html = md
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    .replace(/^\> (.*$)/gim, "<blockquote>$1</blockquote>")
-    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
-    .replace(/^\s*\*\s+(.*$)/gim, "<li>$1</li>")
-    .replace(/^\s*\-\s+(.*$)/gim, "<li>$1</li>");
-  html = html.replace(/(?:<br\s*\/?>\s*)?<li>/g, "<li>");
-  html = html.replace(/<li>[\s\S]*?<\/li>(\s*(?:<br\s*\/?>\s*)?<li>[\s\S]*?<\/li>)*/g, "<ul>$&</ul>");
-  html = html.replace(/\n/g, "<br />");
-  return html;
-}

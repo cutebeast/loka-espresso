@@ -20,7 +20,7 @@ from app.models.customer import Customer
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.iam import AdminAccount, IAMRole, RoleAssignment, RolePermission, StoreAssignment, TokenBlacklist
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
-from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption
+from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption, MenuCategory
 from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
 from app.models.staff import StaffProfile, StaffShift, StaffTask, StaffTimeEvent, TipAllocation
@@ -1080,7 +1080,7 @@ async def staff_pos_create_order(
                     to_status="captured",
                     from_status="initiated",
                     amount=total,
-                    provider_response={"method": payment_data.method, "tendered": str(amount_tendered) if payment_data.method == "cash" else None},
+                    provider_response={"method": payment_data.method, "tendered": float(amount_tendered) if payment_data.method == "cash" else None},
                 )
 
         # Update table status if dine-in
@@ -1726,3 +1726,388 @@ async def branding_config(db: DBDependency):
     )
     items = {c.config_key: c.config_value for c in result.scalars().all()}
     return APIResponse(data=items)
+
+
+# ── Staff read endpoints (menu, tables, orders, reservations) ──
+# These endpoints let staff portal pages fetch data using their staff token
+# instead of calling /admin/* endpoints which require an admin token.
+
+@router.get("/staff/menu/categories")
+async def staff_list_menu_categories(
+    staff: CurrentStaff,
+    db: DBDependency,
+    per_page: int = Query(100, ge=1, le=500),
+):
+    """List menu categories for the staff member's store."""
+    result = await db.execute(
+        select(MenuCategory)
+        .where(MenuCategory.deleted_at.is_(None))
+        .order_by(MenuCategory.display_order)
+        .limit(per_page)
+    )
+    cats = result.scalars().all()
+    return APIResponse(data=[{"id": c.id, "category_name": c.category_name, "slug": c.slug, "display_order": c.display_order, "is_available": c.is_available} for c in cats])
+
+
+@router.get("/staff/menu/items")
+async def staff_list_menu_items(
+    staff: CurrentStaff,
+    db: DBDependency,
+    per_page: int = Query(500, ge=1, le=1000),
+    category_id: int | None = Query(None),
+):
+    """List menu items for the staff member's store."""
+    stmt = (
+        select(MenuItem)
+        .where(MenuItem.deleted_at.is_(None), MenuItem.is_available.is_(True))
+        .order_by(MenuItem.category_id, MenuItem.display_order)
+        .limit(per_page)
+    )
+    if category_id:
+        stmt = stmt.where(MenuItem.category_id == category_id)
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    return APIResponse(data=[
+        {
+            "id": m.id,
+            "item_name": m.item_name,
+            "description": m.description,
+            "price": float(m.base_price) if m.base_price else 0,
+            "category_id": m.category_id,
+            "is_available": m.is_available,
+            "image_url": m.image_url,
+            "display_order": m.display_order,
+        }
+        for m in items
+    ])
+
+
+@router.get("/staff/tables")
+async def staff_list_tables(staff: CurrentStaff, db: DBDependency):
+    """List dining tables for the staff member's store."""
+    result = await db.execute(
+        select(DiningTable)
+        .where(
+            DiningTable.store_id == staff.store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+        .order_by(DiningTable.section, DiningTable.table_number)
+    )
+    tables = result.scalars().all()
+    # Enrich with current status from TableStatusSnapshot
+    out = []
+    for t in tables:
+        status_result = await db.execute(
+            select(TableStatusSnapshot.status).where(TableStatusSnapshot.table_id == t.id)
+        )
+        status = status_result.scalar_one_or_none() or "available"
+        out.append({
+            "id": t.id,
+            "store_id": t.store_id,
+            "section": t.section,
+            "table_number": t.table_number,
+            "display_name": t.display_name,
+            "capacity": t.capacity,
+            "current_status": status,
+            "is_active": t.is_active,
+        })
+    return APIResponse(data=out)
+
+
+@router.get("/staff/orders")
+async def staff_list_orders(
+    staff: CurrentStaff,
+    db: DBDependency,
+    status_filter: str | None = Query(None, alias="status"),
+    order_type: str | None = Query(None),
+    payment_status: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(100, ge=1, le=500),
+):
+    """List orders for the staff member's store."""
+    stmt = select(Order).where(Order.store_id == staff.store_id)
+    if status_filter:
+        stmt = stmt.where(Order.status == status_filter)
+    if order_type:
+        stmt = stmt.where(Order.order_type == order_type)
+    if payment_status:
+        stmt = stmt.where(Order.payment_status == payment_status)
+    stmt = stmt.order_by(Order.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
+    result = await db.execute(stmt)
+    orders = result.scalars().all()
+    return APIResponse(data=[
+        {
+            "id": o.id,
+            "order_number": o.order_number,
+            "status": o.status,
+            "order_type": o.order_type,
+            "payment_status": o.payment_status,
+            "table_id": o.dining_table_id,
+            "customer_id": o.customer_id,
+            "subtotal": float(o.items_subtotal) if o.items_subtotal else 0,
+            "tax_amount": float(o.tax_amount) if o.tax_amount else 0,
+            "service_charge": float(o.service_charge) if o.service_charge else 0,
+            "discount_amount": float(o.discount_amount) if o.discount_amount else 0,
+            "total": float(o.total_amount) if o.total_amount else 0,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+            "updated_at": o.updated_at.isoformat() if o.updated_at else None,
+        }
+        for o in orders
+    ])
+
+
+@router.get("/staff/reservations")
+async def staff_list_reservations(
+    staff: CurrentStaff,
+    db: DBDependency,
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(100, ge=1, le=500),
+):
+    """List reservations for the staff member's store."""
+    stmt = select(Reservation).where(Reservation.store_id == staff.store_id)
+    if date_from:
+        from datetime import date as date_cls
+        stmt = stmt.where(Reservation.reservation_date >= date_cls.fromisoformat(date_from))
+    if date_to:
+        from datetime import date as date_cls
+        stmt = stmt.where(Reservation.reservation_date <= date_cls.fromisoformat(date_to))
+    stmt = stmt.order_by(Reservation.reservation_date.desc(), Reservation.reservation_time.desc()).offset((page - 1) * per_page).limit(per_page)
+    result = await db.execute(stmt)
+    reservations = result.scalars().all()
+    return APIResponse(data=[
+        {
+            "id": r.id,
+            "store_id": r.store_id,
+            "customer_name": r.customer_name,
+            "customer_phone": r.customer_phone,
+            "party_size": r.party_size,
+            "reservation_date": r.reservation_date.isoformat() if r.reservation_date else None,
+            "reservation_time": r.reservation_time.isoformat() if r.reservation_time else None,
+            "status": r.status,
+            "table_id": r.table_id,
+            "notes": r.notes,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in reservations
+    ])
+
+
+@router.patch("/staff/tables/{table_id}/status")
+async def staff_update_table_status(
+    staff: CurrentStaff,
+    db: DBDependency,
+    table_id: int,
+    current_status: str = Query(..., alias="current_status"),
+):
+    """Update a table's status (staff endpoint)."""
+    result = await db.execute(
+        select(DiningTable).where(
+            DiningTable.id == table_id,
+            DiningTable.store_id == staff.store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+    )
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    # Update or create table status snapshot
+    snap_result = await db.execute(
+        select(TableStatusSnapshot).where(TableStatusSnapshot.table_id == table_id)
+    )
+    snap = snap_result.scalar_one_or_none()
+    if snap:
+        snap.status = current_status
+    else:
+        snap = TableStatusSnapshot(table_id=table_id, status=current_status)
+        db.add(snap)
+    await db.commit()
+    return APIResponse(data={"id": table.id, "current_status": current_status})
+
+
+# ── Staff order operations ──
+
+@router.get("/staff/orders/{order_id}")
+async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
+    """Get a single order with line items (staff endpoint)."""
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.store_id == staff.store_id,
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Get line items
+    items_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.order_id == order_id)
+    )
+    line_items = items_result.scalars().all()
+
+    return APIResponse(data={
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": order.status,
+        "order_type": order.order_type,
+        "payment_status": order.payment_status,
+        "table_id": order.dining_table_id,
+        "customer_id": order.customer_id,
+        "items_subtotal": float(order.items_subtotal) if order.items_subtotal else 0,
+        "tax_amount": float(order.tax_amount) if order.tax_amount else 0,
+        "service_charge": float(order.service_charge) if order.service_charge else 0,
+        "discount_amount": float(order.discount_amount) if order.discount_amount else 0,
+        "total": float(order.total_amount) if order.total_amount else 0,
+        "customer_notes": order.customer_notes,
+        "staff_notes": order.staff_notes,
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+        "updated_at": order.updated_at.isoformat() if order.updated_at else None,
+        "items": [
+            {
+                "id": li.id,
+                "menu_item_id": li.menu_item_id,
+                "item_name": li.item_name,
+                "quantity": li.quantity,
+                "unit_price": float(li.unit_price) if li.unit_price else 0,
+                "total": float(li.total) if li.total else 0,
+                "notes": li.notes,
+                "status": li.status,
+            }
+            for li in line_items
+        ],
+    })
+
+
+@router.patch("/staff/orders/{order_id}/status")
+async def staff_update_order_status(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    status: str = Query(...),
+    reason: str | None = Query(None),
+):
+    """Update order status (staff endpoint)."""
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.store_id == staff.store_id,
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order.status = status
+    if status == "cancelled" and reason:
+        order.cancellation_reason = reason
+        order.cancelled_at = datetime.now(timezone.utc)
+    elif status == "completed":
+        order.completed_at = datetime.now(timezone.utc)
+    elif status == "preparing":
+        order.prepared_at = datetime.now(timezone.utc)
+    await db.commit()
+    return APIResponse(data={"id": order.id, "status": order.status})
+
+
+@router.patch("/staff/orders/{order_id}/transfer-table")
+async def staff_transfer_table(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    new_table_id: int = Query(..., alias="new_table_id"),
+):
+    """Transfer order to a different table (staff endpoint)."""
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.store_id == staff.store_id,
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order.dining_table_id = new_table_id
+    await db.commit()
+    return APIResponse(data={"id": order.id, "table_id": new_table_id})
+
+
+# ── Staff reservation operations ──
+
+@router.patch("/staff/reservations/{reservation_id}/status")
+async def staff_update_reservation_status(
+    staff: CurrentStaff,
+    db: DBDependency,
+    reservation_id: int,
+    body: dict,
+):
+    """Update reservation status (staff endpoint)."""
+    result = await db.execute(
+        select(Reservation).where(
+            Reservation.id == reservation_id,
+            Reservation.store_id == staff.store_id,
+        )
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    new_status = body.get("status")
+    if new_status:
+        reservation.status = new_status
+    if body.get("dining_table_id") is not None:
+        reservation.table_id = int(body["dining_table_id"])
+    await db.commit()
+    return APIResponse(data={"id": reservation.id, "status": reservation.status})
+
+
+# ── POS Display State (Redis-backed for cross-device support) ──
+
+import json as _json
+
+@router.post("/staff/pos/display-state")
+async def set_pos_display_state(
+    staff: CurrentStaff,
+    state: dict,
+):
+    """POS broadcasts display state to Redis so any device running /pos/display can poll it."""
+    from app.core.cache import get_redis_client
+    redis = get_redis_client()
+    if not redis:
+        raise HTTPException(status_code=503, detail="Display sync unavailable (no Redis)")
+    state["store_id"] = staff.store_id
+    state["updated_at"] = datetime.now(timezone.utc).isoformat()
+    key = f"pos:display:{staff.store_id}"
+    await redis.set(key, _json.dumps(state), ex=3600)  # 1-hour TTL
+    return APIResponse(data={"ok": True})
+
+
+@router.delete("/staff/pos/display-state")
+async def clear_pos_display_state(staff: CurrentStaff):
+    """Clear the POS display state (reset to idle)."""
+    from app.core.cache import get_redis_client
+    redis = get_redis_client()
+    if not redis:
+        raise HTTPException(status_code=503, detail="Display sync unavailable (no Redis)")
+    key = f"pos:display:{staff.store_id}"
+    await redis.delete(key)
+    return APIResponse(data={"ok": True})
+
+
+@router.get("/staff/pos/display-state")
+async def get_pos_display_state(
+    store_id: int = Query(...),
+):
+    """Customer display polls this to get the current POS state (no auth — display is public)."""
+    from app.core.cache import get_redis_client
+    redis = get_redis_client()
+    if not redis:
+        return APIResponse(data=None)
+    key = f"pos:display:{store_id}"
+    raw = await redis.get(key)
+    if not raw:
+        return APIResponse(data=None)
+    try:
+        state = _json.loads(raw)
+        return APIResponse(data=state)
+    except Exception:
+        return APIResponse(data=None)
