@@ -87,8 +87,10 @@ export default function KioskPage() {
           api.get('/menu/categories'),
           api.get('/menu/items', { params: { per_page: 500 } }),
         ]);
-        const cats = catRes.data?.data || catRes.data || [];
-        const items = itemRes.data?.data || itemRes.data || [];
+        // Axios interceptor already unwraps { success, data } → data
+        // So catRes.data = { categories: [...] } and itemRes.data = { items: [...] }
+        const cats = catRes.data?.categories || catRes.data || [];
+        const items = itemRes.data?.items || itemRes.data || [];
         setCategories(cats);
         setMenuItems(items.filter((i: KioskMenuItem) => i.is_available));
         if (cats.length > 0) setActiveCategory(cats[0].id);

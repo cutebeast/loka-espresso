@@ -299,6 +299,12 @@ export default function AppShell() {
         return <HomePage />;
     }
   }, [page, handleNavClick, user?.display_name, unreadCount, onNotificationClick, onQRScanClick, onBackHome, onBackProfile, pageParams]);
+
+  // Kiosk mode: render standalone, bypass all AppShell chrome
+  if (page === 'kiosk') {
+    return <LazyRenderer pageKey="kiosk" />;
+  }
+
   return <div className="app-container">
       <OfflineBanner />
       {swUpdateAvailable && <motion.div initial={{
@@ -332,7 +338,7 @@ export default function AppShell() {
 
       {/* Guest users skip auth flow entirely; guest-pay and kiosk are standalone public payment
           / ordering pages that must not be blocked by authentication. */}
-      {!isGuest && !authDone && page !== 'guest-pay' && page !== 'kiosk' ? <AuthFlow onAuthDone={handleAuthDone} /> : <>
+      {!isGuest && !authDone && page !== 'guest-pay' && (page as string) !== 'kiosk' ? <AuthFlow onAuthDone={handleAuthDone} /> : <>
           {/* Toast */}
           {toast && <Toast toast={toast} onDismiss={() => useUIStore.getState().hideToast()} />}
 

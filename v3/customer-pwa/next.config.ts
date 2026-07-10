@@ -1,18 +1,13 @@
 import type { NextConfig } from "next";
 
-const API_PROXY = process.env.API_PROXY_URL || (
-  process.env.NODE_ENV === "development" ? "http://127.0.0.1:13800/api" : ""
-);
-if (!API_PROXY) {
-  throw new Error("API_PROXY_URL must be set to a valid HTTP(S) URL in production");
-}
+const API_PROXY = process.env.API_PROXY_URL || "http://127.0.0.1:13800/api";
 
 const nextConfig: NextConfig = {
   // output: 'standalone', // disabled for 'next start' compatibility
   images: {
     unoptimized: true,
   },
-  turbopack: {},
+
   async rewrites() {
     return {
       beforeFiles: [
