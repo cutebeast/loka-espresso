@@ -93,7 +93,10 @@ export default function KioskPage() {
         const items = itemRes.data?.items || itemRes.data || [];
         setCategories(cats);
         setMenuItems(items.filter((i: KioskMenuItem) => i.is_available));
-        if (cats.length > 0) setActiveCategory(cats[0].id);
+        // Select the first category that has available items
+        const firstCatWithItems = cats.find((c: KioskCategory) => items.some((i: KioskMenuItem) => i.category_id === c.id && i.is_available));
+        if (firstCatWithItems) setActiveCategory(firstCatWithItems.id);
+        else if (cats.length > 0) setActiveCategory(cats[0].id);
       } catch {
         setError('Failed to load menu');
       } finally {
