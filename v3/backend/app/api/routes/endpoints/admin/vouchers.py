@@ -17,10 +17,13 @@ from app.schemas.voucher import (
     VoucherDefinitionCreate,
     VoucherDefinitionOut,
     VoucherDefinitionUpdate,
+    VoucherValidateRequest,
+    VoucherValidateResponse,
 )
 from app.services.translation import auto_translate_record, delete_translations
 from app.core.money import money_round, to_decimal
 from app.services.platform_config import PlatformConfigService
+from app.models.loyalty import LoyaltyAccount
 
 admin_router = APIRouter(prefix="/admin/vouchers", tags=["admin — vouchers"])
 public_router = APIRouter(prefix="/vouchers", tags=["vouchers"])
@@ -189,6 +192,122 @@ async def list_voucher_redemptions(
     item["voucher_title"] = vd.display_title if vd else None
     item["voucher_image_url"] = vd.image_url if vd else None
     return APIResponse(data=item)
+
+
+@public_router.post("/validate", response_model=APIResponse[VoucherValidateResponse])
+async def validate_voucher(
+    request: Request,
+    db: DBDependency,
+    data: VoucherValidateRequest,
+):
+    """Validate a voucher code and return discount details.
+
+    Public endpoint — does not require authentication. If a customer token
+    is present, voucher ownership and tier requirements are checked.
+    If no customer token, only basic validation is performed.
+    """
+    # Try to extract customer from token (optional)
+    customer_id = None
+    from app.core.security import decode_token
+    token = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    elif request.cookies.get("access_token"):
+        token = request.cookies.get("access_token")
+
+    if token:
+        try:
+            payload = decode_token(token)
+            if payload and payload.get("type") == "access" and payload.get("customer_id"):
+                customer_id = int(payload["customer_id"])
+        except Exception:
+            pass
+
+    # Build query — filter by code, optionally by customer
+    stmt = (
+        select(CustomerVoucher)
+        .options(selectinload(CustomerVoucher.voucher_definition))
+        .where(CustomerVoucher.voucher_code == data.voucher_code)
+    )
+    if customer_id:
+        stmt = stmt.where(CustomerVoucher.customer_id == customer_id)
+
+    voucher_result = await db.execute(stmt)
+    cv = voucher_result.scalar_one_or_none()
+    if cv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voucher not found")
+
+    if cv.status != "active":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Voucher is {cv.status}")
+
+    now = datetime.now(timezone.utc)
+    if cv.expires_at and cv.expires_at < now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Voucher has expired")
+
+    vd = cv.voucher_definition
+    if vd is None or not vd.is_active or vd.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Voucher is no longer active")
+    if vd.valid_from and vd.valid_from > now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Voucher is not yet valid")
+    if vd.valid_until and vd.valid_until < now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Voucher has expired")
+
+    if vd.minimum_tier_id and customer_id:
+        loyalty_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id)
+        )
+        loyalty = loyalty_result.scalar_one_or_none()
+        tier_id = loyalty.current_tier_id if loyalty else None
+        if tier_id is None or tier_id < vd.minimum_tier_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Your loyalty tier is not eligible for this voucher",
+            )
+
+    order_total = to_decimal(data.order_total or 0)
+    min_spend = to_decimal(vd.minimum_order_value)
+    if order_total > 0 and order_total < min_spend:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Voucher requires minimum order of {min_spend:.2f}",
+        )
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    discount_value = to_decimal(vd.discount_value)
+    max_discount = to_decimal(vd.discount_max_amount) if vd.discount_max_amount is not None else None
+    calculated_discount = Decimal(0)
+
+    if vd.voucher_type == "percentage_off":
+        pct = discount_value / Decimal(100)
+        calculated_discount = money_round(order_total * pct, precision, rounding_mode)
+        if max_discount is not None:
+            calculated_discount = min(calculated_discount, max_discount)
+    elif vd.voucher_type == "fixed_amount_off":
+        calculated_discount = min(discount_value, order_total)
+    elif vd.voucher_type == "free_delivery":
+        # Free delivery discount is unknown without delivery fee; report the value as 0
+        calculated_discount = Decimal(0)
+    elif vd.voucher_type == "free_item":
+        # Free item requires cart contents; report 0 and let order creation compute it
+        calculated_discount = Decimal(0)
+
+    return APIResponse(
+        data=VoucherValidateResponse(
+            voucher_code=cv.voucher_code,
+            valid=True,
+            discount_type=vd.voucher_type,
+            discount_value=discount_value,
+            max_discount=max_discount,
+            min_spend=min_spend,
+            calculated_discount=calculated_discount,
+            display_title=vd.display_title,
+            message="Voucher is valid",
+        )
+    )
 
 
 @public_router.get("/me", response_model=APIResponse[PaginatedResponse[CustomerVoucherOut]])

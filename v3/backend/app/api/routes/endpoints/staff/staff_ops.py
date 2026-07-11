@@ -20,13 +20,29 @@ from app.models.customer import Customer
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.iam import AdminAccount, IAMRole, RoleAssignment, RolePermission, StoreAssignment, TokenBlacklist
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
-from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption, MenuCategory
-from app.models.order import Order, OrderLineItem
+from app.models.menu import (
+    MenuItem,
+    MenuModifierGroup,
+    MenuModifierOption,
+    MenuCategory,
+    MenuVariant,
+    MenuItemAllergen,
+    Allergen,
+    MenuItemDietaryTag,
+    DietaryTag,
+)
+from app.models.order import Order, OrderLineItem, OrderStatusLog
 from app.models.payment import Payment
 from app.models.staff import StaffProfile, StaffShift, StaffTask, StaffTimeEvent, TipAllocation
 from app.models.platform import PlatformConfig
 from app.models.store import Store, DiningTable, Reservation, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.menu import (
+    AllergenOut,
+    MenuModifierGroupOut,
+    MenuModifierOptionOut,
+    MenuVariantOut,
+)
 from app.schemas.staff import (
     StaffLoginRequest,
     StaffRefreshRequest,
@@ -574,14 +590,7 @@ async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
 # ── Customer Search ──
 
 @router.get("/staff/customers/search")
-async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, request: Request, q: str = Query(..., min_length=1)):
-    # Accept both admin and staff tokens — admin has staff profile, staff has staff profile
-    try:
-        await _get_staff_profile(db, admin)
-    except Exception:
-        logger.warning("staff_customer_search: staff profile lookup failed", exc_info=True)
-        pass  # Continue with admin-only access
-
+async def staff_customer_search(staff: CurrentStaff, db: DBDependency, request: Request, q: str = Query(..., min_length=1)):
     q_clean = q.strip()
     result = await db.execute(
         select(Customer).where(
@@ -596,6 +605,7 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, request: 
         items.append({
             "id": c.id, "display_name": c.display_name or f"Customer #{c.id}",
             "phone_number": c.phone_number or "",
+            "email_address": c.email_address or "",
             "loyalty_tier": "Standard",
         })
     return APIResponse(data={"items": items})
@@ -672,23 +682,16 @@ async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentSta
 
 @router.post("/staff/auth/change-password")
 @limiter.limit("5/minute")
-async def staff_change_password(request: Request, db: DBDependency, data: StaffChangePasswordRequest):
+async def staff_change_password(
+    request: Request,
+    db: DBDependency,
+    staff: CurrentStaff,
+    data: StaffChangePasswordRequest,
+):
     """Change staff password."""
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if not token: raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = decode_token(token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if payload.get("type") == "admin" or payload.get("staff_id") == 0:
+    # Admin users acting in a staff context must use the admin portal.
+    if getattr(staff, "is_staff_context", False):
         raise HTTPException(status_code=403, detail="Admins must use the admin portal")
-    staff_id = payload.get("staff_id", 0)
-    if not staff_id:
-        raise HTTPException(status_code=404, detail="Staff profile not found")
-    result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
-    staff = result.scalar_one_or_none()
-    if not staff:
-        raise HTTPException(status_code=404, detail="Staff not found")
     current = (data.current_password or "").strip()
     if not current:
         raise HTTPException(status_code=400, detail="Current password is required")
@@ -704,22 +707,15 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
 
 @router.post("/staff/auth/change-pin")
 @limiter.limit("5/minute")
-async def staff_change_pin(request: Request, db: DBDependency, data: StaffChangePinRequest):
+async def staff_change_pin(
+    request: Request,
+    db: DBDependency,
+    staff: CurrentStaff,
+    data: StaffChangePinRequest,
+):
     """Change staff PIN."""
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    if not token: raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = decode_token(token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if payload.get("type") == "admin" or payload.get("staff_id") == 0:
+    if getattr(staff, "is_staff_context", False):
         raise HTTPException(status_code=403, detail="Admins cannot change PIN here")
-    staff_id = payload.get("staff_id", 0)
-    if not staff_id:
-        raise HTTPException(status_code=404, detail="Staff profile not found")
-    result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
-    staff = result.scalar_one_or_none()
-    if not staff: raise HTTPException(status_code=404, detail="Staff not found")
     current = (data.current_pin or "").strip()
     if not current:
         raise HTTPException(status_code=400, detail="Current PIN is required")
@@ -1756,7 +1752,7 @@ async def staff_list_menu_items(
     per_page: int = Query(500, ge=1, le=1000),
     category_id: int | None = Query(None),
 ):
-    """List menu items for the staff member's store."""
+    """List menu items for the staff member's store (full POS shape)."""
     stmt = (
         select(MenuItem)
         .where(MenuItem.deleted_at.is_(None), MenuItem.is_available.is_(True))
@@ -1767,19 +1763,75 @@ async def staff_list_menu_items(
         stmt = stmt.where(MenuItem.category_id == category_id)
     result = await db.execute(stmt)
     items = result.scalars().all()
-    return APIResponse(data=[
-        {
-            "id": m.id,
-            "item_name": m.item_name,
-            "description": m.description,
-            "price": float(m.base_price) if m.base_price else 0,
-            "category_id": m.category_id,
-            "is_available": m.is_available,
-            "image_url": m.image_url,
-            "display_order": m.display_order,
-        }
-        for m in items
-    ])
+    item_ids = [m.id for m in items]
+
+    # Category names
+    cat_ids = {m.category_id for m in items if m.category_id}
+    cat_result = await db.execute(select(MenuCategory).where(MenuCategory.id.in_(cat_ids)))
+    cat_map = {c.id: c.category_name for c in cat_result.scalars().all()}
+
+    # Variants
+    variants_result = await db.execute(
+        select(MenuVariant).where(
+            MenuVariant.parent_item_id.in_(item_ids),
+            MenuVariant.is_available.is_(True),
+        )
+    )
+    variants_map: dict[int, list] = {}
+    for v in variants_result.scalars().all():
+        variants_map.setdefault(v.parent_item_id, []).append(v)
+
+    # Modifier groups with options
+    mg_result = await db.execute(
+        select(MenuModifierGroup)
+        .options(selectinload(MenuModifierGroup.options))
+        .where(MenuModifierGroup.menu_item_id.in_(item_ids))
+    )
+    modifier_map: dict[int, list] = {}
+    for mg in mg_result.scalars().all():
+        group_out = MenuModifierGroupOut.model_validate(mg)
+        group_out.options = [
+            MenuModifierOptionOut.model_validate(opt)
+            for opt in mg.options
+            if opt.is_available
+        ]
+        modifier_map.setdefault(mg.menu_item_id, []).append(group_out.model_dump())
+
+    # Allergens
+    allergen_map: dict[int, list] = {}
+    if item_ids:
+        allergen_result = await db.execute(
+            select(MenuItemAllergen.menu_item_id, Allergen)
+            .join(Allergen, Allergen.id == MenuItemAllergen.allergen_id)
+            .where(MenuItemAllergen.menu_item_id.in_(item_ids))
+        )
+        for mi_id, allergen in allergen_result.all():
+            allergen_map.setdefault(mi_id, []).append(AllergenOut.model_validate(allergen).model_dump())
+
+    # Dietary tags
+    dietary_map: dict[int, list[str]] = {}
+    if item_ids:
+        dietary_result = await db.execute(
+            select(MenuItemDietaryTag.menu_item_id, DietaryTag.tag_key)
+            .join(DietaryTag, DietaryTag.id == MenuItemDietaryTag.dietary_tag_id)
+            .where(MenuItemDietaryTag.menu_item_id.in_(item_ids))
+        )
+        for mi_id, tag_key in dietary_result.all():
+            dietary_map.setdefault(mi_id, []).append(tag_key)
+
+    out = []
+    for m in items:
+        item_dict = {c: getattr(m, c) for c in m.__table__.columns.keys()}
+        item_dict["base_price"] = float(m.base_price) if m.base_price else 0
+        item_dict["category_name"] = cat_map.get(m.category_id)
+        item_dict["variants"] = [
+            MenuVariantOut.model_validate(v).model_dump() for v in variants_map.get(m.id, [])
+        ]
+        item_dict["modifier_groups"] = modifier_map.get(m.id, [])
+        item_dict["allergens"] = allergen_map.get(m.id, [])
+        item_dict["dietary_tags"] = dietary_map.get(m.id) or None
+        out.append(item_dict)
+    return APIResponse(data=out)
 
 
 @router.get("/staff/tables")
@@ -1825,7 +1877,12 @@ async def staff_list_orders(
     per_page: int = Query(100, ge=1, le=500),
 ):
     """List orders for the staff member's store."""
-    stmt = select(Order).where(Order.store_id == staff.store_id)
+    stmt = (
+        select(Order, Customer, DiningTable)
+        .outerjoin(Customer, Customer.id == Order.customer_id)
+        .outerjoin(DiningTable, DiningTable.id == Order.dining_table_id)
+        .where(Order.store_id == staff.store_id)
+    )
     if status_filter:
         stmt = stmt.where(Order.status == status_filter)
     if order_type:
@@ -1834,7 +1891,7 @@ async def staff_list_orders(
         stmt = stmt.where(Order.payment_status == payment_status)
     stmt = stmt.order_by(Order.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    orders = result.scalars().all()
+    rows = result.all()
     return APIResponse(data=[
         {
             "id": o.id,
@@ -1842,17 +1899,21 @@ async def staff_list_orders(
             "status": o.status,
             "order_type": o.order_type,
             "payment_status": o.payment_status,
-            "table_id": o.dining_table_id,
             "customer_id": o.customer_id,
-            "subtotal": float(o.items_subtotal) if o.items_subtotal else 0,
+            "customer_name": c.display_name if c else None,
+            "customer_phone": c.phone_number if c else None,
+            "dining_table_id": o.dining_table_id,
+            "table_number": t.table_number if t else None,
+            "item_count": o.item_count,
+            "items_subtotal": float(o.items_subtotal) if o.items_subtotal else 0,
             "tax_amount": float(o.tax_amount) if o.tax_amount else 0,
             "service_charge": float(o.service_charge) if o.service_charge else 0,
             "discount_amount": float(o.discount_amount) if o.discount_amount else 0,
-            "total": float(o.total_amount) if o.total_amount else 0,
+            "total_amount": float(o.total_amount) if o.total_amount else 0,
             "created_at": o.created_at.isoformat() if o.created_at else None,
             "updated_at": o.updated_at.isoformat() if o.updated_at else None,
         }
-        for o in orders
+        for o, c, t in rows
     ])
 
 
@@ -1866,7 +1927,11 @@ async def staff_list_reservations(
     per_page: int = Query(100, ge=1, le=500),
 ):
     """List reservations for the staff member's store."""
-    stmt = select(Reservation).where(Reservation.store_id == staff.store_id)
+    stmt = (
+        select(Reservation, DiningTable)
+        .outerjoin(DiningTable, DiningTable.id == Reservation.table_id)
+        .where(Reservation.store_id == staff.store_id)
+    )
     if date_from:
         from datetime import date as date_cls
         stmt = stmt.where(Reservation.reservation_date >= date_cls.fromisoformat(date_from))
@@ -1875,7 +1940,7 @@ async def staff_list_reservations(
         stmt = stmt.where(Reservation.reservation_date <= date_cls.fromisoformat(date_to))
     stmt = stmt.order_by(Reservation.reservation_date.desc(), Reservation.reservation_time.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    reservations = result.scalars().all()
+    rows = result.all()
     return APIResponse(data=[
         {
             "id": r.id,
@@ -1887,10 +1952,12 @@ async def staff_list_reservations(
             "reservation_time": r.reservation_time.isoformat() if r.reservation_time else None,
             "status": r.status,
             "table_id": r.table_id,
+            "dining_table_id": r.table_id,
+            "table_number": t.table_number if t else None,
             "notes": r.notes,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         }
-        for r in reservations
+        for r, t in rows
     ])
 
 
@@ -1932,14 +1999,18 @@ async def staff_update_table_status(
 async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
     """Get a single order with line items (staff endpoint)."""
     result = await db.execute(
-        select(Order).where(
+        select(Order, Customer, DiningTable)
+        .outerjoin(Customer, Customer.id == Order.customer_id)
+        .outerjoin(DiningTable, DiningTable.id == Order.dining_table_id)
+        .where(
             Order.id == order_id,
             Order.store_id == staff.store_id,
         )
     )
-    order = result.scalar_one_or_none()
-    if not order:
+    row = result.one_or_none()
+    if not row:
         raise HTTPException(status_code=404, detail="Order not found")
+    order, customer, table = row
 
     # Get line items
     items_result = await db.execute(
@@ -1953,13 +2024,16 @@ async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
         "status": order.status,
         "order_type": order.order_type,
         "payment_status": order.payment_status,
-        "table_id": order.dining_table_id,
         "customer_id": order.customer_id,
+        "customer_name": customer.display_name if customer else None,
+        "customer_phone": customer.phone_number if customer else None,
+        "dining_table_id": order.dining_table_id,
+        "table_number": table.table_number if table else None,
         "items_subtotal": float(order.items_subtotal) if order.items_subtotal else 0,
         "tax_amount": float(order.tax_amount) if order.tax_amount else 0,
         "service_charge": float(order.service_charge) if order.service_charge else 0,
         "discount_amount": float(order.discount_amount) if order.discount_amount else 0,
-        "total": float(order.total_amount) if order.total_amount else 0,
+        "total_amount": float(order.total_amount) if order.total_amount else 0,
         "customer_notes": order.customer_notes,
         "staff_notes": order.staff_notes,
         "created_at": order.created_at.isoformat() if order.created_at else None,
@@ -1968,12 +2042,13 @@ async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
             {
                 "id": li.id,
                 "menu_item_id": li.menu_item_id,
-                "item_name": li.item_name,
+                "item_name": (li.item_snapshot or {}).get("item_name") if li.item_snapshot else None,
                 "quantity": li.quantity,
                 "unit_price": float(li.unit_price) if li.unit_price else 0,
-                "total": float(li.total) if li.total else 0,
-                "notes": li.notes,
-                "status": li.status,
+                "total": float(li.line_total) if li.line_total else 0,
+                "notes": li.special_instructions,
+                "status": li.fulfillment_status,
+                "selected_modifiers": li.selected_modifiers,
             }
             for li in line_items
         ],

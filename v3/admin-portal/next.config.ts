@@ -10,10 +10,8 @@ const domains = [
 function getBackendUrl(): string {
   const direct = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (direct && direct.startsWith("http")) return direct;
-  if (process.env.NODE_ENV === "development") return "http://127.0.0.1:13800/api";
-  throw new Error(
-    "API_URL or NEXT_PUBLIC_API_URL must be set to a valid HTTP(S) URL in production"
-  );
+  // Never throw in production; fall back to the local backend.
+  return "http://127.0.0.1:13800/api";
 }
 
 const backendUrl = getBackendUrl();

@@ -135,6 +135,15 @@ pytest -q
 - Decimal → Money serialization fix in backend
 - All legacy docs removed, new README.md and AGENTS.md
 
+### Round 31 — final gaps closed ✅
+- **Admin portal**: removed production `throw` violations in `middleware.ts`, `next.config.ts`, `lib/api.ts`, and auth route handlers; all fall back to `http://127.0.0.1:13800/api`
+- **Help center**: added 5 missing admin articles (`admin-equipment`, `admin-hygiene`, `admin-help-articles`, `admin-profile`, `admin-admins`); `scripts/clear_db.py` now covers `help_articles`
+- **Customer PWA**: added public `POST /vouchers/validate`; kiosk orders now use the new public `POST /kiosk/orders` endpoint with table-number resolution
+- **Staff portal**: added staff-scoped backend endpoints for order payment / voucher / reward / wallet / item modifications / cancel, customer search / detail / wallet / top-up / reward & voucher use, QR scan, and table QR generation; updated `staff-portal/src/lib/api.ts` to call `/staff/*` instead of `/admin/*`
+- **Staff backend fixes**: `/staff/menu/items` returns full POS shape (modifiers, variants, allergens); `/staff/orders` and `/staff/orders/{id}` return `total_amount`, `customer_name`, `table_number`; `/staff/reservations` returns `dining_table_id`/`table_number`; change-password/PIN endpoints read the `staff_token` cookie
+- **Database**: fixed Alembic migration drift (`alembic check` now passes) and applied new index-alignment migration
+- **Runtime**: backend + all three portals rebuilt/restarted and responding 200
+
 ### Test results
 - Backend: 36 passed, 0 failed
 - E2E: 199 passed, 16 skipped, 0 failed

@@ -6,9 +6,8 @@ const AUTH_COOKIE = "admin_token";
 function getBackendUrl(): string {
   const direct = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (direct && direct.startsWith("http")) return direct;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("API_URL must be set in production");
-  }
+  // Never throw in production; fall back to the local backend so the portal
+  // can boot even when env vars are not injected at build time.
   return "http://127.0.0.1:13800/api";
 }
 

@@ -1,0 +1,795 @@
+"""Staff-scoped order management endpoints (POS operations)."""
+
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from fastapi import APIRouter, HTTPException, status
+from pydantic import Field
+from sqlalchemy import select, func, case
+
+from app.api.routes.deps import CurrentStaff, DBDependency
+from app.core.money import money_round, to_decimal
+from app.models.order import Order, OrderAdjustment, OrderLineItem, OrderStatusLog
+from app.models.menu import MenuItem
+from app.models.platform import AuditLog
+from app.models.pos import OrderModificationLog
+from app.models.reward import CustomerReward, RewardCatalog
+from app.models.voucher import CustomerVoucher, VoucherDefinition
+from app.models.wallet import Wallet, WalletLedgerEntry
+from app.schemas.base import APIResponse, BaseSchema
+from app.schemas.order import (
+    ApplyOrderRewardRequest,
+    ApplyOrderVoucherRequest,
+    PayWithWalletRequest,
+    ProcessOrderPaymentRequest,
+)
+from app.services.payment import PaymentError, cancel_pending_order_payments, create_stripe_checkout_session
+from app.services.platform_config import PlatformConfigService
+
+router = APIRouter(prefix="/staff/orders", tags=["staff — orders"])
+
+
+def _audit_principal_id(staff) -> int | None:
+    """Return the principal_id to use for audit logs, or None if not available."""
+    pid = getattr(staff, "principal_id", None)
+    return pid if pid else None
+
+
+async def _require_store_order(staff, order: Order) -> None:
+    if order.store_id != staff.store_id:
+        raise HTTPException(status_code=403, detail="Access denied for this store")
+
+
+@router.patch("/{order_id}/payment", response_model=APIResponse[dict])
+async def process_staff_order_payment(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    data: ProcessOrderPaymentRequest,
+):
+    """Process POS payment for an order (cash/card/qr) scoped to staff's store."""
+    from app.models.payment import Payment
+
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
+        raise HTTPException(status_code=400, detail="Cannot pay for a completed/cancelled order")
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    existing_payments = await db.execute(
+        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+    )
+    captured_from_payments = money_round(
+        sum(to_decimal(p.amount) for p in existing_payments.scalars().all()),
+        precision,
+        rounding_mode,
+    )
+    order_captured = captured_from_payments
+    already_paid = captured_from_payments
+
+    payment_method = data.payment_method
+    amount_tendered = to_decimal(data.amount_tendered or 0)
+    amount = to_decimal(data.amount) if data.amount is not None else None
+    discount_amount = to_decimal(data.discount_amount or 0)
+    discount_type = data.discount_type
+    tip_amount = to_decimal(data.tip_amount or 0)
+
+    current_total = money_round(to_decimal(order.total_amount), precision, rounding_mode)
+    computed_discount = Decimal(0)
+    if discount_amount > 0:
+        if discount_type == "percentage":
+            computed_discount = money_round(
+                to_decimal(order.items_subtotal or order.total_amount) * discount_amount / Decimal(100),
+                precision,
+                rounding_mode,
+            )
+        else:
+            computed_discount = money_round(discount_amount, precision, rounding_mode)
+        computed_discount = min(computed_discount, current_total)
+
+    if already_paid > 0 and computed_discount > 0:
+        raise HTTPException(status_code=400, detail="Cannot apply discount after a payment has already been made")
+
+    expected_total = money_round(max(Decimal(0), current_total - computed_discount + tip_amount), precision, rounding_mode)
+    if amount is not None and abs(money_round(amount, precision, rounding_mode) - expected_total) > Decimal(0):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment amount does not match expected total. Expected: RM {expected_total:.2f}, Received: RM {amount:.2f}",
+        )
+
+    order.discount_amount = money_round(to_decimal(order.discount_amount or 0) + computed_discount, precision, rounding_mode)
+    order.total_amount = expected_total
+    order.tip_amount = money_round(to_decimal(order.tip_amount or 0) + tip_amount, precision, rounding_mode)
+
+    remaining_due = money_round(expected_total - already_paid, precision, rounding_mode)
+
+    if already_paid > 0 and remaining_due <= 0:
+        raise HTTPException(status_code=400, detail=f"Order is already fully paid (RM {already_paid:.2f})")
+
+    net_amount = max(Decimal(0), remaining_due)
+    fully_paid_by_wallet = net_amount <= 0
+
+    change = Decimal(0)
+    if payment_method == "cash":
+        if amount_tendered < net_amount:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient cash tendered. Required: RM {net_amount:.2f}, Tendered: RM {amount_tendered:.2f}",
+            )
+        change = money_round(amount_tendered - net_amount, precision, rounding_mode)
+
+    method_type_map = {
+        "cash": "cash",
+        "card": "credit_card",
+        "qr": "e_wallet",
+        "stripe_qr": "qr_pay",
+        "credit_card": "credit_card",
+        "debit_card": "debit_card",
+        "e_wallet": "e_wallet",
+    }
+    payment_method_type = method_type_map.get(payment_method, "cash")
+    provider_map = {
+        "cash": "cash",
+        "card": "stripe",
+        "qr": "grabpay",
+        "stripe_qr": "stripe",
+        "credit_card": "stripe",
+        "debit_card": "stripe",
+        "e_wallet": "grabpay",
+    }
+    provider = provider_map.get(payment_method, "cash")
+    is_stripe_qr = payment_method == "stripe_qr"
+
+    idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}"
+    dup_check = await db.execute(
+        select(Payment).where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
+    )
+    if dup_check.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Duplicate payment request")
+
+    payment = None
+    payment_url: str | None = None
+    if net_amount > 0:
+        payment = Payment(
+            order_id=order.id,
+            provider=provider,
+            payment_method_type=payment_method_type,
+            amount=net_amount,
+            currency_code=order.total_amount_currency,
+            status="pending_authorization" if is_stripe_qr else "captured",
+            net_amount=Decimal(0) if is_stripe_qr else net_amount,
+            idempotency_key=idempotency_key,
+        )
+        db.add(payment)
+        await db.flush()
+        await db.refresh(payment)
+
+        if is_stripe_qr:
+            order.payment_status = "pending_authorization"
+            try:
+                checkout = await create_stripe_checkout_session(db, payment, order, customer_id=order.customer_id)
+            except PaymentError as exc:
+                await db.rollback()
+                raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+            payment.provider_transaction_id = checkout["id"]
+            payment_url = checkout["url"]
+        else:
+            order_captured = money_round(order_captured + net_amount, precision, rounding_mode)
+
+    order.updated_at = datetime.now(timezone.utc)
+
+    if not is_stripe_qr:
+        total_paid = order_captured
+        if total_paid >= to_decimal(order.total_amount):
+            order.payment_status = "captured"
+        elif total_paid > 0:
+            order.payment_status = "initiated"
+
+    if fully_paid_by_wallet:
+        order.payment_status = "captured"
+
+    log = OrderStatusLog(
+        order_id=order.id,
+        from_status=order.status,
+        to_status=order.status,
+        reason=f"Payment processed: {payment_method}, amount={net_amount}",
+        actor_type="staff",
+        actor_id=staff.id,
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(order)
+
+    response_data: dict = {
+        "id": order.id,
+        "order_number": order.order_number,
+        "payment_status": order.payment_status,
+        "amount": net_amount,
+        "change": change,
+        "tip_amount": tip_amount,
+        "payment_method": payment_method,
+        "message": "Payment processed successfully",
+    }
+    if payment_url:
+        response_data["payment_url"] = payment_url
+
+    return APIResponse(data=response_data)
+
+
+@router.post("/{order_id}/apply-voucher", response_model=APIResponse[dict])
+async def apply_staff_order_voucher(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    data: ApplyOrderVoucherRequest,
+):
+    """Apply a customer voucher to an existing order in staff's store."""
+    voucher_code = data.voucher_code.strip()
+    if not voucher_code:
+        raise HTTPException(status_code=400, detail="voucher_code is required")
+
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
+        raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
+
+    result = await db.execute(
+        select(CustomerVoucher, VoucherDefinition)
+        .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id, isouter=True)
+        .where(
+            CustomerVoucher.voucher_code == voucher_code,
+            CustomerVoucher.customer_id == order.customer_id,
+            CustomerVoucher.status == "active",
+        )
+        .with_for_update(of=CustomerVoucher)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Voucher not found or not active for this customer")
+    customer_voucher, voucher_def = row
+
+    now = datetime.now(timezone.utc)
+    if customer_voucher.expires_at and customer_voucher.expires_at < now:
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    subtotal = to_decimal(order.items_subtotal)
+    min_spend = to_decimal(voucher_def.minimum_order_value) if voucher_def else Decimal(0)
+    if subtotal < min_spend:
+        raise HTTPException(status_code=400, detail=f"Minimum spend RM {min_spend:.2f} required")
+
+    if voucher_def and voucher_def.minimum_tier_id:
+        from app.models.loyalty import LoyaltyAccount
+        loyalty_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.customer_id == order.customer_id)
+        )
+        loyalty = loyalty_result.scalar_one_or_none()
+        tier_id = loyalty.current_tier_id if loyalty else None
+        if tier_id is None or tier_id < voucher_def.minimum_tier_id:
+            raise HTTPException(status_code=400, detail="Customer's loyalty tier is not eligible for this voucher")
+
+    discount = Decimal(0)
+    voucher_type = voucher_def.voucher_type if voucher_def else ""
+    discount_value = to_decimal(voucher_def.discount_value) if voucher_def else Decimal(0)
+
+    if voucher_type == "percentage_off":
+        discount = money_round(subtotal * (discount_value / Decimal(100)), precision, rounding_mode)
+        max_disc = to_decimal(voucher_def.discount_max_amount) if voucher_def else Decimal(0)
+        if max_disc > 0:
+            discount = min(discount, max_disc)
+    elif voucher_type == "fixed_amount_off":
+        discount = discount_value
+    elif voucher_type == "free_delivery":
+        discount = to_decimal(order.delivery_fee)
+    elif voucher_type == "free_item":
+        line_items_result = await db.execute(
+            select(OrderLineItem).where(OrderLineItem.order_id == order_id)
+        )
+        line_items = line_items_result.scalars().all()
+        if voucher_def.menu_item_id:
+            for li in line_items:
+                if li.menu_item_id == voucher_def.menu_item_id:
+                    discount = to_decimal(li.unit_price) * li.quantity
+                    break
+        elif line_items:
+            cheapest = min(line_items, key=lambda li: to_decimal(li.unit_price))
+            discount = to_decimal(cheapest.unit_price) * cheapest.quantity
+        max_disc = to_decimal(voucher_def.discount_max_amount) if voucher_def else Decimal(0)
+        if max_disc > 0:
+            discount = min(discount, max_disc)
+    else:
+        discount = discount_value
+
+    discount = min(discount, subtotal)
+
+    customer_voucher.status = "used"
+    customer_voucher.used_at = now
+    customer_voucher.order_id = order_id
+
+    order.voucher_discount = money_round(to_decimal(order.voucher_discount) + discount, precision, rounding_mode)
+    order.discount_amount = money_round(to_decimal(order.discount_amount) + discount, precision, rounding_mode)
+    order.total_amount = money_round(to_decimal(order.total_amount) - discount, precision, rounding_mode)
+    order.updated_at = now
+
+    adj = OrderAdjustment(
+        order_id=order.id,
+        adjustment_type="discount_override",
+        amount_delta=money_round(-discount, precision, rounding_mode),
+        reason=f"Voucher applied: {voucher_code} ({voucher_def.display_title if voucher_def else voucher_type})",
+        approved_by=staff.id,
+    )
+    db.add(adj)
+
+    principal_id = _audit_principal_id(staff)
+    if principal_id:
+        db.add(AuditLog(
+            principal_id=principal_id,
+            action="apply_voucher",
+            resource_type="order",
+            resource_id=order_id,
+            changes_summary={"voucher_code": voucher_code, "discount": str(discount), "customer_id": order.customer_id},
+        ))
+
+    await db.commit()
+    await db.refresh(order)
+
+    return APIResponse(
+        data={
+            "order_id": order.id,
+            "voucher_code": voucher_code,
+            "discount_amount": discount,
+            "new_total": order.total_amount,
+            "message": f"Voucher applied. Discount: RM {discount:.2f}",
+        }
+    )
+
+
+@router.post("/{order_id}/apply-reward", response_model=APIResponse[dict])
+async def apply_staff_order_reward(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    data: ApplyOrderRewardRequest,
+):
+    """Apply a customer reward to an existing order in staff's store."""
+    reward_id = data.reward_id
+
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
+        raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
+
+    result = await db.execute(
+        select(CustomerReward, RewardCatalog)
+        .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
+        .where(
+            CustomerReward.id == reward_id,
+            CustomerReward.customer_id == order.customer_id,
+            CustomerReward.status.in_(["active", "reserved"]),
+        )
+        .with_for_update(of=CustomerReward)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Reward not found or not available for this customer")
+    customer_reward, reward_cat = row
+
+    now = datetime.now(timezone.utc)
+    if customer_reward.expires_at and customer_reward.expires_at < now:
+        raise HTTPException(status_code=400, detail="Reward has expired")
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    discount = Decimal(0)
+    if reward_cat and reward_cat.discount_value:
+        dv = to_decimal(reward_cat.discount_value)
+        if reward_cat.reward_type == "percentage_discount":
+            order_base = to_decimal(order.items_subtotal)
+            discount = money_round(order_base * dv / Decimal(100), precision, rounding_mode)
+            if reward_cat.discount_max_amount:
+                discount = min(discount, to_decimal(reward_cat.discount_max_amount))
+        else:
+            discount = dv
+    elif customer_reward.reward_snapshot:
+        snapshot_val = to_decimal(customer_reward.reward_snapshot.get("discount_value", 0))
+        snapshot_type = customer_reward.reward_snapshot.get("reward_type", "")
+        if snapshot_type == "percentage_discount":
+            order_base = to_decimal(order.items_subtotal)
+            discount = money_round(order_base * snapshot_val / Decimal(100), precision, rounding_mode)
+            snapshot_max = customer_reward.reward_snapshot.get("discount_max_amount")
+            if snapshot_max:
+                discount = min(discount, to_decimal(snapshot_max))
+        else:
+            discount = snapshot_val
+
+    subtotal = to_decimal(order.items_subtotal)
+    discount = min(discount, subtotal)
+
+    customer_reward.status = "used"
+    customer_reward.used_at = now
+    customer_reward.order_id = order_id
+
+    order.reward_discount = money_round(to_decimal(order.reward_discount) + discount, precision, rounding_mode)
+    order.discount_amount = money_round(to_decimal(order.discount_amount) + discount, precision, rounding_mode)
+    order.total_amount = money_round(to_decimal(order.total_amount) - discount, precision, rounding_mode)
+    order.updated_at = now
+
+    adj = OrderAdjustment(
+        order_id=order.id,
+        adjustment_type="discount_override",
+        amount_delta=money_round(-discount, precision, rounding_mode),
+        reason=f"Reward applied: {reward_cat.reward_name if reward_cat else customer_reward.redemption_code}",
+        approved_by=staff.id,
+    )
+    db.add(adj)
+
+    principal_id = _audit_principal_id(staff)
+    if principal_id:
+        db.add(AuditLog(
+            principal_id=principal_id,
+            action="apply_reward",
+            resource_type="order",
+            resource_id=order_id,
+            changes_summary={"reward_id": reward_id, "discount": str(discount), "customer_id": order.customer_id},
+        ))
+
+    await db.commit()
+    await db.refresh(order)
+
+    return APIResponse(
+        data={
+            "order_id": order.id,
+            "reward_id": customer_reward.id,
+            "discount_amount": discount,
+            "new_total": order.total_amount,
+            "message": f"Reward applied. Discount: RM {discount:.2f}",
+        }
+    )
+
+
+@router.post("/{order_id}/wallet-payment", response_model=APIResponse[dict])
+async def staff_pay_with_wallet(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    data: PayWithWalletRequest,
+):
+    """Pay for an order using the customer's wallet credit in staff's store."""
+    from app.models.payment import Payment
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    amount = to_decimal(data.amount)
+
+    result = await db.execute(
+        select(Order)
+        .where(Order.id == order_id, Order.deleted_at.is_(None))
+        .with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
+        raise HTTPException(status_code=400, detail="Cannot pay for a completed/cancelled order")
+
+    result = await db.execute(select(Wallet).where(Wallet.customer_id == order.customer_id).with_for_update())
+    wallet = result.scalar_one_or_none()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Customer has no wallet")
+
+    if wallet.is_frozen:
+        raise HTTPException(status_code=400, detail="Wallet is frozen")
+
+    balance_result = await db.execute(
+        select(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (WalletLedgerEntry.entry_type.in_(["credit", "release", "adjustment"]), WalletLedgerEntry.amount),
+                        else_=0,
+                    )
+                )
+                -
+                func.sum(
+                    case(
+                        (WalletLedgerEntry.entry_type.in_(["debit", "hold"]), WalletLedgerEntry.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            )
+        ).where(WalletLedgerEntry.wallet_id == wallet.id)
+    )
+    current_balance = money_round(balance_result.scalar() or 0, precision, rounding_mode)
+
+    if current_balance < amount:
+        raise HTTPException(status_code=400, detail=f"Insufficient wallet balance. Available: RM {current_balance:.2f}")
+
+    payment_result = await db.execute(
+        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+    )
+    already_paid = money_round(
+        sum(to_decimal(p.amount) for p in payment_result.scalars().all()),
+        precision,
+        rounding_mode,
+    )
+    remaining_due = money_round(to_decimal(order.total_amount) - already_paid, precision, rounding_mode)
+    if amount > remaining_due:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment amount exceeds remaining balance. Remaining: RM {remaining_due:.2f}",
+        )
+
+    new_balance = money_round(current_balance - amount, precision, rounding_mode)
+    now = datetime.now(timezone.utc)
+
+    ledger = WalletLedgerEntry(
+        wallet_id=wallet.id,
+        entry_type="debit",
+        amount=amount,
+        running_balance=new_balance,
+        description=f"Order payment #{order.order_number}",
+        reference_type="order_payment",
+        reference_id=order.id,
+    )
+    db.add(ledger)
+
+    payment = Payment(
+        order_id=order.id,
+        provider="internal_wallet",
+        payment_method_type="e_wallet",
+        amount=amount,
+        currency_code=order.total_amount_currency,
+        status="captured",
+        captured_amount=amount,
+        net_amount=amount,
+        idempotency_key=f"wallet-payment-{order.id}-{uuid.uuid4().hex}",
+    )
+    db.add(payment)
+
+    new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
+    if new_total_paid >= to_decimal(order.total_amount):
+        order.payment_status = "captured"
+    order.updated_at = now
+
+    principal_id = _audit_principal_id(staff)
+    if principal_id:
+        db.add(AuditLog(
+            principal_id=principal_id,
+            action="wallet_payment",
+            resource_type="order",
+            resource_id=order_id,
+            changes_summary={"amount": str(amount), "remaining_balance": str(new_balance), "customer_id": order.customer_id},
+        ))
+
+    await db.commit()
+    await db.refresh(order)
+
+    return APIResponse(
+        data={
+            "order_id": order.id,
+            "amount_paid": float(amount),
+            "wallet_balance_remaining": float(new_balance),
+            "payment_status": order.payment_status,
+            "message": f"RM {amount:.2f} paid from wallet. Remaining balance: RM {new_balance:.2f}",
+        }
+    )
+
+
+class AddLineItemRequest(BaseSchema):
+    menu_item_id: int
+    quantity: int = Field(1, ge=1, le=99)
+    modifier_ids: list[int] = []
+    special_instructions: str | None = None
+    unit_price: float = Field(0, ge=0)
+
+
+@router.post("/{order_id}/items", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def add_staff_order_line_item(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    data: AddLineItemRequest,
+):
+    """Add a line item to an existing order in staff's store."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot modify a completed or cancelled order")
+
+    menu_result = await db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id))
+    menu_item = menu_result.scalar_one_or_none()
+    if not menu_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    price = to_decimal(menu_item.base_price)
+    total = money_round(price * data.quantity, precision, rounding_mode)
+
+    line_item = OrderLineItem(
+        order_id=order.id,
+        menu_item_id=menu_item.id,
+        item_snapshot={"item_name": menu_item.item_name},
+        quantity=data.quantity,
+        unit_price=price,
+        line_total=total,
+        selected_modifiers={},
+        special_instructions=data.special_instructions,
+    )
+    db.add(line_item)
+
+    order.items_subtotal = to_decimal(order.items_subtotal) + total
+    order.item_count = (order.item_count or 0) + data.quantity
+    order.total_amount = money_round(
+        to_decimal(order.items_subtotal)
+        + to_decimal(order.modifier_subtotal)
+        + to_decimal(order.delivery_fee)
+        + to_decimal(order.service_charge)
+        + to_decimal(order.tax_amount)
+        - to_decimal(order.discount_amount)
+        - to_decimal(order.voucher_discount)
+        - to_decimal(order.reward_discount),
+        precision,
+        rounding_mode,
+    )
+    order.updated_at = datetime.now(timezone.utc)
+
+    log = OrderModificationLog(
+        order_id=order.id,
+        staff_id=staff.id,
+        modification_type="add_item",
+        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": float(price)},
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(line_item)
+    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": float(total)}, status_code=201)
+
+
+@router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])
+async def remove_staff_order_line_item(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    line_item_id: int,
+    reason: str | None = None,
+):
+    """Void/remove a line item from an existing order in staff's store."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot modify a completed or cancelled order")
+
+    item_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.id == line_item_id, OrderLineItem.order_id == order_id)
+    )
+    line_item = item_result.scalar_one_or_none()
+    if not line_item:
+        raise HTTPException(status_code=404, detail="Line item not found")
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    removed_total = to_decimal(line_item.line_total)
+    order.items_subtotal = to_decimal(order.items_subtotal) - removed_total
+    order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
+    order.total_amount = money_round(
+        to_decimal(order.items_subtotal)
+        + to_decimal(order.modifier_subtotal)
+        + to_decimal(order.delivery_fee)
+        + to_decimal(order.service_charge)
+        + to_decimal(order.tax_amount)
+        - to_decimal(order.discount_amount)
+        - to_decimal(order.voucher_discount)
+        - to_decimal(order.reward_discount),
+        precision,
+        rounding_mode,
+    )
+    order.total_amount = max(Decimal(0), order.total_amount)
+    order.updated_at = datetime.now(timezone.utc)
+
+    log = OrderModificationLog(
+        order_id=order.id,
+        staff_id=staff.id,
+        modification_type="remove_item",
+        line_item_id=line_item.id,
+        previous_value={"item_name": line_item.item_snapshot.get("item_name"), "total_price": removed_total},
+        reason=reason,
+    )
+    db.add(log)
+    await db.delete(line_item)
+    await db.commit()
+    return APIResponse(data={"id": line_item_id, "order_id": order.id, "removed": True, "new_total": order.total_amount})
+
+
+@router.post("/{order_id}/cancel", response_model=APIResponse[dict])
+async def cancel_staff_order(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    reason: str | None = None,
+):
+    """Cancel an order in staff's store."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Order is already completed or cancelled")
+
+    old_status = order.status
+    order.status = "cancelled_by_merchant"
+    order.cancellation_reason = reason or "Cancelled by staff"
+    order.cancelled_by = "merchant"
+    order.cancelled_at = datetime.now(timezone.utc)
+    order.updated_at = datetime.now(timezone.utc)
+
+    log = OrderStatusLog(
+        order_id=order.id,
+        from_status=old_status,
+        to_status="cancelled_by_merchant",
+        reason=reason or "Cancelled by staff",
+        actor_type="staff",
+        actor_id=staff.id,
+    )
+    db.add(log)
+    await db.flush()
+    cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
+    await db.commit()
+    return APIResponse(data={
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": "cancelled_by_merchant",
+        "cancelled_payment_ids": cancelled_payment_ids,
+    })

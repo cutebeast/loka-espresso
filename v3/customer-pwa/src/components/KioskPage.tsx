@@ -198,14 +198,13 @@ export default function KioskPage() {
       const payload = {
         store_id: storeId,
         order_type: orderType,
-        order_channel: 'kiosk',
         items: cart.map(c => ({
           menu_item_id: c.id,
           quantity: c.qty,
         })),
         dining_table_number: orderType === 'dine_in' ? tableNumber : undefined,
       };
-      const res = await api.post('/orders', payload);
+      const res = await api.post('/kiosk/orders', payload);
       const data = res.data?.data || res.data;
       _orderId.current = data.id;
       setOrderNumber(data.order_number);

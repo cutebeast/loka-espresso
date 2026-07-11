@@ -625,31 +625,31 @@ export function updateOrderPayment(id: string | number, payload: {
   discount_type?: "percentage" | "fixed";
   tip_amount?: number;
 }) {
-  return api.patch(`/admin/orders/${id}/payment`, payload);
+  return api.patch(`/staff/orders/${id}/payment`, payload);
 }
 
 export function applyOrderVoucher(orderId: string | number, voucherCode: string) {
-  return api.post<{ order_id: number; voucher_code: string; discount_amount: number; new_total: number; message: string }>(`/admin/orders/${orderId}/apply-voucher`, { voucher_code: voucherCode });
+  return api.post<{ order_id: number; voucher_code: string; discount_amount: number; new_total: number; message: string }>(`/staff/orders/${orderId}/apply-voucher`, { voucher_code: voucherCode });
 }
 
 export function applyOrderReward(orderId: string | number, rewardId: number) {
-  return api.post<{ order_id: number; reward_id: number; discount_amount: number; new_total: number; message: string }>(`/admin/orders/${orderId}/apply-reward`, { reward_id: rewardId });
+  return api.post<{ order_id: number; reward_id: number; discount_amount: number; new_total: number; message: string }>(`/staff/orders/${orderId}/apply-reward`, { reward_id: rewardId });
 }
 
 export function payWithWallet(orderId: string | number, amount: number) {
-  return api.post<{ order_id: number; amount_paid: number; wallet_balance_remaining: number; payment_status: string; message: string }>(`/admin/orders/${orderId}/wallet-payment`, { amount });
+  return api.post<{ order_id: number; amount_paid: number; wallet_balance_remaining: number; payment_status: string; message: string }>(`/staff/orders/${orderId}/wallet-payment`, { amount });
 }
 
 export function addOrderItem(orderId: string | number, payload: { menu_item_id: number; quantity?: number; modifier_ids?: number[]; special_instructions?: string; unit_price?: number }) {
-  return api.post(`/admin/orders/${orderId}/items`, payload);
+  return api.post(`/staff/orders/${orderId}/items`, payload);
 }
 
 export function removeOrderItem(orderId: string | number, lineItemId: number, reason?: string) {
-  return api.del(`/admin/orders/${orderId}/items/${lineItemId}${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
+  return api.del(`/staff/orders/${orderId}/items/${lineItemId}${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
 }
 
 export function cancelOrder(orderId: string | number, reason?: string) {
-  return api.post(`/admin/orders/${orderId}/cancel${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
+  return api.post(`/staff/orders/${orderId}/cancel${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
 }
 
 export function transferTable(orderId: string | number, newTableId: number) {
@@ -799,7 +799,7 @@ export function getBundleProducts() {
 }
 
 export function searchCustomers(q: string) {
-  return api.get<Customer[]>(`/admin/customers?search=${encodeURIComponent(q)}&per_page=10`);
+  return api.get<Customer[]>(`/staff/customers/search?q=${encodeURIComponent(q)}`);
 }
 
 export function createPosOrder(payload: {
@@ -815,11 +815,10 @@ export function createPosOrder(payload: {
   return api.post<{ order_id: number; order_number: string; total: number; change?: number }>("/staff/pos/orders", payload);
 }
 
-export async function generateTableQr(storeId: number, tableId: number): Promise<Table | null> {
+export async function generateTableQr(_storeId: number, tableId: number): Promise<Table | null> {
   try {
-    return await api.post<Table>(`/admin/stores/${storeId}/tables/${tableId}/generate-qr`);
+    return await api.post<Table>(`/staff/tables/${tableId}/generate-qr`);
   } catch {
-    // QR generation requires admin permissions — not available for staff
     return null;
   }
 }
@@ -870,11 +869,11 @@ export interface CustomerDetail extends Customer {
 }
 
 export function getCustomerById(id: number) {
-  return api.get<CustomerDetail>(`/admin/customers/${id}`);
+  return api.get<CustomerDetail>(`/staff/customers/${id}`);
 }
 
 export function getCustomerWallet(customerId: number) {
-  return api.get<CustomerWallet>(`/admin/customers/${customerId}/wallet`);
+  return api.get<CustomerWallet>(`/staff/customers/${customerId}/wallet`);
 }
 
 export function topUpWallet(payload: {
@@ -884,17 +883,17 @@ export function topUpWallet(payload: {
   payment_method?: string;
   notes?: string;
 }) {
-  return api.post<{ message: string; new_balance: number }>("/admin/wallets/topup", payload);
+  return api.post<{ message: string; new_balance: number }>("/staff/wallets/topup", payload);
 }
 
 export function markRewardUsed(customerId: number, rewardId: number, notes?: string) {
   const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
-  return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-reward/${rewardId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
+  return api.post<{ message: string; success: boolean }>(`/staff/customers/${customerId}/use-reward/${rewardId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
 }
 
 export function markVoucherUsed(customerId: number, voucherId: number, notes?: string) {
   const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
-  return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-voucher/${voucherId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
+  return api.post<{ message: string; success: boolean }>(`/staff/customers/${customerId}/use-voucher/${voucherId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
 }
 
 export function scanCustomerCode(code: string) {
@@ -903,7 +902,7 @@ export function scanCustomerCode(code: string) {
     customer_name: string;
     customer_phone: string;
     wallet_balance?: number;
-  }>("/admin/scan/customer", { code });
+  }>("/staff/scan/customer", { code });
 }
 
 export function scanRewardCode(code: string) {
@@ -912,7 +911,7 @@ export function scanRewardCode(code: string) {
     name: string;
     customer_id?: number;
     valid: boolean;
-  }>(`/admin/scan/reward/${code}`, { store_id: null });
+  }>(`/staff/scan/reward/${code}`, { store_id: null });
 }
 
 export function scanVoucherCode(code: string) {
@@ -921,7 +920,7 @@ export function scanVoucherCode(code: string) {
     title: string;
     customer_id?: number;
     valid: boolean;
-  }>(`/admin/scan/voucher/${code}`, { store_id: null });
+  }>(`/staff/scan/voucher/${code}`, { store_id: null });
 }
 
 

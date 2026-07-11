@@ -109,3 +109,20 @@ class CustomerVoucherOut(BaseSchema):
 class VoucherApplyRequest(BaseSchema):
     voucher_code: str = Field(..., min_length=1, max_length=50)
     order_id: int | None = None
+
+
+class VoucherValidateRequest(BaseSchema):
+    voucher_code: str = Field(..., min_length=1, max_length=50)
+    order_total: Money | None = Field(None, ge=0)
+
+
+class VoucherValidateResponse(BaseSchema):
+    voucher_code: str
+    valid: bool
+    discount_type: str
+    discount_value: Money
+    max_discount: Money | None
+    min_spend: Money
+    calculated_discount: Money
+    display_title: str | None = None
+    message: str | None = None

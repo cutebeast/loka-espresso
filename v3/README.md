@@ -118,12 +118,15 @@ All three portals use HttpOnly cookie auth:
 ### Staff-specific backend endpoints
 Staff portal calls `/api/staff/*` (not `/api/admin/*`):
 - Menu: `GET /staff/menu/categories`, `GET /staff/menu/items`
-- Tables: `GET /staff/tables`, `PATCH /staff/tables/{id}/status`
-- Orders: `GET /staff/orders`, `GET /staff/orders/{id}`, `PATCH /staff/orders/{id}/status`, `PATCH /staff/orders/{id}/transfer-table`
+- Tables: `GET /staff/tables`, `PATCH /staff/tables/{id}/status`, `POST /staff/tables/{id}/generate-qr`
+- Orders: `GET /staff/orders`, `GET /staff/orders/{id}`, `PATCH /staff/orders/{id}/status`, `PATCH /staff/orders/{id}/transfer-table`, `PATCH /staff/orders/{id}/payment`, `POST /staff/orders/{id}/apply-voucher`, `POST /staff/orders/{id}/apply-reward`, `POST /staff/orders/{id}/wallet-payment`, `POST /staff/orders/{id}/items`, `DELETE /staff/orders/{id}/items/{line_item_id}`, `POST /staff/orders/{id}/cancel`
 - Reservations: `GET /staff/reservations`, `PATCH /staff/reservations/{id}/status`
 - Display: `GET/POST/DELETE /staff/pos/display-state` (Redis-backed)
 - Auth: `GET /staff/auth/me`, `POST /staff/auth/verify-pin`, `POST /staff/auth/change-pin`, `POST /staff/auth/change-password`
 - POS: `POST /staff/pos/orders` (creates order with pay_token for Stripe QR)
+- Customers: `GET /staff/customers/search`, `GET /staff/customers/{id}`, `GET /staff/customers/{id}/wallet`
+- Wallet/Rewards: `POST /staff/wallets/topup`, `POST /staff/customers/{id}/use-reward/{reward_id}`, `POST /staff/customers/{id}/use-voucher/{voucher_id}`
+- Scan: `POST /staff/scan/customer`, `POST /staff/scan/reward/{code}`, `POST /staff/scan/voucher/{code}`
 
 ### Customer display (`/pos/display`)
 - **Same browser**: BroadcastChannel for instant sync

@@ -10,9 +10,6 @@ function resolveApiBase(): string {
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("NEXT_PUBLIC_API_URL must be set in production");
-    }
     return "http://127.0.0.1:13800/api";
   }
   return "/api";

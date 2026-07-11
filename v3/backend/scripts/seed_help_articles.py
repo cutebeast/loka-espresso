@@ -40,6 +40,11 @@ ARTICLES = [
     ("admin-settings", "admin", "Admin Portal", "admin/settings.md"),
     ("admin-translations", "admin", "Admin Portal", "admin/translations.md"),
     ("admin-notifications", "admin", "Admin Portal", "admin/notifications.md"),
+    ("admin-equipment", "admin", "Admin Portal", "admin/equipment.md"),
+    ("admin-hygiene", "admin", "Admin Portal", "admin/hygiene.md"),
+    ("admin-help-articles", "admin", "Admin Portal", "admin/help-articles.md"),
+    ("admin-profile", "admin", "Admin Portal", "admin/profile.md"),
+    ("admin-admins", "admin", "Admin Portal", "admin/admins.md"),
     # Staff portal
     ("staff-index", "staff", "Staff Portal", "staff/index.md"),
     ("staff-role-access", "staff", "Staff Portal", "staff/role-access-matrix.md"),

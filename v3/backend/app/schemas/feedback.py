@@ -8,7 +8,7 @@ from app.schemas.base import BaseSchema
 
 class FeedbackEntryOut(BaseSchema):
     id: int
-    customer_id: int
+    customer_id: int | None = None
     store_id: int | None = None
     title: str
     body: str | None = None

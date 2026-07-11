@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
@@ -170,11 +170,34 @@ async def reply_feedback(
 
 @public_router.post("/feedback", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
 async def submit_feedback(
+    request: Request,
     db: DBDependency,
     data: FeedbackCreate,
-    customer: ActiveCustomer,
 ):
-    """Submit customer feedback."""
+    """Submit customer feedback.
+
+    Public endpoint — does not require authentication. If a customer token
+    is present, the feedback is linked to their account. Guests can submit
+    feedback anonymously.
+    """
+    # Try to extract customer from token (optional)
+    customer_id = None
+    from app.core.security import decode_token
+    token = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    elif request.cookies.get("access_token"):
+        token = request.cookies.get("access_token")
+
+    if token:
+        try:
+            payload = decode_token(token)
+            if payload and payload.get("type") == "access" and payload.get("customer_id"):
+                customer_id = int(payload["customer_id"])
+        except Exception:
+            pass
+
     title = data.title or data.subject or "Feedback"
     body = data.body or data.message or ""
     rating = data.rating
@@ -187,7 +210,7 @@ async def submit_feedback(
         )
 
     entry = FeedbackEntry(
-        customer_id=customer.id,
+        customer_id=customer_id,
         store_id=data.store_id,
         title=title,
         body=body,

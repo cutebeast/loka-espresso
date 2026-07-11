@@ -151,6 +151,7 @@ MODULE_TABLES: dict[str, list[str]] = {
     "platform": [
         "audit_log",
         "data_retention_policies",
+        "help_articles",
         "platform_config",
         "translation_cache",
         "translations",

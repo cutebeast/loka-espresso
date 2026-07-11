@@ -275,8 +275,8 @@ async def test_customer_store_detail(client: httpx.AsyncClient, base_url: str, s
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_customer_submit_feedback_requires_auth(client: httpx.AsyncClient, base_url: str, store_id: int):
-    """Feedback submission requires authentication."""
+async def test_customer_submit_feedback_public(client: httpx.AsyncClient, base_url: str, store_id: int):
+    """Feedback submission is public — guests can submit without auth."""
     payload = {
         "store_id": store_id,
         "rating": 5,
@@ -285,7 +285,7 @@ async def test_customer_submit_feedback_requires_auth(client: httpx.AsyncClient,
         "source": "in_app",
     }
     r = await client.post(f"{base_url}/feedback", json=payload)
-    assert r.status_code == 401
+    assert r.status_code == 201
 
 
 # ═══════════════════════════════════════════════════════════════════════════
