@@ -1,11 +1,13 @@
 # FNB Super App v3 — Project Documentation
 
+*Last updated: 2026-07-11*
+
 ## Overview
 
-Loka Espresso enterprise FNB platform with three portals and a backend API.
+Loka Espresso enterprise FNB platform with three customer-facing portals, a backend API, and a self-ordering kiosk.
 
-| Component | URL (dev) | URL (live) | Port |
-|-----------|-----------|------------|------|
+| Component | Dev URL | Live URL (target) | Port |
+|-----------|---------|-------------------|------|
 | Backend API | — | — | 13800 |
 | Admin Portal | admin.loyaltysystem.uk | admin.lokaespresso.com | 13830 |
 | Staff Portal | staff.loyaltysystem.uk | staff.lokaespresso.com | 13820 |
@@ -21,9 +23,11 @@ v3/
 │   ├── app/
 │   │   ├── api/routes/endpoints/
 │   │   │   ├── admin/     # Admin-only endpoints (CurrentAdmin auth)
-│   │   │   ├── staff/     # Staff endpoints (CurrentStaff auth)
-│   │   │   ├── public/    # Public endpoints (help articles, branding)
-│   │   │   └── payment.py # Payment + guest-pay endpoints
+│   │   │   ├── staff/      # Staff endpoints (CurrentStaff auth)
+│   │   │   ├── customer/   # Customer endpoints (ActiveCustomer auth)
+│   │   │   ├── public/     # Public endpoints (help articles, branding)
+│   │   │   ├── payment.py  # Payment + guest-pay endpoints
+│   │   │   └── auth.py     # Customer auth (register, login, OTP)
 │   │   ├── core/          # Security, database, cache, config
 │   │   ├── models/        # SQLAlchemy models
 │   │   └── schemas/       # Pydantic schemas (Money type for Decimal)
@@ -32,7 +36,9 @@ v3/
 ├── admin-portal/      # Next.js 16 (App Router, TypeScript strict)
 ├── staff-portal/      # Next.js 16 (App Router, TypeScript strict)
 ├── customer-pwa/      # Next.js 16 (hash-based router, TypeScript strict)
-└── e2e-tests/         # Playwright + pytest E2E tests
+├── e2e-tests/         # Playwright + pytest E2E tests
+├── README.md          # This file
+└── AGENTS.md          # Agent notes
 ```
 
 ## Authentication
@@ -49,9 +55,10 @@ All three portals use HttpOnly cookie auth:
 
 | Account | Admin Portal | Staff Portal | Auth mechanism |
 |---------|:---:|:---:|---|
-| Admin account (`admin@loyaltysystem.uk`) | ✅ Full | ✅ All assigned stores | Admin login → admin_token. Staff login → staff_token. |
-| Store manager (`store@loyaltysystem.uk`) | ✅ Limited | ✅ All assigned stores | Same as above. Admin role = store_manager. |
-| Staff profile (`staff1@loyaltysystem.uk`) | ❌ | ✅ Assigned store only | Staff login only. No admin account. |
+| Admin account (`admin@loyaltysystem.uk` / `admin123`) | ✅ Full | ✅ All assigned stores | Admin login → admin_token. Staff login → staff_token. |
+| Store manager (`store@loyaltysystem.uk` / `store123`) | ✅ Limited | ✅ All assigned stores | Same as above. Admin role = store_manager. |
+| Staff profile (`staff1@loyaltysystem.uk` / `staff123`) | ❌ | ✅ Assigned store only | Staff login only. No admin account. |
+| Customer (`demo@lokaespresso.my` / `+60123456001`) | — | — | Phone OTP login. Wallet balance RM50. |
 
 ### Role systems
 
@@ -67,12 +74,27 @@ All three portals use HttpOnly cookie auth:
 - `kitchen_staff` — Kitchen, Orders, Tables, personal sections
 - `delivery_coordinator` — Orders, Tables, personal sections
 
-## Staff Portal
+**Staff PIN**: Must be exactly 6 digits. All staff PINs = 123456.
 
-### Pages (17 routes)
+## Admin Portal (130 routes, 30 sections)
 
-| Route | Button name | Purpose |
-|-------|------------|---------|
+### Key features
+- Sidebar with 3 sections (Company, Support, Store Ops), store-scoped data
+- Floating help button on every page (route-aware, links to relevant guide)
+- Inline translation UI on 22 edit pages (5 locales: en, ms, zh, ta, tr)
+- Markdown renderer with table support in help center
+- BrandProvider for custom branding
+
+### Sections
+- **Company**: Dashboard, Stores, Menu (6 sub), Loyalty (4 sub), Marketing (11 sub), Content (6 sub), Reports, Audit Log, Settings (4 sub), Admin User (3 sub), Translations
+- **Support**: Customers (3 sub), Notifications (3 sub), Feedback, Help Center
+- **Store Ops**: Orders, Refunds, Reservations, Tables, Inventory (6 sub), Equipment (2 sub), Hygiene, Staff (6 sub)
+
+## Staff Portal (17 pages + customer display)
+
+### Pages
+| Route | Button | Purpose |
+|-------|--------|---------|
 | `/pos` | New Order | POS — take orders, process payments |
 | `/pos/display` | — | Customer-facing display (cross-device via Redis) |
 | `/orders` | Orders | Order queue, unpaid, history |
@@ -94,42 +116,32 @@ All three portals use HttpOnly cookie auth:
 | `/login` | — | Login (email+password or name+PIN) |
 
 ### Staff-specific backend endpoints
-
-Staff portal calls `/api/staff/*` endpoints (not `/api/admin/*`):
-
-- `GET /staff/menu/categories` — list menu categories
-- `GET /staff/menu/items` — list menu items with prices
-- `GET /staff/tables` — list dining tables with current status
-- `GET /staff/orders` — list orders for staff member's store
-- `GET /staff/orders/{id}` — order detail with line items
-- `PATCH /staff/orders/{id}/status` — update order status
-- `PATCH /staff/orders/{id}/transfer-table` — transfer order to another table
-- `GET /staff/reservations` — list reservations for store
-- `PATCH /staff/reservations/{id}/status` — update reservation status
-- `PATCH /staff/tables/{id}/status` — update table status
-- `GET/POST/DELETE /staff/pos/display-state` — POS display sync via Redis
-- `GET /staff/auth/me` — current staff profile
-- `POST /staff/auth/verify-pin` — PIN verification
-- `POST /staff/auth/change-pin` — change PIN
-- `POST /staff/auth/change-password` — change password
+Staff portal calls `/api/staff/*` (not `/api/admin/*`):
+- Menu: `GET /staff/menu/categories`, `GET /staff/menu/items`
+- Tables: `GET /staff/tables`, `PATCH /staff/tables/{id}/status`
+- Orders: `GET /staff/orders`, `GET /staff/orders/{id}`, `PATCH /staff/orders/{id}/status`, `PATCH /staff/orders/{id}/transfer-table`
+- Reservations: `GET /staff/reservations`, `PATCH /staff/reservations/{id}/status`
+- Display: `GET/POST/DELETE /staff/pos/display-state` (Redis-backed)
+- Auth: `GET /staff/auth/me`, `POST /staff/auth/verify-pin`, `POST /staff/auth/change-pin`, `POST /staff/auth/change-password`
+- POS: `POST /staff/pos/orders` (creates order with pay_token for Stripe QR)
 
 ### Customer display (`/pos/display`)
+- **Same browser**: BroadcastChannel for instant sync
+- **Cross-device**: Redis polling every 2 seconds
+- **Idle screen**: Wallet top-up QR, store branding, clock
+- **Payment phases**: browsing → payment → qr_payment → paid
+- **Fullscreen + Wake Lock** for kiosk-like operation
+- **localStorage persistence** for refresh recovery
 
-Supports two deployment modes:
-1. **Same browser (dual-screen)**: BroadcastChannel for instant sync
-2. **Separate device (tablet)**: Redis polling every 2 seconds
+### Staff portal technical notes
+- `middleware.ts` at project root checks auth on every request — `getBackendUrl()` must not throw
+- `lib/api.ts` `resolveApiBase()` falls back to `API_PROXY_URL` in production
+- `next.config.ts` rewrites use plain array (afterFiles)
+- Layout is a Server Component with `"use client"` AuthProvider
 
-Features:
-- Idle screen with wallet top-up QR
-- Live cart display as staff builds order
-- Stripe QR payment (customer scans → PWA guest-pay → pays on phone)
-- Fullscreen + Wake Lock for kiosk-like operation
-- localStorage persistence for refresh recovery
+## Customer PWA (27 routes + kiosk)
 
-## Customer PWA
-
-### Pages (27 routes including kiosk)
-
+### Pages
 Uses hash-based routing (`usePageRouter.ts`):
 - `#home`, `#menu`, `#cart`, `#checkout`, `#orders`, `#order-detail`
 - `#wallet`, `#rewards`, `#my-rewards`, `#promotions`, `#my-card`
@@ -138,43 +150,52 @@ Uses hash-based routing (`usePageRouter.ts`):
 - `#reservations`, `#events`, `#checkin`, `#information`, `#legal`
 - `#help-support`, `#guest-pay`, `#kiosk`
 
+### Guest restrictions
+**Guest-accessible**: home, menu, rewards (view only), cart, promotions, information, events, checkin (action needs login), help-support, legal, guest-pay, kiosk
+
+**Login required**: checkout, orders, order-detail, wallet, my-rewards, profile, account-details, settings, payment-methods, saved-addresses, notifications, history, my-card, referral, reservations
+
 ### Self-ordering kiosk (`#kiosk?store=1`)
-
-Full-screen touch-optimized ordering for customer-facing LCD:
-- Welcome → Order Type → Menu → Cart → Checkout → Success
+- Full-screen, touch-optimized ordering for customer-facing LCD
+- Flow: Welcome → Order Type → Menu → Cart → Checkout → Success
 - 60-second inactivity auto-reset
-- Guest mode (no login)
-- Payment QR on success screen
-- Fullscreen + Wake Lock
+- Guest mode (no login), fullscreen, wake lock
+- No impact on regular PWA experience or iOS/Android compilation
 
-## Admin Portal
+### Payment methods
+| Method | When | Description |
+|--------|------|-------------|
+| Stripe (Card/e-wallet) | All orders | Stripe PaymentElement |
+| HitPay | All orders | Online banking, e-wallet |
+| Pay at Store | Pickup/Dine In | Pay in person |
+| Cash on Delivery | Delivery only | Pay cash on arrival |
 
-### Pages (130 routes across 30 sections)
-
-- **Company**: Dashboard, Stores, Menu (6 sub), Loyalty (4 sub), Marketing (11 sub), Content (6 sub), Reports, Audit Log, Settings (4 sub), Admin User (3 sub), Translations
-- **Support**: Customers (3 sub), Notifications (3 sub), Feedback, Help Center
-- **Store Ops**: Orders, Refunds, Reservations, Tables, Inventory (6 sub), Equipment (2 sub), Hygiene, Staff (6 sub)
-
-### Features
-- Floating help button on every page (route-aware)
-- Inline translation UI on 22 edit pages (5 locales: en, ms, zh, ta, tr)
-- Sidebar with 3 sections, store-scoped data
+### Guest-pay flow
+1. Staff POS selects "Stripe QR" → creates order with `pay_token`
+2. Display shows QR code deep-linking to `#guest-pay?orderId=X&token=Y`
+3. Customer scans QR → opens PWA → sees order summary
+4. Customer pays via Stripe or HitPay
+5. POS polls order status every 3s (15-min timeout)
+6. Display shows "Thank You" screen
 
 ## Help Center
 
 Help articles stored in `help_articles` table:
-- 23 admin articles
-- 12 staff articles
-- 13 customer articles (including kiosk guide)
 
-All articles use markdown with table support (custom `renderMarkdown()` in `src/lib/markdown.ts`).
+| Portal | Articles | Coverage |
+|--------|----------|----------|
+| Admin | 23 | 130 routes, 30 sections |
+| Staff | 12 | 17 pages + customer display |
+| Customer PWA | 13 | 27 routes + kiosk |
+
+All articles use markdown with table support (custom `renderMarkdown()` in `src/lib/markdown.ts` per portal).
 
 ## Database
 
 - **Host**: localhost:13334
 - **Database**: fnb_enterprise_v3
 - **User**: fnb_user
-- **Key tables**: admin_accounts, staff_profiles, stores, store_assignments, iam_principals, iam_roles, role_assignments, menu_items, menu_categories, orders, dining_tables, reservations, pos_sessions
+- **Key tables**: admin_accounts, staff_profiles, stores, store_assignments, iam_principals, iam_roles, role_assignments, menu_items, menu_categories, orders, order_line_items, dining_tables, reservations, pos_sessions, wallets, wallet_ledger_entries, loyalty_accounts, loyalty_points_ledger
 
 ## Development
 
@@ -189,43 +210,53 @@ cd v3/e2e-tests && source ../backend/.venv/bin/activate && pytest -q
 
 # TypeScript strict checks
 for dir in admin-portal staff-portal customer-pwa; do
-  cd "v3/$dir" && npx tsc --noEmit
+  (cd "v3/$dir" && npx tsc --noEmit)
 done
 
 # Build portals
 for dir in admin-portal staff-portal customer-pwa; do
-  cd "v3/$dir" && npm run build
+  (cd "v3/$dir" && npm run build)
 done
 
 # Restart portals
-pm2 restart admin-portal-v3 staff-portal-v3 customer-pwa-v3 --update-env
+pm2 restart admin-portal-v3 staff-portal-v3 --update-env
+# Customer PWA needs special handling:
+fuser -k 13810/tcp; sleep 2
+pm2 delete customer-pwa-v3; sleep 2
+cd v3/customer-pwa && API_PROXY_URL=http://127.0.0.1:13800/api NEXT_PUBLIC_API_URL=/api \
+  pm2 start "npx next start -p 13810" --name customer-pwa-v3
 ```
 
 ### Test accounts
 
-| Account | Password | Access |
-|---------|----------|--------|
-| admin@loyaltysystem.uk | admin123 | Admin Portal (all stores) + Staff Portal (all stores) |
-| store@loyaltysystem.uk | store123 | Admin Portal (limited) + Staff Portal (Store 1 + 2) |
-| staff1@loyaltysystem.uk | staff123 | Staff Portal (Store 1 only) |
-| staff2@loyaltysystem.uk | staff123 | Staff Portal (Store 2 only) |
+| Account | Password | Portal access | Notes |
+|---------|----------|---------------|-------|
+| admin@loyaltysystem.uk | admin123 | Admin (all stores) + Staff (all stores) | system_admin role |
+| store@loyaltysystem.uk | store123 | Admin (limited) + Staff (Store 1 + 2) | store_manager role |
+| staff1@loyaltysystem.uk | staff123 | Staff (Store 1 only) | server role |
+| staff2@loyaltysystem.uk | staff123 | Staff (Store 2 only) | server role |
+| demo@lokaespresso.my | +60123456001 | Customer PWA | RM50 wallet balance |
+| vip@lokaespresso.my | +60123456002 | Customer PWA | RM200 wallet balance |
 
-Staff PIN for all accounts: 123456
-
-### Staff PIN validation
-PIN must be exactly 6 digits. All staff PINs were re-hashed to `123456` using argon2id.
+Staff PIN for all staff accounts: 123456
 
 ### Environment variables
 
-**Staff portal** (`.env.local`):
-- `API_PROXY_URL=http://127.0.0.1:13800/api` — backend URL for server-side proxy
-- `NEXT_PUBLIC_API_URL=/api` — client-side API prefix
-
 **Admin portal** (`.env.local`):
-- `API_URL=http://127.0.0.1:13800/api` — backend URL
-- `NEXT_PUBLIC_API_URL=/api` — client-side API prefix
+- `API_URL=http://127.0.0.1:13800/api`
+- `NEXT_PUBLIC_API_URL=/api`
+
+**Staff portal** (`.env.local`):
+- `API_PROXY_URL=http://127.0.0.1:13800/api`
+- `NEXT_PUBLIC_API_URL=/api`
 
 **Customer PWA** (`.env.local`):
 - `API_PROXY_URL=http://127.0.0.1:13800/api`
 - `NEXT_PUBLIC_API_URL=/api`
 - `NEXT_PUBLIC_APP_URL=https://app.loyaltysystem.uk`
+
+### Important: No throw in production configs
+All three portals' `next.config.ts` and `lib/api.ts` must NOT throw errors when env vars are missing in production. Use fallback to `http://127.0.0.1:13800/api` instead. The staff portal's `middleware.ts` at project root also must not throw in its `getBackendUrl()`.
+
+### Customer PWA build note
+The customer PWA uses Next.js 16 Turbopack. After rebuilding, the pm2 process must be fully deleted and restarted (not just restarted) to pick up new chunks. Use `fuser -k 13810/tcp` to kill any process holding the port before starting.

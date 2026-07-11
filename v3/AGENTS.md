@@ -1,5 +1,7 @@
 # FNB Super App v3 — Agent Notes
 
+*Last updated: 2026-07-11*
+
 ## Active code
 
 All application code lives in `/root/fnb-super-app/v3`. Do not move files to the repository root.
@@ -46,6 +48,11 @@ pytest -q
 - `next.config.ts` rewrites use plain array (afterFiles), not `beforeFiles`
 - Admin portal layout is `"use client"` (client component)
 - Staff portal layout is a Server Component with `"use client"` AuthProvider
+- Customer PWA `next.config.ts` must NOT throw on missing `API_PROXY_URL`
+- Customer PWA `AppShell.tsx` renders kiosk standalone (bypasses auth/nav/data loading)
+- Customer PWA `KioskPage.tsx` API response parsing: axios interceptor already unwraps `{success, data}` → `data`, so `catRes.data` is `{categories: [...]}` not `{success, data: {categories: [...]}}`
+- Customer PWA build: after rebuilding, pm2 process must be fully deleted and restarted to pick up new chunks. Use `fuser -k 13810/tcp` before starting.
+- Staff portal `middleware.ts` at project root checks auth on every request — `getBackendUrl()` must not throw
 
 ## Test accounts
 
@@ -55,6 +62,16 @@ pytest -q
 | store@loyaltysystem.uk | store123 | Admin (limited) + Staff (Store 1 + 2) |
 | staff1@loyaltysystem.uk | staff123 | Staff (Store 1 only) |
 | staff2@loyaltysystem.uk | staff123 | Staff (Store 2 only) |
+| demo@lokaespresso.my | +60123456001 | Customer PWA (RM50 wallet) |
+| vip@lokaespresso.my | +60123456002 | Customer PWA (RM200 wallet) |
+
+## Help center
+
+- **Admin**: 23 articles covering 130 routes
+- **Staff**: 12 articles covering 17 pages + customer display
+- **Customer PWA**: 13 articles covering 27 routes + kiosk
+- All articles use markdown with table support (custom `renderMarkdown()` in `src/lib/markdown.ts` per portal)
+- Admin portal has floating help button on every page (route-aware)
 
 ## Domain migration checklist (loyaltysystem.uk → lokaespresso.com)
 
@@ -76,3 +93,49 @@ pytest -q
 - Server-side portal code needs absolute backend URLs via `API_URL` (admin) or `API_PROXY_URL` (staff/customer)
 - Staff portal `middleware.ts` at project root checks auth on every request — `getBackendUrl()` must not throw
 - Customer display uses Redis for cross-device sync (`pos:display:{store_id}` key, 1-hour TTL)
+- Customer PWA Turbopack runtime generates chunks on-demand at runtime; after rebuild, pm2 must be fully deleted and restarted
+- Guest-pay `pay_token` is only generated when Stripe is configured (requires live Stripe keys)
+- Customer order creation requires `cart_id` (orders are created from carts, not from inline items)
+- `order_channel` enum values: `mobile_app`, `web`, `kiosk`, `pos`, `qr_code`, `third_party` (no "pwa")
+
+## What's been done (as of 2026-07-11)
+
+### Admin Portal ✅
+- 130 routes across 30 sections, all verified via browser audit
+- 23 help articles with source-code-verified content
+- Floating help button on every page
+- Sidebar UI/UX improved (darker footer, scroll gradient, section labels)
+- Branding 401 fix on login page
+- Sidebar email display fix
+- Markdown renderer with table support
+
+### Staff Portal ✅
+- 17 pages + customer display, all verified via browser audit
+- 12 help articles with source-code-verified content
+- Login loop fixed (middleware.ts getBackendUrl)
+- 500 on all pages fixed (lib/api.ts resolveApiBase)
+- 10 staff-specific backend endpoints added (menu, tables, orders, reservations, display-state)
+- Frontend updated to use /staff/* instead of /admin/*
+- Button labels fixed ("Member" → "Wallet & Rewards", "Me" → "Profile")
+- Customer display: Redis polling, wallet top-up QR, fullscreen, wake lock, localStorage
+
+### Customer PWA ✅
+- 25 pages verified via browser audit (all pass)
+- 13 help articles with source-code-verified content
+- Full ordering journey verified: menu → cart → order → order detail
+- Kiosk mode: welcome → order type → menu browse → cart
+- Guest mode: home/menu accessible, wallet/profile blocked
+- Production build fixed (next.config.ts no throw)
+- Kiosk API response parsing fixed
+- Kiosk renders standalone (bypasses AppShell)
+
+### Cross-portal ✅
+- Markdown renderer with table support in all 3 portals
+- XSS fix in renderMarkdown across all 3 portals
+- Decimal → Money serialization fix in backend
+- All legacy docs removed, new README.md and AGENTS.md
+
+### Test results
+- Backend: 36 passed, 0 failed
+- E2E: 199 passed, 16 skipped, 0 failed
+- TypeScript strict: All 3 portals pass
