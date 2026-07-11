@@ -307,11 +307,62 @@ async def list_menu_items(
     item_result = await db.execute(item_stmt)
     items = item_result.scalars().all()
 
+    # Batch-load modifier groups and variants for kiosk/POS use
+    item_ids = [i.id for i in items]
+
+    # Variants
+    variants_result = await db.execute(
+        select(MenuVariant).where(
+            MenuVariant.parent_item_id.in_(item_ids),
+            MenuVariant.is_available.is_(True),
+        )
+    )
+    variants_map: dict[int, list] = {}
+    for v in variants_result.scalars().all():
+        variants_map.setdefault(v.parent_item_id, []).append({
+            "id": v.id,
+            "variant_name": v.variant_name,
+            "price_adjustment": float(v.price_adjustment) if v.price_adjustment else 0,
+        })
+
+    # Modifier groups
+    from app.models.menu import MenuModifierGroup as MMG, MenuModifierOption as MMO
+    mg_result = await db.execute(
+        select(MMG).where(
+            MMG.menu_item_id.in_(item_ids),
+        ).order_by(MMG.display_order)
+    )
+    modifier_map: dict[int, list] = {}
+    for mg in mg_result.scalars().all():
+        # Load options for this group
+        opt_result = await db.execute(
+            select(MMO).where(
+                MMO.modifier_group_id == mg.id,
+                MMO.is_available.is_(True),
+            ).order_by(MMO.display_order)
+        )
+        options = [{
+            "id": o.id,
+            "option_name": o.option_name,
+            "price_adjustment": float(o.price_adjustment) if o.price_adjustment else 0,
+        } for o in opt_result.scalars().all()]
+        modifier_map.setdefault(mg.menu_item_id, []).append({
+            "id": mg.id,
+            "group_name": mg.group_name,
+            "display_order": mg.display_order,
+            "selection_type": mg.selection_type,
+            "min_selections": mg.min_selections,
+            "max_selections": mg.max_selections,
+            "options": options,
+        })
+
     result_items = []
     for i in items:
         d = {c.name: getattr(i, c.name) for c in i.__table__.columns}
         d["dietary_tags"] = None
         d["allergens"] = []
+        d["variants"] = variants_map.get(i.id, [])
+        d["modifier_groups"] = modifier_map.get(i.id, [])
         result_items.append(d)
 
     return APIResponse(data={"items": result_items})

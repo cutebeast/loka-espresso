@@ -25,6 +25,8 @@ public_router = APIRouter(prefix="/kiosk", tags=["kiosk"])
 class KioskOrderItem(BaseModel):
     menu_item_id: int = Field(..., gt=0)
     quantity: int = Field(..., ge=1)
+    modifier_option_ids: list[int] | None = None
+    variant_id: int | None = None
 
 
 class KioskOrderCreateRequest(BaseModel):
@@ -118,6 +120,32 @@ async def create_kiosk_order(
     )
     menu_items_map = {mi.id: mi for mi in items_result.scalars().all()}
 
+    # Batch-load modifier options and variants for price calculation
+    from app.models.menu import MenuModifierOption, MenuVariant
+    all_modifier_option_ids = set()
+    all_variant_ids = set()
+    for line in data.items:
+        if line.modifier_option_ids:
+            all_modifier_option_ids.update(line.modifier_option_ids)
+        if line.variant_id:
+            all_variant_ids.add(line.variant_id)
+
+    modifier_options_map: dict[int, MenuModifierOption] = {}
+    if all_modifier_option_ids:
+        mo_result = await db.execute(
+            select(MenuModifierOption).where(MenuModifierOption.id.in_(all_modifier_option_ids))
+        )
+        for mo in mo_result.scalars().all():
+            modifier_options_map[mo.id] = mo
+
+    variants_map: dict[int, MenuVariant] = {}
+    if all_variant_ids:
+        v_result = await db.execute(
+            select(MenuVariant).where(MenuVariant.id.in_(all_variant_ids))
+        )
+        for v in v_result.scalars().all():
+            variants_map[v.id] = v
+
     # Get or create walk-in customer
     walkin = await _get_or_create_walkin_customer(db)
 
@@ -157,7 +185,33 @@ async def create_kiosk_order(
                 detail=f"Menu item {line.menu_item_id} is unavailable or not found",
             )
         unit_price = to_decimal(menu_item.base_price)
-        line_total = money_round(unit_price * line.quantity, precision, rounding_mode)
+        modifier_total = Decimal("0")
+
+        # Apply variant price adjustment
+        if line.variant_id and line.variant_id in variants_map:
+            variant = variants_map[line.variant_id]
+            unit_price += to_decimal(variant.price_adjustment or 0)
+
+        # Apply modifier option price adjustments
+        selected_modifiers: dict = {}
+        if line.modifier_option_ids:
+            for opt_id in line.modifier_option_ids:
+                opt = modifier_options_map.get(opt_id)
+                if opt:
+                    adj = to_decimal(opt.price_adjustment or 0)
+                    modifier_total += adj
+                    # Group by modifier group
+                    gid = opt.modifier_group_id
+                    if gid not in selected_modifiers:
+                        selected_modifiers[str(gid)] = []
+                    selected_modifiers[str(gid)].append({
+                        "option_id": opt.id,
+                        "option_name": opt.option_name,
+                        "price_adjustment": float(adj),
+                    })
+
+        line_unit = unit_price + modifier_total
+        line_total = money_round(line_unit * line.quantity, precision, rounding_mode)
         subtotal += line_total
         item_count += line.quantity
         db.add(
@@ -167,8 +221,9 @@ async def create_kiosk_order(
                 quantity=line.quantity,
                 unit_price=unit_price,
                 line_total=line_total,
-                modifier_total=Decimal("0"),
-                selected_modifiers={},
+                modifier_total=modifier_total,
+                selected_modifiers=selected_modifiers if selected_modifiers else {},
+                menu_variant_id=line.variant_id,
             )
         )
 

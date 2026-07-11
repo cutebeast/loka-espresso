@@ -263,3 +263,35 @@ All three portals' `next.config.ts` and `lib/api.ts` must NOT throw errors when 
 
 ### Customer PWA build note
 The customer PWA uses Next.js 16 Turbopack. After rebuilding, the pm2 process must be fully deleted and restarted (not just restarted) to pick up new chunks. Use `fuser -k 13810/tcp` to kill any process holding the port before starting.
+
+## Recent fixes (2026-07-11 Round 32)
+
+### Kiosk modifier support
+- Public `/menu/items` endpoint now returns `modifier_groups` and `variants` arrays
+- KioskPage renders a modifier drawer when tapping items with modifiers
+- `POST /kiosk/orders` accepts `modifier_option_ids` and `variant_id` per line item
+- Kiosk backend correctly calculates prices with modifier/variant adjustments
+
+### Low-stock alerts
+- `GET /admin/inventory/low-stock` — returns items at or below their reorder level
+- Optional `store_id` and `threshold_override` query params
+
+### HitPay wallet top-up
+- `POST /wallets/topup/checkout` now accepts `provider` field (`stripe` or `hitpay`)
+- HitPay creates a payment request and returns the checkout URL
+
+### Voucher validate made truly public
+- `POST /vouchers/validate` no longer requires `ActiveCustomer`
+- Customer token is optional — used for ownership/tier checks when present
+
+### Guest feedback
+- `POST /feedback` no longer requires `ActiveCustomer`
+- Guest feedback stored with `customer_id = NULL`
+- `feedback_entries.customer_id` column is now nullable
+- `FeedbackEntryOut.customer_id` schema field is `int | None`
+
+### Staff page-level role guards
+- POS, Kitchen, Equipment, Garbage, Grease Trap, Inventory, Wastage pages now
+  check the user's role before rendering content
+- `useStaffRole.tsx` exports `RoleGuard` component for reusable page guards
+- Access-denied message shown when role doesn't match

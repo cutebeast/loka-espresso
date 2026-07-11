@@ -1,4 +1,5 @@
 "use client";
+import { useStaffRole, canUsePOS } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCallback, useRef, useEffect, useState } from "react";
@@ -18,6 +19,8 @@ import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
 import { api } from "@/lib/api";
 export default function PosPage() {
+  const { role, isAdmin, loading: roleLoading } = useStaffRole();
+  if (!roleLoading && !canUsePOS(role, isAdmin)) return <div style={{ padding: 48, textAlign: "center" }}><h2>Access Denied</h2><p>You do not have permission to access POS.</p></div>;
   const {
     t
   } = useTranslation();

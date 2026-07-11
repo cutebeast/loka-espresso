@@ -148,3 +148,16 @@ pytest -q
 - Backend: 36 passed, 0 failed
 - E2E: 199 passed, 16 skipped, 0 failed
 - TypeScript strict: All 3 portals pass
+
+## Round 32 additions (2026-07-11)
+
+- Kiosk mode now supports modifiers and variants (modifier drawer UI + backend pricing)
+- Public `/menu/items` endpoint returns modifier_groups and variants arrays
+- `GET /admin/inventory/low-stock` endpoint for reorder alerts
+- `POST /wallets/topup/checkout` supports HitPay (provider field: stripe|hitpay)
+- `POST /vouchers/validate` is now truly public (no ActiveCustomer required)
+- `POST /feedback` is now truly public (guests can submit without login)
+- `feedback_entries.customer_id` is now nullable in DB
+- Staff pages have role guards (POS, Kitchen, Ops pages check role before rendering)
+- `useStaffRole.tsx` (note: .tsx not .ts) exports RoleGuard component
+- Tests: 36 backend, 199 E2E (16 skipped), TS strict all 3 portals

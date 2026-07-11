@@ -592,3 +592,52 @@ async def delete_supplier(
     supplier.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"id": supplier.id, "deleted": True})
+
+
+# ── Low-stock alerts ──
+
+@router.get("/low-stock", response_model=APIResponse[list[dict]])
+async def get_low_stock_items(
+    admin: CurrentAdmin,
+    db: DBDependency,
+    store_id: int | None = Query(None),
+    threshold_override: float | None = Query(None, ge=0),
+):
+    """Get items at or below their reorder level.
+
+    Returns items where current_stock <= reorder_level, optionally
+    filtered by store_id. If threshold_override is provided, uses that
+    instead of the item's reorder_level.
+    """
+    from app.models.inventory import InventoryStock
+
+    stmt = (
+        select(InventoryStock, InventoryItem)
+        .join(InventoryItem, InventoryItem.id == InventoryStock.inventory_item_id)
+        .where(InventoryItem.deleted_at.is_(None))
+    )
+    if store_id:
+        stmt = stmt.where(InventoryStock.store_id == store_id)
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    low_stock = []
+    for stock, item in rows:
+        reorder_level = stock.reorder_level or 0
+        threshold = threshold_override if threshold_override is not None else reorder_level
+        current = float(stock.current_stock or 0)
+        if current <= float(threshold):
+            low_stock.append({
+                "item_id": item.id,
+                "item_name": item.item_name,
+                "item_code": item.item_code,
+                "store_id": stock.store_id,
+                "current_stock": current,
+                "reorder_level": float(reorder_level),
+                "reorder_quantity": float(stock.reorder_quantity or 0),
+                "unit_of_measure": item.unit_of_measure,
+                "needs_reorder": current <= float(reorder_level),
+            })
+
+    return APIResponse(data=low_stock)

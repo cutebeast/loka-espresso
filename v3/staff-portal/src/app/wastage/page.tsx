@@ -1,4 +1,5 @@
 "use client";
+import { useStaffRole, canUseOps } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
@@ -12,6 +13,8 @@ interface MenuItem {
   item_name: string;
 }
 export default function WastagePage() {
+  const { role, isAdmin, loading: roleLoading } = useStaffRole();
+  if (!roleLoading && !canUseOps(role, isAdmin)) return <div style={{ padding: 48, textAlign: "center" }}><h2>Access Denied</h2><p>You do not have permission to access this page.</p></div>;
   const {
     t
   } = useTranslation();

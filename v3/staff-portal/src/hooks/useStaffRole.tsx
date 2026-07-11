@@ -90,3 +90,35 @@ export function canUseOps(role: StaffRole | null, isAdmin: boolean): boolean {
 export function canManageStore(role: StaffRole | null, isAdmin: boolean): boolean {
   return isAdmin || role === "store_manager" || role === "shift_supervisor";
 }
+
+/**
+ * Page-level role guard component.
+ * Renders children only if the user's role has access.
+ * Shows an access-denied message otherwise.
+ */
+export function RoleGuard({
+  children,
+  allowed,
+  loadingFallback,
+}: {
+  children: React.ReactNode;
+  allowed: (role: StaffRole | null, isAdmin: boolean) => boolean;
+  loadingFallback?: React.ReactNode;
+}) {
+  const { role, isAdmin, loading } = useStaffRole();
+
+  if (loading) {
+    return <>{loadingFallback ?? <div style={{ padding: 32, textAlign: "center" }}>Loading…</div>}</>;
+  }
+
+  if (!allowed(role, isAdmin)) {
+    return (
+      <div style={{ padding: 48, textAlign: "center", color: "var(--color-text-muted)" }}>
+        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Access Denied</div>
+        <div style={{ fontSize: 16 }}>You do not have permission to access this page.</div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}

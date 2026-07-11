@@ -479,18 +479,20 @@ async def create_wallet_topup_checkout(
     db: DBDependency,
     data: WalletTopupCheckoutRequest,
 ):
-    """Create a Stripe Checkout session for an online wallet top-up."""
+    """Create a checkout session for an online wallet top-up (Stripe or HitPay)."""
     from app.services.payment import PaymentError, create_wallet_topup_checkout_session
+    from app.services.hitpay import create_hitpay_payment_request
 
     amount = to_decimal(data.amount)
     currency = await _get_default_currency(db)
+    provider = getattr(data, 'provider', 'stripe') or 'stripe'
 
     session = WalletTopupSession(
         customer_id=customer.id,
         amount=amount,
         currency_code=currency,
         status="pending",
-        provider="stripe",
+        provider=provider,
     )
     db.add(session)
     await db.flush()
@@ -498,10 +500,29 @@ async def create_wallet_topup_checkout(
 
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
-    # Use hash-based routing (#wallet) matching the PWA's hash router.
     base_return = (data.return_url or f"{app_public_url}/#wallet").rstrip("/")
     success_url = f"{base_return}?topup_session={session.id}&status=success"
     cancel_url = f"{base_return}?topup_session={session.id}&status=cancel"
+
+    if provider == "hitpay":
+        try:
+            resp = await create_hitpay_payment_request(
+                db, None, None, amount, currency=currency,
+                return_url=success_url,
+            )
+            session.provider_session_id = resp.get("request_id")
+            await db.commit()
+            await db.refresh(session)
+            return APIResponse(data=WalletTopupCheckoutResponse(
+                session_id=session.id,
+                checkout_url=resp.get("url", ""),
+                amount=amount,
+                currency_code=currency,
+                status="pending",
+            ))
+        except Exception as exc:
+            await db.rollback()
+            raise HTTPException(status_code=502, detail=f"HitPay error: {exc}") from exc
 
     try:
         checkout = await create_wallet_topup_checkout_session(
