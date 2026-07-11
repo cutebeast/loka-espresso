@@ -1,5 +1,6 @@
 """Payment endpoints."""
 
+import asyncio
 import hmac
 import hashlib
 import json
@@ -588,6 +589,144 @@ async def set_default_payment_method(
     await db.commit()
     await db.refresh(pm)
     return APIResponse(data=_safe_payment_method_dict(pm))
+
+
+@router.post("/methods/setup-intent", response_model=APIResponse[dict])
+async def create_setup_intent(
+    customer: ActiveCustomer,
+    db: DBDependency,
+):
+    """Create a Stripe SetupIntent for saving a new payment method.
+
+    Returns a client_secret that the frontend uses with Stripe.js
+    PaymentElement to collect card details without the card touching our server.
+    """
+    from app.services.payment import _get_stripe_secret_key as get_stripe_api_key, _get_or_create_stripe_customer
+
+    api_key = await get_stripe_api_key(db)
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Stripe is not configured")
+
+    # Ensure the customer exists in Stripe
+    stripe_customer_id = await _get_or_create_stripe_customer(db, customer.id, api_key)
+
+    try:
+        intent = await asyncio.to_thread(
+            lambda: stripe.SetupIntent.create(
+                customer=stripe_customer_id,
+                payment_method_types=["card"],
+                usage="off_session",
+                api_key=api_key,
+                metadata={"customer_id": str(customer.id)},
+            )
+        )
+    except StripeError as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+
+    return APIResponse(data={
+        "client_secret": intent.client_secret,
+        "setup_intent_id": intent.id,
+    })
+
+
+@router.post("/methods", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def save_payment_method(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    data: dict,
+):
+    """Save a payment method after Stripe SetupIntent confirmation.
+
+    Frontend calls this with the setup_intent_id after Stripe.js confirms
+    the SetupIntent. We retrieve the PaymentMethod from Stripe and store it.
+    """
+    from app.services.payment import _get_stripe_secret_key as get_stripe_api_key
+
+    api_key = await get_stripe_api_key(db)
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Stripe is not configured")
+
+    setup_intent_id = data.get("setup_intent_id")
+    if not setup_intent_id:
+        raise HTTPException(status_code=400, detail="setup_intent_id is required")
+
+    try:
+        intent = await asyncio.to_thread(
+            lambda: stripe.SetupIntent.retrieve(setup_intent_id, api_key=api_key)
+        )
+    except StripeError as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+
+    if intent.status != "succeeded":
+        raise HTTPException(
+            status_code=400,
+            detail=f"SetupIntent status is {intent.status}, expected succeeded",
+        )
+
+    pm_id = intent.payment_method
+    if not pm_id:
+        raise HTTPException(status_code=400, detail="No payment method attached to SetupIntent")
+
+    try:
+        pm_obj = await asyncio.to_thread(
+            lambda: stripe.PaymentMethod.retrieve(pm_id, api_key=api_key)
+        )
+    except StripeError as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+
+    # Check for duplicates
+    existing = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.card_last_four == pm_obj.card.last4,
+            PaymentMethod.card_brand == pm_obj.card.brand,
+            PaymentMethod.is_active.is_(True),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This card is already saved")
+
+    # If this is the first payment method, make it default
+    count_result = await db.execute(
+        select(func.count(PaymentMethod.id)).where(
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_active.is_(True),
+        )
+    )
+    is_first = (count_result.scalar() or 0) == 0
+
+    # Encrypt the Stripe payment method token
+    import os
+    from cryptography.fernet import Fernet
+    encryption_key = os.environ.get("PAYMENT_TOKEN_KEY")
+    if encryption_key:
+        f = Fernet(encryption_key.encode() if isinstance(encryption_key, str) else encryption_key)
+        encrypted_token = f.encrypt(pm_id.encode()).decode()
+        iv = None
+    else:
+        encrypted_token = pm_id
+        iv = None
+
+    new_pm = PaymentMethod(
+        customer_id=customer.id,
+        method_type="card",
+        provider="stripe",
+        display_label=f"{pm_obj.card.brand.title()} •••• {pm_obj.card.last4}",
+        card_brand=pm_obj.card.brand,
+        card_last_four=pm_obj.card.last4,
+        card_expiry_month=int(pm_obj.card.exp_month),
+        card_expiry_year=int(pm_obj.card.exp_year),
+        provider_token_encrypted=encrypted_token,
+        provider_token_iv=iv,
+        is_default=is_first,
+        is_active=True,
+        verified_at=datetime.now(timezone.utc),
+    )
+    db.add(new_pm)
+    await db.commit()
+    await db.refresh(new_pm)
+
+    return APIResponse(data=_safe_payment_method_dict(new_pm))
 
 
 @router.get("/{payment_id}", response_model=APIResponse[PaymentOut])

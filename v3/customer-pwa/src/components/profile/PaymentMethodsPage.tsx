@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, CreditCard } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Plus, CreditCard, Loader2, Check, X } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
@@ -24,6 +24,11 @@ export default function PaymentMethodsPage() {
   const { t } = useTranslation();
   const [methods, setMethods] = useState<PaymentMethodItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [setupIntentSecret, setSetupIntentSecret] = useState<string | null>(null);
+  const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [canConfirm, setCanConfirm] = useState(false);
 
   useEffect(() => {
     api.get('/payments/methods')
@@ -42,7 +47,7 @@ export default function PaymentMethodsPage() {
       })
       .catch((err) => { console.error('[PaymentMethods] Fetch failed:', err); showToast(t('toast.failedToLoad'), 'error'); setMethods([]); })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t, showToast]);
 
   const handleRemove = async (id: number) => {
     try {
@@ -54,8 +59,52 @@ export default function PaymentMethodsPage() {
     }
   };
 
-  const handleAdd = () => {
-    showToast(t('toast.cardLinkingSoon'), 'info');
+  const handleAdd = async () => {
+    setShowAddCard(true);
+    setAdding(true);
+    setSetupIntentSecret(null);
+    setSetupIntentId(null);
+
+    try {
+      const res = await api.post('/payments/methods/setup-intent');
+      const data = res.data;
+      setSetupIntentSecret(data.client_secret);
+      setSetupIntentId(data.setup_intent_id);
+    } catch (err) {
+      console.error('[AddCard] SetupIntent failed:', err);
+      showToast('Failed to initialize card form. Is Stripe configured?', 'error');
+      setShowAddCard(false);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!setupIntentId) return;
+    setAdding(true);
+    try {
+      const res = await api.post('/payments/methods', { setup_intent_id: setupIntentId });
+      const newMethod = res.data;
+      setMethods(prev => [...prev, {
+        id: newMethod.id,
+        type: newMethod.method_type || 'card',
+        provider: newMethod.card_brand || newMethod.provider || '',
+        last4: newMethod.card_last_four || '',
+        expiry: newMethod.card_expiry_month
+          ? `${newMethod.card_expiry_month}/${String(newMethod.card_expiry_year).slice(-2)}`
+          : undefined,
+        is_default: newMethod.is_default ?? false,
+      }]);
+      showToast('Card saved successfully', 'success');
+      setShowAddCard(false);
+      setSetupIntentSecret(null);
+      setSetupIntentId(null);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Failed to save card';
+      showToast(msg, 'error');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleSetDefault = async (id: number) => {
@@ -77,35 +126,27 @@ export default function PaymentMethodsPage() {
 
   const brandLabel = (provider?: string, type?: string) => {
     const p = (provider || type || '').toLowerCase();
-    if (p.includes('visa')) return 'VISA';
-    if (p.includes('master') || p.includes('mc')) return 'MC';
-    return type?.toUpperCase() || t('paymentMethods.cardFallback');
+    if (p.includes('visa')) return 'Visa';
+    if (p.includes('master') || p.includes('mc')) return 'Mastercard';
+    return (provider || type || 'Card').toUpperCase();
   };
 
   return (
-    <div className="payment-screen">
-      <div className="sub-page-header">
-        <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="sub-page-title">{t('paymentMethods.title')}</h1>
-        </div>
-        <div className="w-9" />
+    <div className="page-container" id="main-content">
+      <div className="page-header">
+        <button className="icon-btn" onClick={() => setPage('profile')} aria-label="Back">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="page-title">{t('paymentMethods.title')}</h1>
       </div>
 
-      <div className="payment-content-scroll">
-        {/* Wallet Card */}
+      <div className="page-content">
+        {/* Wallet Balance */}
         <div className="payment-wallet-card">
-          <div className="payment-wallet-row">
-            <span className="payment-wallet-label">{t('paymentMethods.walletBalance')}</span>
-            <span className="payment-wallet-badge">{t('paymentMethods.active')}</span>
-          </div>
-          <div className="payment-wallet-amount">{formatPrice(balance)}</div>
-          <div className="payment-wallet-sub">{t('paymentMethods.availableForPurchases')}</div>
-          <button className="payment-topup-btn" onClick={() => setPage('wallet')}>
-            <Plus size={18} />
-            {t('paymentMethods.topUpWallet')}
+          <div className="payment-wallet-label">{t('paymentMethods.walletBalance')}</div>
+          <div className="payment-wallet-amount">{formatPrice(String(balance || 0))}</div>
+          <button className="payment-wallet-topup" onClick={() => setPage('wallet')}>
+            {t('paymentMethods.topUp')}
           </button>
         </div>
 
@@ -120,44 +161,216 @@ export default function PaymentMethodsPage() {
               <CreditCard size={32} color={LOKA.copper} />
             </div>
             <div className="payment-empty-title">{t('paymentMethods.noMethods')}</div>
-            <div className="payment-empty-text">
-              {t('paymentMethods.noMethodsDesc')}
-            </div>
-            <button className="payment-empty-cta" onClick={handleAdd}>
+            <div className="payment-empty-text">{t('paymentMethods.noMethodsDesc')}</div>
+            <button className="payment-empty-cta" onClick={handleAdd} disabled={adding}>
               <Plus size={14} />
-              {t('paymentMethods.addCardComingSoon')}
+              {t('paymentMethods.addCard')}
             </button>
           </div>
         ) : (
-          methods.map((m) => (
-            <div key={m.id} className={`payment-card-item ${m.is_default ? 'is-default' : ''}`}>
-              <div className={`payment-card-brand ${brandClass(m.provider, m.type)}`}>
-                {brandLabel(m.provider, m.type)}
-              </div>
-              <div className="payment-card-info">
-                <div className="payment-card-number">
-                  {t('paymentMethods.endingIn', { brand: brandLabel(m.provider, m.type), last4: m.last4 || '' })}
+          <>
+            {methods.map((m) => (
+              <div key={m.id} className={`payment-card-item ${m.is_default ? 'is-default' : ''}`}>
+                <div className={`payment-card-brand ${brandClass(m.provider, m.type)}`}>
+                  {brandLabel(m.provider, m.type)}
                 </div>
-                {m.expiry && <div className="payment-card-expiry">{t('paymentMethods.expires', { expiry: m.expiry })}</div>}
-                <div className="payment-card-default">
-                  <div className={`payment-default-toggle ${m.is_default ? '' : 'off'}`} onClick={() => !m.is_default && handleSetDefault(m.id)} />
-                  <span className={`payment-default-label ${m.is_default ? '' : 'off'}`}>
-                    {m.is_default ? t('paymentMethods.default') : t('paymentMethods.setAsDefault')}
-                  </span>
+                <div className="payment-card-info">
+                  <div className="payment-card-number">
+                    {t('paymentMethods.endingIn', { brand: brandLabel(m.provider, m.type), last4: m.last4 || '' })}
+                  </div>
+                  {m.expiry && <div className="payment-card-expiry">{m.expiry}</div>}
+                  {m.is_default && <span className="payment-card-default-badge">{t('paymentMethods.default')}</span>}
+                </div>
+                <div className="payment-card-actions">
+                  {!m.is_default && (
+                    <button className="text-btn" onClick={() => handleSetDefault(m.id)}>
+                      {t('paymentMethods.setDefault')}
+                    </button>
+                  )}
+                  <button className="text-btn danger" onClick={() => handleRemove(m.id)}>
+                    {t('common.remove')}
+                  </button>
                 </div>
               </div>
-              <button className="payment-remove-btn" onClick={() => handleRemove(m.id)}>{t('common.remove')}</button>
-            </div>
-          ))
+            ))}
+            <button className="payment-add-btn" onClick={handleAdd} disabled={adding}>
+              <Plus size={16} />
+              {t('paymentMethods.addCard')}
+            </button>
+          </>
         )}
 
-        {methods.length > 0 && (
-          <button className="payment-add-btn" onClick={handleAdd}>
-            <Plus size={18} />
-            {t('paymentMethods.addNewCard')}
-          </button>
+        {/* Add Card Modal */}
+        {showAddCard && (
+          <div className="modal-overlay" onClick={() => !adding && setShowAddCard(false)}>
+            <div className="modal-card" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{t('paymentMethods.addCard')}</h2>
+                {!adding && (
+                  <button className="icon-btn" onClick={() => setShowAddCard(false)}>
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+
+              <div className="modal-body">
+                {adding && !setupIntentSecret && (
+                  <div style={{ textAlign: 'center', padding: 32 }}>
+                    <Loader2 size={32} className="animate-spin" style={{ color: LOKA.primary }} />
+                    <div style={{ marginTop: 12, color: '#666' }}>Initializing secure card form…</div>
+                  </div>
+                )}
+
+                {setupIntentSecret && (
+                  <>
+                    <div style={{ marginBottom: 16, fontSize: 14, color: '#666' }}>
+                      Enter your card details below. Your card information is processed securely by Stripe and never touches our servers.
+                    </div>
+
+                    {/* Stripe Elements iframe */}
+                    <div style={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 10,
+                      padding: 16,
+                      marginBottom: 16,
+                      background: '#fafafa',
+                    }}>
+                      <StripeCardInput
+                        clientSecret={setupIntentSecret}
+                        onStatusChange={(complete) => setCanConfirm(complete)}
+                      />
+                    </div>
+
+                    <button
+                      className="btn-primary"
+                      onClick={handleConfirmAdd}
+                      disabled={adding || !canConfirm}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        fontSize: 16,
+                        fontWeight: 700,
+                        borderRadius: 10,
+                        border: 'none',
+                        cursor: canConfirm && !adding ? 'pointer' : 'not-allowed',
+                        opacity: canConfirm && !adding ? 1 : 0.5,
+                        background: LOKA.primary,
+                        color: 'white',
+                      }}
+                    >
+                      {adding ? <Loader2 size={20} className="animate-spin" /> : (
+                        <>
+                          <Check size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                          Save Card
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+
+                {!adding && !setupIntentSecret && (
+                  <div style={{ textAlign: 'center', padding: 24, color: '#999' }}>
+                    Failed to initialize. Please try again.
+                    <br />
+                    <button onClick={handleAdd} style={{ marginTop: 12, color: LOKA.primary, background: 'none', border: 'none', cursor: 'pointer' }}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
+}
+
+// ── StripeCardInput: renders Stripe Elements in an iframe ──
+// This component loads Stripe.js and mounts a PaymentElement inside a container.
+function StripeCardInput({
+  clientSecret,
+  onStatusChange,
+}: {
+  clientSecret: string;
+  onStatusChange: (complete: boolean) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [, setElements] = useState<any>(null);
+
+  // Load Stripe.js
+  useEffect(() => {
+    if ((window as any).Stripe) {
+      setStripeLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    script.onload = () => setStripeLoaded(true);
+    script.onerror = () => setError('Failed to load Stripe. Check your network.');
+    document.head.appendChild(script);
+  }, []);
+
+  // Mount PaymentElement
+  useEffect(() => {
+    if (!stripeLoaded || !containerRef.current || !(window as any).Stripe) return;
+
+    const publishableKey = (window as any).__STRIPE_PUBLISHABLE_KEY__;
+    if (!publishableKey) {
+      setError('Stripe publishable key not configured.');
+      return;
+    }
+
+    const stripe = (window as any).Stripe(publishableKey);
+    const elements = stripe.elements({
+      clientSecret: clientSecret,
+      appearance: { theme: 'stripe' },
+    });
+
+    const paymentElement = elements.create('payment', {
+      layout: { type: 'accordion', defaultCollapsed: false },
+      wallets: { applePay: 'never', googlePay: 'never' },
+    });
+
+    paymentElement.mount(containerRef.current);
+    setElements(elements);
+
+    paymentElement.on('change', (event: any) => {
+      onStatusChange(event.complete);
+      if (event.error) setError(event.error.message);
+    });
+
+    // Store for confirm
+    (window as any).__stripe_elements = elements;
+    (window as any).__stripe_instance = stripe;
+
+    return () => {
+      paymentElement.destroy();
+    };
+  }, [stripeLoaded, clientSecret, onStatusChange]);
+
+  // Get publishable key from config
+  useEffect(() => {
+    api.get('/payments/config').then(res => {
+      const key = res.data?.stripe_publishable_key || res.data?.publishable_key;
+      if (key) (window as any).__STRIPE_PUBLISHABLE_KEY__ = key;
+    }).catch(() => {});
+  }, []);
+
+  if (error) {
+    return <div style={{ color: '#DC2626', fontSize: 14, padding: 8 }}>{error}</div>;
+  }
+
+  if (!stripeLoaded) {
+    return (
+      <div style={{ textAlign: 'center', padding: 16 }}>
+        <Loader2 size={24} className="animate-spin" style={{ color: LOKA.primary }} />
+      </div>
+    );
+  }
+
+  return <div ref={containerRef} />;
 }
