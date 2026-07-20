@@ -17,10 +17,10 @@ from scripts._db_utils import confirm, get_db, guard_production
 
 
 TIERS = [
-    ("bronze", "Bronze", 0, 1.00, '{"free_delivery_threshold": null, "birthday_bonus": 0, "priority_support": false}', "#CD7F32", 1),
-    ("silver", "Silver", 500, 1.25, '{"free_delivery_threshold": 50.00, "birthday_bonus": 50, "priority_support": false}', "#C0C0C0", 2),
-    ("gold", "Gold", 1500, 1.50, '{"free_delivery_threshold": 30.00, "birthday_bonus": 100, "priority_support": true}', "#FFD700", 3),
-    ("platinum", "Platinum", 5000, 2.00, '{"free_delivery_threshold": 0, "birthday_bonus": 200, "priority_support": true}', "#E5E4E2", 4),
+    # (key, name, min_pts, multiplier, benefits, color, sort, validity_months, renewal_spend, downgrade_key)
+    ("bloom", "Bloom", 0, 1.00, '{"birthday_bonus": 0, "priority_support": false, "free_delivery_threshold": null}', "#4CAF50", 1, None, None, None),
+    ("origin", "Origin", 500, 1.20, '{"birthday_bonus": 0, "priority_support": false, "free_delivery_threshold": null}', "#FF9800", 2, 12, 500, "bloom"),
+    ("reserve", "Reserve", 1500, 1.50, '{"birthday_bonus": 0, "priority_support": true, "free_delivery_threshold": 0}', "#9C27B0", 3, 12, 1500, "origin"),
 ]
 
 REWARDS = [
@@ -41,12 +41,17 @@ async def seed():
         await db.execute(
             text("""
                 INSERT INTO loyalty_tiers
-                    (tier_key, display_name, min_lifetime_points, points_multiplier, benefits_config, color_hex, sort_order, is_active)
-                VALUES (:key, :name, :min_pts, :multiplier, CAST(:benefits AS jsonb), :color, :sort, true)
+                    (tier_key, display_name, min_lifetime_points, points_multiplier, benefits_config, color_hex, sort_order, is_active,
+                     validity_months, renewal_annual_spend, downgrade_to_tier_key)
+                VALUES (:key, :name, :min_pts, :multiplier, CAST(:benefits AS jsonb), :color, :sort, true,
+                        :validity, :renewal, :downgrade)
                 ON CONFLICT (tier_key) DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     min_lifetime_points = EXCLUDED.min_lifetime_points,
                     points_multiplier = EXCLUDED.points_multiplier,
+                    validity_months = EXCLUDED.validity_months,
+                    renewal_annual_spend = EXCLUDED.renewal_annual_spend,
+                    downgrade_to_tier_key = EXCLUDED.downgrade_to_tier_key,
                     is_active = true
             """),
             [
@@ -58,9 +63,20 @@ async def seed():
                     "benefits": benefits,
                     "color": color,
                     "sort": sort_order,
+                    "validity": validity,
+                    "renewal": renewal,
+                    "downgrade": downgrade,
                 }
-                for key, name, min_pts, multiplier, benefits, color, sort_order in TIERS
+                for key, name, min_pts, multiplier, benefits, color, sort_order, validity, renewal, downgrade in TIERS
             ],
+        )
+
+        # Deactivate legacy tiers that are not part of the current scheme
+        # (e.g. bronze/silver/gold/platinum from older seeds) so stale rows on
+        # existing DBs don't leak into tier lists or segment resolution.
+        await db.execute(
+            text("UPDATE loyalty_tiers SET is_active = false WHERE tier_key != ALL(:keys)"),
+            {"keys": [t[0] for t in TIERS]},
         )
 
         # Rewards

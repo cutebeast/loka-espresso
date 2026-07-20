@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { ArrowLeft, Save, Send, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
@@ -119,10 +120,13 @@ export default function NotificationEditPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/admin/notifications/${id}`, form);
+      await api.put(`/admin/notifications/${id}`, {
+        ...form,
+        scheduled_at: form.scheduled_at || null
+      });
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
+    } catch (e: any) {console.error(e); setMsg(parseApiError(e, t("admin.errors.loadFailed"))); } finally {
       setSaving(false);
     }
   };

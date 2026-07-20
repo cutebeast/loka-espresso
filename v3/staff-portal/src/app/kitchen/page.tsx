@@ -1,5 +1,5 @@
 "use client";
-import { useStaffRole, canUseKitchen } from "@/hooks/useStaffRole";
+import { RoleGuard, canUseKitchen } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
@@ -55,8 +55,11 @@ const kanbanColumns: {
   color: "#16A34A"
 }];
 export default function KitchenPage() {
-  const { role, isAdmin, loading: roleLoading } = useStaffRole();
-  if (!roleLoading && !canUseKitchen(role, isAdmin)) return <div style={{ padding: 48, textAlign: "center" }}><h2>Access Denied</h2><p>You do not have permission to access Kitchen Display.</p></div>;
+  return <RoleGuard allowed={canUseKitchen}>
+    <KitchenPageContent />
+  </RoleGuard>;
+}
+function KitchenPageContent() {
   const {
     t
   } = useTranslation();

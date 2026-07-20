@@ -1,5 +1,6 @@
 """Store Operations models."""
 
+import secrets
 from datetime import date, datetime, time, timezone
 from typing import List
 
@@ -55,6 +56,11 @@ class Store(Base, SoftDeleteMixin):
     last_order_minutes_before_close: Mapped[int] = mapped_column(Integer, nullable=False, default=45)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_accepting_orders: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Shared-secret key authorising the public POS customer-display poll
+    # (GET /staff/pos/display-state). Generated per store; never exposed publicly.
+    display_key: Mapped[str] = mapped_column(
+        String(64), nullable=False, default=lambda: secrets.token_hex(16)
+    )
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

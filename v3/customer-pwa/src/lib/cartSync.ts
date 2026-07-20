@@ -163,13 +163,14 @@ export async function placeOrder(params: {
   // The backend enum uses 'takeaway' for customer-collected orders; UI labels it 'pickup'.
   const backendOrderType = params.orderType === 'pickup' ? 'takeaway' : params.orderType;
 
+  // NOTE: the backend OrderCreate schema ignores `payment_method` and `status`
+  // extras — orders are always created as ordinary pending orders, including
+  // for gateway/hitpay checkouts where payment happens afterwards. Don't send
+  // them; abandoned checkouts simply remain unpaid pending orders that the
+  // customer can resume paying (or cancel) from the order detail page.
   const orderPayload: Record<string, unknown> = {
     store_id: params.storeId,
     order_type: backendOrderType,
-    payment_method: params.paymentMethod,
-    status: (params.paymentMethod === 'wallet' || params.paymentMethod === 'gateway' || params.paymentMethod === 'hitpay')
-      ? 'awaiting_payment'
-      : 'pending',
   };
 
   if (params.voucherCode) {

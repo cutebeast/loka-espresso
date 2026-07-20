@@ -56,7 +56,7 @@ export default function GuestPayPage() {
       const res = await api.get(`/payments/guest-pay/${orderId}`, { params: { token } });
       const data = res.data as GuestOrderData;
       setOrder(data);
-      if (returnStatus === 'success') {
+      if (returnStatus === 'success' || returnStatus === 'completed') {
         setPaid(true);
       } else if (returnStatus === 'cancel' || returnStatus === 'failed') {
         setCancelled(true);

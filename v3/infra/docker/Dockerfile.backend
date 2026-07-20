@@ -25,4 +25,6 @@ USER appuser
 
 EXPOSE 13800
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "13800", "--proxy-headers"]
+# Apply any migrations newer than the SQL-initialised schema (infra/db/*.sql
+# stamps alembic_version at its generation-time head), then start the app.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 13800 --proxy-headers"]

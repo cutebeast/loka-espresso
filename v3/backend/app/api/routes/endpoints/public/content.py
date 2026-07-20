@@ -391,6 +391,15 @@ async def get_config_bootstrap(
     delivery_fee = config.get("base_delivery_fee", "0")
     min_order = config.get("minimum_order_amount", "0")
 
+    # Platform-level values consumed by the PWA configStore (only keys with a
+    # real backend source are emitted)
+    points_per_currency = await config_svc.get_int("loyalty.points_per_currency", default=1)
+    referral_reward_points = await config_svc.get_int("loyalty.referral_reward_points", default=50)
+    stripe_on = await config_svc.get_bool("stripe.enabled", default=False)
+    hitpay_on = await config_svc.get_bool("hitpay.enabled", default=False)
+    payment_gateway_provider = "stripe" if stripe_on else ("hitpay" if hitpay_on else None)
+    pickup_lead_minutes = stores[0].pickup_lead_minutes if stores else 15
+
     # Prepare translatable structures
     tier_dicts = [
         {"id": t.id, "display_name": t.display_name, "min_points": t.min_lifetime_points, "color": t.color_hex or "#A0783A"}
@@ -409,6 +418,11 @@ async def get_config_bootstrap(
         "currency_symbol": currency_symbol,
         "delivery_fee": str(delivery_fee) if delivery_fee else "0",
         "minimum_order_amount": str(min_order) if min_order else "0",
+        "pickup_lead_minutes": pickup_lead_minutes,
+        "earn_rate": points_per_currency,
+        "loyalty_points_per_rmse": points_per_currency,
+        "referral_reward_points": referral_reward_points,
+        "payment_gateway_provider": payment_gateway_provider,
         "loyalty_tiers": [
             {"name": t["display_name"], "min_points": t["min_points"], "color": t["color"]}
             for t in tier_dicts

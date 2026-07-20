@@ -409,6 +409,8 @@ export interface UserReward {
   reward_catalog_id: number;
   reward_name: string;
   redemption_code: string;
+  /** Backend /wallet/me emits the redemption code under `code` */
+  code?: string;
   status: 'available' | 'used' | 'expired' | 'active';
   points_spent?: number;
   expires_at: string;

@@ -6,17 +6,40 @@ Run: python scripts/seed_admin_ui_translations.py
 
 import os
 import sys
+from pathlib import Path
 
 import psycopg2
 from psycopg2.extras import execute_values
 
+BACKEND_ENV_FILE = Path(__file__).resolve().parent.parent / "backend" / ".env"
+
+
+def _url_from_backend_env() -> str:
+    """Read DATABASE_URL(_SYNC) from backend/.env (same file backend scripts use)."""
+    if not BACKEND_ENV_FILE.exists():
+        return ""
+    values: dict[str, str] = {}
+    for line in BACKEND_ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values.get("DATABASE_URL_SYNC") or values.get("DATABASE_URL", "")
+
+
 def _db_url() -> str:
     url = os.getenv("DATABASE_URL_SYNC") or os.getenv("DATABASE_URL", "")
+    if not url:
+        url = _url_from_backend_env()
     if url.startswith("postgresql+asyncpg://"):
         url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
     if url.startswith("postgresql://"):
         return url
-    return "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
+    raise SystemExit(
+        "ERROR: no database URL found. Set DATABASE_URL in the environment or in "
+        f"{BACKEND_ENV_FILE}."
+    )
 
 DB_URL = _db_url()
 
@@ -119,6 +142,7 @@ STRINGS = {
         "admin.nav.equipment.list": "Equipment List",
         "admin.nav.equipment.reports": "Reports Ledger",
         "admin.nav.feedback": "Feedback",
+        "admin.nav.helpCenter": "Help Center",
         "admin.nav.hygiene": "Hygiene",
         "admin.nav.inventory": "Inventory",
         "admin.nav.inventory.categories": "Categories",
@@ -926,6 +950,12 @@ STRINGS = {
         "hygiene.verified_2": "Verified",
         "hygiene.verify": "Verify",
     },
+    "help": {
+        "help.help_center": "Help Center",
+        "help.audience": "Audience",
+        "help.last_updated": "Last Updated",
+        "help.uncategorized": "Uncategorized",
+    },
     "inventory": {
         "inventory.loading_inventory": "Loading inventory...",
     },
@@ -1236,6 +1266,11 @@ STRINGS = {
         "loyalty_tiers_[id].translation": "Translation",
         "loyalty_tiers_[id].vip_event_access": "VIP Event Access",
         "loyalty_tiers_[id].welcome_bonus_points": "Welcome Bonus Points",
+        "loyalty_tiers_[id].validity_months": "Validity (months)",
+        "loyalty_tiers_[id].renewal_annual_spend": "Renewal Annual Spend (RM)",
+        "loyalty_tiers_[id].downgrade_to": "Downgrade To",
+        "loyalty_tiers_[id].eco_campaign": "Eco-Campaign (e.g. BYOT)",
+        "loyalty_tiers_[id].eco_campaign_multiplier": "Eco-Campaign Multiplier",
     },
     "loyalty_tiers_new": {
         "loyalty_tiers_new.active": "Active",
@@ -1247,7 +1282,11 @@ STRINGS = {
         "loyalty_tiers_new.color": "Color",
         "loyalty_tiers_new.complimentary_upgrades": "Complimentary Upgrades",
         "loyalty_tiers_new.display_name": "Display Name *",
+        "loyalty_tiers_new.complimentary_upgrades": "Complimentary Upgrades",
+        "loyalty_tiers_new.downgrade_to": "Downgrade To Tier Key",
         "loyalty_tiers_new.e_g_free_slice_of_cake": "e.g. Free slice of cake",
+        "loyalty_tiers_new.eco_campaign": "Eco-Campaign (e.g. BYOT)",
+        "loyalty_tiers_new.eco_campaign_multiplier": "Eco-Campaign Multiplier",
         "loyalty_tiers_new.exclusive_menu": "Exclusive Menu",
         "loyalty_tiers_new.free_delivery": "Free Delivery",
         "loyalty_tiers_new.min_lifetime_points": "Min Lifetime Points",
@@ -1257,9 +1296,11 @@ STRINGS = {
         "loyalty_tiers_new.order_discount_fixed": "Order Discount Fixed",
         "loyalty_tiers_new.points_multiplier": "Points Multiplier",
         "loyalty_tiers_new.priority_seating": "Priority Seating",
-        "loyalty_tiers_new.silver_gold_platinum": "silver, gold, platinum",
+        "loyalty_tiers_new.renewal_annual_spend": "Renewal Annual Spend (RM)",
+        "loyalty_tiers_new.bloom_origin_reserve": "bloom, origin, reserve",
         "loyalty_tiers_new.sort_order": "Sort Order",
         "loyalty_tiers_new.tier_key": "Tier Key *",
+        "loyalty_tiers_new.validity_months": "Validity (months)",
         "loyalty_tiers_new.vip_event_access": "VIP Event Access",
         "loyalty_tiers_new.welcome_bonus_points": "Welcome Bonus Points",
     },
@@ -2650,7 +2691,7 @@ STRINGS = {
         "vouchers_new.full_description": "Full Description",
         "vouchers_new.full_details": "Full details",
         "vouchers_new.generic": "Generic",
-        "vouchers_new.gold": "Gold",
+        "vouchers_new.origin": "Origin",
         "vouchers_new.happy_hour": "Happy Hour",
         "vouchers_new.how_to_redeem": "How to Redeem",
         "vouchers_new.instructions_for_customer": "Instructions for customer",
@@ -2663,11 +2704,11 @@ STRINGS = {
         "vouchers_new.new_voucher": "New Voucher",
         "vouchers_new.no_restriction": "No restriction",
         "vouchers_new.percentage_off": "Percentage Off (%)",
-        "vouchers_new.platinum": "Platinum",
+        "vouchers_new.reserve": "Reserve",
         "vouchers_new.promo_type": "Promo Type",
         "vouchers_new.seasonal": "Seasonal",
         "vouchers_new.short_description": "Short Description",
-        "vouchers_new.silver": "Silver",
+        "vouchers_new.bloom": "Bloom",
         "vouchers_new.target_customer_segments": "Target Customer Segments",
         "vouchers_new.terms_conditions": "Terms & Conditions",
         "vouchers_new.title": "Title *",

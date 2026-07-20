@@ -1,5 +1,6 @@
 "use client";
 
+import { RoleGuard, canUseKitchen } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -73,6 +74,11 @@ const STATUS_FLOW: Record<string, {
   }
 };
 export default function KitchenDetailPage() {
+  return <RoleGuard allowed={canUseKitchen}>
+    <KitchenDetailPageContent />
+  </RoleGuard>;
+}
+function KitchenDetailPageContent() {
   const {
     t
   } = useTranslation();

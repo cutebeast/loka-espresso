@@ -535,6 +535,8 @@ CREATE TABLE cart_line_items (
     added_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- NOTE: no corresponding model in backend/app/models — legacy table kept
+-- intentionally (not dropped to avoid breaking any in-flight sessions).
 CREATE TABLE checkout_sessions (
     id BIGSERIAL PRIMARY KEY,
     token_hash VARCHAR(64) NOT NULL UNIQUE,

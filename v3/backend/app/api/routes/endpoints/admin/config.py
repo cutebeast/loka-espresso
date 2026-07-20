@@ -6,11 +6,29 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.models.iam import IAMRole, RoleAssignment
 from app.models.platform import PlatformConfig
 from app.schemas.base import APIResponse
 from app.services.translation import clear_translation_creds_cache
 
 router = APIRouter(prefix="/admin/config", tags=["admin — config"])
+
+SENSITIVE_MASK = "********"
+
+
+async def _require_system_admin(db: DBDependency, admin: CurrentAdmin):
+    """Raise 403 unless the current admin has the system_admin role."""
+    result = await db.execute(
+        select(IAMRole.role_key)
+        .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+        .where(
+            RoleAssignment.assignee_id == admin.id,
+            RoleAssignment.is_active.is_(True),
+            IAMRole.role_key == "system_admin",
+        )
+    )
+    if not result.first():
+        raise HTTPException(status_code=403, detail="System administrator access required")
 
 
 @router.get("", response_model=APIResponse[list[dict]])
@@ -19,7 +37,12 @@ async def list_config(
     db: DBDependency,
     prefix: str | None = Query(None, description="Filter by config_key prefix (e.g. 'reservation.'"),
 ):
-    """List all platform config entries, optionally filtered by prefix."""
+    """List all platform config entries, optionally filtered by prefix.
+
+    Restricted to system_admin. Sensitive values (API tokens, secrets) are
+    masked — the is_sensitive flag lets the UI render a placeholder.
+    """
+    await _require_system_admin(db, admin)
     query = select(PlatformConfig).order_by(PlatformConfig.config_key)
     if prefix:
         query = query.where(PlatformConfig.config_key.startswith(prefix))
@@ -29,7 +52,7 @@ async def list_config(
         {
             "id": c.id,
             "config_key": c.config_key,
-            "config_value": c.config_value,
+            "config_value": SENSITIVE_MASK if c.is_sensitive else c.config_value,
             "value_type": c.value_type,
             "environment": c.environment,
             "is_sensitive": c.is_sensitive,
@@ -51,8 +74,11 @@ async def update_config(
     """Update a platform config value.
 
     Accepts key/value via query params (legacy) or JSON body. Body is preferred
-    for sensitive values such as API tokens.
+    for sensitive values such as API tokens. Restricted to system_admin.
+    Submitting the masked placeholder for a sensitive key leaves the stored
+    secret unchanged.
     """
+    await _require_system_admin(db, admin)
     effective_key = key or data.get("key") or data.get("config_key")
     effective_value = value if value != "" else data.get("value") or data.get("config_value")
     if not effective_key or effective_value == "" or effective_value is None:
@@ -66,6 +92,16 @@ async def update_config(
         raise HTTPException(status_code=404, detail=f"Config key '{effective_key}' not found")
     if not config.is_editable:
         raise HTTPException(status_code=403, detail=f"Config key '{effective_key}' is not editable")
+
+    # A UI echoing back the masked placeholder must not overwrite the secret.
+    if config.is_sensitive and effective_value == SENSITIVE_MASK:
+        return APIResponse(
+            data={
+                "config_key": config.config_key,
+                "config_value": SENSITIVE_MASK,
+                "message": f"Config '{effective_key}' unchanged",
+            }
+        )
 
     # Parse value based on value_type before storing in JSONB
     vt = config.value_type or "string"
@@ -99,7 +135,7 @@ async def update_config(
     return APIResponse(
         data={
             "config_key": config.config_key,
-            "config_value": config.config_value,
+            "config_value": SENSITIVE_MASK if config.is_sensitive else config.config_value,
             "message": f"Config '{effective_key}' updated",
         }
     )

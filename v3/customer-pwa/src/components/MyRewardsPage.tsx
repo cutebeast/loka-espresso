@@ -201,7 +201,7 @@ function RewardDetailSheet({ reward, onClose, t, formatDate }: { reward: UserRew
       <div className="myrv-sheet-info">
         <div className="myrv-sheet-info-icon"><QrCode size={40} color="var(--loka-primary)" /></div>
         <div className="myrv-sheet-info-text">{t('common.yourCode')}</div>
-        <CopyCode code={reward.redemption_code} t={t} />
+        <CopyCode code={reward.code || reward.redemption_code} t={t} />
       </div>
       {reward.expires_at && <div className="myrv-sheet-expiry">{t('myRewards.expires', { date: formatDate(reward.expires_at) })}</div>}
       <button className="myrv-sheet-close-btn" onClick={onClose}>{t('common.done')}</button>

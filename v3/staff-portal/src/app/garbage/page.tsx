@@ -1,5 +1,5 @@
 "use client";
-import { useStaffRole, canUseOps } from "@/hooks/useStaffRole";
+import { RoleGuard, canUseOps } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useRef, useState, useCallback } from "react";
@@ -9,8 +9,11 @@ import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import { CheckCircle, Camera, X } from "lucide-react";
 export default function GarbagePage() {
-  const { role, isAdmin, loading: roleLoading } = useStaffRole();
-  if (!roleLoading && !canUseOps(role, isAdmin)) return <div style={{ padding: 48, textAlign: "center" }}><h2>Access Denied</h2><p>You do not have permission to access this page.</p></div>;
+  return <RoleGuard allowed={canUseOps}>
+    <GarbagePageContent />
+  </RoleGuard>;
+}
+function GarbagePageContent() {
   const {
     t
   } = useTranslation();

@@ -1,6 +1,20 @@
 -- FNB Enterprise v3 — Row Level Security Policies
 -- Enable RLS on tenant-scoped and customer-scoped tables
 
+-- The policies below target the app_user / admin_user roles. Nothing else in
+-- the initdb scripts creates them, and docker-entrypoint-initdb.d runs with
+-- ON_ERROR_STOP=1 — create them as NOLOGIN placeholders so fresh inits don't
+-- abort. Provision real login roles with passwords at deploy time as needed.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+        CREATE ROLE app_user NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'admin_user') THEN
+        CREATE ROLE admin_user NOLOGIN;
+    END IF;
+END $$;
+
 -- ============================================================
 -- Helper function to set app context
 -- ============================================================

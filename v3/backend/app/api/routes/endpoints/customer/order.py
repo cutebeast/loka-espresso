@@ -23,7 +23,7 @@ from app.schemas.order import (
     OrderOut,
     OrderStatusLogOut,
 )
-from app.services.order import OrderError, create_order_from_cart, get_customer_orders, _build_order_out
+from app.services.order import OrderError, create_order_from_cart, get_customer_orders, reverse_order_effects, _build_order_out
 from app.services.payment import cancel_pending_order_payments
 
 
@@ -148,14 +148,21 @@ async def cancel_order(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Only allow cancelling pending/initiated orders
-    if order.status not in ("pending", "confirmed"):
+    # Customers may only cancel unpaid, still-pending orders themselves.
+    # Paid orders must go through the store so a refund can be issued.
+    if order.status != "pending":
         raise HTTPException(status_code=400, detail=f"Cannot cancel order with status '{order.status}'")
+    if order.payment_status in ("authorized", "captured", "settled"):
+        raise HTTPException(
+            status_code=400,
+            detail="This order has already been paid. Please contact the store to cancel and receive a refund.",
+        )
 
     await db.execute(text("SET LOCAL app.current_actor_type = 'customer'"))
     order.status = "cancelled_by_customer"
     order.cancelled_at = datetime.now(timezone.utc)
     await db.flush()
+    await reverse_order_effects(db, order)
     cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
     return APIResponse(data={

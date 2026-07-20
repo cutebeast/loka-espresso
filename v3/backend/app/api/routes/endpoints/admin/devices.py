@@ -135,16 +135,30 @@ async def register_device(
 async def deregister_device(
     customer: ActiveCustomer,
     db: DBDependency,
-    id: int,
+    id: str,
 ):
-    """Deregister (soft-delete) a customer device."""
-    result = await db.execute(
-        select(CustomerDevice).where(
-            CustomerDevice.id == id,
-            CustomerDevice.customer_id == customer.id,
+    """Deregister (soft-delete) a customer device.
+
+    Accepts either the numeric device id or the device fingerprint
+    (the PWA tracks devices by fingerprint, not id).
+    """
+    device = None
+    if id.isdigit():
+        result = await db.execute(
+            select(CustomerDevice).where(
+                CustomerDevice.id == int(id),
+                CustomerDevice.customer_id == customer.id,
+            )
         )
-    )
-    device = result.scalar_one_or_none()
+        device = result.scalar_one_or_none()
+    if device is None:
+        result = await db.execute(
+            select(CustomerDevice).where(
+                CustomerDevice.device_fingerprint == id,
+                CustomerDevice.customer_id == customer.id,
+            )
+        )
+        device = result.scalar_one_or_none()
     if device is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
 

@@ -4,7 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { isNotFoundError } from "@/lib/errors";
+import { isNotFoundError, parseApiError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
@@ -128,7 +128,12 @@ export default function RewardEditPage() {
         image_gallery_urls: d.image_gallery_urls || [],
         gallery_video_url: d.gallery_video_url || "",
         position: d.position ?? 0,
-        customer_segments: d.customer_segments || [],
+        customer_segments: (() => {
+          const cs = d.customer_segments;
+          if (Array.isArray(cs)) return cs;
+          if (cs && typeof cs === 'object') return Object.keys(cs);
+          return [];
+        })(),
         is_active: d.is_active
       });
       setImagePreview(d.image_url || "");
@@ -167,16 +172,19 @@ export default function RewardEditPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form
       };
+      // Convert string[] customer_segments to dict (API expects dict | None)
+      const segs = form.customer_segments as string[];
+      payload.customer_segments = segs && segs.length > 0 ? Object.fromEntries(segs.map((s: string) => [s, true])) : null;
       ["points_cost", "minimum_order_value", "validity_days"].forEach(k => {
         if (payload[k] !== null && payload[k] !== "") payload[k] = Number(payload[k]);
       });
       await api.put(`/admin/rewards/${rewardId}`, payload);
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
+    } catch (e: any) {console.error(e); setMsg(parseApiError(e, t("admin.errors.loadFailed"))); } finally {
       setSaving(false);
     }
   };

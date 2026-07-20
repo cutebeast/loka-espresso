@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { scanCustomerCode } from "@/lib/api";
 import type { Customer, Table } from "@/lib/api";
 
 export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Customer) => void, onTableSelect?: (table: Table) => void) {
@@ -36,17 +37,20 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText: string) => {
           if (qrScanMode === "customer") {
-            const custMatch = decodedText.match(/loka:customer:(\d+)/);
-            const customerId = custMatch && custMatch[1] ? parseInt(custMatch[1], 10) : null;
-            if (customerId && customerId > 0) {
-              const customer: Customer = { id: customerId, display_name: `Customer #${customerId}`, phone_number: "" };
-              onCustomerScan?.(customer);
-              setShowQrScanner(false);
-              scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
-            } else {
-              setScannerError("Invalid QR code. Please scan a valid customer QR.");
-              scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
-            }
+            // Resolve the scanned code via the backend so the real customer
+            // record (name/phone) is linked, not a fabricated stub.
+            scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err)).finally(() => { scannerRef.current = null; });
+            scanCustomerCode(decodedText)
+              .then((data) => {
+                if (!scannerMountedRef.current) return;
+                onCustomerScan?.({ id: data.customer_id, display_name: data.customer_name, phone_number: data.customer_phone });
+                setShowQrScanner(false);
+              })
+              .catch((err: unknown) => {
+                if (!scannerMountedRef.current) return;
+                console.error("Customer scan failed:", err);
+                setScannerError("Invalid QR code. Please scan a valid customer QR.");
+              });
             return;
           }
           const match = decodedText.match(/loka:table:(.+)/);
@@ -56,7 +60,7 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
             if (table) {
               onTableSelect?.(table);
               setShowQrScanner(false);
-              scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+              scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err)).finally(() => { scannerRef.current = null; });
               return;
             }
           }
@@ -64,10 +68,10 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
           if (tableNum) {
             onTableSelect?.(tableNum);
             setShowQrScanner(false);
-            scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+            scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err)).finally(() => { scannerRef.current = null; });
           } else {
             setScannerError("Invalid QR code. Please scan a valid table QR.");
-            scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+            scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err)).finally(() => { scannerRef.current = null; });
           }
         },
         () => {}

@@ -185,13 +185,23 @@ async def list_voucher_redemptions(
     for v in vouchers:
         item = CustomerVoucherOut.model_validate(v).model_dump()
         vd = v.voucher_definition
-    item["discount_type"] = vd.voucher_type if vd else None
-    item["discount_value"] = str(vd.discount_value) if vd else None
-    item["min_spend"] = str(vd.minimum_order_value) if vd else None
-    item["max_discount"] = str(vd.discount_max_amount) if vd and vd.discount_max_amount is not None else None
-    item["voucher_title"] = vd.display_title if vd else None
-    item["voucher_image_url"] = vd.image_url if vd else None
-    return APIResponse(data=item)
+        item["discount_type"] = vd.voucher_type if vd else None
+        item["discount_value"] = str(vd.discount_value) if vd else None
+        item["min_spend"] = str(vd.minimum_order_value) if vd else None
+        item["max_discount"] = str(vd.discount_max_amount) if vd and vd.discount_max_amount is not None else None
+        item["voucher_title"] = vd.display_title if vd else None
+        item["voucher_image_url"] = vd.image_url if vd else None
+        items.append(CustomerVoucherOut.model_validate(item))
+
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
 
 
 @public_router.post("/validate", response_model=APIResponse[VoucherValidateResponse])

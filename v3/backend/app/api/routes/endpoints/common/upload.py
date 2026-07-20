@@ -12,7 +12,10 @@ from app.core.config import get_settings
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".mp4", ".mov", ".avi", ".webm", ".mkv"}
+# SVG is intentionally not allowed: it can carry active content (script,
+# event handlers) and content-scanning is not reliable enough to serve it
+# from our own origin.
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov", ".avi", ".webm", ".mkv"}
 MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 
 _CONTENT_TYPE_MAP = {
@@ -21,7 +24,6 @@ _CONTENT_TYPE_MAP = {
     ".png": "image/png",
     ".gif": "image/gif",
     ".webp": "image/webp",
-    ".svg": "image/svg+xml",
     ".mp4": "video/mp4",
     ".mov": "video/quicktime",
     ".avi": "video/x-msvideo",
@@ -68,11 +70,6 @@ async def upload_image(admin: CurrentAdmin, file: UploadFile):
 
     if not _validate_file_content(contents, ext):
         raise HTTPException(400, f"File content does not match extension {ext}")
-
-    if ext == ".svg":
-        text = contents.decode("utf-8", errors="ignore")[:1024].lower()
-        if "<script" in text or "javascript:" in text or "onload=" in text:
-            raise HTTPException(400, "SVG contains disallowed content")
 
     upload_dir = settings.upload_dir / "images"
     upload_dir.mkdir(parents=True, exist_ok=True)

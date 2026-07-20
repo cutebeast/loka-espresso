@@ -10,6 +10,7 @@ from app.models.customer import Customer
 from app.models.store import DiningTable, Reservation, Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.reservation import (
+    CustomerReservationCreate,
     ReservationCreate,
     ReservationOut,
     ReservationStatusUpdate,
@@ -34,6 +35,36 @@ async def _get_reservation_or_404(db, reservation_id: int) -> Reservation:
             status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found"
         )
     return reservation
+
+
+async def _check_table_availability(
+    db,
+    dining_table_id: int,
+    reservation_date: date,
+    reservation_time,
+    duration_minutes: int,
+    exclude_reservation_id: int | None = None,
+) -> None:
+    """Reject double-booking: same table, same date, overlapping time window."""
+    start_minutes = reservation_time.hour * 60 + reservation_time.minute
+    end_minutes = start_minutes + (duration_minutes or 90)
+
+    filters = [
+        Reservation.dining_table_id == dining_table_id,
+        Reservation.reservation_date == reservation_date,
+        Reservation.status.in_(["confirmed", "seated"]),
+    ]
+    if exclude_reservation_id is not None:
+        filters.append(Reservation.id != exclude_reservation_id)
+    result = await db.execute(select(Reservation).where(*filters))
+    for existing in result.scalars().all():
+        ex_start = existing.reservation_time.hour * 60 + existing.reservation_time.minute
+        ex_end = ex_start + (existing.duration_minutes or 90)
+        if start_minutes < ex_end and ex_start < end_minutes:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Table is already booked for an overlapping time slot",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +97,18 @@ async def list_reservations(
         admin_store_ids = await _get_admin_store_ids(db, admin.id)
         admin_roles = await _get_admin_role_keys(db, admin.id)
         is_hq = bool(admin_roles & {"system_admin", "regional_manager", "readonly_analyst"})
-        if not is_hq and admin_store_ids:
+        if not is_hq:
+            if not admin_store_ids:
+                # Non-HQ admin with no store assignments sees nothing
+                return APIResponse(
+                    data=PaginatedResponse(
+                        items=[],
+                        total=0,
+                        page=page,
+                        per_page=per_page,
+                        total_pages=0,
+                    )
+                )
             if store_id is not None:
                 if store_id not in admin_store_ids:
                     raise HTTPException(status_code=403, detail="Access denied for this store")
@@ -138,6 +180,11 @@ async def create_reservation(
     data: ReservationCreate,
 ):
     """Create a reservation (admin)."""
+    if data.dining_table_id is not None:
+        await _check_table_availability(
+            db, data.dining_table_id, data.reservation_date,
+            data.reservation_time, data.duration_minutes,
+        )
     reservation = Reservation(**data.model_dump())
     db.add(reservation)
     await db.commit()
@@ -168,6 +215,12 @@ async def update_reservation(
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(reservation, field, value)
+    if reservation.dining_table_id is not None and reservation.status in ("confirmed", "seated"):
+        await _check_table_availability(
+            db, reservation.dining_table_id, reservation.reservation_date,
+            reservation.reservation_time, reservation.duration_minutes,
+            exclude_reservation_id=reservation.id,
+        )
     reservation.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(reservation)
@@ -187,6 +240,11 @@ async def update_reservation_status(
     reservation = await _get_reservation_or_404(db, id)
     reservation.status = data.status
     if data.dining_table_id is not None and data.status == "confirmed":
+        await _check_table_availability(
+            db, data.dining_table_id, reservation.reservation_date,
+            reservation.reservation_time, reservation.duration_minutes,
+            exclude_reservation_id=reservation.id,
+        )
         reservation.dining_table_id = data.dining_table_id
     reservation.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -254,12 +312,14 @@ async def list_my_reservations(
 async def create_my_reservation(
     db: DBDependency,
     customer: ActiveCustomer,
-    data: ReservationCreate,
+    data: CustomerReservationCreate,
 ):
     """Create a reservation for the current customer."""
-    reservation_data = data.model_dump()
-    reservation_data["customer_id"] = customer.id
-    reservation = Reservation(**reservation_data)
+    reservation = Reservation(
+        **data.model_dump(),
+        customer_id=customer.id,
+        status="requested",
+    )
     db.add(reservation)
     await db.commit()
     await db.refresh(reservation)

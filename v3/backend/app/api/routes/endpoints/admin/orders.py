@@ -33,7 +33,7 @@ from app.schemas.order import (
     ProcessOrderPaymentRequest,
     UpdateOrderStatusRequest,
 )
-from app.services.order import _build_order_out
+from app.services.order import OrderError, reverse_order_effects, validate_voucher_eligibility, _build_order_out
 from app.services.payment import PaymentError, cancel_pending_order_payments, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
@@ -87,7 +87,18 @@ async def list_orders(
         admin_store_ids = await _get_admin_store_ids(db, admin.id)
         admin_roles = await _get_admin_role_keys(db, admin.id)
         is_hq = bool(admin_roles & {"system_admin", "regional_manager", "readonly_analyst"})
-        if not is_hq and admin_store_ids:
+        if not is_hq:
+            if not admin_store_ids:
+                # Non-HQ admin with no store assignments sees nothing
+                return APIResponse(
+                    data=PaginatedResponse(
+                        items=[],
+                        total=0,
+                        page=page,
+                        per_page=per_page,
+                        total_pages=0,
+                    )
+                )
             if store_id is not None:
                 if store_id not in admin_store_ids:
                     raise HTTPException(status_code=403, detail="Access denied for this store")
@@ -299,20 +310,41 @@ async def update_order_status(
     elif status_value in ("cancelled_by_customer", "cancelled_by_merchant"):
         order.cancelled_at = now
 
+    is_cancellation = (
+        status_value in ("cancelled_by_customer", "cancelled_by_merchant")
+        and from_status != status_value
+    )
+    if is_cancellation:
+        from app.models.payment import Payment
+        has_captured = (await db.execute(
+            select(Payment.id).where(Payment.order_id == order.id, Payment.status == "captured").limit(1)
+        )).scalar_one_or_none()
+        if has_captured is not None:
+            raise HTTPException(status_code=400, detail="Order has captured payments — issue a refund before cancelling")
+
     await db.execute(text("SET LOCAL app.current_actor_type = 'staff'"))
     order.status = status_value
     order.updated_at = now
+    await db.flush()
+
+    cancelled_payment_ids: list[int] = []
+    if is_cancellation:
+        await reverse_order_effects(db, order)
+        cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
+
     await db.commit()
     await db.refresh(order)
 
-    return APIResponse(
-        data={
-            "id": order.id,
-            "status": order.status,
-            "from_status": from_status,
-            "message": f"Order {order.order_number} status updated to {status_value}",
-        }
-    )
+    response_data = {
+        "id": order.id,
+        "status": order.status,
+        "from_status": from_status,
+        "message": f"Order {order.order_number} status updated to {status_value}",
+    }
+    if is_cancellation:
+        response_data["cancelled_payment_ids"] = cancelled_payment_ids
+
+    return APIResponse(data=response_data)
 
 
 @router.patch("/{order_id}/payment", response_model=APIResponse[dict])
@@ -545,6 +577,8 @@ async def apply_order_voucher(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
+    if order.payment_status in ("captured", "settled"):
+        raise HTTPException(status_code=400, detail="Cannot apply voucher to an order that has already been paid")
     result = await db.execute(
         select(CustomerVoucher, VoucherDefinition)
         .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id, isouter=True)
@@ -584,6 +618,24 @@ async def apply_order_voucher(
         tier_id = loyalty.current_tier_id if loyalty else None
         if tier_id is None or tier_id < voucher_def.minimum_tier_id:
             raise HTTPException(status_code=400, detail="Customer's loyalty tier is not eligible for this voucher")
+
+    if voucher_def:
+        li_ids_result = await db.execute(
+            select(OrderLineItem.menu_item_id).where(OrderLineItem.order_id == order.id)
+        )
+        try:
+            await validate_voucher_eligibility(
+                db, voucher_def, customer_voucher,
+                customer_id=order.customer_id,
+                store_id=order.store_id,
+                menu_item_ids={r[0] for r in li_ids_result.all()},
+                has_other_discount=(
+                    to_decimal(order.reward_discount) > 0 or to_decimal(order.voucher_discount) > 0
+                ),
+                current_order_id=order.id,
+            )
+        except OrderError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
     # Compute discount
     discount = Decimal(0)
@@ -685,6 +737,8 @@ async def apply_order_reward(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
+    if order.payment_status in ("captured", "settled"):
+        raise HTTPException(status_code=400, detail="Cannot apply reward to an order that has already been paid")
     result = await db.execute(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
@@ -985,9 +1039,8 @@ async def add_order_line_item(
         + to_decimal(order.delivery_fee)
         + to_decimal(order.service_charge)
         + to_decimal(order.tax_amount)
-        - to_decimal(order.discount_amount)
-        - to_decimal(order.voucher_discount)
-        - to_decimal(order.reward_discount),
+        + to_decimal(order.tip_amount)
+        - to_decimal(order.discount_amount),
         precision,
         rounding_mode,
     )
@@ -1045,9 +1098,8 @@ async def remove_order_line_item(
         + to_decimal(order.delivery_fee)
         + to_decimal(order.service_charge)
         + to_decimal(order.tax_amount)
-        - to_decimal(order.discount_amount)
-        - to_decimal(order.voucher_discount)
-        - to_decimal(order.reward_discount),
+        + to_decimal(order.tip_amount)
+        - to_decimal(order.discount_amount),
         precision,
         rounding_mode,
     )
@@ -1087,6 +1139,13 @@ async def cancel_order_staff(
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise HTTPException(status_code=400, detail="Order is already completed or cancelled")
 
+    from app.models.payment import Payment
+    has_captured = (await db.execute(
+        select(Payment.id).where(Payment.order_id == order.id, Payment.status == "captured").limit(1)
+    )).scalar_one_or_none()
+    if has_captured is not None:
+        raise HTTPException(status_code=400, detail="Order has captured payments — issue a refund before cancelling")
+
     old_status = order.status
     order.status = "cancelled_by_merchant"
     order.cancellation_reason = reason or "Cancelled by staff"
@@ -1104,6 +1163,7 @@ async def cancel_order_staff(
     )
     db.add(log)
     await db.flush()
+    await reverse_order_effects(db, order)
     cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
     return APIResponse(data={

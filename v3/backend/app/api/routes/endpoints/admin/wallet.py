@@ -507,22 +507,23 @@ async def create_wallet_topup_checkout(
     if provider == "hitpay":
         try:
             resp = await create_hitpay_payment_request(
-                db, None, None, amount, currency=currency,
+                db, None, None, None, amount=amount, currency=currency,
                 return_url=success_url,
             )
-            session.provider_session_id = resp.get("request_id")
+            session.provider_session_id = resp["id"]
             await db.commit()
             await db.refresh(session)
             return APIResponse(data=WalletTopupCheckoutResponse(
                 session_id=session.id,
-                checkout_url=resp.get("url", ""),
+                checkout_url=resp["url"],
                 amount=amount,
                 currency_code=currency,
                 status="pending",
             ))
         except Exception as exc:
             await db.rollback()
-            raise HTTPException(status_code=502, detail=f"HitPay error: {exc}") from exc
+            logger.exception("HitPay wallet top-up checkout creation failed")
+            raise HTTPException(status_code=502, detail="HitPay top-up checkout could not be created") from exc
 
     try:
         checkout = await create_wallet_topup_checkout_session(

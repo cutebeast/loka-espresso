@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Plus, CreditCard, Loader2, Check, X } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -29,6 +29,9 @@ export default function PaymentMethodsPage() {
   const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [canConfirm, setCanConfirm] = useState(false);
+  // Stable callback — an inline arrow would retrigger StripeCardInput's mount
+  // effect on every keystroke and wipe the entered card details.
+  const handleCardStatusChange = useCallback((complete: boolean) => setCanConfirm(complete), []);
 
   useEffect(() => {
     api.get('/payments/methods')
@@ -83,6 +86,24 @@ export default function PaymentMethodsPage() {
     if (!setupIntentId) return;
     setAdding(true);
     try {
+      // Confirm the SetupIntent with Stripe first — the backend only accepts
+      // a SetupIntent whose status is "succeeded".
+      const stripe = (window as any).__stripe_instance;
+      const elements = (window as any).__stripe_elements;
+      if (!stripe || !elements) {
+        showToast('Card form is not ready. Please try again.', 'error');
+        return;
+      }
+      const { error } = await stripe.confirmSetup({
+        elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: 'if_required',
+      });
+      if (error) {
+        showToast(error.message || 'Card confirmation failed', 'error');
+        return;
+      }
+
       const res = await api.post('/payments/methods', { setup_intent_id: setupIntentId });
       const newMethod = res.data;
       setMethods(prev => [...prev, {
@@ -237,7 +258,7 @@ export default function PaymentMethodsPage() {
                     }}>
                       <StripeCardInput
                         clientSecret={setupIntentSecret}
-                        onStatusChange={(complete) => setCanConfirm(complete)}
+                        onStatusChange={handleCardStatusChange}
                       />
                     </div>
 
@@ -298,6 +319,9 @@ function StripeCardInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [publishableKey, setPublishableKey] = useState<string | null>(
+    () => (window as any).__STRIPE_PUBLISHABLE_KEY__ || null
+  );
   const [, setElements] = useState<any>(null);
 
   // Load Stripe.js
@@ -314,15 +338,23 @@ function StripeCardInput({
     document.head.appendChild(script);
   }, []);
 
-  // Mount PaymentElement
+  // Fetch the publishable key BEFORE mounting the PaymentElement
   useEffect(() => {
-    if (!stripeLoaded || !containerRef.current || !(window as any).Stripe) return;
+    if (publishableKey) return;
+    api.get('/payments/config').then(res => {
+      const key = res.data?.stripe_publishable_key || res.data?.publishable_key;
+      if (key) {
+        (window as any).__STRIPE_PUBLISHABLE_KEY__ = key;
+        setPublishableKey(key);
+      } else {
+        setError('Stripe publishable key not configured.');
+      }
+    }).catch(() => setError('Stripe publishable key not configured.'));
+  }, [publishableKey]);
 
-    const publishableKey = (window as any).__STRIPE_PUBLISHABLE_KEY__;
-    if (!publishableKey) {
-      setError('Stripe publishable key not configured.');
-      return;
-    }
+  // Mount PaymentElement once Stripe.js and the publishable key are ready
+  useEffect(() => {
+    if (!stripeLoaded || !publishableKey || !containerRef.current || !(window as any).Stripe) return;
 
     const stripe = (window as any).Stripe(publishableKey);
     const elements = stripe.elements({
@@ -350,21 +382,13 @@ function StripeCardInput({
     return () => {
       paymentElement.destroy();
     };
-  }, [stripeLoaded, clientSecret, onStatusChange]);
-
-  // Get publishable key from config
-  useEffect(() => {
-    api.get('/payments/config').then(res => {
-      const key = res.data?.stripe_publishable_key || res.data?.publishable_key;
-      if (key) (window as any).__STRIPE_PUBLISHABLE_KEY__ = key;
-    }).catch(() => {});
-  }, []);
+  }, [stripeLoaded, publishableKey, clientSecret, onStatusChange]);
 
   if (error) {
     return <div style={{ color: '#DC2626', fontSize: 14, padding: 8 }}>{error}</div>;
   }
 
-  if (!stripeLoaded) {
+  if (!stripeLoaded || !publishableKey) {
     return (
       <div style={{ textAlign: 'center', padding: 16 }}>
         <Loader2 size={24} className="animate-spin" style={{ color: LOKA.primary }} />

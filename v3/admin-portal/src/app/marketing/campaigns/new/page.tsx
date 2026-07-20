@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMarketingCampaign } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 export default function CampaignNewPage() {
@@ -30,10 +31,14 @@ export default function CampaignNewPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await createMarketingCampaign(form);
+      await createMarketingCampaign({
+        ...form,
+        campaign_key: form.campaign_key || form.campaign_name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+        scheduled_at: form.scheduled_at || undefined
+      });
       router.push("/marketing/campaigns");
     } catch (err: any) {
-      setError(err.message);
+      setError(parseApiError(err));
     } finally {
       setSaving(false);
     }
@@ -70,6 +75,12 @@ export default function CampaignNewPage() {
               ...form,
               campaign_name: e.target.value
             })} /></div>
+            <div className="df-field" style={{
+            gridColumn: "1/-1"
+          }}><label className="df-label">{t("marketing_campaigns_new.campaign_key")}</label><input value={form.campaign_key} onChange={e => setForm({
+              ...form,
+              campaign_key: e.target.value
+            })} placeholder={form.campaign_name ? form.campaign_name.toLowerCase().replace(/[^a-z0-9]/g, "_") : ""} /><div className="df-hint">{t("marketing_campaigns_new.unique_identifier_auto_generated_from_name")}</div></div>
             <div className="df-field"><label className="df-label">{t("marketing_campaigns_new.channel")}</label><select value={form.channel} onChange={e => setForm({
               ...form,
               channel: e.target.value
@@ -81,7 +92,7 @@ export default function CampaignNewPage() {
             <div className="df-field"><label className="df-label">{t("marketing_campaigns_new.campaign_type")}</label><select value={form.campaign_type} onChange={e => setForm({
               ...form,
               campaign_type: e.target.value
-            })}><option value="promotional">{t("marketing_campaigns_new.promotional")}</option><option value="transactional">{t("marketing_campaigns_new.transactional")}</option><option value="announcement">{t("marketing_campaigns_new.announcement")}</option><option value="retention">{t("marketing_campaigns_new.retention")}</option></select></div>
+            })}><option value="promotional">{t("marketing_campaigns_new.promotional")}</option><option value="transactional">{t("marketing_campaigns_new.transactional")}</option><option value="retention">{t("marketing_campaigns_new.retention")}</option><option value="acquisition">{t("marketing_campaigns_new.acquisition", "Acquisition")}</option><option value="reactivation">{t("marketing_campaigns_new.reactivation", "Reactivation")}</option></select></div>
             <div className="df-field"><label className="df-label">{t("marketing_campaigns_new.scheduled_at")}</label><input type="datetime-local" value={form.scheduled_at} onChange={e => setForm({
               ...form,
               scheduled_at: e.target.value

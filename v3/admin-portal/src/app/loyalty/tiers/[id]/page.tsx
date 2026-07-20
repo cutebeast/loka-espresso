@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { isNotFoundError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
-import { ArrowLeft, Save, RefreshCw, Cake, Truck, Crown, Star, Coffee, Ticket, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, RefreshCw, Cake, Truck, Crown, Star, Coffee, Ticket, Sparkles, Leaf } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 const L = [{
   code: "en",
@@ -41,7 +41,8 @@ const DEFAULT_BENEFITS = {
   exclusive_menu_access: false,
   monthly_free_item: false,
   vip_event_access: false,
-  complimentary_upgrades: false
+  complimentary_upgrades: false,
+  eco_campaign_multiplier: 1.0
 };
 function BenefitSwitch({
   label,
@@ -151,6 +152,13 @@ export default function TierEditPage() {
   const [msg, setMsg] = useState("");
   const [regen, setRegen] = useState(false);
   const [tr, setTr] = useState<Record<string, string>>({});
+  const [tiers, setTiers] = useState<{
+    tier_key: string;
+    display_name: string;
+  }[]>([]);
+  useEffect(() => {
+    api.getRaw<any>("/admin/loyalty/tiers?per_page=50&is_active=true").then(d => setTiers(d?.items || [])).catch(e => console.error('tiers:', e));
+  }, []);
   const load = useCallback(async () => {
     try {
       const d = await api.getRaw<any>(`/admin/loyalty/tiers/${id}`);
@@ -161,7 +169,10 @@ export default function TierEditPage() {
         min_lifetime_points: d.min_lifetime_points,
         points_multiplier: d.points_multiplier,
         sort_order: d.sort_order,
-        is_active: d.is_active
+        is_active: d.is_active,
+        validity_months: d.validity_months ?? "",
+        renewal_annual_spend: d.renewal_annual_spend ?? "",
+        downgrade_to_tier_key: d.downgrade_to_tier_key || ""
       });
       const bc = d.benefits_config || {};
       setBenefits({
@@ -175,7 +186,8 @@ export default function TierEditPage() {
         exclusive_menu_access: !!bc.exclusive_menu_access,
         monthly_free_item: !!bc.monthly_free_item,
         vip_event_access: !!bc.vip_event_access,
-        complimentary_upgrades: !!bc.complimentary_upgrades
+        complimentary_upgrades: !!bc.complimentary_upgrades,
+        eco_campaign_multiplier: bc.eco_campaign_multiplier || 1.0
       });
       const x: Record<string, string> = {};
       for (const lc of L) {
@@ -213,6 +225,9 @@ export default function TierEditPage() {
       pl.min_lifetime_points = Number(pl.min_lifetime_points);
       pl.points_multiplier = Number(pl.points_multiplier);
       pl.sort_order = Number(pl.sort_order);
+      pl.validity_months = pl.validity_months ? Number(pl.validity_months) : null;
+      pl.renewal_annual_spend = pl.renewal_annual_spend ? Number(pl.renewal_annual_spend) : null;
+      pl.downgrade_to_tier_key = pl.downgrade_to_tier_key || null;
       pl.benefits_config = {
         order_discount_percent: Number(benefits.order_discount_percent) || 0,
         order_discount_fixed: Number(benefits.order_discount_fixed) || 0,
@@ -224,7 +239,8 @@ export default function TierEditPage() {
         exclusive_menu_access: !!benefits.exclusive_menu_access,
         monthly_free_item: !!benefits.monthly_free_item,
         vip_event_access: !!benefits.vip_event_access,
-        complimentary_upgrades: !!benefits.complimentary_upgrades
+        complimentary_upgrades: !!benefits.complimentary_upgrades,
+        eco_campaign_multiplier: Number(benefits.eco_campaign_multiplier) || 1.0
       };
       await api.put(`/admin/loyalty/tiers/${id}`, pl);
       setMsg(t("admin.common.saved"));
@@ -376,7 +392,19 @@ export default function TierEditPage() {
               }} value={form.color_hex || ""} onChange={e => setForm({
                 ...form,
                 color_hex: e.target.value
-              })} /></div></div>
+              })} />              </div></div>
+              <div className="df-field"><label className="form-label">{t("loyalty_tiers_[id].validity_months")}</label><input type="number" className="w-full border rounded px-3 py-2 text-sm" value={form.validity_months ?? ""} onChange={e => setForm({
+              ...form,
+              validity_months: e.target.value
+            })} placeholder="12" /><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>Leave empty for no expiry</div></div>
+              <div className="df-field"><label className="form-label">{t("loyalty_tiers_[id].renewal_annual_spend")}</label><input type="number" className="w-full border rounded px-3 py-2 text-sm" value={form.renewal_annual_spend ?? ""} onChange={e => setForm({
+              ...form,
+              renewal_annual_spend: e.target.value
+            })} placeholder="500" /><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>RM spend required in 12 months to retain tier</div></div>
+              <div className="df-field"><label className="form-label">{t("loyalty_tiers_[id].downgrade_to")}</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.downgrade_to_tier_key || ""} onChange={e => setForm({
+              ...form,
+              downgrade_to_tier_key: e.target.value
+            })}><option value="">—</option>{tiers.filter(tier => tier.tier_key !== form.tier_key).map(tier => <option key={tier.tier_key} value={tier.tier_key}>{tier.display_name} ({tier.tier_key})</option>)}</select><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>Tier to downgrade to if renewal not met</div></div>
               <div className="df-field"><label style={{
               display: "flex",
               alignItems: "center",
@@ -413,7 +441,7 @@ export default function TierEditPage() {
               <BenefitNumber label={t("loyalty_tiers_[id].order_discount")} value={benefits.order_discount_percent} onChange={v => updateBenefit("order_discount_percent", v)} suffix="%" max={100} />
               <BenefitNumber label={t("loyalty_tiers_[id].order_discount_fixed")} value={benefits.order_discount_fixed} onChange={v => updateBenefit("order_discount_fixed", v)} suffix={symbol} step={0.5} />
               <BenefitNumber label={t("loyalty_tiers_[id].welcome_bonus_points")} value={benefits.welcome_bonus_points} onChange={v => updateBenefit("welcome_bonus_points", v)} suffix="pts" />
-            </div>
+              <BenefitNumber label={t("loyalty_tiers_[id].eco_campaign_multiplier")} value={benefits.eco_campaign_multiplier} onChange={v => updateBenefit("eco_campaign_multiplier", v)} suffix="x" step={0.5} />              </div>
 
             {benefits.birthday_reward_enabled && <div style={{
           marginBottom: 12
@@ -435,7 +463,7 @@ export default function TierEditPage() {
           gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
           gap: 10
         }}>
-              <BenefitSwitch label={t("loyalty_tiers_[id].birthday_reward")} icon={Cake} checked={benefits.birthday_reward_enabled} onChange={v => updateBenefit("birthday_reward_enabled", v)} />
+              <BenefitSwitch label={t("loyalty_tiers_[id].eco_campaign")} icon={Leaf} checked={benefits.eco_campaign_multiplier > 1} onChange={v => updateBenefit("eco_campaign_multiplier", v ? 2.0 : 1.0)} />              <BenefitSwitch label={t("loyalty_tiers_[id].birthday_reward")} icon={Cake} checked={benefits.birthday_reward_enabled} onChange={v => updateBenefit("birthday_reward_enabled", v)} />
               <BenefitSwitch label={t("loyalty_tiers_[id].free_delivery")} icon={Truck} checked={benefits.free_delivery} onChange={v => updateBenefit("free_delivery", v)} />
               <BenefitSwitch label={t("loyalty_tiers_[id].priority_seating")} icon={Star} checked={benefits.priority_seating} onChange={v => updateBenefit("priority_seating", v)} />
               <BenefitSwitch label={t("loyalty_tiers_[id].exclusive_menu")} icon={Crown} checked={benefits.exclusive_menu_access} onChange={v => updateBenefit("exclusive_menu_access", v)} />

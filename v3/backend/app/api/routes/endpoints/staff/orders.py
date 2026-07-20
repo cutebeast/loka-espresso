@@ -3,18 +3,20 @@
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import Field
 from sqlalchemy import select, func, case
 
-from app.api.routes.deps import CurrentStaff, DBDependency
+from app.api.routes.deps import CurrentStaff, DBDependency, RequireStaffRole
 from app.core.money import money_round, to_decimal
 from app.models.order import Order, OrderAdjustment, OrderLineItem, OrderStatusLog
 from app.models.menu import MenuItem
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
+from app.models.staff import StaffProfile
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, BaseSchema
@@ -24,6 +26,7 @@ from app.schemas.order import (
     PayWithWalletRequest,
     ProcessOrderPaymentRequest,
 )
+from app.services.order import OrderError, reverse_order_effects, validate_voucher_eligibility
 from app.services.payment import PaymentError, cancel_pending_order_payments, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
@@ -43,7 +46,7 @@ async def _require_store_order(staff, order: Order) -> None:
 
 @router.patch("/{order_id}/payment", response_model=APIResponse[dict])
 async def process_staff_order_payment(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     data: ProcessOrderPaymentRequest,
@@ -185,6 +188,8 @@ async def process_staff_order_payment(
             payment_url = checkout["url"]
         else:
             order_captured = money_round(order_captured + net_amount, precision, rounding_mode)
+            from app.services.payment import _accrue_loyalty_annual_spend
+            await _accrue_loyalty_annual_spend(db, payment)
 
     order.updated_at = datetime.now(timezone.utc)
 
@@ -228,7 +233,7 @@ async def process_staff_order_payment(
 
 @router.post("/{order_id}/apply-voucher", response_model=APIResponse[dict])
 async def apply_staff_order_voucher(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     data: ApplyOrderVoucherRequest,
@@ -248,6 +253,8 @@ async def apply_staff_order_voucher(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
+    if order.payment_status in ("captured", "settled"):
+        raise HTTPException(status_code=400, detail="Cannot apply voucher to an order that has already been paid")
 
     result = await db.execute(
         select(CustomerVoucher, VoucherDefinition)
@@ -286,6 +293,24 @@ async def apply_staff_order_voucher(
         tier_id = loyalty.current_tier_id if loyalty else None
         if tier_id is None or tier_id < voucher_def.minimum_tier_id:
             raise HTTPException(status_code=400, detail="Customer's loyalty tier is not eligible for this voucher")
+
+    if voucher_def:
+        li_ids_result = await db.execute(
+            select(OrderLineItem.menu_item_id).where(OrderLineItem.order_id == order.id)
+        )
+        try:
+            await validate_voucher_eligibility(
+                db, voucher_def, customer_voucher,
+                customer_id=order.customer_id,
+                store_id=order.store_id,
+                menu_item_ids={r[0] for r in li_ids_result.all()},
+                has_other_discount=(
+                    to_decimal(order.reward_discount) > 0 or to_decimal(order.voucher_discount) > 0
+                ),
+                current_order_id=order.id,
+            )
+        except OrderError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
     discount = Decimal(0)
     voucher_type = voucher_def.voucher_type if voucher_def else ""
@@ -365,7 +390,7 @@ async def apply_staff_order_voucher(
 
 @router.post("/{order_id}/apply-reward", response_model=APIResponse[dict])
 async def apply_staff_order_reward(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     data: ApplyOrderRewardRequest,
@@ -383,6 +408,8 @@ async def apply_staff_order_reward(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
+    if order.payment_status in ("captured", "settled"):
+        raise HTTPException(status_code=400, detail="Cannot apply reward to an order that has already been paid")
 
     result = await db.execute(
         select(CustomerReward, RewardCatalog)
@@ -476,7 +503,7 @@ async def apply_staff_order_reward(
 
 @router.post("/{order_id}/wallet-payment", response_model=APIResponse[dict])
 async def staff_pay_with_wallet(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     data: PayWithWalletRequest,
@@ -578,6 +605,9 @@ async def staff_pay_with_wallet(
     )
     db.add(payment)
 
+    from app.services.payment import _accrue_loyalty_annual_spend
+    await _accrue_loyalty_annual_spend(db, payment)
+
     new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
     if new_total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
@@ -617,7 +647,7 @@ class AddLineItemRequest(BaseSchema):
 
 @router.post("/{order_id}/items", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
 async def add_staff_order_line_item(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     data: AddLineItemRequest,
@@ -666,9 +696,8 @@ async def add_staff_order_line_item(
         + to_decimal(order.delivery_fee)
         + to_decimal(order.service_charge)
         + to_decimal(order.tax_amount)
-        - to_decimal(order.discount_amount)
-        - to_decimal(order.voucher_discount)
-        - to_decimal(order.reward_discount),
+        + to_decimal(order.tip_amount)
+        - to_decimal(order.discount_amount),
         precision,
         rounding_mode,
     )
@@ -688,7 +717,7 @@ async def add_staff_order_line_item(
 
 @router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])
 async def remove_staff_order_line_item(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     line_item_id: int,
@@ -726,9 +755,8 @@ async def remove_staff_order_line_item(
         + to_decimal(order.delivery_fee)
         + to_decimal(order.service_charge)
         + to_decimal(order.tax_amount)
-        - to_decimal(order.discount_amount)
-        - to_decimal(order.voucher_discount)
-        - to_decimal(order.reward_discount),
+        + to_decimal(order.tip_amount)
+        - to_decimal(order.discount_amount),
         precision,
         rounding_mode,
     )
@@ -751,7 +779,7 @@ async def remove_staff_order_line_item(
 
 @router.post("/{order_id}/cancel", response_model=APIResponse[dict])
 async def cancel_staff_order(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     order_id: int,
     reason: str | None = None,
@@ -767,6 +795,13 @@ async def cancel_staff_order(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise HTTPException(status_code=400, detail="Order is already completed or cancelled")
+
+    from app.models.payment import Payment
+    has_captured = (await db.execute(
+        select(Payment.id).where(Payment.order_id == order.id, Payment.status == "captured").limit(1)
+    )).scalar_one_or_none()
+    if has_captured is not None:
+        raise HTTPException(status_code=400, detail="Order has captured payments — issue a refund before cancelling")
 
     old_status = order.status
     order.status = "cancelled_by_merchant"
@@ -785,6 +820,7 @@ async def cancel_staff_order(
     )
     db.add(log)
     await db.flush()
+    await reverse_order_effects(db, order)
     cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
     return APIResponse(data={

@@ -143,7 +143,7 @@ export default function TimeClockPage() {
     setPin("");
   };
   const verifyAndExecute = async () => {
-    if (!pendingAction || !pin || pin.length < 4) {
+    if (!pendingAction || !pin || pin.length < 6) {
       setError(t("time_clock.err_enter_pin"));
       return;
     }
@@ -350,7 +350,7 @@ export default function TimeClockPage() {
           setPin("");
           setPendingAction(null);
         }}>{t("time_clock.cancel")}</button>
-            <button className="btn btn-primary flex-1" onClick={verifyAndExecute} disabled={actionLoading || pin.length < 4}>
+            <button className="btn btn-primary flex-1" onClick={verifyAndExecute} disabled={actionLoading || pin.length < 6}>
               {actionLoading ? t("time_clock.checking") : t("time_clock.ok")}
             </button>
           </div>

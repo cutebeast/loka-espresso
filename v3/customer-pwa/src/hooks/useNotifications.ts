@@ -12,10 +12,17 @@ export function useNotifications() {
   const fetchUnreadCount = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const notifRes = await api.get('/notifications/me');
-      const data = notifRes.data as { items?: Notification[] } | Notification[];
-      const notifs = Array.isArray(data) ? data : (data?.items ?? []);
-      setUnreadCount(notifs.filter((n) => !n.is_read).length);
+      // Backend supports is_read=false — use the paginated total so the badge
+      // reflects all unread notifications, not just the first page.
+      const notifRes = await api.get('/notifications/me', { params: { per_page: 1, is_read: false } });
+      const data = notifRes.data as { total?: number; items?: Notification[] } | Notification[];
+      if (Array.isArray(data)) {
+        setUnreadCount(data.filter((n) => !n.is_read).length);
+      } else if (typeof data?.total === 'number') {
+        setUnreadCount(data.total);
+      } else {
+        setUnreadCount((data?.items ?? []).filter((n) => !n.is_read).length);
+      }
     } catch (err) { console.error("Failed to fetch notifications:", err); }
   }, [isAuthenticated]);
 

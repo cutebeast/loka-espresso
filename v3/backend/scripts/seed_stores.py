@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import secrets
 import sys
 from datetime import time
 from pathlib import Path
@@ -18,64 +19,66 @@ from scripts._db_utils import confirm, get_db, guard_production
 
 STORES = [
     {
-        "store_code": "HQ-001",
-        "store_name": "Brand Headquarters",
-        "slug": "hq",
+        "store_code": "PKL-001",
+        "store_name": "Loka Espresso (PKL)",
+        "slug": "pavilion",
         "brand_name": "LOKA Espresso",
-        "address_line_1": "123 Admin Street",
+        "address_line_1": "Lot P4.17.00, E4.17.00 & E4.17.01, Pavilion Kuala Lumpur",
+        "address_line_2": "168, Jln Bukit Bintang, Bukit Bintang",
         "city": "Kuala Lumpur",
-        "state_province": "Wilayah Persekutuan",
-        "postal_code": "50000",
+        "state_province": "Wilayah Persekutuan Kuala Lumpur",
+        "postal_code": "55100",
         "country_code": "MY",
-        "latitude": 3.1390,
-        "longitude": 101.6869,
-        "phone_number": "+60123456789",
-        "email_address": "hq@lokaespresso.my",
+        "latitude": 3.1490,
+        "longitude": 101.7135,
+        "phone_number": "+60127889314",
+        "email_address": "pavilion@lokaespresso.my",
         "timezone": "Asia/Kuala_Lumpur",
         "currency_code": "MYR",
         "pickup_lead_minutes": 15,
         "delivery_radius_km": 10.00,
     },
     {
-        "store_code": "KLCC-01",
-        "store_name": "LOKA Espresso KLCC",
-        "slug": "klcc",
+        "store_code": "KLIA1-001",
+        "store_name": "Loka Loka Cafe (KLIA1)",
+        "slug": "klia",
         "brand_name": "LOKA Espresso",
-        "address_line_1": "Suria KLCC, Lot G-12",
-        "city": "Kuala Lumpur",
-        "state_province": "Wilayah Persekutuan",
-        "postal_code": "50088",
+        "address_line_1": "Terminal 1, Domestic Arrival Hall, KLIA",
+        "address_line_2": "Kuala Lumpur International Airport",
+        "city": "Sepang",
+        "state_province": "Selangor",
+        "postal_code": "64000",
         "country_code": "MY",
-        "latitude": 3.1588,
-        "longitude": 101.7116,
-        "phone_number": "+60321631234",
-        "email_address": "klcc@lokaespresso.my",
+        "latitude": 2.7456,
+        "longitude": 101.7099,
+        "phone_number": "+60127889314",
+        "email_address": "klia@lokaespresso.my",
         "timezone": "Asia/Kuala_Lumpur",
         "currency_code": "MYR",
         "pickup_lead_minutes": 15,
-        "delivery_radius_km": 8.00,
+        "delivery_radius_km": 5.00,
     },
 ]
 
 # (day_of_week, open_time, close_time, last_order_time, is_24_hours)
 OPERATING_HOURS = {
-    1: [  # HQ
+    1: [  # Loka Espresso Pavilion — closes 10pm daily
         (0, "08:00", "22:00", "21:30", False),
         (1, "08:00", "22:00", "21:30", False),
         (2, "08:00", "22:00", "21:30", False),
         (3, "08:00", "22:00", "21:30", False),
         (4, "08:00", "22:00", "21:30", False),
         (5, "08:00", "23:00", "22:30", False),
-        (6, "00:00", "23:59", "23:30", True),
-    ],
-    2: [  # KLCC
-        (0, "07:00", "22:00", "21:30", False),
-        (1, "07:00", "22:00", "21:30", False),
-        (2, "07:00", "22:00", "21:30", False),
-        (3, "07:00", "22:00", "21:30", False),
-        (4, "07:00", "23:00", "22:30", False),
-        (5, "08:00", "23:00", "22:30", False),
         (6, "08:00", "22:00", "21:30", False),
+    ],
+    2: [  # Loka Loka Cafe KLIA — 24 hours
+        (0, "00:00", "23:59", "23:30", True),
+        (1, "00:00", "23:59", "23:30", True),
+        (2, "00:00", "23:59", "23:30", True),
+        (3, "00:00", "23:59", "23:30", True),
+        (4, "00:00", "23:59", "23:30", True),
+        (5, "00:00", "23:59", "23:30", True),
+        (6, "00:00", "23:59", "23:30", True),
     ],
 }
 
@@ -92,33 +95,39 @@ async def seed():
     async with get_db() as db:
         inserted_ids: dict[str, int] = {}
         for store in STORES:
+            # display_key is generated once per store on first insert and
+            # intentionally NOT updated on conflict, so POS customer displays
+            # keep working across re-seeds.
             result = await db.execute(
                 text("""
                     INSERT INTO stores (
                         store_code, store_name, slug, brand_name,
-                        address_line_1, city, state_province, postal_code, country_code,
+                        address_line_1, address_line_2, city, state_province, postal_code, country_code,
                         latitude, longitude, phone_number, email_address,
                         timezone, currency_code,
                         pickup_lead_minutes, delivery_radius_km,
-                        is_active, is_accepting_orders
+                        is_active, is_accepting_orders, display_key
                     ) VALUES (
                         :store_code, :store_name, :slug, :brand_name,
-                        :address_line_1, :city, :state_province, :postal_code, :country_code,
+                        :address_line_1, :address_line_2, :city, :state_province, :postal_code, :country_code,
                         :latitude, :longitude, :phone_number, :email_address,
                         :timezone, :currency_code,
                         :pickup_lead_minutes, :delivery_radius_km,
-                        true, true
+                        true, true, :display_key
                     )
                     ON CONFLICT (store_code) DO UPDATE SET
                         store_name = EXCLUDED.store_name,
                         is_active = true,
                         is_accepting_orders = true
-                    RETURNING id
+                    RETURNING id, display_key
                 """),
-                store,
+                {**store, "display_key": secrets.token_hex(16)},
             )
-            store_id = result.scalar_one()
+            row = result.one()
+            store_id = row.id
             inserted_ids[store["store_code"]] = store_id
+            # display_key is a shared secret for the public customer display —
+            # retrieve it via GET /api/staff/store instead of printing it to logs.
             print(f"  Store '{store['store_name']}' id={store_id}")
 
             # Operating hours
@@ -179,6 +188,14 @@ async def seed():
                         "token": f"{store_id}-{table_name}-{store_id}{table_name}",
                     },
                 )
+
+        # Deactivate legacy stores that are not part of the current seed set
+        # (e.g. HQ-001 / KLCC-01 from older seeds) so stale rows don't leak
+        # into bootstrap configs or store pickers on existing DBs.
+        await db.execute(
+            text("UPDATE stores SET is_active = false WHERE store_code != ALL(:codes)"),
+            {"codes": [s["store_code"] for s in STORES]},
+        )
 
 
 async def main():

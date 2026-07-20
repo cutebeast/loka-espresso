@@ -44,8 +44,8 @@ function parseTime(timeStr: string): {
   minute: number;
 } | null {
   const clean = timeStr.trim();
-  // 24-hour format: "14:30"
-  const m24 = clean.match(/^(\d{1,2}):(\d{2})$/);
+  // 24-hour format: "14:30" or "14:30:00" (backend serializes time as HH:MM:SS)
+  const m24 = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (m24 && m24[1] && m24[2]) {
     const h = parseInt(m24[1], 10);
     const min = parseInt(m24[2], 10);
@@ -105,14 +105,10 @@ export default function ReservationsPage() {
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const fetchReservations = useCallback(async () => {
     try {
-      const statusParam = filter === "all" || filter === "cancelled" ? undefined : filter;
-      const data = await getReservations(storeId, dateFilter, statusParam);
-      const all = Array.isArray(data) ? data : [];
-      if (filter === "cancelled") {
-        setReservations(all.filter(r => CANCELLED_STATUSES.includes(r.status)));
-      } else {
-        setReservations(all);
-      }
+      // The backend ignores a status query param — fetch the day's
+      // reservations and filter client-side below.
+      const data = await getReservations(storeId, dateFilter);
+      setReservations(Array.isArray(data) ? data : []);
       setError("");
     } catch (err: unknown) {
       const msg = parseApiError(err, "Failed to load reservations");
@@ -121,10 +117,11 @@ export default function ReservationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [storeId, dateFilter, filter]);
-  usePolling(fetchReservations, [storeId, dateFilter, filter], {
+  }, [storeId, dateFilter]);
+  usePolling(fetchReservations, [storeId, dateFilter], {
     interval: 30000
   });
+  const filteredReservations = filter === "all" ? reservations : filter === "cancelled" ? reservations.filter(r => CANCELLED_STATUSES.includes(r.status)) : reservations.filter(r => r.status === filter);
   const handleUpdateStatus = async (id: number, status: ReservationStatus) => {
     setUpdatingId(id);
     try {
@@ -243,7 +240,7 @@ export default function ReservationsPage() {
           </button>)}
       </div>
 
-      {loading ? <SkeletonCard count={6} /> : reservations.length === 0 ? <EmptyState title={t("reservations.no_reservations")} description={t("reservations.no_reservations_found_for_the_selected")} icon={<CalendarDays size={48} />} /> : <div className="table-container" style={{
+      {loading ? <SkeletonCard count={6} /> : filteredReservations.length === 0 ? <EmptyState title={t("reservations.no_reservations")} description={t("reservations.no_reservations_found_for_the_selected")} icon={<CalendarDays size={48} />} /> : <div className="table-container" style={{
       borderRadius: "var(--radius-md)",
       border: "1px solid var(--color-border-light)"
     }}>
@@ -256,7 +253,7 @@ export default function ReservationsPage() {
               </tr>
             </thead>
             <tbody>
-              {reservations.map(res => {
+              {filteredReservations.map(res => {
             const overdue = isOverdue(res);
             return <tr key={res.id} style={overdue ? {
               background: "var(--color-error-bg)"

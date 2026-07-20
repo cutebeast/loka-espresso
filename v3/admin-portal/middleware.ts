@@ -69,6 +69,7 @@ export async function middleware(request: NextRequest) {
   const connectHosts = ["'self'"];
   if (process.env.NODE_ENV === "development") {
     connectHosts.push("http://localhost:13800");
+    connectHosts.push("http://127.0.0.1:13800");
   }
   if (apiUrl.startsWith("http://") || apiUrl.startsWith("https://")) {
     try {

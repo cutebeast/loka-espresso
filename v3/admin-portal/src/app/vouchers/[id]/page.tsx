@@ -4,7 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { isNotFoundError } from "@/lib/errors";
+import { isNotFoundError, parseApiError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
@@ -55,6 +55,7 @@ interface Voucher {
   promo_type?: string;
   how_to_redeem?: string;
   terms_and_conditions?: string;
+  minimum_tier_id?: number | null;
   customer_segments?: string[];
   is_active: boolean;
 }
@@ -97,6 +98,13 @@ export default function VoucherEditPage() {
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState<Record<string, any>>({});
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [tiers, setTiers] = useState<{
+    id: number;
+    display_name: string;
+  }[]>([]);
+  useEffect(() => {
+    api.getRaw<any>("/admin/loyalty/tiers?per_page=50&is_active=true").then(d => setTiers(d?.items || [])).catch(e => console.error('tiers:', e));
+  }, []);
   const loadVoucher = async () => {
     setLoading(true);
     try {
@@ -114,6 +122,7 @@ export default function VoucherEditPage() {
         valid_from: d.valid_from?.slice(0, 16) || "",
         valid_until: d.valid_until?.slice(0, 16) || "",
         promo_type: d.promo_type || "generic",
+        minimum_tier_id: d.minimum_tier_id ?? "",
         description: d.description || "",
         short_description: d.short_description || "",
         long_description: d.long_description || "",
@@ -176,12 +185,15 @@ export default function VoucherEditPage() {
       payload.validity_days = form.validity_days ? Number(form.validity_days) : null;
       payload.max_uses_per_customer = Number(form.max_uses_per_customer) || 1;
       payload.minimum_order_value = Number(form.minimum_order_value) || 0;
+      payload.minimum_tier_id = form.minimum_tier_id ? Number(form.minimum_tier_id) : null;
+      payload.valid_from = form.valid_from || null;
+      payload.valid_until = form.valid_until || null;
       // Discount value stored as-is (percentage: 50 means 50%, backend divides by 100)
       payload.discount_value = Number(form.discount_value);
       await api.put(`/admin/vouchers/${voucherId}`, payload);
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
+    } catch (e: any) {console.error(e); setMsg(parseApiError(e, t("admin.errors.loadFailed"))); } finally {
       setSaving(false);
     }
   };
@@ -377,6 +389,17 @@ export default function VoucherEditPage() {
             ...form,
             validity_days: e.target.value
           })} /></div>
+            <div className="df-field">
+              <label className="df-label">{t("vouchers_[id].loyalty_tier_required")}</label>
+              <select value={form.minimum_tier_id ?? ""} onChange={e => setForm({
+            ...form,
+            minimum_tier_id: e.target.value ? Number(e.target.value) : ""
+          })}>
+                <option value="">{t("vouchers_[id].no_restriction")}</option>
+                {tiers.map(tier => <option key={tier.id} value={tier.id}>{tier.display_name}</option>)}
+              </select>
+              <div className="df-hint">{t("vouchers_[id].customer_must_be_at_least_this")}</div>
+            </div>
             <div className="df-field"><label className="df-label">{t("vouchers_[id].promo_type")}</label><select value={form.promo_type} onChange={e => setForm({
             ...form,
             promo_type: e.target.value

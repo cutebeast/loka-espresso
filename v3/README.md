@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Documentation
 
-*Last updated: 2026-07-11*
+*Last updated: 2026-07-20*
 
 ## Overview
 
@@ -74,7 +74,9 @@ All three portals use HttpOnly cookie auth:
 - `kitchen_staff` — Kitchen, Orders, Tables, personal sections
 - `delivery_coordinator` — Orders, Tables, personal sections
 
-**Staff PIN**: Must be exactly 6 digits. All staff PINs = 123456.
+**Staff PIN**: Must be exactly 6 digits. All staff PINs = 123456. Staff whose PIN was never changed (`pin_last_changed_at IS NULL`) are blocked from staff endpoints (`403 must_change_pin`) until they change it.
+
+**Staff money endpoints** (wallet top-up, order payment/discount, voucher/reward apply & redeem, item modify, order cancel) require role `cashier`, `server`, `shift_supervisor`, or `store_manager`; kitchen/delivery/readonly roles get 403. Admin-context staff sessions pass via admin override.
 
 ## Admin Portal (130 routes, 30 sections)
 
@@ -121,7 +123,7 @@ Staff portal calls `/api/staff/*` (not `/api/admin/*`):
 - Tables: `GET /staff/tables`, `PATCH /staff/tables/{id}/status`, `POST /staff/tables/{id}/generate-qr`
 - Orders: `GET /staff/orders`, `GET /staff/orders/{id}`, `PATCH /staff/orders/{id}/status`, `PATCH /staff/orders/{id}/transfer-table`, `PATCH /staff/orders/{id}/payment`, `POST /staff/orders/{id}/apply-voucher`, `POST /staff/orders/{id}/apply-reward`, `POST /staff/orders/{id}/wallet-payment`, `POST /staff/orders/{id}/items`, `DELETE /staff/orders/{id}/items/{line_item_id}`, `POST /staff/orders/{id}/cancel`
 - Reservations: `GET /staff/reservations`, `PATCH /staff/reservations/{id}/status`
-- Display: `GET/POST/DELETE /staff/pos/display-state` (Redis-backed)
+- Display: `GET/POST/DELETE /staff/pos/display-state` (Redis-backed; GET is public but requires `?key=<store display_key>` and serves a sanitized state with payment URLs/tokens stripped)
 - Auth: `GET /staff/auth/me`, `POST /staff/auth/verify-pin`, `POST /staff/auth/change-pin`, `POST /staff/auth/change-password`
 - POS: `POST /staff/pos/orders` (creates order with pay_token for Stripe QR)
 - Customers: `GET /staff/customers/search`, `GET /staff/customers/{id}`, `GET /staff/customers/{id}/wallet`
@@ -130,7 +132,7 @@ Staff portal calls `/api/staff/*` (not `/api/admin/*`):
 
 ### Customer display (`/pos/display`)
 - **Same browser**: BroadcastChannel for instant sync
-- **Cross-device**: Redis polling every 2 seconds
+- **Cross-device**: Redis polling every 2 seconds, requires the per-store `display_key` (`/pos/display?store=N&key=...` — the POS opens it with both params; polled state has pay tokens/URLs stripped and shows a payment-pending prompt instead)
 - **Idle screen**: Wallet top-up QR, store branding, clock
 - **Payment phases**: browsing → payment → qr_payment → paid
 - **Fullscreen + Wake Lock** for kiosk-like operation
@@ -294,4 +296,18 @@ The customer PWA uses Next.js 16 Turbopack. After rebuilding, the pm2 process mu
 - POS, Kitchen, Equipment, Garbage, Grease Trap, Inventory, Wastage pages now
   check the user's role before rendering content
 - `useStaffRole.tsx` exports `RoleGuard` component for reusable page guards
+
+## Security & reliability hardening (2026-07-20, round 32 audit)
+
+Full-system audit (~60 findings, each verified in code before fixing). Highlights — see `AGENTS.md` "Round 32 — go-live audit & hardening" for the complete list:
+
+- **Payments/wallets**: wallet payments debit the wallet on confirm (row-locked + ledger); customers can no longer self-confirm cash payments or pay already-paid/cancelled orders; HitPay wallet top-up and guest-pay fixed end-to-end; Stripe refund webhook no longer double-counts
+- **Auth**: customer accounts are created only AFTER OTP verification (was: account + welcome points before OTP check); `/admin/config` is system_admin-only with sensitive values masked; admin registration can no longer escalate privileges
+- **Order lifecycle**: cancellation now reverses loyalty points, vouchers/rewards, and stock; customer self-cancel limited to pending/unpaid orders; voucher usage limits and scopes enforced; reservation double-booking blocked
+- **Staff authorization**: money endpoints restricted to cashier/server/shift_supervisor/store_manager; role guards fixed (no more hooks crash) and extended to wallet/kitchen pages
+- **Public surface**: rate limits on all unauthenticated mutation endpoints (keyed on real client IP behind Caddy); table scan requires its QR token; customer display state requires the per-store `display_key` and strips payment tokens; avatar uploads fully validated; SVG uploads rejected
+- **Frontend fixes**: saved-card flow (missing `stripe.confirmSetup`), percentage-voucher discount, checkout voucher picker, kiosk cart line identity, HitPay return handling, campaign/reward form 422s, empty-date 422s across admin forms, tier progress uses lifetime points
+- **Infra**: `infra/db` schema regenerated from models (`scripts/dump_schema_sql.py` → `09_schema_sync.sql`, seeds in `10_seed_data.sql`); Docker backend runs `alembic upgrade head` on boot; Caddy defaults moved to `*.lokaespresso.com`
+
+Known intentional deviations: OTP bypass stays enabled until the lokaespresso.com cutover (then set `otp.bypass_enabled=false` and rotate the code); the tier validity/downgrade evaluation job is not built yet (fields stored only).
 - Access-denied message shown when role doesn't match

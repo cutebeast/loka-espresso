@@ -26,7 +26,7 @@ export default function ProfilePage() {
     logout
   } = useAuthStore();
   const {
-    points,
+    lifetimePoints,
     tier
   } = useWalletStore();
   const {
@@ -41,22 +41,21 @@ export default function ProfilePage() {
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  /* Tier progress — use configStore tiers, fall back to sensible defaults */
+  /* Tier progress — tiers are based on lifetime points (never decrease on redemption) */
   const tierThresholds: Record<string, number> = configTiers?.length ? configTiers.reduce((acc: Record<string, number>, t) => {
     acc[t.name] = t.min_points;
     return acc;
   }, {} as Record<string, number>) : {
-    Bronze: 0,
-    Silver: 1000,
-    Gold: 3000,
-    Platinum: 5000
+    Bloom: 0,
+    Origin: 500,
+    Reserve: 1500
   };
   const tiers = Object.keys(tierThresholds);
-  const currentTierIdx = tiers.indexOf(tier || 'Bronze');
-  const nextTier = tiers[currentTierIdx + 1] || 'Platinum';
-  const nextThreshold = tierThresholds[nextTier] || 5000;
-  const progress = Math.min(points / nextThreshold * 100, 100);
-  const ptsToNext = Math.max(0, nextThreshold - points);
+  const currentTierIdx = tiers.indexOf(tier || 'Bloom');
+  const nextTier = tiers[currentTierIdx + 1] || 'Reserve';
+  const nextThreshold = tierThresholds[nextTier] || 1500;
+  const progress = Math.min(lifetimePoints / nextThreshold * 100, 100);
+  const ptsToNext = Math.max(0, nextThreshold - lifetimePoints);
   useEffect(() => {
     if (!useAuthStore.getState().isAuthenticated) return;
     setLoadingOrders(true);
@@ -193,7 +192,7 @@ export default function ProfilePage() {
             <div className="profile-user-info">
               <div className="profile-user-name">{user?.display_name || t('profile.guest')}</div>
               <div className="profile-user-phone">{user?.phone_number || t('profile.noPhone')}</div>
-              <div className={`profile-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
+              <div className={`profile-tier-badge ${(tier || 'Bloom').toLowerCase()}`}>
                 <Crown size={12} /> {t('profile.tierMember', {
                 tier
               })}

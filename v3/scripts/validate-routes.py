@@ -192,7 +192,7 @@ def main() -> int:
     skip_prefixes = (
         "/login", "/logout", "/pos", "/orders", "/kitchen", "/tables",
         "/reservations", "/time-clock", "/wallet", "/profile", "/equipment",
-        "/", "/stores", "/loyalty", "/menu", "/customers", "/staff",
+        "/stores", "/loyalty", "/menu", "/customers", "/staff",
         "/inventory", "/notifications", "/feedback", "/reports", "/refunds",
         "/admins", "/settings", "/audit-log", "/content", "/marketing",
         "/rewards", "/promotions", "/vouchers", "/surveys", "/referrals",

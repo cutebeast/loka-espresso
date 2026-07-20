@@ -60,7 +60,7 @@ export function useAuthFlow() {
       const id = parseInt(promo, 10);
       if (!isNaN(id)) {
         pendingPromoId.current = id;
-        setPage('promotions', { preselectedId: id });
+        setPage('promotions', { selectedPromoId: id });
       }
     }
 
@@ -216,6 +216,10 @@ export function useAuthFlow() {
     } else if (pendingArticleSlug.current != null) {
       setPage('information', { selectedInfoSlug: pendingArticleSlug.current });
       pendingArticleSlug.current = null;
+    }
+    if (pendingPromoId.current != null) {
+      setPage('promotions', { selectedPromoId: pendingPromoId.current });
+      pendingPromoId.current = null;
     }
   }, [setPage, setAuthDone]);
 

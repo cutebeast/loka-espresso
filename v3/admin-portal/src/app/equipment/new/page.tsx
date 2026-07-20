@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save } from "lucide-react";
 export default function NewEquipmentPage() {
   const {
@@ -45,11 +46,14 @@ export default function NewEquipmentPage() {
       };
       const n = Number(payload.store_id);
       payload.store_id = Number.isNaN(n) ? null : n;
+      ["purchase_date", "warranty_expiry", "last_maintenance_date", "next_maintenance_date"].forEach(k => {
+        if (!payload[k]) payload[k] = null;
+      });
       const r: any = await api.post("/admin/equipment", payload);
       const id = r?.id;
       if (id) router.push(`/equipment/${id}`);
     } catch (e: any) {
-      setError(e?.message || "Failed to create equipment");
+      setError(parseApiError(e, "Failed to create equipment"));
     } finally {
       setSaving(false);
     }

@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
 from app.services.translation import merge_translations, translate_single
 from app.models.customer import Customer
-from app.models.loyalty import LoyaltyAccount
+from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -284,6 +284,11 @@ async def redeem_reward(
     """Redeem a reward."""
     reward = await _get_reward_or_404(db, reward_id)
 
+    if not reward.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reward is no longer active")
+    if reward.maximum_redemptions is not None and (reward.total_redemptions or 0) >= reward.maximum_redemptions:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This reward has reached its redemption limit")
+
     # Check customer's loyalty points (lock row to prevent race conditions)
     loyalty_result = await db.execute(
         select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id).with_for_update()
@@ -292,17 +297,37 @@ async def redeem_reward(
     if loyalty_account is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No loyalty account found")
 
+    if reward.minimum_tier_id:
+        tier_id = loyalty_account.current_tier_id
+        if tier_id is None or tier_id < reward.minimum_tier_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Your loyalty tier is not eligible for this reward",
+            )
+
     if loyalty_account.points_balance < reward.points_cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient points")
 
-    # Deduct points
+    # Deduct points (with ledger entry mirroring the award pattern)
     loyalty_account.points_balance -= reward.points_cost
+    loyalty_account.lifetime_points_redeemed = (loyalty_account.lifetime_points_redeemed or 0) + reward.points_cost
+    db.add(LoyaltyPointsLedger(
+        loyalty_account_id=loyalty_account.id,
+        customer_id=customer.id,
+        event_type="reward_redemption",
+        points_delta=-reward.points_cost,
+        running_balance=loyalty_account.points_balance,
+        reward_catalog_id=reward.id,
+        description=f"Redeemed reward: {reward.reward_name}",
+    ))
 
     # Resolve default store
     store_result = await db.execute(
         select(Store.id).where(Store.deleted_at.is_(None), Store.is_active.is_(True)).limit(1)
     )
     default_store_id = store_result.scalar_one_or_none()
+    if default_store_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No active store available for redemption")
 
     # Create customer reward
     customer_reward = CustomerReward(

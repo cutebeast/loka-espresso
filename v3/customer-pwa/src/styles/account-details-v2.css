@@ -96,10 +96,9 @@
   color: var(--loka-white);
 }
 
-.ad-tier-badge.bronze   { background: linear-gradient(135deg, var(--tier-bronze), var(--tier-bronze-dark)); }
-.ad-tier-badge.silver   { background: linear-gradient(135deg, var(--tier-silver), var(--tier-silver-dark)); }
-.ad-tier-badge.gold     { background: linear-gradient(135deg, var(--loka-accent-copper), var(--loka-accent-brown)); }
-.ad-tier-badge.platinum { background: linear-gradient(135deg, var(--tier-platinum), var(--tier-platinum-dark)); }
+.ad-tier-badge.bloom   { background: linear-gradient(135deg, var(--tier-bloom), var(--tier-bloom-dark)); }
+.ad-tier-badge.origin  { background: linear-gradient(135deg, var(--tier-origin), var(--tier-origin-dark)); }
+.ad-tier-badge.reserve { background: linear-gradient(135deg, var(--tier-reserve), var(--tier-reserve-dark)); }
 
 .ad-group-header {
   padding: 20px 20px 8px;

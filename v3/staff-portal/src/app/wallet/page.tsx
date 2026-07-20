@@ -1,5 +1,6 @@
 "use client";
 
+import { RoleGuard, canUsePOS } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { searchCustomers, getCustomerWallet, getCustomerById, topUpWallet, api, markRewardUsed, markVoucherUsed, scanCustomerCode, scanRewardCode, scanVoucherCode, type Customer, type CustomerWallet, type Reward, type Voucher } from "@/lib/api";
@@ -16,6 +17,11 @@ type Tab = "topup" | "rewards";
 type PaymentMethod = "cash";
 const QUICK_AMOUNTS = [20, 50, 100, 200, 300, 500];
 export default function WalletPage() {
+  return <RoleGuard allowed={canUsePOS}>
+    <WalletPageContent />
+  </RoleGuard>;
+}
+function WalletPageContent() {
   const {
     t
   } = useTranslation();
@@ -554,7 +560,7 @@ export default function WalletPage() {
               textAlign: "center"
             }} autoFocus />
                   </form>
-                  <button className="btn btn-primary w-full" onClick={handleTopUp} disabled={toppingUp || pin.length < 4}>
+                  <button className="btn btn-primary w-full" onClick={handleTopUp} disabled={toppingUp || pin.length < 6}>
                     {toppingUp ? t("wallet.processing") : `${t("wallet.top_up_rm")}${(() => {
               const a = parseFloat(amount || "0");
               return isNaN(a) ? "0.00" : a.toFixed(2);
@@ -596,7 +602,7 @@ export default function WalletPage() {
               setRedeemPin("");
               setPendingRedeem(null);
             }}>{t("wallet.cancel")}</button>
-                    <button className="btn btn-primary flex-1" onClick={executeRedeem} disabled={redeemPin.length < 4}>{t("wallet.confirm")}</button>
+                    <button className="btn btn-primary flex-1" onClick={executeRedeem} disabled={redeemPin.length < 6}>{t("wallet.confirm")}</button>
                   </div>
                 </Card>}
               {/* Rewards */}

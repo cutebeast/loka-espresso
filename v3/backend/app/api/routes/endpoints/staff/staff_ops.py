@@ -265,7 +265,15 @@ async def admin_select_store(request: Request, response: Response, db: DBDepende
         raise HTTPException(status_code=400, detail="Token and store_id required")
     try:
         payload = decode_token(token)
-        if payload.get("type") != "admin":
+        token_type = payload.get("type")
+        is_admin_token = token_type == "admin"
+        # Admin-context staff token (admin logged in with a store selected)
+        is_admin_context_staff = (
+            token_type == "staff"
+            and payload.get("admin_id")
+            and not payload.get("staff_id")
+        )
+        if not (is_admin_token or is_admin_context_staff):
             raise HTTPException(status_code=401, detail="Not an admin token")
         jti = payload.get("jti")
         if jti:
@@ -410,10 +418,17 @@ async def staff_refresh_token(request: Request, response: Response, db: DBDepend
             token_type="staff",
             extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id, "admin_name": admin.display_name}
         )
+        # Rotate the refresh token and return it in the JSON body as well —
+        # the Next.js proxy ignores Set-Cookie, so without the body value the
+        # next refresh would 401 (token is blacklisted below).
+        new_refresh_token = create_refresh_token(
+            admin.id,
+            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id}
+        )
         # Revoke this refresh token so it cannot be reused (atomic)
         await blacklist_refresh_token(db, jti, admin.principal_id, payload)
-        set_staff_auth_cookies(response, access_token, "")
-        return {"tokens": {"access_token": access_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
+        set_staff_auth_cookies(response, access_token, new_refresh_token)
+        return {"tokens": {"access_token": access_token, "refresh_token": new_refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
 
     raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -548,7 +563,7 @@ async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
     today_resv = (await db.execute(
         select(func.count(Reservation.id)).where(
             Reservation.store_id == store_id,
-            Reservation.reservation_date == date.today(),
+            Reservation.reservation_date == today_start.date(),
             Reservation.status.notin_([
                 "cancelled_by_guest", "cancelled_by_merchant", "no_show"
             ]),
@@ -650,6 +665,9 @@ async def staff_store_config(db: DBDependency, staff: CurrentStaff):
         "service_charge": _to_float(config_map.get("order.service_charge"), 0.0),
         "tax_rate": _to_float(config_map.get("order.tax_rate"), 0.0),
         "display_left": int(_to_float(config_map.get("pos.customer_display.left"), 1920.0)),
+        # Per-store shared secret for the public customer-display poll:
+        # GET /api/staff/pos/display-state?store_id=<id>&key=<display_key>
+        "display_key": store.display_key,
     })
 
 
@@ -771,6 +789,15 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
     la = la_result.scalar_one_or_none()
     if not la:
         return 0  # No loyalty account — skip silently
+
+    # Apply the customer's current tier points multiplier (mirrors the customer flow)
+    if la.current_tier_id:
+        from app.models.loyalty import LoyaltyTier
+        tier = await db.get(LoyaltyTier, la.current_tier_id)
+        if tier and tier.is_active and tier.points_multiplier and Decimal(str(tier.points_multiplier)) > 1:
+            points_earned = int(
+                (Decimal(points_earned) * Decimal(str(tier.points_multiplier))).to_integral_value(rounding="ROUND_DOWN")
+            )
 
     ledger = LoyaltyPointsLedger(
         loyalty_account_id=la.id,
@@ -2139,6 +2166,10 @@ async def staff_update_reservation_status(
 
 import json as _json
 
+# Fields that must never be served through the unauthenticated display-state
+# poll — they carry signed payment URLs / pay_tokens.
+_DISPLAY_STATE_SENSITIVE_KEYS = {"paymentUrl", "pwaPayUrl", "payment_url", "pay_token", "payToken"}
+
 @router.post("/staff/pos/display-state")
 async def set_pos_display_state(
     staff: CurrentStaff,
@@ -2170,19 +2201,34 @@ async def clear_pos_display_state(staff: CurrentStaff):
 
 @router.get("/staff/pos/display-state")
 async def get_pos_display_state(
+    db: DBDependency,
     store_id: int = Query(...),
+    key: str = Query(...),
 ):
-    """Customer display polls this to get the current POS state (no auth — display is public)."""
+    """Customer display polls this to get the current POS state.
+
+    Unauthenticated except for the per-store display key (?key=) so a counter
+    tablet can poll without a staff login. Signed payment URLs / pay_tokens
+    are stripped from the served state; the display can still show a pay
+    prompt via phase / payment_pending.
+    """
+    store = await db.get(Store, store_id)
+    if not store or store.deleted_at is not None or not store.display_key or store.display_key != key:
+        raise HTTPException(status_code=403, detail="Invalid display key")
     from app.core.cache import get_redis_client
     redis = get_redis_client()
     if not redis:
         return APIResponse(data=None)
-    key = f"pos:display:{store_id}"
-    raw = await redis.get(key)
+    redis_key = f"pos:display:{store_id}"
+    raw = await redis.get(redis_key)
     if not raw:
         return APIResponse(data=None)
     try:
         state = _json.loads(raw)
-        return APIResponse(data=state)
     except Exception:
         return APIResponse(data=None)
+    for sensitive in _DISPLAY_STATE_SENSITIVE_KEYS:
+        state.pop(sensitive, None)
+    if state.get("phase") in ("payment", "qr_payment"):
+        state["payment_pending"] = True
+    return APIResponse(data=state)

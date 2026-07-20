@@ -1,10 +1,23 @@
 /**
  * Loka Espresso PWA Service Worker
- * Version is read from version.json at activation time.
+ * Version is resolved from version.json once at SW startup.
  */
 
 let CACHE_VERSION = 'v0.1.0.default';
 let CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
+// Resolve the build version once at SW startup so fetch handlers (which can
+// run before/without activate) use the same versioned cache name after a
+// SW restart instead of falling back to the hardcoded default.
+const versionReady = (async () => {
+  try {
+    const res = await fetch('/version.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const info = await res.json();
+      CACHE_VERSION = `v${info.version || '0.1.0'}.${info.builtAt || Date.now()}`;
+      CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
+    }
+  } catch (_) { /* use default */ }
+})();
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -19,8 +32,10 @@ self.addEventListener('install', (event) => {
   console.log(`[SW] Installing ${CACHE_VERSION}`);
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(async (cache) => {
+    (async () => {
+      await versionReady;
+      const cache = await caches.open(CACHE_NAME);
+      try {
         console.log('[SW] Caching static assets');
         const results = await Promise.allSettled(
           STATIC_ASSETS.map(url =>
@@ -36,10 +51,10 @@ self.addEventListener('install', (event) => {
           }
         });
         console.log('[SW] Installed — waiting for user activation');
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('[SW] Cache failed:', err);
-      })
+      }
+    })()
   );
 });
 
@@ -47,15 +62,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Read version.json to get current build version
-      try {
-        const res = await fetch('/version.json', { cache: 'no-cache' });
-        if (res.ok) {
-          const info = await res.json();
-          CACHE_VERSION = `v${info.version || '0.1.0'}.${info.builtAt || Date.now()}`;
-          CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
-        }
-      } catch (_) { /* use default */ }
+      // Version was resolved at startup; wait for it here
+      await versionReady;
 
       console.log(`[SW] Activating ${CACHE_VERSION}`);
 
@@ -115,6 +123,7 @@ function isStaticAsset(url) {
 
 // Cache First strategy for static assets
 async function cacheFirst(request) {
+  await versionReady;
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
   
@@ -147,6 +156,7 @@ async function cacheFirst(request) {
 // caches on SW update to mitigate stale deployments. For truly dynamic pages,
 // consider adding a cache-busting query parameter or using stale-while-revalidate.
 async function networkFirst(request) {
+  await versionReady;
   const cache = await caches.open(CACHE_NAME);
   
   try {
@@ -197,7 +207,7 @@ self.addEventListener('push', (event) => {
   }
   const promise = self.registration.showNotification(
     payload.title || 'Notification',
-    { body: payload.body || '', icon: '/icon-192.png', badge: '/badge-72.png', data: payload }
+    { body: payload.body || '', icon: '/icon-192.png', badge: '/icon-192.png', data: payload }
   );
   event.waitUntil(promise);
 });

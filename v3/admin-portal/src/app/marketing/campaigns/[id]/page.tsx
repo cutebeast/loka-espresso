@@ -4,7 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, sendCampaign } from "@/lib/api";
-import { isNotFoundError } from "@/lib/errors";
+import { isNotFoundError, parseApiError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
@@ -103,10 +103,13 @@ export default function CampaignEditPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/admin/marketing/campaigns/${id}`, form);
+      await api.put(`/admin/marketing/campaigns/${id}`, {
+        ...form,
+        scheduled_at: form.scheduled_at || null
+      });
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
+    } catch (e: any) {console.error(e); setMsg(parseApiError(e, t("admin.errors.loadFailed"))); } finally {
       setSaving(false);
     }
   };
@@ -254,7 +257,7 @@ export default function CampaignEditPage() {
           <div className="df-field"><label className="df-label">{t("marketing_campaigns_[id].type")}</label><select value={form.campaign_type} onChange={e => setForm({
             ...form,
             campaign_type: e.target.value
-          })}><option value="promotional">{t("marketing_campaigns_[id].promotional")}</option><option value="transactional">{t("marketing_campaigns_[id].transactional")}</option><option value="announcement">{t("marketing_campaigns_[id].announcement")}</option><option value="retention">{t("marketing_campaigns_[id].retention")}</option></select></div>
+          })}><option value="promotional">{t("marketing_campaigns_[id].promotional")}</option><option value="transactional">{t("marketing_campaigns_[id].transactional")}</option><option value="retention">{t("marketing_campaigns_[id].retention")}</option><option value="acquisition">{t("marketing_campaigns_[id].acquisition", "Acquisition")}</option><option value="reactivation">{t("marketing_campaigns_[id].reactivation", "Reactivation")}</option></select></div>
           <div className="df-field"><label className="df-label">{t("marketing_campaigns_[id].scheduled_at")}</label><input type="datetime-local" value={form.scheduled_at} onChange={e => setForm({
             ...form,
             scheduled_at: e.target.value

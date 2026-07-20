@@ -23,7 +23,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Wallet, Maximize2 } from "lucide-react";
 
 const DEFAULT_STATE: DisplayState = {
-  storeName: "LOKA Espresso",
+  storeName: "Loka Espresso",
   orderType: "dine_in",
   tableNumber: null,
   cart: [],
@@ -45,13 +45,15 @@ export default function CustomerDisplayPage() {
   const [now, setNow] = useState(Date.now());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [storeId, setStoreId] = useState<number>(1);
+  const [displayKey, setDisplayKey] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ── Determine store ID from URL or localStorage ──
+  // ── Determine store ID + display key from URL ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = parseInt(params.get("store") || "1", 10);
     setStoreId(sid || 1);
+    setDisplayKey(params.get("key") || "");
   }, []);
 
   // ── Restore from localStorage on mount (refresh recovery) ──
@@ -71,16 +73,17 @@ export default function CustomerDisplayPage() {
     return unsub;
   }, []);
 
-  // ── Poll Redis (cross-device fallback) ──
+  // ── Poll Redis (cross-device fallback) — requires the per-store display key ──
   useEffect(() => {
-    if (!storeId) return;
+    if (!storeId || !displayKey) return;
     const stopPoll = pollRedisState(
       storeId,
+      displayKey,
       (s) => setState(s),
       () => { setState(DEFAULT_STATE); clearLocal(); },
     );
     return stopPoll;
-  }, [storeId]);
+  }, [storeId, displayKey]);
 
   // ── Clock for welcome screen ──
   useEffect(() => {
@@ -262,6 +265,9 @@ export default function CustomerDisplayPage() {
 
   // ── BROWSING + PAYMENT + QR PAYMENT ──
   const showPaymentQR = state.phase === "qr_payment" && qrDataUrl;
+  // Cross-device (polled) state has the payment URLs stripped and sets
+  // payment_pending instead — show a generic pay prompt, not the QR.
+  const showPaymentPending = !showPaymentQR && (state.phase === "payment" || (state.phase === "qr_payment" && !!state.payment_pending));
   return (
     <div ref={containerRef} style={styles.container}>
       {/* Header */}
@@ -340,8 +346,8 @@ export default function CustomerDisplayPage() {
           </div>
         )}
 
-        {/* Payment pending (non-QR, e.g. cash) */}
-        {state.phase === "payment" && !showPaymentQR && (
+        {/* Payment pending (non-QR, e.g. cash — or cross-device polled mode) */}
+        {showPaymentPending && (
           <div style={styles.paymentPendingWrap}>
             <div style={styles.paymentPendingText}>{t("pos.display_payment_in_progress")}</div>
             <div style={styles.qrAmount}>{fmt(state.total)}</div>

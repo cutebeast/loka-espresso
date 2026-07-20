@@ -136,6 +136,7 @@ class Settings(BaseSettings):
     # Webhooks
     webhook_signing_secret: str | None = None  # generic fallback secret
     grabpay_webhook_secret: str | None = None
+    resend_webhook_secret: str | None = None
     webhook_verify_in_dev: bool = False  # If true, webhook signatures are required even in development
 
     # Web Push (VAPID)

@@ -34,6 +34,9 @@ export type DisplayState = {
   phase: "browsing" | "payment" | "qr_payment" | "paid" | "idle";
   paymentUrl?: string;
   pwaPayUrl?: string;
+  /** Set by the backend on the polled (cross-device) state when a payment is
+   *  in progress — signed payment URLs are stripped from that channel. */
+  payment_pending?: boolean;
   orderNumber?: string;
   orderId?: string;
   paidTotal?: number;
@@ -142,9 +145,11 @@ export function subscribeToPos(
   };
 }
 
-/** Display side: poll Redis for state (cross-device fallback) */
+/** Display side: poll Redis for state (cross-device fallback).
+ *  The public poll requires the per-store display key. */
 export function pollRedisState(
   storeId: number,
+  key: string,
   onState: (state: DisplayState) => void,
   onNull: () => void,
 ): () => void {
@@ -154,7 +159,7 @@ export function pollRedisState(
   const poll = async () => {
     if (!active) return;
     try {
-      const res = await fetch(`/api/staff/pos/display-state?store_id=${storeId}`);
+      const res = await fetch(`/api/staff/pos/display-state?store_id=${storeId}&key=${encodeURIComponent(key)}`);
       if (!res.ok) return;
       const json = await res.json();
       const data = json?.data;
@@ -178,10 +183,16 @@ export function pollRedisState(
   };
 }
 
-/** Open the customer display in a new browser window */
-export function openCustomerDisplay(left = 1920): void {
+/** Open the customer display in a new browser window.
+ *  Passes the current store id + display key so the display polls the right
+ *  store's state (the public poll 403s without the key). */
+export function openCustomerDisplay(left = 1920, storeId?: number, displayKey?: string): void {
   if (typeof window === "undefined") return;
-  const url = "/pos/display";
+  const params = new URLSearchParams();
+  if (storeId) params.set("store", String(storeId));
+  if (displayKey) params.set("key", displayKey);
+  const qs = params.toString();
+  const url = `/pos/display${qs ? `?${qs}` : ""}`;
   const features = `popup=yes,width=480,height=800,left=${left},top=0,menubar=no,toolbar=no,location=no,status=no`;
   window.open(url, "pos-customer-display", features);
 }

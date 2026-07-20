@@ -283,6 +283,21 @@ async def send_notification(
                 LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id
             ).where(LoyaltyAccount.current_tier_id == top_tier_id)
         # else: no tiers configured, send to no one
+    elif notif.audience_segment.startswith("tier:"):
+        # Dynamic per-tier segment — resolve against loyalty_tiers.tier_key
+        tier_key = notif.audience_segment[len("tier:"):]
+        tier_result = await db.execute(
+            select(LoyaltyTier.id).where(
+                LoyaltyTier.tier_key == tier_key,
+                LoyaltyTier.is_active.is_(True),
+            )
+        )
+        tier_id = tier_result.scalar_one_or_none()
+        if tier_id is None:
+            raise HTTPException(status_code=400, detail=f"Unknown or inactive loyalty tier: {tier_key}")
+        customer_stmt = customer_stmt.join(
+            LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id
+        ).where(LoyaltyAccount.current_tier_id == tier_id)
 
     # Fetch matching customer IDs
     cust_result = await db.execute(customer_stmt)
@@ -413,13 +428,16 @@ async def list_my_notifications(
     customer: ActiveCustomer,
     db: DBDependency,
     locale: OptionalLocale,
+    is_read: bool | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
 ):
-    """List current customer's notifications."""
+    """List current customer's notifications, optionally filtered by read state."""
     count_stmt = select(func.count(NotificationMessage.id)).where(
         NotificationMessage.customer_id == customer.id
     )
+    if is_read is not None:
+        count_stmt = count_stmt.where(NotificationMessage.is_read.is_(is_read))
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
 
@@ -430,6 +448,8 @@ async def list_my_notifications(
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
+    if is_read is not None:
+        stmt = stmt.where(NotificationMessage.is_read.is_(is_read))
     result = await db.execute(stmt)
     item_dicts = [NotificationMessageOut.model_validate(n).model_dump() for n in result.scalars().all()]
     await merge_translations(db, item_dicts, "admin_notifications", locale)

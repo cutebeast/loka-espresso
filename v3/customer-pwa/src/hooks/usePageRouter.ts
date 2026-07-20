@@ -17,7 +17,9 @@ export const SUB_PAGES: PageId[] = [
   'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'referral', 'checkin',
 ];
 
-const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'settings', 'reservations'];
+// 'checkin' requires auth upfront (nav triggers the sign-in modal);
+// 'settings' is guest-allowed (matches PUBLIC_PAGES in useAuthFlow).
+const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'reservations', 'checkin'];
 
 export function usePageRouter() {
   const setPage = useUIStore((s) => s.setPage);

@@ -69,16 +69,6 @@ function parseBoolean(value: unknown, fallback: boolean): boolean {
   return fallback;
 }
 
-function parseNumberArray(value: unknown, fallback: number[]): number[] {
-  if (Array.isArray(value)) {
-    return value.map(v => parseNumber(v, 0)).filter(n => n > 0);
-  }
-  if (typeof value === 'string') {
-    return value.split(',').map(v => parseFloat(v.trim())).filter(n => !isNaN(n) && n > 0);
-  }
-  return fallback;
-}
-
 export const useConfigStore = create<ConfigState>((set) => ({
   config: DEFAULT_CONFIG,
   tiers: [],
@@ -99,14 +89,15 @@ export const useConfigStore = create<ConfigState>((set) => ({
           loyalty_enabled: parseBoolean(featuresCfg.loyalty_enabled ?? raw.loyalty_enabled, DEFAULT_CONFIG.loyalty_enabled),
           loyalty_points_per_rmse: parseNumber(raw.loyalty_points_per_rmse, DEFAULT_CONFIG.loyalty_points_per_rmse),
           referral_reward_points: parseNumber(raw.referral_reward_points, DEFAULT_CONFIG.referral_reward_points),
-          referral_min_orders: parseNumber(raw.referral_min_orders, DEFAULT_CONFIG.referral_min_orders),
-          topup_presets: parseNumberArray(raw.topup_presets, DEFAULT_CONFIG.topup_presets),
-          topup_min_amount: parseNumber(raw.topup_min_amount, DEFAULT_CONFIG.topup_min_amount),
-          max_vouchers_per_user: typeof raw.max_vouchers_per_user === 'number' ? raw.max_vouchers_per_user : DEFAULT_CONFIG.max_vouchers_per_user,
-          voucher_expiry_days: typeof raw.voucher_expiry_days === 'number' ? raw.voucher_expiry_days : DEFAULT_CONFIG.voucher_expiry_days,
-          points_redemption_rate: parseNumber(raw.points_redemption_rate, DEFAULT_CONFIG.points_redemption_rate),
+          // Keys with no backend source — keep hardcoded defaults
+          referral_min_orders: DEFAULT_CONFIG.referral_min_orders,
+          topup_presets: DEFAULT_CONFIG.topup_presets,
+          topup_min_amount: DEFAULT_CONFIG.topup_min_amount,
+          max_vouchers_per_user: DEFAULT_CONFIG.max_vouchers_per_user,
+          voucher_expiry_days: DEFAULT_CONFIG.voucher_expiry_days,
+          points_redemption_rate: DEFAULT_CONFIG.points_redemption_rate,
           payment_gateway_provider: typeof raw.payment_gateway_provider === 'string' ? raw.payment_gateway_provider : DEFAULT_CONFIG.payment_gateway_provider,
-          order_polling_interval_seconds: parseNumber(raw.order_polling_interval_seconds, DEFAULT_CONFIG.order_polling_interval_seconds),
+          order_polling_interval_seconds: DEFAULT_CONFIG.order_polling_interval_seconds,
         },
         tiers: (raw.loyalty_tiers as Array<Record<string, unknown>> | undefined)?.map((t) => ({
           id: typeof t.id === 'number' ? t.id : undefined,

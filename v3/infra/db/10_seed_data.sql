@@ -69,7 +69,7 @@ SELECT 5, id FROM iam_permissions
 WHERE permission_key IN ('order.read','order.create','order.update','menu.read','payment.read');
 
 -- ============================================================
--- 4. Default Store (Brand HQ + first operational store)
+-- 4. Default Stores (matches backend/scripts/seed_stores.py)
 -- ============================================================
 INSERT INTO stores (
     store_code, store_name, slug, brand_name,
@@ -78,15 +78,15 @@ INSERT INTO stores (
     timezone, currency_code,
     pickup_lead_minutes, delivery_radius_km, base_delivery_fee, minimum_order_amount,
     pos_integration_type, delivery_integration_type,
-    is_active, is_accepting_orders
+    is_active, is_accepting_orders, display_key
 ) VALUES (
-    'HQ-001', 'Brand Headquarters', 'hq', 'LOKA Espresso',
-    '123 Admin Street', 'Kuala Lumpur', 'Wilayah Persekutuan', '50000', 'MY',
-    3.1390, 101.6869, '+60123456789', 'hq@lokaespresso.my',
+    'PKL-001', 'Loka Espresso (PKL)', 'pavilion', 'LOKA Espresso',
+    'Lot P4.17.00, E4.17.00 & E4.17.01, Pavilion Kuala Lumpur', 'Kuala Lumpur', 'Wilayah Persekutuan Kuala Lumpur', '55100', 'MY',
+    3.1490, 101.7135, '+60127889314', 'pavilion@lokaespresso.my',
     'Asia/Kuala_Lumpur', 'MYR',
     15, 10.00, 5.00, 15.00,
     'internal', 'internal',
-    true, true
+    true, true, '2dd9ea939841c19c36a9895737a7e5b2'
 );
 
 INSERT INTO stores (
@@ -96,19 +96,19 @@ INSERT INTO stores (
     timezone, currency_code,
     pickup_lead_minutes, delivery_radius_km, base_delivery_fee, minimum_order_amount,
     pos_integration_type, delivery_integration_type,
-    is_active, is_accepting_orders
+    is_active, is_accepting_orders, display_key
 ) VALUES (
-    'KLCC-01', 'LOKA Espresso KLCC', 'klcc', 'LOKA Espresso',
-    'Suria KLCC, Lot G-12', 'Kuala Lumpur', 'Wilayah Persekutuan', '50088', 'MY',
-    3.1588, 101.7116, '+60321631234', 'klcc@lokaespresso.my',
+    'KLIA1-001', 'Loka Loka Cafe (KLIA1)', 'klia', 'LOKA Espresso',
+    'Terminal 1, Domestic Arrival Hall, KLIA', 'Sepang', 'Selangor', '64000', 'MY',
+    2.7456, 101.7099, '+60127889314', 'klia@lokaespresso.my',
     'Asia/Kuala_Lumpur', 'MYR',
-    15, 8.00, 5.00, 15.00,
+    15, 5.00, 5.00, 15.00,
     'internal', 'internal',
-    true, true
+    true, true, 'c0d044d54806176751d661a2aabd28b2'
 );
 
 -- ============================================================
--- 5. Store Operating Hours (KLCC)
+-- 5. Store Operating Hours (PKL closes 22:00/23:00 Fri; KLIA 24h)
 -- ============================================================
 INSERT INTO store_operating_hours (store_id, day_of_week, open_time, close_time, is_closed, is_24_hours, last_order_time) VALUES
 (1, 0, '08:00', '22:00', false, false, '21:30'),
@@ -117,14 +117,14 @@ INSERT INTO store_operating_hours (store_id, day_of_week, open_time, close_time,
 (1, 3, '08:00', '22:00', false, false, '21:30'),
 (1, 4, '08:00', '22:00', false, false, '21:30'),
 (1, 5, '08:00', '23:00', false, false, '22:30'),
-(1, 6, '08:00', '23:00', false, false, '22:30'),
-(2, 0, '07:00', '22:00', false, false, '21:30'),
-(2, 1, '07:00', '22:00', false, false, '21:30'),
-(2, 2, '07:00', '22:00', false, false, '21:30'),
-(2, 3, '07:00', '22:00', false, false, '21:30'),
-(2, 4, '07:00', '23:00', false, false, '22:30'),
-(2, 5, '08:00', '23:00', false, false, '22:30'),
-(2, 6, '08:00', '22:00', false, false, '21:30');
+(1, 6, '08:00', '22:00', false, false, '21:30'),
+(2, 0, '00:00', '23:59', false, true, '23:30'),
+(2, 1, '00:00', '23:59', false, true, '23:30'),
+(2, 2, '00:00', '23:59', false, true, '23:30'),
+(2, 3, '00:00', '23:59', false, true, '23:30'),
+(2, 4, '00:00', '23:59', false, true, '23:30'),
+(2, 5, '00:00', '23:59', false, true, '23:30'),
+(2, 6, '00:00', '23:59', false, true, '23:30');
 
 -- ============================================================
 -- 6. Default Admin Account
@@ -151,18 +151,18 @@ INSERT INTO admin_accounts (
 -- Assign system_admin role
 INSERT INTO role_assignments (assignee_id, role_id, effective_from, is_active) VALUES (1, 1, now(), true);
 
--- Assign to HQ store
+-- Assign to PKL-001 store
 INSERT INTO store_assignments (assignee_id, store_id, is_primary, can_approve_refunds, can_adjust_inventory, can_manage_staff)
 VALUES (1, 1, true, true, true, true);
 
 -- ============================================================
--- 7. Loyalty Tiers
+-- 7. Loyalty Tiers (matches backend/scripts/seed_loyalty.py)
 -- ============================================================
-INSERT INTO loyalty_tiers (tier_key, display_name, min_lifetime_points, points_multiplier, benefits_config, color_hex, sort_order, is_active) VALUES
-('bronze', 'Bronze', 0, 1.00, '{"free_delivery_threshold": null, "birthday_bonus": 0, "priority_support": false}', '#CD7F32', 1, true),
-('silver', 'Silver', 500, 1.25, '{"free_delivery_threshold": 50.00, "birthday_bonus": 50, "priority_support": false}', '#C0C0C0', 2, true),
-('gold', 'Gold', 1500, 1.50, '{"free_delivery_threshold": 30.00, "birthday_bonus": 100, "priority_support": true}', '#FFD700', 3, true),
-('platinum', 'Platinum', 5000, 2.00, '{"free_delivery_threshold": 0, "birthday_bonus": 200, "priority_support": true}', '#E5E4E2', 4, true);
+INSERT INTO loyalty_tiers (tier_key, display_name, min_lifetime_points, points_multiplier, benefits_config, color_hex, sort_order, is_active,
+    validity_months, renewal_annual_spend, downgrade_to_tier_key) VALUES
+('bloom', 'Bloom', 0, 1.00, '{"birthday_bonus": 0, "priority_support": false, "free_delivery_threshold": null}', '#4CAF50', 1, true, null, null, null),
+('origin', 'Origin', 500, 1.20, '{"birthday_bonus": 0, "priority_support": false, "free_delivery_threshold": null}', '#FF9800', 2, true, 12, 500, 'bloom'),
+('reserve', 'Reserve', 1500, 1.50, '{"birthday_bonus": 0, "priority_support": true, "free_delivery_threshold": 0}', '#9C27B0', 3, true, 12, 1500, 'origin');
 
 -- ============================================================
 -- 8. Platform Config
@@ -173,7 +173,7 @@ INSERT INTO loyalty_tiers (tier_key, display_name, min_lifetime_points, points_m
 INSERT INTO platform_config (config_key, config_value, value_type, environment, is_sensitive, is_editable) VALUES
 ('app.name', '"LOKA Espresso"', 'string', 'all', false, false),
 ('app.currency', '"MYR"', 'string', 'all', false, false),
-('app.support_phone', '"+60123456789"', 'string', 'all', false, true),
+('app.support_phone', '"+60127889314"', 'string', 'all', false, true),
 ('app.support_email', '"support@lokaespresso.my"', 'string', 'all', false, true),
 ('otp.bypass_enabled', 'false', 'boolean', 'all', true, true),
 ('otp.bypass_code', '"000000"', 'string', 'all', true, true),

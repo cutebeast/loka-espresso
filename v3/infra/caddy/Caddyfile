@@ -1,7 +1,8 @@
 # FNB v3 Caddyfile — Reverse Proxy + TLS
 # Domain values are injected via environment variables so the same image
-# can be deployed on the dev server (loyaltysystem.uk), production
-# (lokaespresso.com) or future brand servers without editing this file.
+# can be deployed on production (lokaespresso.com, the default below),
+# the legacy dev server (loyaltysystem.uk) or future brand servers
+# without editing this file.
 #
 # Only admin/staff/app subdomains are used by this project.
 # loyaltysystem.uk / www.loyaltysystem.uk are NOT served here.
@@ -22,7 +23,7 @@
 }
 
 # Customer PWA
-{$APP_DOMAIN:app.loyaltysystem.uk} {
+{$APP_DOMAIN:app.lokaespresso.com} {
     handle /api/* {
         reverse_proxy backend:13800
     }
@@ -55,7 +56,7 @@
 }
 
 # Admin portal
-{$ADMIN_DOMAIN:admin.loyaltysystem.uk} {
+{$ADMIN_DOMAIN:admin.lokaespresso.com} {
     handle /api/* {
         reverse_proxy backend:13800
     }
@@ -76,7 +77,7 @@
 }
 
 # Staff portal
-{$STAFF_DOMAIN:staff.loyaltysystem.uk} {
+{$STAFF_DOMAIN:staff.lokaespresso.com} {
     handle /api/* {
         reverse_proxy backend:13800
     }

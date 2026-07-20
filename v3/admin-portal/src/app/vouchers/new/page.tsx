@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -21,6 +22,13 @@ export default function VoucherNewPage() {
   const {
     allSegments
   } = useAudienceSegments();
+  const [tiers, setTiers] = useState<{
+    id: number;
+    display_name: string;
+  }[]>([]);
+  useEffect(() => {
+    api.getRaw<any>("/admin/loyalty/tiers?per_page=50&is_active=true").then(d => setTiers(d?.items || [])).catch(e => console.error('tiers:', e));
+  }, []);
   const [form, setForm] = useState({
     voucher_code: "",
     display_title: "",
@@ -60,7 +68,7 @@ export default function VoucherNewPage() {
       await api.post("/admin/vouchers", payload);
       router.push("/vouchers");
     } catch (err: any) {
-      setError(err.message);
+      setError(parseApiError(err));
     } finally {
       setSaving(false);
     }
@@ -163,9 +171,7 @@ export default function VoucherNewPage() {
               minimum_tier_id: e.target.value ? Number(e.target.value) : null
             })}>
                 <option value="">{t("vouchers_new.no_restriction")}</option>
-                <option value="1">{t("vouchers_new.silver")}</option>
-                <option value="2">{t("vouchers_new.gold")}</option>
-                <option value="3">{t("vouchers_new.platinum")}</option>
+                {tiers.map(tier => <option key={tier.id} value={tier.id}>{tier.display_name}</option>)}
               </select>
               <div className="df-hint">{t("vouchers_new.customer_must_be_at_least_this")}</div>
             </div>
@@ -215,11 +221,11 @@ export default function VoucherNewPage() {
               </div>
               <div className="df-hint">{t("vouchers_new.leave_empty_for_all_customers")}</div>
             </div>
-            <div className="df-field"><label className="df-label">{t("vouchers_new.valid_from")}</label><input type="datetime-local" value={form.valid_from} onChange={e => setForm({
+            <div className="df-field"><label className="df-label">{t("vouchers_new.valid_from")}</label><input type="datetime-local" required value={form.valid_from} onChange={e => setForm({
               ...form,
               valid_from: e.target.value
             })} /></div>
-            <div className="df-field"><label className="df-label">{t("vouchers_new.valid_until")}</label><input type="datetime-local" value={form.valid_until} onChange={e => setForm({
+            <div className="df-field"><label className="df-label">{t("vouchers_new.valid_until")}</label><input type="datetime-local" required value={form.valid_until} onChange={e => setForm({
               ...form,
               valid_until: e.target.value
             })} /></div>

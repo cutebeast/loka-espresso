@@ -54,7 +54,13 @@ function ConfigRow({
   onSave: (item: ConfigItem, newValue: string) => void;
   saving: string | null;
 }) {
-  const [editValue, setEditValue] = useState(item.config_value ?? "");
+  const [editValue, setEditValue] = useState(item.is_sensitive ? "" : item.config_value ?? "");
+  // Sensitive values arrive masked ("********") — keep the input empty with a
+  // masked placeholder and never submit an untouched/empty sensitive value.
+  const trySave = (v: string) => {
+    if (item.is_sensitive && !v) return;
+    onSave(item, v);
+  };
   return <tr>
       <td style={{
       fontSize: 13,
@@ -71,7 +77,7 @@ function ConfigRow({
               <input type="checkbox" checked={editValue === "true"} onChange={e => {
           const val = String(e.target.checked);
           setEditValue(val);
-          onSave(item, val);
+          trySave(val);
         }} />
               {editValue === "true" ? "Enabled" : "Disabled"}
             </label> : <div style={{
@@ -79,10 +85,10 @@ function ConfigRow({
         gap: 4,
         alignItems: "center"
       }}>
-              <input type={item.is_sensitive ? "password" : item.value_type === "integer" || item.value_type === "decimal" ? "number" : "text"} step={item.value_type === "decimal" ? "0.1" : "1"} value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={e => {
-          if (e.target.value !== (item.config_value ?? "")) onSave(item, e.target.value);
+              <input type={item.is_sensitive ? "password" : item.value_type === "integer" || item.value_type === "decimal" ? "number" : "text"} step={item.value_type === "decimal" ? "0.1" : "1"} value={editValue} placeholder={item.is_sensitive ? "••••••••" : undefined} onChange={e => setEditValue(e.target.value)} onBlur={e => {
+          if (item.is_sensitive ? e.target.value : e.target.value !== (item.config_value ?? "")) trySave(e.target.value);
         }} onKeyDown={e => {
-          if (e.key === "Enter") onSave(item, (e.target as HTMLInputElement).value);
+          if (e.key === "Enter") trySave((e.target as HTMLInputElement).value);
         }} style={{
           border: "1px solid var(--color-border-light)",
           borderRadius: "var(--radius-sm)",
@@ -102,7 +108,7 @@ function ConfigRow({
           </span>}
       </td>
       <td>
-        {item.is_editable && item.value_type !== "boolean" && <button onClick={() => onSave(item, editValue)} disabled={saving === item.config_key || editValue === item.config_value} className="btn btn-sm btn-outline" style={{
+        {item.is_editable && item.value_type !== "boolean" && <button onClick={() => trySave(editValue)} disabled={saving === item.config_key || (item.is_sensitive ? !editValue : editValue === item.config_value)} className="btn btn-sm btn-outline" style={{
         fontSize: 11
       }}>
             <Save size={11} /> {saving === item.config_key ? "..." : "Save"}

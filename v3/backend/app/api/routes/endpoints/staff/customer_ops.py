@@ -2,18 +2,20 @@
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentStaff, DBDependency
+from app.api.routes.deps import CurrentStaff, DBDependency, RequireStaffRole
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer, CustomerAddress, CustomerConsent, CustomerDevice
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.models.order import Order
 from app.models.platform import AuditLog
 from app.models.reward import CustomerReward, RewardCatalog
+from app.models.staff import StaffProfile
 from app.models.store import Store
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
@@ -272,7 +274,7 @@ async def staff_customer_wallet_items(staff: CurrentStaff, db: DBDependency, cus
 
 
 @router.post("/staff/wallets/topup", response_model=APIResponse[dict])
-async def staff_wallet_topup(staff: CurrentStaff, db: DBDependency, data: AdminTopupRequest):
+async def staff_wallet_topup(staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))], db: DBDependency, data: AdminTopupRequest):
     """Top-up a customer's wallet in staff's store."""
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
@@ -286,7 +288,12 @@ async def staff_wallet_topup(staff: CurrentStaff, db: DBDependency, data: AdminT
 
     customer = await _get_customer_or_404(db, customer_id)
 
-    wallet = await _get_customer_wallet(db, customer_id)
+    # Lock the wallet row first so concurrent top-ups serialize on it (the
+    # last-ledger-entry lock alone does not protect a wallet with no entries).
+    wallet_result = await db.execute(
+        select(Wallet).where(Wallet.customer_id == customer_id).with_for_update()
+    )
+    wallet = wallet_result.scalar_one_or_none()
     if not wallet:
         wallet = Wallet(customer_id=customer_id, currency_code=await _get_default_currency(db))
         db.add(wallet)
@@ -331,7 +338,7 @@ async def staff_wallet_topup(staff: CurrentStaff, db: DBDependency, data: AdminT
 
 @router.post("/staff/customers/{customer_id}/use-reward/{reward_id}", response_model=APIResponse[dict])
 async def staff_use_reward(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     customer_id: int,
     reward_id: int,
@@ -381,7 +388,7 @@ async def staff_use_reward(
 
 @router.post("/staff/customers/{customer_id}/use-voucher/{voucher_id}", response_model=APIResponse[dict])
 async def staff_use_voucher(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     customer_id: int,
     voucher_id: int,
@@ -514,7 +521,7 @@ async def staff_scan_customer_qr(staff: CurrentStaff, db: DBDependency, data: Sc
 
 @router.post("/staff/scan/reward/{code}", response_model=APIResponse[dict])
 async def staff_scan_reward_code(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     code: str,
     data: ScanRewardCodeRequest,
@@ -566,7 +573,7 @@ async def staff_scan_reward_code(
 
 @router.post("/staff/scan/voucher/{code}", response_model=APIResponse[dict])
 async def staff_scan_voucher_code(
-    staff: CurrentStaff,
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     db: DBDependency,
     code: str,
     data: ScanVoucherCodeRequest,

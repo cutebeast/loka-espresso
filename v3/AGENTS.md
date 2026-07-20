@@ -1,6 +1,6 @@
 # FNB Super App v3 — Agent Notes
 
-*Last updated: 2026-07-11*
+*Last updated: 2026-07-20*
 
 ## Active code
 
@@ -19,6 +19,8 @@ python3 scripts/seed_all.py --yes --force-prod
 pytest tests/
 
 # TypeScript strict checks
+npm run typecheck  # admin-portal, staff-portal, customer-pwa
+# or:
 for dir in admin-portal staff-portal customer-pwa; do
   (cd "/root/fnb-super-app/v3/$dir" && npx tsc --noEmit)
 done
@@ -45,7 +47,7 @@ pytest -q
 - Staff PIN must be exactly 6 digits (all staff PINs = 123456)
 - Staff portal `middleware.ts` needs `API_PROXY_URL` env var (not `API_URL`)
 - Staff portal `lib/api.ts` `resolveApiBase()` falls back to `API_PROXY_URL` in production
-- `next.config.ts` rewrites use plain array (afterFiles), not `beforeFiles`
+- Admin/staff `next.config.ts` rewrites use plain array (afterFiles); Customer PWA uses `beforeFiles` to intercept API calls before static file serving
 - Admin portal layout is `"use client"` (client component)
 - Staff portal layout is a Server Component with `"use client"` AuthProvider
 - Customer PWA `next.config.ts` must NOT throw on missing `API_PROXY_URL`
@@ -84,19 +86,34 @@ pytest -q
 - Provision TLS certificates for `*.lokaespresso.com`
 - On live DB run `alembic upgrade head` and seed with strong admin credentials
 - Verify `otp.bypass_enabled=false` and rotate/remove `otp.bypass_code`
+- Rotate per-store `display_key` values if any were exposed pre-migration
+- Force-change default staff PINs (all seeded PINs are 123456; `must_change_pin` enforcement is active)
+- Regenerate `infra/db/09_schema_sync.sql` (`v3/scripts/dump_schema_sql.py`) if models changed after 2026-07-20
 
 ## Known quirks
 
 - Backend `ENVIRONMENT=production` on the dev server disables OpenAPI docs
-- `otp.bypass_enabled` is seeded `true` by default so dev/E2E can log in without Twilio
+- `otp.bypass_enabled` is seeded `true` by default so dev/E2E can log in without Twilio (INTENTIONAL until lokaespresso.com go-live — disable then)
+- Customer registration happens only AFTER OTP verification succeeds (login = verify-first, register-second)
 - All three portals use HttpOnly cookie auth (not bearer tokens in JS)
 - Server-side portal code needs absolute backend URLs via `API_URL` (admin) or `API_PROXY_URL` (staff/customer)
 - Staff portal `middleware.ts` at project root checks auth on every request — `getBackendUrl()` must not throw
 - Customer display uses Redis for cross-device sync (`pos:display:{store_id}` key, 1-hour TTL)
+- `GET /staff/pos/display-state` is public but REQUIRES `?key=<store.display_key>` (per-store hex key; authenticated staff get it from `GET /api/staff/store` → `data.display_key`). Polled state has payment URLs/tokens stripped (`payment_pending: true` instead); same-browser BroadcastChannel still carries the QR URLs
+- Table scan (`POST /stores/tables/scan`) REQUIRES `qr_token` (400/403 otherwise); printed table QR tokens never expire
 - Customer PWA Turbopack runtime generates chunks on-demand at runtime; after rebuild, pm2 must be fully deleted and restarted
 - Guest-pay `pay_token` is only generated when Stripe is configured (requires live Stripe keys)
 - Customer order creation requires `cart_id` (orders are created from carts, not from inline items)
 - `order_channel` enum values: `mobile_app`, `web`, `kiosk`, `pos`, `qr_code`, `third_party` (no "pwa")
+- Rate limiting keys on `X-Forwarded-For` (first IP) when the peer is loopback (Caddy), else direct IP. Public mutation endpoints are rate-limited: `/kiosk/orders` 10/min, `/stores/tables/scan` 20/min, `/feedback` 5/min, `/vouchers/validate` + `/payments/guest-pay/*` 10/min (via `PublicMutationRateLimitMiddleware`)
+- Staff money endpoints (wallet top-up, order payment, voucher/reward apply/redeem, item modify, cancel) require role cashier/server/shift_supervisor/store_manager via `RequireStaffRole`; kitchen/delivery/readonly get 403. Admin-context staff tokens pass via admin override
+- `GET/PUT /admin/config` is system_admin-only; `is_sensitive` values are masked as `********`; PUT ignores the mask placeholder
+- Wallet payments (`internal_wallet`) debit the wallet (row-locked, ledger entry) on confirm; customers cannot self-confirm `cash`/`store_credit` payments (staff-only capture)
+- Order cancellation reverses everything via `reverse_order_effects()` (points clawback + ledger, voucher/reward release, stock restore); customer self-cancel is limited to pending/unpaid orders; staff/admin cancel of orders with CAPTURED payments is blocked (400 — refund first)
+- Voucher eligibility is enforced server-side: `max_global_uses`, `max_uses_per_customer`, `first_order_only`, `stackable`, store/item/category scope
+- Loyalty tier `points_multiplier` is applied on order points (customer + POS paths); `annual_spend` accrues on payment capture. Tier validity/downgrade EVALUATION job does not exist yet (fields are stored only)
+- Staff with `pin_last_changed_at IS NULL` are blocked (`403 must_change_pin`) on all staff endpoints except auth/me, change-pin/password, refresh, logout — E2E conftest rotates the Test Staff PIN (123456→654321→123456) to clear it
+- Alembic head: `a1b2c3d4e5f7`. Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
 
 ## What's been done (as of 2026-07-11)
 
@@ -161,3 +178,73 @@ pytest -q
 - Staff pages have role guards (POS, Kitchen, Ops pages check role before rendering)
 - `useStaffRole.tsx` (note: .tsx not .ts) exports RoleGuard component
 - Tests: 36 backend, 199 E2E (16 skipped), TS strict all 3 portals
+
+## Round 32 — go-live audit & hardening (2026-07-20)
+
+Full-system audit (~60 findings, each verified in code before fixing; false positives dropped). Summary of what changed:
+
+### Backend — money & security
+- **Wallet payments now debit the wallet** on confirm (row-locked + ledger entry); refunds of wallet payments correctly reverse a real debit (was: free orders + mint-on-refund)
+- **Customer registration moved after OTP verification** (was: account + 50 welcome points committed before OTP check)
+- **Customers can no longer self-confirm `cash`/`store_credit` payments**; `/payments/intent` rejects already-paid/cancelled orders
+- **HitPay wallet top-up fixed end-to-end** (service signature, `provider_session_id`, webhook completion shared with Stripe path); HitPay guest-pay now stores `provider_transaction_id`
+- **Order cancellation fully reverses** via `reverse_order_effects()`: points clawback + ledger, voucher/reward release, stock restore; customer self-cancel limited to pending/unpaid orders
+- **Staff money endpoints role-gated** (`RequireStaffRole`: cashier/server/shift_supervisor/store_manager) across `staff/orders.py` + `staff/customer_ops.py`
+- **`/admin/config` system_admin-only + sensitive values masked**; admin register can no longer escalate privileges (role/store grants limited to what the creator holds); `/admin/auth/users` system_admin-only
+- **Admin payment capture/refund store-scoped**; readonly_analyst blocked from money movement
+- **Stripe `charge.refunded` webhook no longer double-counts** API-initiated refunds (cumulative semantics)
+- **Rate limiting fixed**: keys on X-Forwarded-For behind the Caddy loopback peer; public mutations limited (`/kiosk/orders`, table scan, `/feedback`, `/vouchers/validate`, guest-pay)
+- **Public endpoint hardening**: table scan requires `qr_token`; display-state requires per-store `display_key` and strips pay tokens/URLs (new `stores.display_key` column, migration `f33d496b3c87`); kiosk orders validate modifier min/max + availability and lock the walk-in cart; avatar upload gets full validation; `.svg` uploads rejected everywhere
+- **Voucher eligibility enforced** (max uses global/per-customer, first-order-only, stackable, store/item/category scope); reward redemption hardened (is_active, caps, tier, ledger entry)
+- **Reservations**: customer create can no longer self-confirm (new `CustomerReservationCreate` schema); table double-booking blocked (409 on overlap)
+- Loyalty: tier `points_multiplier` applied (customer + POS), `annual_spend` accrues on capture (downgrade/renewal evaluation job NOT built — fields stored only)
+- Fixes: `StripeError` import, voucher redemptions endpoint 500, discount double-subtraction on item modify (4 places), tip dropped from recompute, check-in race, staff top-up race, checkins serialization, `is_read` filter on `/notifications/me`, device delete by fingerprint, audience segments accept `tier:<key>`, admin-context staff refresh returns rotated token in body, `/staff/auth/admin-store` accepts admin-context staff tokens
+
+### Admin portal
+- Reward create/edit fixed (customer_segments array↔dict; was 422/crash — verified live)
+- Campaign create fixed (campaign_key input, `scheduled_at` null-out, removed invalid `announcement` type)
+- Systemic empty-string-datetime 422s fixed across vouchers/notifications/events/info-cards/pwa-splash/equipment forms; voucher dates marked required
+- Voucher forms fetch real loyalty tiers (was hardcoded wrong ids); edit page gained `minimum_tier_id`
+- Idle timeout now calls real logout (was a no-op cookie delete); forms surface human-readable 422s via `parseApiError`; settings page no longer round-trips the `********` mask; CSP dev connect-src fixed
+
+### Staff portal
+- Role guards no longer crash (rules-of-hooks fix; `RoleGuard` now actually used on 7 pages); wallet + kitchen detail pages guarded
+- Customer display passes `?store=` + `&key=` (was hardcoded store 1) and shows a payment-pending prompt when URLs are stripped
+- Admin store switcher added (`StoreHeader` + `/auth/admin-store` proxy route)
+- PIN UI consistently requires 6 digits; POS customer scan resolves real customer (was "Customer #N" stub); reservations filter/overdue fixed; QR 30-min-expiry fiction removed; login open-redirect closed
+
+### Customer PWA
+- **Saved-card flow fixed** (missing `stripe.confirmSetup`; publishable-key race)
+- Checkout: percentage vouchers use `calculated_discount`; saved vouchers/rewards appear (status `active`); reward code reads `code`
+- Kiosk: cart lines keyed by item+variant+modifiers; modifier requirements enforced client-side; correct `order_id` field
+- Guest-pay handles HitPay `status=completed` (double-charge risk closed); wallet top-up uses `payment_gateway_provider` from bootstrap
+- Tier progress uses `lifetime_points`; 'Bronze'→'Bloom' fallbacks; `?promo=` deep link fixed; notification badge/toast use real unread count; CSP allows all Stripe hosts; service worker badge + cache-version fixes; guest gating for settings/checkin made consistent
+
+### Infra & tests
+- `infra/db` schema regenerated from models (`v3/scripts/dump_schema_sql.py` → `09_schema_sync.sql`; seed moved to `10_seed_data.sql`, aligned with Python seeders); `Dockerfile.backend` runs `alembic upgrade head`; Caddyfile defaults now `*.lokaespresso.com`
+- E2E conftest: fixed tier payload, store codes, and rotates Test Staff PIN to clear `must_change_pin`
+- Known pre-existing gaps left (documented, not blocking): `03/04` legacy drift vs models; support tickets carry a neutral rating 3 (feedback rating is required); tier validity/downgrade evaluation job not built
+
+### Final verification (2026-07-20)
+- Backend: 36 passed, 0 failed
+- E2E: 199 passed, 16 skipped, 0 failed (conftest dedupes "Test Staff" and clears `must_change_pin` via PIN rotation)
+- TypeScript strict: all 3 portals pass; all 3 portals rebuilt and live behind Caddy (admin/staff 307→login, app 200, api 200)
+
+## Round 32 — re-audit fixes (2026-07-20, second pass)
+
+A second audit of the uncommitted diff caught and fixed:
+
+- `09_schema_sync.sql` was stale (regenerate with `dump_schema_sql.py` after ANY model change): missing `tier:<key>` CHECK relaxation and `feedback_entries.customer_id` nullable — fresh docker inits would have broken both features
+- `07_rls_policies.sql` aborted fresh docker inits (`app_user`/`admin_user` roles didn't exist) — now creates NOLOGIN placeholder roles; full 01→10 replay verified against a scratch DB (107 tables, correct alembic stamp)
+- Staff/admin cancellation of an order with CAPTURED payments is now blocked (400 "issue a refund first") — previously points/vouchers were clawed back while money stayed captured
+- POS payments (cash + wallet) now accrue `annual_spend` (previously only gateway captures did)
+- Rate-limit 429s now pass through CORS/security headers (`PublicMutationRateLimitMiddleware` registered first — Starlette runs middleware in reverse registration order)
+- Service worker `install` now awaits `versionReady` (precache was being discarded on every install)
+- POS QR scanner: stale `scannerRef` cleared after stop (scanner couldn't be reopened after one scan)
+- Saved-card `StripeCardInput` no longer remounts on every keystroke (stable `useCallback` prop)
+- Reward-selected banner shows the reward name instead of the raw id
+- `seed_loyalty.py`/`seed_stores.py` deactivate legacy tiers/stores not in the current seed set (stale rows otherwise survive re-seeds); `seed_stores.py` no longer prints `display_key` to logs
+
+### Ops notes
+- DBs that were SQL-initialized WITHOUT an alembic stamp need a one-time `alembic stamp a1b2c3d4e5f7` before running an image whose entrypoint runs `alembic upgrade head` (else baseline migrations try to recreate tables)
+- OTP bypass divergence: Python seeder sets `otp.bypass_enabled=true` (dev/E2E), `infra/db/10_seed_data.sql` sets `false` (prod-safe). Both intentional.

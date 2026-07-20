@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 export default function InfoCardNewPage() {
   const {
@@ -56,11 +57,13 @@ export default function InfoCardNewPage() {
     try {
       await api.post("/admin/info-cards", {
         ...form,
-        slug: form.slug || form.title.toLowerCase().replace(/[^a-z0-9]/g, "-")
+        slug: form.slug || form.title.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        start_date: form.start_date || null,
+        end_date: form.end_date || null
       });
       router.push("/content/info-cards");
     } catch (e: any) {
-      setError(e.message);
+      setError(parseApiError(e));
     } finally {
       setSaving(false);
     }

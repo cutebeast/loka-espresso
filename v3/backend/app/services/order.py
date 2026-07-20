@@ -13,7 +13,7 @@ from decimal import Decimal
 from app.core.money import money_round, to_decimal
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
-from app.models.loyalty import LoyaltyAccount
+from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.models.menu import MenuItem, MenuItemRecipe, MenuVariant
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
@@ -247,48 +247,7 @@ async def _deduct_stock_for_order(
 
     `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and `quantity` attributes.
     """
-    from sqlalchemy import select, func
-
-    # Batch recipe lookup by (menu_item_id, menu_variant_id) to avoid N+1.
-    recipe_keys = set()
-    for li in line_items:
-        mv_id = getattr(li, "menu_variant_id", None)
-        recipe_keys.add((li.menu_item_id, mv_id))
-
-    if recipe_keys:
-        menu_item_ids = {mid for mid, _ in recipe_keys}
-        menu_variant_ids = {mv_id for _, mv_id in recipe_keys if mv_id is not None}
-        recipe_result = await db.execute(
-            select(MenuItemRecipe).where(
-                MenuItemRecipe.menu_item_id.in_(menu_item_ids),
-                (
-                    MenuItemRecipe.menu_variant_id.in_(menu_variant_ids)
-                    | MenuItemRecipe.menu_variant_id.is_(None)
-                ),
-            )
-        )
-        recipes = recipe_result.scalars().all()
-    else:
-        recipes = []
-
-    recipe_needs: dict[int, Decimal] = {}
-    recipe_map: dict[tuple[int, int | None], list[MenuItemRecipe]] = {}
-    for rc in recipes:
-        recipe_map.setdefault((rc.menu_item_id, rc.menu_variant_id), []).append(rc)
-
-    for li in line_items:
-        mv_id = getattr(li, "menu_variant_id", None)
-        # Prefer exact variant match; fallback to generic recipe if no variant-specific recipe exists.
-        key = (li.menu_item_id, mv_id)
-        li_recipes = recipe_map.get(key, [])
-        if mv_id is not None and not li_recipes:
-            li_recipes = recipe_map.get((li.menu_item_id, None), [])
-        for rc in li_recipes:
-            if rc.quantity_required is None or li.quantity is None:
-                continue
-            qty_needed = Decimal(str(rc.quantity_required)) * Decimal(li.quantity) * (Decimal(1) + Decimal(str(rc.waste_factor or 0)))
-            recipe_needs[rc.inventory_item_id] = recipe_needs.get(rc.inventory_item_id, Decimal(0)) + qty_needed
-
+    recipe_needs = await _compute_recipe_needs(db, line_items)
     if not recipe_needs:
         return
 
@@ -347,6 +306,245 @@ async def _deduct_stock_for_order(
             unit_cost_at_movement=inv.unit_cost if inv.unit_cost is not None else None,
             movement_cost=qty_needed * Decimal(str(inv.unit_cost or 0)),
         ))
+
+
+async def _compute_recipe_needs(db: AsyncSession, line_items: list) -> dict[int, Decimal]:
+    """Aggregate required inventory quantities from menu item recipes.
+
+    `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and
+    `quantity` attributes. Shared by stock deduction and restoration.
+    """
+    # Batch recipe lookup by (menu_item_id, menu_variant_id) to avoid N+1.
+    recipe_keys = set()
+    for li in line_items:
+        mv_id = getattr(li, "menu_variant_id", None)
+        recipe_keys.add((li.menu_item_id, mv_id))
+
+    if recipe_keys:
+        menu_item_ids = {mid for mid, _ in recipe_keys}
+        menu_variant_ids = {mv_id for _, mv_id in recipe_keys if mv_id is not None}
+        recipe_result = await db.execute(
+            select(MenuItemRecipe).where(
+                MenuItemRecipe.menu_item_id.in_(menu_item_ids),
+                (
+                    MenuItemRecipe.menu_variant_id.in_(menu_variant_ids)
+                    | MenuItemRecipe.menu_variant_id.is_(None)
+                ),
+            )
+        )
+        recipes = recipe_result.scalars().all()
+    else:
+        recipes = []
+
+    recipe_needs: dict[int, Decimal] = {}
+    recipe_map: dict[tuple[int, int | None], list[MenuItemRecipe]] = {}
+    for rc in recipes:
+        recipe_map.setdefault((rc.menu_item_id, rc.menu_variant_id), []).append(rc)
+
+    for li in line_items:
+        mv_id = getattr(li, "menu_variant_id", None)
+        # Prefer exact variant match; fallback to generic recipe if no variant-specific recipe exists.
+        key = (li.menu_item_id, mv_id)
+        li_recipes = recipe_map.get(key, [])
+        if mv_id is not None and not li_recipes:
+            li_recipes = recipe_map.get((li.menu_item_id, None), [])
+        for rc in li_recipes:
+            if rc.quantity_required is None or li.quantity is None:
+                continue
+            qty_needed = Decimal(str(rc.quantity_required)) * Decimal(li.quantity) * (Decimal(1) + Decimal(str(rc.waste_factor or 0)))
+            recipe_needs[rc.inventory_item_id] = recipe_needs.get(rc.inventory_item_id, Decimal(0)) + qty_needed
+
+    return recipe_needs
+
+
+async def _restore_stock_for_order(
+    db: AsyncSession,
+    order: Order,
+    line_items: list,
+) -> None:
+    """Restore inventory stock previously deducted for an order (cancellation).
+
+    Mirrors `_deduct_stock_for_order` with an inbound movement.
+    """
+    recipe_needs = await _compute_recipe_needs(db, line_items)
+    if not recipe_needs:
+        return
+
+    inv_item_result = await db.execute(
+        select(InventoryItem).where(InventoryItem.id.in_(list(recipe_needs.keys())))
+    )
+    inv_items = {inv.id: inv for inv in inv_item_result.scalars().all()}
+
+    recipe_needs = {inv_id: qty for inv_id, qty in recipe_needs.items() if inv_id in inv_items}
+    if not recipe_needs:
+        return
+
+    stock_result = await db.execute(
+        select(InventoryStock).where(
+            InventoryStock.inventory_item_id.in_(list(recipe_needs.keys())),
+            InventoryStock.store_id == order.store_id,
+        ).with_for_update()
+    )
+    stock_map = {s.inventory_item_id: s for s in stock_result.scalars().all()}
+
+    for inv_id, qty_restored in recipe_needs.items():
+        stock = stock_map.get(inv_id)
+        if stock is None:
+            continue
+        inv = inv_items[inv_id]
+        new_stock = Decimal(str(stock.current_stock)) + qty_restored
+        stock.current_stock = new_stock
+        db.add(InventoryMovementLog(
+            store_id=order.store_id,
+            inventory_item_id=inv_id,
+            movement_type="in",
+            quantity_delta=Decimal(str(qty_restored)),
+            stock_after=Decimal(str(new_stock)),
+            reserved_delta=0,
+            reserved_after=stock.reserved_stock,
+            reason=f"Order {order.order_number} cancellation stock restoration",
+            reference_type="order",
+            reference_id=order.id,
+            unit_cost_at_movement=inv.unit_cost if inv.unit_cost is not None else None,
+            movement_cost=qty_restored * Decimal(str(inv.unit_cost or 0)),
+        ))
+
+
+async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
+    """Reverse side effects granted at order creation.
+
+    Claws back loyalty points (negative ledger entry mirroring the award),
+    releases any voucher/reward consumed by the order (decrementing global
+    usage counters), and restores recipe-based stock. Callers must hold a row
+    lock on the order and manage the surrounding transaction/commit.
+    """
+    # ── Loyalty points clawback ──
+    points = int(order.loyalty_points_earned or 0)
+    if points > 0 and order.customer_id:
+        la_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.customer_id == order.customer_id).with_for_update()
+        )
+        la = la_result.scalar_one_or_none()
+        if la:
+            clawback = min(points, la.points_balance)
+            if clawback > 0:
+                ledger = LoyaltyPointsLedger(
+                    loyalty_account_id=la.id,
+                    customer_id=order.customer_id,
+                    event_type="return_deduction",
+                    points_delta=-clawback,
+                    running_balance=la.points_balance - clawback,
+                    order_id=order.id,
+                    description=f"Points reversed for cancelled order {order.order_number}",
+                )
+                db.add(ledger)
+                la.points_balance -= clawback
+            la.lifetime_points_earned = max(0, (la.lifetime_points_earned or 0) - points)
+            from app.services.commerce import _recalculate_tier
+            await _recalculate_tier(db, la)
+        order.loyalty_points_earned = 0
+
+    # ── Voucher / reward release ──
+    cv_result = await db.execute(
+        select(CustomerVoucher).where(
+            CustomerVoucher.order_id == order.id,
+            CustomerVoucher.status == "used",
+        ).with_for_update()
+    )
+    for cv in cv_result.scalars().all():
+        cv.status = "active"
+        cv.used_at = None
+        cv.order_id = None
+        cv.use_count = max(0, (cv.use_count or 0) - 1)
+        vd = await db.get(VoucherDefinition, cv.voucher_definition_id)
+        if vd:
+            vd.global_use_count = max(0, (vd.global_use_count or 0) - 1)
+
+    cr_result = await db.execute(
+        select(CustomerReward).where(
+            CustomerReward.order_id == order.id,
+            CustomerReward.status == "used",
+        ).with_for_update()
+    )
+    for cr in cr_result.scalars().all():
+        cr.status = "active"
+        cr.used_at = None
+        cr.order_id = None
+        rc = await db.get(RewardCatalog, cr.reward_catalog_id)
+        if rc:
+            rc.total_redemptions = max(0, (rc.total_redemptions or 0) - 1)
+
+    # ── Stock restoration ──
+    li_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.order_id == order.id)
+    )
+    line_items = li_result.scalars().all()
+    if line_items:
+        await _restore_stock_for_order(db, order, line_items)
+
+
+async def validate_voucher_eligibility(
+    db: AsyncSession,
+    vd: VoucherDefinition,
+    cv: CustomerVoucher,
+    *,
+    customer_id: int,
+    store_id: int,
+    menu_item_ids: set[int] | None = None,
+    has_other_discount: bool = False,
+    current_order_id: int | None = None,
+) -> None:
+    """Enforce voucher definition usage limits and scope. Raises OrderError."""
+    if vd.max_global_uses is not None and (vd.global_use_count or 0) >= vd.max_global_uses:
+        raise OrderError("This voucher has reached its usage limit", 400)
+
+    if vd.max_uses_per_customer is not None:
+        used_result = await db.execute(
+            select(func.coalesce(func.sum(CustomerVoucher.use_count), 0)).where(
+                CustomerVoucher.voucher_definition_id == vd.id,
+                CustomerVoucher.customer_id == customer_id,
+                CustomerVoucher.id != cv.id,
+            )
+        )
+        used_count = int(used_result.scalar() or 0) + (cv.use_count or 0)
+        if used_count >= vd.max_uses_per_customer:
+            raise OrderError("You have already used this voucher the maximum number of times", 400)
+
+    if vd.first_order_only:
+        prior_filters = [
+            Order.customer_id == customer_id,
+            Order.deleted_at.is_(None),
+            Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant"]),
+        ]
+        if current_order_id is not None:
+            prior_filters.append(Order.id != current_order_id)
+        prior_result = await db.execute(
+            select(func.count(Order.id)).where(*prior_filters)
+        )
+        if (prior_result.scalar() or 0) > 0:
+            raise OrderError("This voucher is only valid on your first order", 400)
+
+    if not vd.stackable and has_other_discount:
+        raise OrderError("This voucher cannot be combined with other discounts", 400)
+
+    if vd.scope == "store_specific" and cv.store_id and cv.store_id != store_id:
+        raise OrderError("This voucher is only valid at a specific store", 400)
+
+    if vd.scope == "item_specific" and vd.menu_item_id is not None:
+        if not menu_item_ids or vd.menu_item_id not in menu_item_ids:
+            raise OrderError("This voucher requires a specific menu item in your order", 400)
+
+    if vd.scope == "category_specific" and vd.category_id is not None:
+        if not menu_item_ids:
+            raise OrderError("This voucher requires an item from a specific category in your order", 400)
+        cat_result = await db.execute(
+            select(func.count(MenuItem.id)).where(
+                MenuItem.id.in_(menu_item_ids),
+                MenuItem.category_id == vd.category_id,
+            )
+        )
+        if (cat_result.scalar() or 0) == 0:
+            raise OrderError("This voucher requires an item from a specific category in your order", 400)
 
 
 async def create_order_from_cart(
@@ -466,6 +664,14 @@ async def create_order_from_cart(
             tier_id = loyalty.current_tier_id if loyalty else None
             if tier_id is None or tier_id < vd.minimum_tier_id:
                 raise OrderError("Your loyalty tier is not eligible for this voucher", 400)
+
+        await validate_voucher_eligibility(
+            db, vd, cv,
+            customer_id=customer_id,
+            store_id=cart.store_id,
+            menu_item_ids={ci.menu_item_id for ci in cart_items},
+            has_other_discount=bool(data.reward_id),
+        )
 
         order_base = subtotal  # cart subtotal already includes modifiers
         min_order = to_decimal(vd.minimum_order_value)
@@ -764,6 +970,17 @@ async def create_order_from_cart(
         )
         la = la_result.scalar_one_or_none()
         if la:
+            # Apply the customer's current tier points multiplier
+            multiplier = Decimal(1)
+            if la.current_tier_id:
+                tier = await db.get(LoyaltyTier, la.current_tier_id)
+                if tier and tier.is_active:
+                    multiplier = to_decimal(tier.points_multiplier)
+            if multiplier > 1:
+                loyalty_points_earned = int(
+                    (Decimal(loyalty_points_earned) * multiplier).to_integral_value(rounding="ROUND_DOWN")
+                )
+                order.loyalty_points_earned = loyalty_points_earned
             from app.models.loyalty import LoyaltyPointsLedger
             ledger = LoyaltyPointsLedger(
                 loyalty_account_id=la.id,

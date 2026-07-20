@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Upload, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -67,14 +68,17 @@ export default function RewardNewPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const p = {
+      const p: Record<string, unknown> = {
         ...form,
         reward_key: form.reward_key || form.reward_name.toLowerCase().replace(/[^a-z0-9]/g, "_")
       };
+      // Convert string[] customer_segments to dict (API expects dict | None)
+      const segs = form.customer_segments;
+      p.customer_segments = segs && segs.length > 0 ? Object.fromEntries(segs.map(s => [s, true])) : null;
       await api.post("/admin/rewards", p);
       router.push("/rewards");
     } catch (e: any) {
-      setError(e.message);
+      setError(parseApiError(e));
     } finally {
       setSaving(false);
     }

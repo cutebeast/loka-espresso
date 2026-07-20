@@ -18,6 +18,9 @@ class LoyaltyTierBase(BaseSchema):
     color_hex: str | None = Field(None, max_length=7)
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
+    validity_months: int | None = Field(None, ge=0)
+    renewal_annual_spend: int | None = Field(None, ge=0)
+    downgrade_to_tier_key: str | None = Field(None, max_length=20)
 
 
 class LoyaltyTierOut(LoyaltyTierBase, TimestampedSchema):

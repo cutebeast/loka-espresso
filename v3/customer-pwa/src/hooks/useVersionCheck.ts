@@ -12,6 +12,7 @@ export function useVersionCheck() {
   const { showToast } = useUIStore();
   const { t } = useTranslation();
   const checkInProgress = useRef(false);
+  const lastUnreadCount = useRef(0);
 
   const checkVersion = useCallback(async () => {
     if (checkInProgress.current) return;
@@ -45,20 +46,25 @@ export function useVersionCheck() {
   }, []);
 
   const checkNotifications = useCallback(async () => {
-    if (!useAuthStore.getState().isAuthenticated) return [];
+    if (!useAuthStore.getState().isAuthenticated) return 0;
     try {
-      // Fetch unread count only — lightweight check
+      // Fetch unread count only — lightweight check (backend supports is_read filter)
       const res = await api.get('/notifications/me?per_page=1&is_read=false');
       const data = res.data;
-      const items = Array.isArray(data) ? data : (data?.items ?? []);
-      if (items.length > 0) {
-        showToast(t('notifications.newCount', { count: items.length }), 'info');
+      const unreadTotal = typeof data?.total === 'number'
+        ? data.total
+        : (Array.isArray(data) ? data : (data?.items ?? [])).length;
+      // Only toast when the unread count goes up — otherwise the toast would
+      // fire on every 5-minute poll / visibility change.
+      if (unreadTotal > lastUnreadCount.current) {
+        showToast(t('notifications.newCount', { count: unreadTotal }), 'info');
       }
-      return items;
+      lastUnreadCount.current = unreadTotal;
+      return unreadTotal;
     } catch (err: unknown) {
       const e = err as { response?: { status?: number }; message?: string } | undefined;
       console.error('[PWA] Notification check failed:', e?.response?.status || e?.message || err);
-      return [];
+      return 0;
     }
   }, [showToast, t]);
 

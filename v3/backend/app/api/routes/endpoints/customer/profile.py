@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.routes.deps import ActiveCustomer, DBDependency
+from app.api.routes.endpoints.common.upload import _CONTENT_TYPE_MAP, _validate_file_content
 from app.core.config import get_settings
 from app.models.customer import Customer, CustomerAddress, CustomerDevice
 from app.schemas.base import APIResponse
@@ -89,10 +90,19 @@ async def update_avatar(
     """Upload customer avatar image."""
     settings = get_settings()
 
+    # Validate extension against an image allowlist (never trust the filename
+    # verbatim — .svg/.html could otherwise be served from our origin)
+    ext = Path(file.filename or "avatar.png").suffix.lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+        raise HTTPException(400, detail=f"File type not allowed: {ext or '(none)'}")
+
     # Validate file type
     content_type = file.content_type or ""
     if not content_type.startswith("image/"):
         raise HTTPException(400, detail="File must be an image")
+    expected_mime = _CONTENT_TYPE_MAP.get(ext)
+    if expected_mime and content_type != expected_mime:
+        raise HTTPException(400, detail=f"Content-Type mismatch: {content_type} does not match extension {ext}")
 
     # Validate file size
     contents = await file.read()
@@ -100,10 +110,13 @@ async def update_avatar(
     if len(contents) > max_bytes:
         raise HTTPException(400, detail=f"File too large (max {settings.max_upload_size_mb} MB)")
 
+    # Validate magic bytes match the claimed extension
+    if not _validate_file_content(contents, ext):
+        raise HTTPException(400, detail=f"File content does not match extension {ext}")
+
     # Save file to shared uploads directory (served by Caddy)
     # Save file using phone number (unique per customer) for stable avatar URL
     phone_slug = (customer.phone_number or f"user_{customer.id}").replace("+", "").replace(" ", "")
-    ext = Path(file.filename or "avatar").suffix or ".png"
     filename = f"avatar_{phone_slug}{ext}"
     upload_dir = settings.upload_dir / "avatars"
     upload_dir.mkdir(parents=True, exist_ok=True)

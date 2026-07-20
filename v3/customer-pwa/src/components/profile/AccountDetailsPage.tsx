@@ -208,7 +208,7 @@ export default function AccountDetailsPage() {
           <div className="ad-form-field">
             <label className="ad-form-label" htmlFor="ad-tier">{t('accountDetails.membershipTier')}</label>
             <div className="pt-1">
-              <span className={`ad-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
+              <span className={`ad-tier-badge ${(tier || 'Bloom').toLowerCase()}`}>
                 <Crown size={14} /> {tier}
               </span>
             </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useStaffRole, canUseOps } from "@/hooks/useStaffRole";
+import { RoleGuard, canUseOps } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -23,8 +23,11 @@ interface InventoryItem {
   category_name?: string;
 }
 export default function InventoryPage() {
-  const { role, isAdmin, loading: roleLoading } = useStaffRole();
-  if (!roleLoading && !canUseOps(role, isAdmin)) return <div style={{ padding: 48, textAlign: "center" }}><h2>Access Denied</h2><p>You do not have permission to access this page.</p></div>;
+  return <RoleGuard allowed={canUseOps}>
+    <InventoryPageContent />
+  </RoleGuard>;
+}
+function InventoryPageContent() {
   const {
     t
   } = useTranslation();

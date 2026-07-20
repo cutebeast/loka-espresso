@@ -8,7 +8,7 @@ import LoggerInit from "@/components/LoggerInit";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { TranslationProvider, useTranslation } from "@/lib/i18n";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
-import { refreshToken, BASE_URL } from "@/lib/api";
+import { refreshToken, adminLogout, BASE_URL } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import FloatingHelpButton from "@/components/FloatingHelpButton";
 
@@ -56,8 +56,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const logoutIdle = () => {
-      clearSession();
-      router.replace(ROUTES.LOGIN);
+      // The admin_token cookie is HttpOnly — clear it server-side via the
+      // logout route handler, otherwise navigation silently re-authenticates.
+      adminLogout().finally(() => router.replace(ROUTES.LOGIN));
     };
 
     const resetIdleTimer = () => {

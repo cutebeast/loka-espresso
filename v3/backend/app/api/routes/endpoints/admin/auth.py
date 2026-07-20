@@ -100,6 +100,22 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
     if target_role_key == "system_admin" and "system_admin" not in requester_roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only system administrators can create system admin accounts")
 
+    # Non-system_admin creators may only grant roles they themselves hold
+    # (blocks e.g. a store_manager creating a regional_manager/HQ account)
+    # and may only assign stores they are themselves assigned to.
+    if "system_admin" not in requester_roles:
+        if role_id and target_role_key not in requester_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only grant roles you hold yourself",
+            )
+        requester_store_result = await db.execute(
+            select(StoreAssignment.store_id)
+            .where(StoreAssignment.assignee_id == admin.id)
+        )
+        requester_store_ids = {row[0] for row in requester_store_result.all()}
+        data.store_ids = [sid for sid in data.store_ids if sid in requester_store_ids]
+
     # Create principal
     from app.models.iam import IAMPrincipal
     principal = IAMPrincipal(principal_type="human", status="active")
@@ -267,7 +283,8 @@ async def admin_me(db: DBDependency, request: Request, admin: CurrentAdmin):
 
 @router.get("/users", response_model=APIResponse[list[dict]])
 async def list_admin_users(db: DBDependency, admin: CurrentAdmin):
-    """List all admin accounts."""
+    """List all admin accounts. Requires system_admin."""
+    await _require_system_admin(db, admin)
     result = await db.execute(
         select(AdminAccount).where(AdminAccount.deleted_at.is_(None)).order_by(AdminAccount.id)
     )

@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 export default function EventNewPage() {
   const {
@@ -56,13 +57,16 @@ export default function EventNewPage() {
     const pl: any = {
       ...form,
       position: Number(form.position),
-      rsvp_max_capacity: form.rsvp_max_capacity || null
+      rsvp_max_capacity: form.rsvp_max_capacity || null,
+      start_date: form.start_date || null,
+      end_date: form.end_date || null,
+      event_datetime: form.event_datetime || null
     };
     try {
       await api.post("/admin/event-cards", pl);
       router.push("/content/events");
     } catch (e: any) {
-      setError(e.message);
+      setError(parseApiError(e));
     } finally {
       setSaving(false);
     }

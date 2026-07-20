@@ -143,8 +143,18 @@ async def customer_login(request: Request, response: Response, db: DBDependency,
     )
 
     customer = result.scalar_one_or_none()
+
+    # ── OTP verification for phone login ──
+    # Verified BEFORE any account creation so that, with the bypass disabled,
+    # unknown numbers cannot mass-register accounts (with welcome points)
+    # without proving ownership of the phone number. OTP issuance for new
+    # numbers is unaffected: /auth/send-otp works for unregistered numbers.
+    verified = await _require_otp_or_bypass(config_svc, data.phone_number, data.otp_code)
+    if not verified:
+        raise HTTPException(status_code=401, detail="Invalid or expired OTP")
+
     is_new = False
-    if customer is None and data.phone_number:
+    if customer is None:
         customer = await register_customer(
             db,
             CustomerRegisterRequest(
@@ -153,16 +163,10 @@ async def customer_login(request: Request, response: Response, db: DBDependency,
             ),
         )
         is_new = True
-    elif customer is None:
-        raise HTTPException(status_code=404, detail="Account not found. Please register.")
 
     if not customer.is_active:
         raise HTTPException(status_code=403, detail="Account is inactive")
 
-    # ── OTP verification for phone login ──
-    verified = await _require_otp_or_bypass(config_svc, data.phone_number, data.otp_code)
-    if not verified:
-        raise HTTPException(status_code=401, detail="Invalid or expired OTP")
     customer.phone_verified_at = datetime.now(timezone.utc)
     await db.commit()
 

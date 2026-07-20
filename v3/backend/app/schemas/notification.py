@@ -1,9 +1,10 @@
 """Notification domain schemas."""
 
+import re
 from datetime import datetime, time
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, AfterValidator
 
 from app.schemas.base import BaseSchema, TimestampedSchema
 
@@ -70,17 +71,32 @@ class NotificationPreferenceUpdate(BaseSchema):
 ADMIN_NOTIFICATION_TYPES = Literal[
     "general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"
 ]
-AUDIENCE_SEGMENTS = Literal[
+# Static audience segments. In addition, dynamic per-tier segments of the form
+# "tier:<tier_key>" (resolved against loyalty_tiers.tier_key) are accepted.
+STATIC_AUDIENCE_SEGMENTS = frozenset({
     "all_users", "new_users", "loyal_customers", "inactive_users", "platinum_members"
-]
+})
+_TIER_SEGMENT_RE = re.compile(r"^tier:[A-Za-z0-9_\-]{1,45}$")
 NOTIFICATION_STATUS = Literal["draft", "scheduled", "sent", "failed"]
+
+
+def _validate_audience_segment(value: str) -> str:
+    if value in STATIC_AUDIENCE_SEGMENTS or _TIER_SEGMENT_RE.match(value):
+        return value
+    raise ValueError(
+        "audience_segment must be one of "
+        f"{sorted(STATIC_AUDIENCE_SEGMENTS)} or 'tier:<tier_key>'"
+    )
+
+
+AudienceSegment = Annotated[str, AfterValidator(_validate_audience_segment)]
 
 
 class AdminNotificationBase(BaseSchema):
     title: str = Field(..., max_length=200)
     body: str | None = None
     notification_type: ADMIN_NOTIFICATION_TYPES = "general"
-    audience_segment: AUDIENCE_SEGMENTS = "all_users"
+    audience_segment: AudienceSegment = "all_users"
     image_url: str | None = Field(None, max_length=500)
     action_url: str | None = Field(None, max_length=500)
     scheduled_at: datetime | None = None
@@ -95,7 +111,7 @@ class AdminNotificationUpdate(BaseSchema):
     title: str | None = Field(None, max_length=200)
     body: str | None = None
     notification_type: ADMIN_NOTIFICATION_TYPES | None = None
-    audience_segment: AUDIENCE_SEGMENTS | None = None
+    audience_segment: AudienceSegment | None = None
     image_url: str | None = Field(None, max_length=500)
     action_url: str | None = Field(None, max_length=500)
     scheduled_at: datetime | None = None
@@ -120,7 +136,7 @@ class NotificationTemplateBase(BaseSchema):
     title: str = Field(..., max_length=200)
     body: str | None = None
     notification_type: ADMIN_NOTIFICATION_TYPES = "general"
-    audience_segment: AUDIENCE_SEGMENTS = "all_users"
+    audience_segment: AudienceSegment = "all_users"
     image_url: str | None = Field(None, max_length=500)
 
 
@@ -133,7 +149,7 @@ class NotificationTemplateUpdate(BaseSchema):
     title: str | None = Field(None, max_length=200)
     body: str | None = None
     notification_type: ADMIN_NOTIFICATION_TYPES | None = None
-    audience_segment: AUDIENCE_SEGMENTS | None = None
+    audience_segment: AudienceSegment | None = None
     image_url: str | None = Field(None, max_length=500)
 
 

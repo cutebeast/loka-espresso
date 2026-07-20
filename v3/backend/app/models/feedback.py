@@ -15,8 +15,8 @@ class FeedbackEntry(Base):
     __tablename__ = "feedback_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=True, index=True
     )
     store_id: Mapped[int | None] = mapped_column(
         ForeignKey("stores.id", ondelete="SET NULL"), nullable=True, index=True

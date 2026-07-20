@@ -2,7 +2,7 @@
 
 from decimal import Decimal, ROUND_HALF_UP
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import anyio
@@ -24,9 +24,10 @@ from app.services.hitpay import (
     get_hitpay_payment_request,
 )
 from app.models.customer import Customer
+from app.models.loyalty import LoyaltyAccount
 from app.models.order import Order
 from app.models.payment import Payment, PaymentEvent, Refund
-from app.models.wallet import Wallet, WalletLedgerEntry
+from app.models.wallet import Wallet, WalletLedgerEntry, WalletTopupSession
 
 logger = logging.getLogger(__name__)
 
@@ -496,7 +497,7 @@ def _simulate_stripe_intent(payment: Payment) -> dict:
         "id": pi_id,
         "client_secret": secret,
         "status": "requires_confirmation",
-        "amount": int(payment.amount * 100),
+        "amount": _to_cents(payment.amount),
         "currency": payment.currency_code.lower(),
     }
 
@@ -599,6 +600,10 @@ async def create_payment_intent(
         raise PaymentError("Order not found", 404)
     if order.customer_id != customer_id:
         raise PaymentError("Order does not belong to customer", 403)
+    if order.payment_status in ("captured", "settled", "paid", "refunded"):
+        raise PaymentError("Order is already paid", 400)
+    if order.status in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise PaymentError("Order is cancelled or refunded", 400)
 
     order_amount = to_decimal(order.total_amount)
 
@@ -675,6 +680,93 @@ async def create_payment_intent(
     return payment, provider_response
 
 
+async def _debit_wallet_for_payment(
+    db: AsyncSession,
+    payment: Payment,
+    precision: int,
+    rounding_mode: str,
+) -> None:
+    """Debit the ordering customer's wallet for an internal-wallet payment.
+
+    Locks the wallet row, verifies sufficient balance, and appends a debit
+    ledger entry with the correct running balance. Mirrors the staff wallet-pay
+    flow in staff/orders.py.
+    """
+    order_result = await db.execute(
+        select(Order).where(Order.id == payment.order_id).with_for_update()
+    )
+    order = order_result.scalar_one_or_none()
+    if order is None or order.customer_id is None:
+        raise PaymentError("Order has no customer to debit", 400)
+
+    wallet_res = await db.execute(
+        select(Wallet).where(Wallet.customer_id == order.customer_id).with_for_update()
+    )
+    wallet = wallet_res.scalar_one_or_none()
+    if wallet is None:
+        raise PaymentError("Customer has no wallet", 400)
+    if wallet.is_frozen:
+        raise PaymentError("Wallet is frozen", 400)
+
+    last_res = await db.execute(
+        select(WalletLedgerEntry)
+        .where(WalletLedgerEntry.wallet_id == wallet.id)
+        .order_by(WalletLedgerEntry.id.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    last_entry = last_res.scalar_one_or_none()
+    current_balance = to_decimal(last_entry.running_balance) if last_entry else Decimal(0)
+    amount = money_round(to_decimal(payment.amount), precision, rounding_mode)
+    if current_balance < amount:
+        raise PaymentError(f"Insufficient wallet balance. Available: {current_balance:.2f}", 400)
+
+    new_balance = money_round(current_balance - amount, precision, rounding_mode)
+    db.add(
+        WalletLedgerEntry(
+            wallet_id=wallet.id,
+            entry_type="debit",
+            amount=amount,
+            running_balance=new_balance,
+            description=f"Order payment #{order.order_number}",
+            reference_type="order_payment",
+            reference_id=order.id,
+        )
+    )
+
+
+async def _accrue_loyalty_annual_spend(db: AsyncSession, payment: Payment) -> None:
+    """Accrue a captured payment into the customer's loyalty annual spend.
+
+    Annual spend is stored in integer minor units (cents) on a rolling
+    12-month window. Best-effort: accrual failures must never break capture.
+    """
+    try:
+        customer_id = (
+            await db.execute(select(Order.customer_id).where(Order.id == payment.order_id))
+        ).scalar_one_or_none()
+        if customer_id is None:
+            return
+        account = (
+            await db.execute(
+                select(LoyaltyAccount)
+                .where(LoyaltyAccount.customer_id == customer_id)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if account is None:
+            return
+        now = datetime.now(timezone.utc)
+        window_start = account.annual_spend_window_start
+        if window_start is None or now - window_start > timedelta(days=365):
+            account.annual_spend = 0
+            account.annual_spend_window_start = now
+        amount = payment.captured_amount or payment.amount or Decimal(0)
+        account.annual_spend = (account.annual_spend or 0) + _to_cents(to_decimal(amount))
+    except Exception:
+        logger.warning("Failed to accrue loyalty annual spend for payment %s", payment.id, exc_info=True)
+
+
 async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
     """Confirm a payment (simulate provider confirmation)."""
     result = await db.execute(
@@ -711,6 +803,7 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
                 provider_response={"action": "confirm", "stripe_status": intent.status},
             )
             await _sync_order_payment_status(db, payment)
+            await _accrue_loyalty_annual_spend(db, payment)
         elif intent.status == "requires_capture":
             payment.status = "authorized"
             await _add_payment_event(
@@ -750,6 +843,7 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
                 provider_response={"action": "confirm", "hitpay_status": hitpay_status},
             )
             await _sync_order_payment_status(db, payment)
+            await _accrue_loyalty_annual_spend(db, payment)
         elif hitpay_status in ("pending",):
             raise PaymentError("Payment is still pending. Please wait for the confirmation.", 400)
         elif hitpay_status in ("failed", "expired", "canceled"):
@@ -763,6 +857,8 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
             config_service = PlatformConfigService(db)
             precision = await config_service.get_accounting_precision()
             rounding_mode = await config_service.get_accounting_rounding()
+            if payment.provider == "internal_wallet":
+                await _debit_wallet_for_payment(db, payment, precision, rounding_mode)
             payment.status = "captured"
             payment.captured_amount = payment.amount
             await _apply_capture_fees(db, payment, precision, rounding_mode)
@@ -775,6 +871,7 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
                 provider_response={"action": "confirm", "simulated": True},
             )
             await _sync_order_payment_status(db, payment)
+            await _accrue_loyalty_annual_spend(db, payment)
         else:
             payment.status = "authorized"
             await _add_payment_event(
@@ -1024,14 +1121,19 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
     )
     await db.flush()
     await _sync_order_payment_status(db, payment)
+    await _accrue_loyalty_annual_spend(db, payment)
 
     await db.commit()
     await db.refresh(payment)
     return payment
 
 
-async def cancel_payment(db: AsyncSession, payment_id: int) -> Payment:
-    """Cancel a pending payment."""
+async def cancel_payment(db: AsyncSession, payment_id: int, commit: bool = True) -> Payment:
+    """Cancel a pending payment.
+
+    Pass ``commit=False`` when the caller manages the surrounding transaction
+    (e.g. bulk order cancellation) — the changes are flushed but not committed.
+    """
     result = await db.execute(
         select(Payment).where(Payment.id == payment_id).with_for_update()
     )
@@ -1066,8 +1168,11 @@ async def cancel_payment(db: AsyncSession, payment_id: int) -> Payment:
         from_status=old_status,
         provider_response={"action": "cancel", "simulated": not is_real_provider},
     )
-    await db.commit()
-    await db.refresh(payment)
+    if commit:
+        await db.commit()
+        await db.refresh(payment)
+    else:
+        await db.flush()
     return payment
 
 
@@ -1083,7 +1188,7 @@ async def cancel_pending_order_payments(db: AsyncSession, order_id: int) -> list
     cancelled_ids: list[int] = []
     for payment in payments:
         try:
-            await cancel_payment(db, payment.id)
+            await cancel_payment(db, payment.id, commit=False)
             cancelled_ids.append(payment.id)
         except PaymentError:
             logger.warning("Could not cancel payment %s for order %s", payment.id, order_id, exc_info=True)
@@ -1252,9 +1357,11 @@ async def _handle_stripe_refund_webhook(
     if refund_amount <= 0:
         return
 
-    # Avoid double-counting if the webhook is replayed.
+    # Stripe's charge.amount_refunded is the cumulative refunded total on the
+    # charge, not the delta of this refund. API-initiated refunds have already
+    # incremented payment.refunded_amount, so only record the difference.
     existing_total = payment.refunded_amount or Decimal(0)
-    new_total = money_round(existing_total + refund_amount, precision, rounding_mode)
+    new_total = money_round(max(existing_total, refund_amount), precision, rounding_mode)
     if new_total > payment.captured_amount:
         new_total = payment.captured_amount
     refund_delta = money_round(new_total - existing_total, precision, rounding_mode)
@@ -1275,21 +1382,13 @@ async def _handle_stripe_refund_webhook(
     payment.refund_count = (payment.refund_count or 0) + 1
 
 
-async def _handle_wallet_topup_webhook(
+async def _complete_wallet_topup(
     db: AsyncSession,
-    session_id: int,
-    data: dict,
+    session: WalletTopupSession,
+    description: str,
+    provider_session_id: str | None = None,
 ) -> None:
-    """Credit a customer wallet when a wallet top-up checkout session completes."""
-    from app.models.wallet import Wallet, WalletLedgerEntry, WalletTopupSession
-
-    result = await db.execute(
-        select(WalletTopupSession).where(WalletTopupSession.id == session_id).with_for_update()
-    )
-    session = result.scalar_one_or_none()
-    if session is None:
-        logger.warning("Wallet top-up session %s not found", session_id)
-        return
+    """Credit a customer wallet for a completed top-up session (idempotent)."""
     if session.status == "completed":
         return
 
@@ -1334,16 +1433,32 @@ async def _handle_wallet_topup_webhook(
         entry_type="credit",
         amount=session.amount,
         running_balance=new_balance,
-        description=f"Online top-up via Stripe",
+        description=description,
         reference_type="wallet_topup",
         reference_id=session.id,
     )
     db.add(ledger)
     session.status = "completed"
     session.completed_at = datetime.now(timezone.utc)
-    if data.get("payment_intent"):
-        session.provider_session_id = data["payment_intent"]
+    if provider_session_id:
+        session.provider_session_id = provider_session_id
     await db.commit()
+
+
+async def _handle_wallet_topup_webhook(
+    db: AsyncSession,
+    session_id: int,
+    data: dict,
+) -> None:
+    """Credit a customer wallet when a wallet top-up checkout session completes."""
+    result = await db.execute(
+        select(WalletTopupSession).where(WalletTopupSession.id == session_id).with_for_update()
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        logger.warning("Wallet top-up session %s not found", session_id)
+        return
+    await _complete_wallet_topup(db, session, "Online top-up via Stripe", data.get("payment_intent"))
 
 
 async def _handle_stripe_dispute_webhook(
@@ -1487,6 +1602,22 @@ async def process_webhook_event(
             )
             payment = result.scalar_one_or_none()
 
+    # HitPay wallet top-ups have no Payment row; complete the top-up session instead.
+    if payment is None and provider == "hitpay":
+        hitpay_status = (data.get("status") or event_type.split(".")[-1]).lower()
+        if hitpay_status == "completed" or event_type in ("payment_request.completed", "charge.created"):
+            result = await db.execute(
+                select(WalletTopupSession)
+                .where(WalletTopupSession.provider_session_id == transaction_id)
+                .with_for_update()
+            )
+            topup_session = result.scalar_one_or_none()
+            if topup_session is not None:
+                await _complete_wallet_topup(db, topup_session, "Online top-up via HitPay")
+            else:
+                logger.warning("Wallet top-up session not found for HitPay request %s", transaction_id)
+            return None
+
     if payment is None:
         logger.warning("Payment not found for transaction_id %s", transaction_id)
         return None
@@ -1576,6 +1707,7 @@ async def process_webhook_event(
             )
             await db.flush()
             await _sync_order_payment_status(db, payment)
+            await _accrue_loyalty_annual_spend(db, payment)
         elif new_status in ("refunded", "partially_refunded"):
             await db.flush()
             await _sync_order_payment_status(db, payment)

@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
@@ -124,10 +125,14 @@ export default function InfoCardEditPage() {
   const save = async () => {
     setSaving(true);
     try {
-      await api.patch(`/admin/info-cards/${id}`, form);
+      await api.patch(`/admin/info-cards/${id}`, {
+        ...form,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null
+      });
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); } finally {
+    } catch (e: any) {console.error(e); setMsg(parseApiError(e, t("admin.errors.loadFailed"))); } finally {
       setSaving(false);
     }
     ;

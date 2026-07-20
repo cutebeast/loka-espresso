@@ -378,28 +378,34 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
 
                 # Create loyalty tiers
                 tiers = [
-                    ("bronze",   "Bronze",   0,      1.0),
-                    ("silver",   "Silver",   500,    1.1),
-                    ("gold",     "Gold",     2000,   1.2),
-                    ("platinum", "Platinum", 10000,  1.5),
+                    ("bloom",   "Bloom",   0,      1.0),
+                    ("origin",  "Origin",  500,    1.2),
+                    ("reserve", "Reserve", 1500,   1.5),
                 ]
                 tier_ids = {}
                 for key, name, min_pts, mult in tiers:
                     r = c.post(f"{base_url}/admin/loyalty/tiers", headers=admin_headers, json={
                         "tier_key": key, "display_name": name,
-                        "minimum_points": min_pts, "points_multiplier": mult,
-                        "color_hex": {"bronze":"#CD7F32","silver":"#C0C0C0","gold":"#FFD700","platinum":"#E5E4E2"}[key],
+                        "min_lifetime_points": min_pts, "points_multiplier": mult,
+                        "color_hex": {"bloom":"#4CAF50","origin":"#FF9800","reserve":"#9C27B0"}[key],
                     })
                     if r.status_code in (200, 201):
                         tier_ids[key] = r.json().get("data", r.json()).get("id", 0)
                         created = True
+                    else:
+                        logger.warning(
+                            "Baseline loyalty tier '%s' creation failed: %s %s",
+                            key, r.status_code, r.text,
+                        )
 
                 # Create stores
                 stores_data = [
-                    {"store_name": "Loka HQ", "store_code": "HQ001", "city": "Kuala Lumpur",
-                     "address_line_1": "1 Jalan Test", "phone_number": "+60123456789", "postal_code": "50000"},
-                    {"store_name": "Loka Bangsar", "store_code": "BS001", "city": "Kuala Lumpur",
-                     "address_line_1": "2 Jalan Test", "phone_number": "+60123456780", "postal_code": "59100"},
+                    {"store_name": "Loka Espresso (PKL)", "store_code": "PKL-001", "city": "Kuala Lumpur",
+                     "address_line_1": "Lot P4.17.00, E4.17.00 & E4.17.01, Pavilion Kuala Lumpur",
+                     "phone_number": "+60127889314", "postal_code": "55100"},
+                    {"store_name": "Loka Loka Cafe (KLIA1)", "store_code": "KLIA1-001", "city": "Sepang",
+                     "address_line_1": "Terminal 1, Domestic Arrival Hall, KLIA",
+                     "phone_number": "+60127889314", "postal_code": "64000"},
                 ]
                 for sd in stores_data:
                     r = c.post(f"{base_url}/admin/stores", headers=admin_headers, json=sd)
@@ -407,11 +413,16 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
                         created = True
 
             # ── Ensure test staff with known PIN exists ──
-            r_staff = c.get(f"{base_url}/staff/auth/names", headers=admin_headers)
+            r_staff = c.get(f"{base_url}/staff/auth/names?store_id=1", headers=admin_headers)
             staff_list = r_staff.json().get("data", []) if r_staff.status_code == 200 else []
-            has_test_staff = any(s["display_name"] == "Test Staff" for s in staff_list)
+            test_staff = [s for s in staff_list if s["display_name"] == "Test Staff"]
 
-            if not has_test_staff:
+            # Dedupe: login matches by display_name only, so duplicate rows make it
+            # nondeterministic which staff (and which PIN state) a test gets.
+            for dup in test_staff[1:]:
+                c.delete(f"{base_url}/admin/staff/{dup['id']}", headers=admin_headers)
+
+            if not test_staff:
                 logger.info("No 'Test Staff' found — creating test staff member...")
                 r_create = c.post(f"{base_url}/admin/staff", headers=admin_headers, json={
                     "display_name": "Test Staff",
@@ -426,6 +437,32 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
                     created = True
                 else:
                     logger.warning("Failed to create test staff: %s", r_create.text)
+
+            # ── Ensure Test Staff is not stuck in must_change_pin state ──
+            # Freshly created staff have pin_last_changed_at=NULL, and the backend
+            # (pre-existing rule) blocks all staff endpoints until the PIN is changed.
+            # Rotate the PIN away and back so the known PIN 123456 keeps working.
+            r_login = c.post(
+                f"{base_url}/staff/auth/login",
+                json={"display_name": "Test Staff", "store_id": 1, "password": "123456"},
+            )
+            if r_login.status_code == 200:
+                staff_tok = r_login.json()["tokens"]["access_token"]
+                sh = {"Authorization": f"Bearer {staff_tok}"}
+                r_me = c.get(f"{base_url}/staff/auth/me", headers=sh)
+                must_change = (
+                    r_me.status_code == 200
+                    and r_me.json().get("data", {}).get("must_change_pin")
+                )
+                if must_change:
+                    r1 = c.post(f"{base_url}/staff/auth/change-pin", headers=sh,
+                                json={"current_pin": "123456", "new_pin": "654321"})
+                    r2 = c.post(f"{base_url}/staff/auth/change-pin", headers=sh,
+                                json={"current_pin": "654321", "new_pin": "123456"})
+                    if r1.status_code == 200 and r2.status_code == 200:
+                        logger.info("Test Staff PIN rotated to clear must_change_pin")
+                    else:
+                        logger.warning("PIN rotation failed: %s / %s", r1.text, r2.text)
 
             if created:
                 logger.info("Baseline test data created via API")

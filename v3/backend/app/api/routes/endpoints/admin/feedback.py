@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.core.rate_limiter import limiter
 from app.models.customer import Customer
 from app.models.feedback import FeedbackEntry
 from app.models.store import Store
@@ -169,6 +170,7 @@ async def reply_feedback(
 # ---------------------------------------------------------------------------
 
 @public_router.post("/feedback", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def submit_feedback(
     request: Request,
     db: DBDependency,

@@ -156,7 +156,8 @@ export default function LoginPage() {
       attemptCountRef.current = 0;
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect") || "/";
-      router.push(redirect);
+      // Only allow internal paths — block open redirects (e.g. //evil.com).
+      router.push(redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/");
     } catch (err: unknown) {
       attemptCountRef.current += 1;
       setError(parseApiError(err, "Login failed"));

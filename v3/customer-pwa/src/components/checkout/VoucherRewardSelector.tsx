@@ -37,8 +37,8 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherError, setVoucherError] = useState('');
 
-  const availableVouchers = vouchers.filter(v => v.status === 'available');
-  const availableRewards = rewards.filter(r => r.status === 'available');
+  const availableVouchers = vouchers.filter(v => v.status === 'active' || v.status === 'available');
+  const availableRewards = rewards.filter(r => r.status === 'active' || r.status === 'available');
 
   const handleApplyVoucher = useCallback(async () => {
     if (!voucherInput.trim()) return;
@@ -46,7 +46,9 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
     setVoucherError('');
     try {
       const res = await api.post('/vouchers/validate', { voucher_code: voucherInput.trim(), order_total: subtotal });
-      const discountVal = res.data?.discount_value ?? res.data?.discount_amount ?? res.data?.calculated_discount ?? 0;
+      // Backend returns the raw discount_value (e.g. 10 for 10%) alongside the
+      // order-aware calculated_discount — prefer the calculated amount.
+      const discountVal = res.data?.calculated_discount ?? res.data?.discount_amount ?? res.data?.discount_value ?? 0;
       onChange('voucher', voucherInput.trim(), discountVal);
     } catch {
       setVoucherError(t('checkout.invalidVoucher'));
@@ -82,7 +84,8 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
       {selectedType === 'reward' ? (
         <div className="py-3 px-3.5 bg-copper-soft rounded-xl mb-3">
           <p className="text-text-primary vrs-reward-banner">
-            <strong>{t('checkout.rewardSelected')}</strong> {selectedCode}
+            <strong>{t('checkout.rewardSelected')}</strong>{' '}
+            {rewards.find(r => String(r.id) === String(selectedCode))?.reward_name ?? selectedCode}
           </p>
           <p className="text-[11px] text-text-muted mt-1">
             {t('checkout.removeRewardHint')}
@@ -176,7 +179,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
           </p>
           <div className="flex flex-col gap-1.5">
             {availableRewards.slice(0, 3).map(r => {
-              const isSelected = selectedType === 'reward' && selectedCode === r.redemption_code;
+              const isSelected = selectedType === 'reward' && String(selectedCode) === String(r.id);
               return (
                 <button
                   key={r.id}

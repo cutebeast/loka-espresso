@@ -2,10 +2,11 @@
 
 from datetime import date, datetime, time, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select
 
 from app.api.routes.deps import DBDependency, OptionalLocale
+from app.core.rate_limiter import limiter
 from app.services.translation import merge_translations, translate_single
 from app.models.store import (
     DiningTable,
@@ -195,7 +196,9 @@ async def get_store(db: DBDependency, locale: OptionalLocale, store_id: int):
 # ── Table Scan (Dine-in QR) ──
 
 @router.post("/tables/scan", response_model=APIResponse[dict])
+@limiter.limit("20/minute")
 async def scan_table(
+    request: Request,
     db: DBDependency,
     data: dict,
 ):
@@ -206,6 +209,11 @@ async def scan_table(
 
     if not store_slug or not table_id:
         raise HTTPException(status_code=400, detail="store_slug and table_id required")
+
+    # The QR token is mandatory — without it anyone could flip table states
+    # by enumerating table IDs.
+    if not qr_token:
+        raise HTTPException(status_code=400, detail="qr_token required")
 
     # Find store by slug
     store_result = await db.execute(
@@ -228,8 +236,8 @@ async def scan_table(
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
 
-    # Validate QR token if provided
-    if qr_token and table.qr_code_token != qr_token:
+    # Validate QR token against the table's issued token
+    if table.qr_code_token != qr_token:
         raise HTTPException(status_code=403, detail="Invalid QR code")
 
     # Update table status snapshot

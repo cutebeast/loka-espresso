@@ -15,6 +15,8 @@ function extractCashBalance(data: WalletData | null | undefined): number {
 interface WalletState {
   balance: number;
   points: number;
+  /** Lifetime points earned — never decreases on redemption; used for tier progress */
+  lifetimePoints: number;
   tier: string;
   tierId: number;
   rewards: UserReward[];
@@ -23,6 +25,7 @@ interface WalletState {
   isLoading: boolean;
   setBalance: (balance: number) => void;
   setPoints: (points: number) => void;
+  setLifetimePoints: (lifetimePoints: number) => void;
   setTier: (tier: string) => void;
   setTierId: (tierId: number) => void;
   setRewards: (rewards: UserReward[]) => void;
@@ -36,7 +39,8 @@ interface WalletState {
 export const useWalletStore = create<WalletState>((set, get) => ({
   balance: 0,
   points: 0,
-  tier: 'Bronze',
+  lifetimePoints: 0,
+  tier: 'Bloom',
   tierId: 0,
   rewards: [],
   vouchers: [],
@@ -44,6 +48,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   isLoading: false,
   setBalance: (balance) => set({ balance: normalizeNumber(balance, 0) }),
   setPoints: (points) => set({ points: normalizeNumber(points, 0) }),
+  setLifetimePoints: (lifetimePoints) => set({ lifetimePoints: normalizeNumber(lifetimePoints, 0) }),
   setTier: (tier) => set({ tier }),
   setTierId: (tierId) => set({ tierId: normalizeNumber(tierId, 0) }),
   setRewards: (rewards) => set({ rewards }),
@@ -73,6 +78,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         if (d) {
           set({
             points: normalizeNumber(d.current_points ?? get().points, get().points),
+            lifetimePoints: normalizeNumber(d.lifetime_points ?? get().lifetimePoints, get().lifetimePoints),
             tier: d.tier_name ?? get().tier,
             tierId: normalizeNumber(d.tier_id ?? get().tierId, get().tierId),
           });
@@ -88,7 +94,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   resetAll: () => set({
     balance: 0,
     points: 0,
-    tier: 'Bronze',
+    lifetimePoints: 0,
+    tier: 'Bloom',
     tierId: 0,
     rewards: [],
     vouchers: [],

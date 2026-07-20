@@ -1,8 +1,8 @@
 /**
- * Detect user location via IP geolocation and find the nearest store.
+ * Detect user location and find the nearest store.
  *
  * Strategy:
- * 1. Try free ip-api.com (no key needed, works server-side)
+ * 1. Approximate location from the first store's coordinates (backend-sourced)
  * 2. Haversine distance to each store's lat/lng
  * 3. Return the closest store, or null if anything fails
  */
@@ -35,18 +35,9 @@ export function haversineKm(
 }
 
 /**
- * Detect user's approximate location via IP.
- * Uses our own backend endpoint which tries local MaxMind DB then ip-api fallback.
+ * Detect user's approximate location.
+ * Uses our own backend endpoint (first store's coordinates as a coarse anchor).
  */
-function createTimeoutSignal(ms: number): AbortSignal {
-  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
-    return AbortSignal.timeout(ms);
-  }
-  const ctrl = new AbortController();
-  setTimeout(() => ctrl.abort(), ms);
-  return ctrl.signal;
-}
-
 export async function detectIPLocation(): Promise<IPLocation | null> {
   try {
     const { default: api } = await import('@/lib/api');
@@ -56,19 +47,7 @@ export async function detectIPLocation(): Promise<IPLocation | null> {
       return { lat: first.latitude, lng: first.longitude };
     }
   } catch {
-    // Backend unavailable — try direct ip-api
-    try {
-      const fallbackGeoUrl = process.env.NEXT_PUBLIC_GEOIP_API_URL || 'https://ip-api.com/json/?fields=status,lat,lon';
-      const res = await fetch(fallbackGeoUrl, {
-        signal: createTimeoutSignal(5000),
-      });
-      const data = await res.json();
-      if (data?.status === 'success' && data.lat && data.lon) {
-        return { lat: data.lat, lng: data.lon };
-      }
-    } catch {
-      // all failed
-    }
+    // Backend unavailable
   }
   return null;
 }

@@ -7,7 +7,6 @@ import { getTables, generateTableQr, updateTableStatus, type Table } from "@/lib
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import { useQrImages } from "@/hooks/useQrImages";
-import { useQrExpiry } from "@/hooks/useQrExpiry";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import EmptyState from "@/components/EmptyState";
@@ -61,7 +60,6 @@ export default function TablesPage() {
     qr_generated_at: t.qr_generated_at
   })), [tables]);
   const qrImages = useQrImages(qrInfo, storeId);
-  const qrExpiry = useQrExpiry(qrInfo);
   const sections = useMemo(() => {
     const set = new Set<string>();
     tables.forEach(t => {
@@ -212,8 +210,7 @@ export default function TablesPage() {
       gap: 16
     }}>
           {filteredTables.map(table => {
-        const expiry = qrExpiry[table.id];
-        const hasQr = !!(table.qr_code_image_url || table.qr_code_token) && !expiry?.expired;
+        const hasQr = !!(table.qr_code_image_url || table.qr_code_token);
         return <div key={table.id} className="card" role="button" tabIndex={0} style={{
           borderLeft: `4px solid ${statusColor(table.current_status)}`,
           cursor: "pointer",
@@ -380,7 +377,7 @@ export default function TablesPage() {
               color: "var(--color-text-muted)",
               marginTop: 8
             }}>
-                    {qrExpiry[selectedTable.id]?.expired ? t("tables.qr_expired") : t("tables.expires_in", { minutes: Math.floor((qrExpiry[selectedTable.id]?.remaining || 0) / 60), seconds: (qrExpiry[selectedTable.id]?.remaining || 0) % 60 })}
+                    {t("tables.qr_no_expiry")}
                   </p>
                   <div style={{
               display: "flex",

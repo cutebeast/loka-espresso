@@ -84,10 +84,9 @@
   margin-bottom: 6px;
 }
 
-.profile-tier-badge.bronze   { background: linear-gradient(135deg, var(--tier-bronze), var(--tier-bronze-dark)); }
-.profile-tier-badge.silver   { background: linear-gradient(135deg, var(--tier-silver), var(--tier-silver-dark)); }
-.profile-tier-badge.gold     { background: linear-gradient(135deg, var(--loka-accent-copper), var(--loka-accent-brown)); }
-.profile-tier-badge.platinum { background: linear-gradient(135deg, var(--tier-platinum), var(--tier-platinum-dark)); }
+.profile-tier-badge.bloom   { background: linear-gradient(135deg, var(--tier-bloom), var(--tier-bloom-dark)); }
+.profile-tier-badge.origin  { background: linear-gradient(135deg, var(--tier-origin), var(--tier-origin-dark)); }
+.profile-tier-badge.reserve { background: linear-gradient(135deg, var(--tier-reserve), var(--tier-reserve-dark)); }
 
 /* Mini progress bar */
 .profile-tier-progress {
@@ -310,7 +309,7 @@
 .profile-icon-address   { background: var(--loka-accent-brown); color: var(--loka-white); }
 .profile-icon-card      { background: #EC4899; color: var(--loka-white); }
 .profile-icon-notif     { background: var(--color-gold); color: var(--loka-white); }
-.profile-icon-settings  { background: var(--tier-silver-dark); color: var(--loka-white); }
+.profile-icon-settings  { background: var(--tier-origin-dark); color: var(--loka-white); }
 .profile-icon-help      { background: #14B8A6; color: var(--loka-white); }
 .profile-icon-logout    { background: var(--loka-danger); color: var(--loka-white); }
 .profile-icon-order     { background: var(--loka-primary); color: var(--loka-white); }

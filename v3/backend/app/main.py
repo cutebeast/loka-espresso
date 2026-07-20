@@ -13,6 +13,7 @@ from app.api.routes.router import api_router
 from app.core.config import get_settings
 from app.core.database import engine
 from app.core.middleware import (
+    PublicMutationRateLimitMiddleware,
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -65,6 +66,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Security middleware
+# Note: Starlette runs middlewares in reverse registration order — the public
+# mutation rate limiter must be registered FIRST so its 429 responses still
+# pass through CORS and security headers on the way out.
+app.add_middleware(PublicMutationRateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.get_allowed_hosts())
 app.add_middleware(

@@ -3,12 +3,14 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.routes.deps import DBDependency
 from app.core.money import money_round, to_decimal
+from app.core.rate_limiter import limiter
 from app.core.security import create_guest_pay_token
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.customer import Customer
@@ -70,7 +72,9 @@ async def _get_or_create_walkin_customer(db) -> Customer:
 
 
 @public_router.post("/orders", response_model=APIResponse[KioskOrderOut], status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_kiosk_order(
+    request: Request,
     db: DBDependency,
     data: KioskOrderCreateRequest,
 ):
@@ -121,7 +125,7 @@ async def create_kiosk_order(
     menu_items_map = {mi.id: mi for mi in items_result.scalars().all()}
 
     # Batch-load modifier options and variants for price calculation
-    from app.models.menu import MenuModifierOption, MenuVariant
+    from app.models.menu import MenuModifierGroup, MenuModifierOption, MenuVariant
     all_modifier_option_ids = set()
     all_variant_ids = set()
     for line in data.items:
@@ -138,6 +142,13 @@ async def create_kiosk_order(
         for mo in mo_result.scalars().all():
             modifier_options_map[mo.id] = mo
 
+    modifier_groups_map: dict[int, MenuModifierGroup] = {}
+    mg_result = await db.execute(
+        select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id.in_(menu_item_ids))
+    )
+    for mg in mg_result.scalars().all():
+        modifier_groups_map[mg.id] = mg
+
     variants_map: dict[int, MenuVariant] = {}
     if all_variant_ids:
         v_result = await db.execute(
@@ -149,12 +160,14 @@ async def create_kiosk_order(
     # Get or create walk-in customer
     walkin = await _get_or_create_walkin_customer(db)
 
-    # Get or create cart for walk-in customer at this store
+    # Get or create cart for walk-in customer at this store. The row lock
+    # serialises concurrent kiosk orders sharing the walk-in cart so two
+    # kiosks cannot wipe/rebuild each other's lines mid-order.
     cart_result = await db.execute(
         select(CustomerCart).where(
             CustomerCart.customer_id == walkin.id,
             CustomerCart.store_id == data.store_id,
-        )
+        ).with_for_update()
     )
     cart = cart_result.scalar_one_or_none()
     if cart is None:
@@ -165,8 +178,19 @@ async def create_kiosk_order(
             subtotal=Decimal("0"),
         )
         db.add(cart)
-        await db.flush()
-        await db.refresh(cart)
+        try:
+            async with db.begin_nested():
+                await db.flush()
+        except IntegrityError:
+            # A concurrent kiosk request created the shared cart first —
+            # lock and reuse that row instead.
+            cart_result = await db.execute(
+                select(CustomerCart).where(
+                    CustomerCart.customer_id == walkin.id,
+                    CustomerCart.store_id == data.store_id,
+                ).with_for_update()
+            )
+            cart = cart_result.scalar_one()
 
     # Clear any existing cart lines (defensive)
     existing_lines_result = await db.execute(
@@ -187,28 +211,66 @@ async def create_kiosk_order(
         unit_price = to_decimal(menu_item.base_price)
         modifier_total = Decimal("0")
 
-        # Apply variant price adjustment
-        if line.variant_id and line.variant_id in variants_map:
-            variant = variants_map[line.variant_id]
+        # Apply variant price adjustment — variant must belong to this item
+        if line.variant_id:
+            variant = variants_map.get(line.variant_id)
+            if variant is None or variant.parent_item_id != line.menu_item_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Variant {line.variant_id} is not valid for menu item {line.menu_item_id}",
+                )
             unit_price += to_decimal(variant.price_adjustment or 0)
 
-        # Apply modifier option price adjustments
+        # Apply modifier option price adjustments, enforcing group rules
         selected_modifiers: dict = {}
+        group_counts: dict[int, int] = {}
         if line.modifier_option_ids:
             for opt_id in line.modifier_option_ids:
                 opt = modifier_options_map.get(opt_id)
-                if opt:
-                    adj = to_decimal(opt.price_adjustment or 0)
-                    modifier_total += adj
-                    # Group by modifier group
-                    gid = opt.modifier_group_id
-                    if gid not in selected_modifiers:
-                        selected_modifiers[str(gid)] = []
-                    selected_modifiers[str(gid)].append({
-                        "option_id": opt.id,
-                        "option_name": opt.option_name,
-                        "price_adjustment": float(adj),
-                    })
+                if opt is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Unknown modifier option {opt_id}",
+                    )
+                if not opt.is_available:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Modifier option {opt_id} is unavailable",
+                    )
+                group = modifier_groups_map.get(opt.modifier_group_id)
+                if group is None or group.menu_item_id != line.menu_item_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Modifier option {opt_id} does not belong to menu item {line.menu_item_id}",
+                    )
+                group_counts[group.id] = group_counts.get(group.id, 0) + 1
+                adj = to_decimal(opt.price_adjustment or 0)
+                modifier_total += adj
+                gid = opt.modifier_group_id
+                if gid not in selected_modifiers:
+                    selected_modifiers[str(gid)] = []
+                selected_modifiers[str(gid)].append({
+                    "option_id": opt.id,
+                    "option_name": opt.option_name,
+                    "price_adjustment": float(adj),
+                })
+
+        # Enforce min/max selections for every modifier group of this item
+        for group in modifier_groups_map.values():
+            if group.menu_item_id != line.menu_item_id:
+                continue
+            count = group_counts.get(group.id, 0)
+            if count > group.max_selections:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Too many selections for modifier group '{group.group_name}' (max {group.max_selections})",
+                )
+            min_required = max(group.min_selections, 1) if group.is_required else group.min_selections
+            if (group.is_required and count < min_required) or (count > 0 and count < group.min_selections):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Modifier group '{group.group_name}' requires at least {min_required} selection(s)",
+                )
 
         line_unit = unit_price + modifier_total
         line_total = money_round(line_unit * line.quantity, precision, rounding_mode)

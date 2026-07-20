@@ -1,5 +1,5 @@
 "use client";
-import { useStaffRole, canUsePOS } from "@/hooks/useStaffRole";
+import { RoleGuard, canUsePOS } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCallback, useRef, useEffect, useState } from "react";
@@ -19,20 +19,23 @@ import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
 import { api } from "@/lib/api";
 export default function PosPage() {
-  const { role, isAdmin, loading: roleLoading } = useStaffRole();
-  if (!roleLoading && !canUsePOS(role, isAdmin)) return <div style={{ padding: 48, textAlign: "center" }}><h2>Access Denied</h2><p>You do not have permission to access POS.</p></div>;
+  return <RoleGuard allowed={canUsePOS}>
+    <PosPageContent />
+  </RoleGuard>;
+}
+function PosPageContent() {
   const {
     t
   } = useTranslation();
   const pos = usePosState();
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
-  const [storeConfig, setStoreConfig] = useState<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number } | null>(null);
+  const [storeConfig, setStoreConfig] = useState<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number; display_key?: string } | null>(null);
 
   // Load store config for customer display branding and fees
   useEffect(() => {
     let cancelled = false;
-    api.get<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number }>("/staff/store")
+    api.get<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number; display_key?: string }>("/staff/store")
       .then((cfg) => {
         if (!cancelled) setStoreConfig(cfg);
       })
@@ -296,7 +299,7 @@ export default function PosPage() {
           gap: 4,
           fontSize: 12,
           padding: "6px 10px"
-        }} onClick={() => openCustomerDisplay(storeConfig?.display_left ?? 1920)} aria-label={t("pos.display_open_customer_screen")}>
+        }} onClick={() => openCustomerDisplay(storeConfig?.display_left ?? 1920, pos.storeId || undefined, storeConfig?.display_key)} aria-label={t("pos.display_open_customer_screen")}>
             <Monitor size={16} />{t("pos.display_customer_screen")}</button>
         </div>
         {pos.searchResults.length > 0 && <div style={{

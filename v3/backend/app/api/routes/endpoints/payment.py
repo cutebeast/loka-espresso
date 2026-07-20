@@ -12,13 +12,19 @@ import anyio
 
 logger = logging.getLogger(__name__)
 import stripe
-from stripe._error import SignatureVerificationError
+from stripe._error import SignatureVerificationError, StripeError
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.routes.deps import (
+    ActiveCustomer,
+    CurrentAdmin,
+    DBDependency,
+    _get_admin_role_keys,
+    require_store_admin,
+)
 from app.models.order import Order
 from app.models.customer import Customer
 from app.models.payment import Payment, PaymentMethod, Refund
@@ -274,7 +280,9 @@ async def guest_pay(
             resp = await create_hitpay_payment_request(db, payment, order, None, return_url=success_url)
         except Exception as exc:
             await db.rollback()
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+            logger.exception("HitPay guest-pay payment request creation failed")
+            raise HTTPException(status_code=503, detail="HitPay payment session could not be created") from exc
+        payment.provider_transaction_id = resp["id"]
         redirect_url = resp.get("redirect_url")
 
     order.payment_status = "pending_authorization"
@@ -456,6 +464,14 @@ async def confirm(
     if order is None or order.customer_id != customer.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
+    # Cash-like providers are collected and confirmed by store staff; customers
+    # must not be able to mark them paid themselves.
+    if payment.provider in ("cash", "store_credit"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This payment method can only be confirmed by store staff",
+        )
+
     try:
         payment = await confirm_payment(db, payment_id)
     except PaymentError as exc:
@@ -621,7 +637,8 @@ async def create_setup_intent(
             )
         )
     except StripeError as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        logger.warning("Stripe API error: %s", exc)
+        raise HTTPException(status_code=502, detail="Payment provider error") from exc
 
     return APIResponse(data={
         "client_secret": intent.client_secret,
@@ -655,7 +672,8 @@ async def save_payment_method(
             lambda: stripe.SetupIntent.retrieve(setup_intent_id, api_key=api_key)
         )
     except StripeError as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        logger.warning("Stripe API error: %s", exc)
+        raise HTTPException(status_code=502, detail="Payment provider error") from exc
 
     if intent.status != "succeeded":
         raise HTTPException(
@@ -672,7 +690,8 @@ async def save_payment_method(
             lambda: stripe.PaymentMethod.retrieve(pm_id, api_key=api_key)
         )
     except StripeError as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        logger.warning("Stripe API error: %s", exc)
+        raise HTTPException(status_code=502, detail="Payment provider error") from exc
 
     # Check for duplicates
     existing = await db.execute(
@@ -751,6 +770,22 @@ async def get_payment(
 # ---------------------------------------------------------------------------
 
 
+async def _require_payment_money_admin(db, admin, payment_id: int) -> None:
+    """Enforce store scoping and read-only role block for money movement."""
+    payment = await _get_payment_or_404(db, payment_id)
+    order_result = await db.execute(select(Order.store_id).where(Order.id == payment.order_id))
+    store_id = order_result.scalar_one_or_none()
+    if store_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    await require_store_admin(db, admin, store_id)
+    role_keys = await _get_admin_role_keys(db, admin.id, admin_obj=admin)
+    if role_keys == {"readonly_analyst"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Read-only admins cannot capture or refund payments",
+        )
+
+
 @router.post("/{payment_id}/capture", response_model=APIResponse[PaymentOut])
 async def capture(
     admin: CurrentAdmin,
@@ -758,6 +793,7 @@ async def capture(
     payment_id: int,
 ):
     """Capture an authorized payment."""
+    await _require_payment_money_admin(db, admin, payment_id)
     try:
         payment = await capture_payment(db, payment_id)
     except PaymentError as exc:
@@ -774,6 +810,7 @@ async def request_refund(
     data: RefundCreate,
 ):
     """Request a refund for a payment."""
+    await _require_payment_money_admin(db, admin, payment_id)
     try:
         refund = await refund_payment(
             db=db,

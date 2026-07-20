@@ -8,7 +8,7 @@ import { isNotFoundError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, UserCircle, ShoppingBag, Award, Wallet, Shield, Smartphone, Settings, Gift, Save } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
-const TIERS = ["silver", "gold", "platinum"];
+const TIERS = ["origin", "reserve"];
 interface LoyaltyInfo {
   points_balance?: number;
   current_tier_id?: string;
@@ -144,7 +144,7 @@ export default function CustomerDetailPage() {
   const [pointsReason, setPointsReason] = useState("");
   const [walletAmt, setWalletAmt] = useState("");
   const [walletReason, setWalletReason] = useState("");
-  const [tierVal, setTierVal] = useState("silver");
+  const [tierVal, setTierVal] = useState("origin");
   const [tierReason, setTierReason] = useState("");
   const [vouchers, setVouchers] = useState<VoucherOption[]>([]);
   const [selVoucher, setSelVoucher] = useState("");
@@ -239,7 +239,7 @@ export default function CustomerDetailPage() {
       let res: ActionResponse | null = null;
       if (action === "points") {
         res = await api.post<ActionResponse>(`/admin/customers/${id}/adjust-points`, data);
-        if (res?.new_balance) {
+        if (res?.new_balance != null) {
           const balance = res.new_balance;
           setC((prev: CustomerDetail | null) => prev ? {
             ...prev,
@@ -261,6 +261,7 @@ export default function CustomerDetailPage() {
         load();
       } else if (action === "wallet") {
         const amt = parseFloat(String(data.amount || "0"));
+        if (!amt || Number.isNaN(amt)) throw new Error("Enter a non-zero amount");
         if (amt > 0) res = await api.post<ActionResponse>("/admin/wallets/topup", {
           customer_id: id,
           amount: amt,

@@ -5,13 +5,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from scripts._db_utils import confirm, guard_production
+from scripts._db_utils import SETTINGS, confirm, guard_production
 from seed_iam import seed as seed_iam
 from seed_platform import seed as seed_platform
 from seed_stores import seed as seed_stores
@@ -24,6 +26,23 @@ from seed_customers import seed as seed_customers
 from seed_operational import seed as seed_operational
 from seed_orders import seed as seed_orders
 from seed_help_articles import seed as seed_help_articles
+
+
+async def seed_translations():
+    """Seed UI translations from the root scripts directory."""
+    script = Path(__file__).resolve().parent.parent.parent / "scripts" / "seed_admin_ui_translations.py"
+    if not script.exists():
+        print("  [translations] skip — script not found")
+        return
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable, str(script),
+        env={**os.environ, "DATABASE_URL": SETTINGS.database_url_sync or SETTINGS.database_url},
+    )
+    await proc.wait()
+    if proc.returncode == 0:
+        print("  [translations] done")
+    else:
+        print(f"  [translations] failed (exit {proc.returncode})")
 
 
 PARTS = {
@@ -39,10 +58,11 @@ PARTS = {
     "operational": seed_operational,
     "orders": seed_orders,
     "help": seed_help_articles,
+    "translations": seed_translations,
 }
 
 # Dependency order for the default --all run
-ORDER = ["iam", "platform", "stores", "inventory", "menu", "loyalty", "content", "staff", "customers", "operational", "orders", "help"]
+ORDER = ["iam", "platform", "stores", "inventory", "menu", "loyalty", "content", "staff", "customers", "operational", "orders", "help", "translations"]
 
 
 def _expand_parts(parts_arg: str) -> list[str]:

@@ -20,7 +20,7 @@ CONFIGS = [
     ("app.currency", '"MYR"', "string", "all", False, True),
     ("app.currency_symbol", '"RM"', "string", "all", False, True),
     ("currency.default", '"MYR"', "string", "all", False, True),
-    ("app.support_phone", '"+60123456789"', "string", "all", False, True),
+    ("app.support_phone", '"+60127889314"', "string", "all", False, True),
     ("app.support_email", '"support@lokaespresso.my"', "string", "all", False, True),
     ("otp.bypass_enabled", "true", "boolean", "all", True, True),
     ("otp.bypass_code", '"000000"', "string", "all", True, True),

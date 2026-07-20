@@ -1,6 +1,6 @@
 """Daily check-in admin endpoint."""
 
-from datetime import date
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
@@ -33,6 +33,8 @@ async def list_checkins(
             "id": cd.id, "customer_id": cd.customer_id,
             "customer_name": cust_name or f"Customer #{cd.customer_id}",
             "checkin_date": cd.checkin_date.isoformat(),
+            "streak_day": cd.streak_day,
+            "points_earned": cd.points_earned,
             "created_at": cd.created_at.isoformat() if cd.created_at else None,
         }
         items.append(item)
@@ -42,7 +44,7 @@ async def list_checkins(
 
 @router.get("/stats", response_model=APIResponse[dict])
 async def checkin_stats(db: DBDependency, admin: CurrentAdmin):
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     total = (await db.execute(select(func.count(CustomerDailyCheckin.id)))).scalar() or 0
     today_cnt = (await db.execute(
         select(func.count(func.distinct(CustomerDailyCheckin.customer_id)))

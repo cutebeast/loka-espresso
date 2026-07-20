@@ -34,6 +34,9 @@ class LoyaltyTier(Base, TimestampMixin):
     color_hex: Mapped[str | None] = mapped_column(CHAR(7), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    validity_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    renewal_annual_spend: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    downgrade_to_tier_key: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     accounts: Mapped[List["LoyaltyAccount"]] = relationship(
         "LoyaltyAccount", back_populates="current_tier"
@@ -42,6 +45,8 @@ class LoyaltyTier(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("min_lifetime_points >= 0", name="ck_loyalty_tiers_min_lifetime_points"),
         CheckConstraint("points_multiplier >= 1.00", name="ck_loyalty_tiers_points_multiplier"),
+        CheckConstraint("validity_months IS NULL OR validity_months > 0", name="ck_loyalty_tiers_validity_months"),
+        CheckConstraint("renewal_annual_spend IS NULL OR renewal_annual_spend >= 0", name="ck_loyalty_tiers_renewal_annual_spend"),
     )
 
 
@@ -59,6 +64,10 @@ class LoyaltyAccount(Base, TimestampMixin):
     lifetime_points_earned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     lifetime_points_redeemed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     points_pending_expiry: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    annual_spend: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    annual_spend_window_start: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_tier_change_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

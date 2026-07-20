@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 const TYPES = ["general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"];
@@ -56,10 +57,13 @@ export default function NotificationNewPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post("/admin/notifications", form);
+      await api.post("/admin/notifications", {
+        ...form,
+        scheduled_at: form.scheduled_at || null
+      });
       router.push("/notifications");
     } catch (err: any) {
-      setError(err.message);
+      setError(parseApiError(err));
     } finally {
       setSaving(false);
     }

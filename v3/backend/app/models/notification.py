@@ -62,7 +62,8 @@ class AdminNotification(Base, TimestampMixin):
             name="ck_admin_notifications_type",
         ),
         CheckConstraint(
-            "audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members')",
+            "audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members')"
+            " OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$'",
             name="ck_admin_notifications_audience",
         ),
         CheckConstraint(
@@ -94,7 +95,8 @@ class NotificationTemplate(Base, TimestampMixin):
             name="ck_notification_templates_type",
         ),
         CheckConstraint(
-            "audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members')",
+            "audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members')"
+            " OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$'",
             name="ck_notification_templates_audience",
         ),
     )

@@ -408,11 +408,32 @@ async def test_full_order_lifecycle(
     assert r_status_check.json()["data"]["status"] == "preparing"
 
     # 11. Cancel order (teardown)
+    # Orders with captured payments cannot be cancelled directly (refund-first guard).
     r_cancel = await client.patch(
         f"{base_url}/admin/orders/{order_id}/status",
         headers=admin_headers,
         json={"status": "cancelled_by_merchant"},
     )
+    if order.get("total_amount", 0) > 0:
+        assert r_cancel.status_code == 400, "Expected captured-payment cancel guard"
+        # Refund the captured payment, then cancel succeeds
+        r_payments = await client.get(
+            f"{base_url}/payments?order_id={order_id}&per_page=10",
+            headers=admin_headers,
+        )
+        captured = [p for p in r_payments.json()["data"]["items"] if p["status"] == "captured"]
+        assert len(captured) >= 1, "Expected a captured payment for the order"
+        r_refund = await client.post(
+            f"{base_url}/payments/{captured[0]['id']}/refund",
+            headers=admin_headers,
+            json={"amount": float(order["total_amount"]), "reason": "Lifecycle test teardown"},
+        )
+        assert r_refund.status_code in (200, 201), f"Refund failed: {r_refund.text}"
+        r_cancel = await client.patch(
+            f"{base_url}/admin/orders/{order_id}/status",
+            headers=admin_headers,
+            json={"status": "cancelled_by_merchant"},
+        )
     assert r_cancel.status_code == 200
     r_final = await client.get(f"{base_url}/admin/orders/{order_id}", headers=admin_headers)
     assert r_final.status_code == 200

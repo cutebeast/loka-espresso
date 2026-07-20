@@ -57,15 +57,13 @@
   --color-info: #5A707A;
   --color-info-light: #E8EFF3;
 
-  /* Tier — Metallic Gradients */
-  --tier-bronze: #A0783A;
-  --tier-bronze-dark: #7A5828;
-  --tier-silver: #B0A9A0;
-  --tier-silver-dark: #8A8278;
-  --tier-gold: #D4AF37;
-  --tier-gold-dark: #B8942A;
-  --tier-platinum: #8A9AB0;
-  --tier-platinum-dark: #5A6A80;
+  /* Tier Colors */
+  --tier-bloom: #4CAF50;
+  --tier-bloom-dark: #388E3C;
+  --tier-origin: #FF9800;
+  --tier-origin-dark: #F57C00;
+  --tier-reserve: #9C27B0;
+  --tier-reserve-dark: #7B1FA2;
 
   /* Radii */
   --radius-sm: 6px;

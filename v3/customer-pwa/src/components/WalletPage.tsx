@@ -127,6 +127,9 @@ export default function WalletPage() {
     try {
       const res = await api.post('/wallet/topup/checkout', {
         amount,
+        // Backend defaults to Stripe; pass the configured gateway so HitPay-only
+        // deployments get a HitPay checkout session.
+        provider: config.payment_gateway_provider ?? undefined,
         return_url: typeof window !== 'undefined' ? `${window.location.origin}/#wallet` : undefined,
       });
       if (res.data?.checkout_url) {

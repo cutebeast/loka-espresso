@@ -34,6 +34,18 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     today = datetime.now(timezone.utc).date()
     now = datetime.now(timezone.utc)
 
+    # Get customer's loyalty account (lock row to prevent race conditions).
+    # The lock is taken BEFORE the "already checked in" read so concurrent
+    # check-ins serialize on the loyalty account row.
+    la_result = await db.execute(
+        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id).with_for_update()
+    )
+    la = la_result.scalar_one_or_none()
+    if not la:
+        la = LoyaltyAccount(customer_id=customer.id, points_balance=0, lifetime_points_earned=0, lifetime_points_redeemed=0)
+        db.add(la)
+        await db.flush()
+
     # Check if already checked in today (compare date portion only via func.date)
     existing = await db.execute(
         select(CustomerDailyCheckin).where(
@@ -43,16 +55,6 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already checked in today")
-
-    # Get customer's loyalty account (lock row to prevent race conditions)
-    la_result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id).with_for_update()
-    )
-    la = la_result.scalar_one_or_none()
-    if not la:
-        la = LoyaltyAccount(customer_id=customer.id, points_balance=0, lifetime_points_earned=0, lifetime_points_redeemed=0)
-        db.add(la)
-        await db.flush()
 
     # Determine streak
     yesterday_result = await db.execute(

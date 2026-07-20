@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 export default function SplashScreenNewPage() {
   const {
@@ -56,11 +57,13 @@ export default function SplashScreenNewPage() {
     try {
       await api.post("/admin/content/splash-screens", {
         ...form,
-        duration_ms: form.duration_ms ? Number(form.duration_ms) : undefined
+        duration_ms: form.duration_ms ? Number(form.duration_ms) : undefined,
+        active_from: form.active_from || null,
+        active_until: form.active_until || null
       });
       router.push("/content/pwa-splash");
     } catch (e: any) {
-      setError(e.message);
+      setError(parseApiError(e));
     } finally {
       setSaving(false);
     }

@@ -32,6 +32,20 @@ class ReservationCreate(ReservationBase):
     pass
 
 
+class CustomerReservationCreate(BaseSchema):
+    """Customer-facing reservation create — no status/table assignment.
+
+    Customers can only request a reservation; staff confirm it and assign a
+    table afterwards.
+    """
+    store_id: int
+    party_size: int | None = Field(None, ge=1)
+    reservation_date: date
+    reservation_time: time
+    duration_minutes: int = Field(default=90, ge=1)
+    special_requests: str | None = None
+
+
 class ReservationUpdate(BaseSchema):
     store_id: int | None = None
     customer_id: int | None = None

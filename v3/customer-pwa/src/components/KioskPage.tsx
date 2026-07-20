@@ -65,6 +65,8 @@ interface KioskCategory {
 
 interface CartItem {
   id: number;
+  /** Unique per item+variant+modifiers combination — used for identity and React keys */
+  lineKey: string;
   name: string;
   price: number;
   qty: number;
@@ -77,6 +79,19 @@ interface CartItem {
 type KioskPhase = 'welcome' | 'order_type' | 'menu' | 'cart' | 'checkout' | 'success';
 
 const INACTIVITY_TIMEOUT_MS = 60 * 1000; // 60 seconds
+
+/** Unique identity for a cart line: item id + variant + sorted modifier option ids */
+function cartLineKey(itemId: number, variantId?: number, modifierOptionIds: number[] = []): string {
+  const mods = [...modifierOptionIds].sort((a, b) => a - b).join(',');
+  return `${itemId}:${variantId ?? ''}:${mods}`;
+}
+
+/** True when every required modifier group (min_selections > 0) has enough selections */
+function modifierRequirementsMet(item: KioskMenuItem, selections: Record<number, number[]>): boolean {
+  return (item.modifier_groups || []).every(
+    (g) => (selections[g.id] || []).length >= (g.min_selections || 0)
+  );
+}
 
 export default function KioskPage() {
   const { pageParams } = useUIStore();
@@ -183,7 +198,7 @@ export default function KioskPage() {
   const openModifierDrawer = (item: KioskMenuItem) => {
     if (item.modifier_groups && item.modifier_groups.length > 0) {
       setSelectedOptions({});
-      setSelectedVariant(item.variants && item.variants.length > 0 ? null : null);
+      setSelectedVariant(null);
       setModifierDrawerItem(item);
     } else {
       // No modifiers — add directly
@@ -244,24 +259,18 @@ export default function KioskPage() {
   const addToCart = (item: KioskMenuItem, modifierOptionIds: number[], variantId?: number, extraCost = 0, modifierLabel = '') => {
     const basePrice = parseFloat(item.base_price) || 0;
     const finalPrice = basePrice + extraCost;
+    const lineKey = cartLineKey(item.id, variantId, modifierOptionIds);
     setCart(prev => {
       // Match by item ID + same modifiers + same variant
-      const existing = prev.find(c =>
-        c.id === item.id &&
-        JSON.stringify(c.selected_modifier_options || []) === JSON.stringify(modifierOptionIds) &&
-        c.selected_variant_id === variantId
-      );
+      const existing = prev.find(c => c.lineKey === lineKey);
       if (existing) {
         return prev.map(c =>
-          c.id === item.id &&
-          JSON.stringify(c.selected_modifier_options || []) === JSON.stringify(modifierOptionIds) &&
-          c.selected_variant_id === variantId
-            ? { ...c, qty: c.qty + 1 }
-            : c
+          c.lineKey === lineKey ? { ...c, qty: c.qty + 1 } : c
         );
       }
       return [...prev, {
         id: item.id,
+        lineKey,
         name: item.item_name,
         price: finalPrice,
         qty: 1,
@@ -273,14 +282,14 @@ export default function KioskPage() {
     });
   };
 
-  const updateQty = (id: number, delta: number) => {
+  const updateQty = (lineKey: string, delta: number) => {
     setCart(prev => prev
-      .map(c => c.id === id ? { ...c, qty: c.qty + delta } : c)
+      .map(c => c.lineKey === lineKey ? { ...c, qty: c.qty + delta } : c)
       .filter(c => c.qty > 0));
   };
 
-  const removeFromCart = (id: number) => {
-    setCart(prev => prev.filter(c => c.id !== id));
+  const removeFromCart = (lineKey: string) => {
+    setCart(prev => prev.filter(c => c.lineKey !== lineKey));
   };
 
   const cartTotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
@@ -310,15 +319,13 @@ export default function KioskPage() {
       };
       const res = await api.post('/kiosk/orders', payload);
       const data = res.data?.data || res.data;
-      _orderId.current = data.id;
+      _orderId.current = data.order_id;
       setOrderNumber(data.order_number);
 
       // Get guest-pay token
       if (data.pay_token) {
         const pwaBase = window.location.origin;
-        setPayUrl(`${pwaBase}/#guest-pay?orderId=${data.id}&token=${data.pay_token}`);
-      } else if (data.payment_url) {
-        setPayUrl(data.payment_url);
+        setPayUrl(`${pwaBase}/#guest-pay?orderId=${data.order_id}&token=${data.pay_token}`);
       }
       setPhase('success');
     } catch (e: unknown) {
@@ -481,16 +488,17 @@ export default function KioskPage() {
                 <div style={{ textAlign: 'center', padding: 48, fontSize: 20, color: '#888' }}>Your cart is empty</div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid #eee', gap: 16 }}>
+                  <div key={item.lineKey} style={{ display: 'flex', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid #eee', gap: 16 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 20, fontWeight: 600 }}>{item.name}</div>
+                      {item.modifier_label && <div style={{ fontSize: 14, color: '#888' }}>{item.modifier_label}</div>}
                       <div style={{ fontSize: 16, color: LOKA.primary, fontWeight: 700 }}>{formatPrice(String(item.price))}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <button onClick={() => updateQty(item.id, -1)} style={kioskQtyBtn}><Minus size={20} /></button>
+                      <button onClick={() => updateQty(item.lineKey, -1)} style={kioskQtyBtn}><Minus size={20} /></button>
                       <span style={{ fontSize: 24, fontWeight: 700, minWidth: 40, textAlign: 'center' }}>{item.qty}</span>
-                      <button onClick={() => updateQty(item.id, 1)} style={kioskQtyBtn}><Plus size={20} /></button>
-                      <button onClick={() => removeFromCart(item.id)} style={{ ...kioskQtyBtn, marginLeft: 8, color: '#DC2626' }}><Trash2 size={20} /></button>
+                      <button onClick={() => updateQty(item.lineKey, 1)} style={kioskQtyBtn}><Plus size={20} /></button>
+                      <button onClick={() => removeFromCart(item.lineKey)} style={{ ...kioskQtyBtn, marginLeft: 8, color: '#DC2626' }}><Trash2 size={20} /></button>
                     </div>
                   </div>
                 ))
@@ -632,11 +640,13 @@ export default function KioskPage() {
               </div>
             ))}
 
-            <button onClick={confirmAddWithModifiers} style={{
+            <button onClick={confirmAddWithModifiers} disabled={!modifierRequirementsMet(modifierDrawerItem, selectedOptions)} style={{
               width: '100%', padding: '16px', fontSize: 20, fontWeight: 700,
-              background: LOKA.primary, color: 'white', border: 'none', borderRadius: 12, cursor: 'pointer',
+              background: LOKA.primary, color: 'white', border: 'none', borderRadius: 12,
+              cursor: modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? 'pointer' : 'not-allowed',
+              opacity: modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? 1 : 0.5,
             }}>
-              Add to Cart
+              {modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? 'Add to Cart' : 'Select required options'}
             </button>
           </div>
         </div>

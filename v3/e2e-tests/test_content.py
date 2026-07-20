@@ -96,7 +96,7 @@ async def test_public_event_cards_list(
             "title": "E2E Event Card",
             "slug": slug,
             "short_description": "Event card created by E2E",
-            "location": "Loka HQ",
+            "location": "Loka Espresso",
             "is_active": True,
         },
     )
@@ -241,7 +241,7 @@ async def test_admin_event_card_lifecycle(client: httpx.AsyncClient, base_url: s
         "title": "E2E Admin Event Card",
         "slug": slug,
         "short_description": "Created by E2E",
-        "location": "Loka HQ",
+        "location": "Loka Espresso",
         "is_active": True,
     }
     r = await client.post(f"{base_url}/admin/event-cards", headers=admin_headers, json=create_payload)
@@ -250,12 +250,12 @@ async def test_admin_event_card_lifecycle(client: httpx.AsyncClient, base_url: s
 
     r = await client.get(f"{base_url}/admin/event-cards/{card_id}", headers=admin_headers)
     assert r.status_code == 200
-    assert r.json()["data"]["location"] == "Loka HQ"
+    assert r.json()["data"]["location"] == "Loka Espresso"
 
     r = await client.patch(
         f"{base_url}/admin/event-cards/{card_id}",
         headers=admin_headers,
-        json={"location": "Loka Bangsar"},
+        json={"location": "Loka Loka Cafe"},
     )
     assert r.status_code == 200
 

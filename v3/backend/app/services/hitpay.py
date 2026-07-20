@@ -126,12 +126,18 @@ async def _hitpay_client() -> httpx.AsyncClient:
 
 async def create_hitpay_payment_request(
     db: AsyncSession,
-    payment: Payment,
-    order: Order,
+    payment: Payment | None,
+    order: Order | None,
     customer: Customer | None,
     return_url: str | None = None,
+    amount: Decimal | None = None,
+    currency: str | None = None,
 ) -> dict:
-    """Create a HitPay Payment Request and return its id + checkout URL."""
+    """Create a HitPay Payment Request and return its id + checkout URL.
+
+    ``payment``/``order`` may be None for wallet top-ups — pass ``amount`` and
+    ``currency`` explicitly in that case.
+    """
     if not await _hitpay_enabled(db):
         raise HitPayError("HitPay is not enabled or API key is missing", 503)
 
@@ -140,37 +146,48 @@ async def create_hitpay_payment_request(
     if not api_key:
         raise HitPayError("HitPay API key not configured", 503)
 
+    if payment is None and (amount is None or not currency):
+        raise HitPayError("Amount and currency are required when no payment is provided", 400)
+
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
     base_return = (return_url or f"{app_public_url}/#order-detail").rstrip("/")
-    redirect_url = f"{base_return}?orderId={order.id}&paymentId={payment.id}"
+    if order is not None and payment is not None:
+        redirect_url = f"{base_return}?orderId={order.id}&paymentId={payment.id}"
+    else:
+        # Wallet top-up: the return URL already carries the top-up session params.
+        redirect_url = base_return
 
-    currency = payment.currency_code.upper()
+    currency_code = (currency or payment.currency_code).upper()
+    request_amount = payment.amount if payment is not None else amount
     payment_methods = await _get_payment_methods(db)
     # Filter methods that are region-locked to a specific currency so the
     # request does not fail when the merchant enables methods for multiple
     # countries (e.g. PayNow for SGD and DuitNow/Touch 'n Go for MYR).
     payment_methods = [
         m for m in payment_methods
-        if (m != "paynow_online" or currency == "SGD")
-        and (m not in ("duitnow", "touch_n_go") or currency == "MYR")
+        if (m != "paynow_online" or currency_code == "SGD")
+        and (m not in ("duitnow", "touch_n_go") or currency_code == "MYR")
     ]
 
     payload: dict = {
-        "amount": str(payment.amount),
-        "currency": payment.currency_code.upper(),
+        "amount": str(request_amount) if payment is not None else _fmt_amount(request_amount),
+        "currency": currency_code,
         "payment_methods": payment_methods,
-        "reference_number": f"order-{order.id}-payment-{payment.id}",
-        "purpose": f"Order {order.order_number}",
         "redirect_url": redirect_url,
         "allow_repeated_payments": False,
         "expires_after": "5 mins",
-        "metadata": {
+    }
+    if order is not None and payment is not None:
+        payload["reference_number"] = f"order-{order.id}-payment-{payment.id}"
+        payload["purpose"] = f"Order {order.order_number}"
+        payload["metadata"] = {
             "order_id": str(order.id),
             "payment_id": str(payment.id),
             "idempotency_key": payment.idempotency_key,
-        },
-    }
+        }
+    else:
+        payload["purpose"] = "Wallet Top-up"
 
     if customer:
         if customer.email_address:
