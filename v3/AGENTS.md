@@ -287,5 +287,13 @@ Per owner decision, the menu must work before inventory management begins:
 - **seed_operational.py**: fake demo suppliers/POs removed (SUPPLIERS/PURCHASE_ORDERS emptied); shift templates (Morning/Evening/Night) kept.
 - **seed_orders.py**: skips quietly when ORDER_SEED is empty (no more "run seed_menu.py first" confusion — it used to probe the old fake ESP/LAT codes).
 - **seed_staff.py**: now seeds all 3 documented staff accounts with per-store assignment — Test Staff (PKL, cashier, E2E), Staff One staff1@loyaltysystem.uk (PKL, server), Staff Two staff2@loyaltysystem.uk (KLIA1, server).
-- **Translations**: only `admin-ui`/en (2435 real strings) remains in `translations`. All stale/E2E/English-placeholder content in `menu`/`campaign`/`voucher` namespaces was deleted. The new 160-item menu has NO ms/zh/ta/tr translations yet — for PWA locale testing, translate via Admin → Translations (needs live DeepSeek/DeepL keys for auto-translate; dev keys are placeholders so "auto-translate" just copies English).
+- **Translations (superseded — see "Translation service — DeepSeek live" below)**: all stale/E2E/English-placeholder content in `menu`/`campaign`/`voucher` namespaces was deleted; the menu has since been fully translated into ms/zh/ta/tr via DeepSeek.
 - **E2E residue cleaned** from DB: test campaigns, E2E vouchers, E2E menu items/categories, orders. `seed_staff_ui_translations.py` is legacy (staff portal uses static `src/lib/translations.ts`, nothing reads the `staff-ui` namespace) — kept for reference, not wired into `seed_all`.
+
+### Translation service — DeepSeek live (2026-07-21)
+- **DeepL removed entirely** (service, seeds, admin settings page, DB config rows). DeepSeek is the only provider: `deepseek-v4-flash` primary → `deepseek-v4-pro` fallback (those are the only model names the account's API accepts).
+- **Key stored** in `platform_config.integration.deepseek_api_key` (sensitive, masked in GET /admin/config).
+- **Pre-existing bug fixed**: `_fetch_translation`/`_call_deepseek` never received the DB session, so credentials always loaded empty and every auto-translate silently fell back to English (this is why old "translations" were English copies). The db session is now threaded through; concurrent batch calls prime the creds cache first to avoid sharing the AsyncSession.
+- **`translate_menu_response` None-list fix** (was 500 on `?locale=` requests).
+- **`translation_cache` truncated** once — it was full of English-fallback entries from the broken period.
+- **Menu fully translated**: `scripts/translate_menu.py` (kept for future menu changes; idempotent) wrote 1,864 translations — all 160 items (name+description), 21 categories, 22 modifier groups, 82 options × ms/zh/ta/tr. Public menu API serves localized content (`/menu/stores/1?locale=ms` etc.). One manual correction: "Single Origin Bean" ms → "Biji Single Origin" (DeepSeek had "Kacang Asal Tunggal"); any translation is editable via Admin → Translations.

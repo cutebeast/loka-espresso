@@ -69,8 +69,8 @@ async def _get_translation_creds(db: AsyncSession | None = None) -> dict[str, st
         rows = {r.config_key: str(r.config_value or "") for r in result.scalars().all()}
         _creds_cache = {
             "deepseek_key": rows.get("integration.deepseek_api_key", ""),
-            "deepseek_model": rows.get("integration.deepseek_model", "deepseek-chat"),
-            "deepseek_fallback_model": rows.get("integration.deepseek_fallback_model", "deepseek-reasoner"),
+            "deepseek_model": rows.get("integration.deepseek_model", "deepseek-v4-flash"),
+            "deepseek_fallback_model": rows.get("integration.deepseek_fallback_model", "deepseek-v4-pro"),
         }
         _creds_cache_ts = now
     except Exception:
@@ -84,12 +84,12 @@ def _compute_hash(source_locale: str, target_locale: str, text: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-async def _call_deepseek(text: str, target_locale: str, model: str | None = None) -> str | None:
+async def _call_deepseek(text: str, target_locale: str, model: str | None = None, db: AsyncSession | None = None) -> str | None:
     """Call DeepSeek LLM API. Returns translated text or None."""
-    creds = await _get_translation_creds()
+    creds = await _get_translation_creds(db)
     api_key = creds.get("deepseek_key", "")
     if model is None:
-        model = creds.get("deepseek_model", "deepseek-chat")
+        model = creds.get("deepseek_model", "deepseek-v4-flash")
     if not api_key:
         return None
     locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
@@ -120,20 +120,20 @@ async def _call_deepseek(text: str, target_locale: str, model: str | None = None
         return None
 
 
-async def _fetch_translation(text: str, target_locale: str) -> str | None:
-    """Call translation providers without touching the database.
+async def _fetch_translation(text: str, target_locale: str, db: AsyncSession | None = None) -> str | None:
+    """Call translation providers.
     DeepSeek primary → DeepSeek fallback model → None.
     Returns translated text or None if all providers fail."""
     # Ensure creds are loaded from DB; _get_translation_creds handles its own cache.
-    creds = await _get_translation_creds()
+    creds = await _get_translation_creds(db)
 
-    translated = await _call_deepseek(text, target_locale)
+    translated = await _call_deepseek(text, target_locale, db=db)
     if translated is not None:
         logger.info(f"DeepSeek primary success for {target_locale}: {translated[:30]}")
         return translated
 
-    fallback_model = creds.get("deepseek_fallback_model", "deepseek-reasoner")
-    translated = await _call_deepseek(text, target_locale, model=fallback_model)
+    fallback_model = creds.get("deepseek_fallback_model", "deepseek-v4-pro")
+    translated = await _call_deepseek(text, target_locale, model=fallback_model, db=db)
     if translated is not None:
         logger.info(f"DeepSeek fallback success for {target_locale}: {translated[:30]}")
         return translated
@@ -149,7 +149,7 @@ async def auto_translate_text(
     target_locale: str,
 ) -> tuple[str, bool]:
     """Auto-translate text with caching.
-    Primary: DeepL (if configured) → DeepSeek flash → DeepSeek pro fallback → Last resort: keep English.
+    DeepSeek primary → DeepSeek fallback model → last resort: keep English.
     Returns (translated_text, was_cached)."""
     ctx = _get_cache_stats_ctx()
 
@@ -164,7 +164,7 @@ async def auto_translate_text(
 
     ctx.misses += 1
 
-    translated = await _fetch_translation(text, target_locale)
+    translated = await _fetch_translation(text, target_locale, db=db)
     if translated is None:
         translated = text
 
@@ -272,6 +272,10 @@ async def auto_translate_record(
     ops: list[dict] = []
     missing_tasks: list[asyncio.Task] = []
     missing_meta: list[tuple[str, str, str, str]] = []  # col, loc, text, cache_hash
+
+    # Prime the credentials cache before fanning out — concurrent tasks must
+    # not share the AsyncSession, so they read creds from the warm cache.
+    await _get_translation_creds(db)
 
     for col, loc, text in needed:
         cache_hash = _compute_hash(SOURCE_LOCALE, loc, text)
@@ -462,12 +466,12 @@ async def translate_menu_response(
     dietary_tags: list[dict] = []
 
     for item in items:
-        allergens.extend(item.get("allergens", []))
-        for mg in item.get("modifier_groups", []):
+        allergens.extend(item.get("allergens") or [])
+        for mg in item.get("modifier_groups") or []:
             modifier_groups.append(mg)
-            modifier_options.extend(mg.get("options", []))
-        variants.extend(item.get("variants", []))
-        dietary_tags.extend(item.get("dietary_tags", []))
+            modifier_options.extend(mg.get("options") or [])
+        variants.extend(item.get("variants") or [])
+        dietary_tags.extend(item.get("dietary_tags") or [])
 
     await merge_translations(db, categories, "menu_categories", locale)
     await merge_translations(db, items, "menu_items", locale)
