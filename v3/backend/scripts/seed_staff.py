@@ -26,6 +26,27 @@ STAFF = [
         "password": os.getenv("SEED_STAFF_PASS", "TestStaff123!"),
         "pin": os.getenv("SEED_STAFF_PIN", "123456"),
         "role_key": "cashier",
+        "store_code": "PKL-001",
+    },
+    {
+        "display_name": "Staff One",
+        "email": "staff1@loyaltysystem.uk",
+        "employee_id": "EMP002",
+        "role": "server",
+        "password": os.getenv("SEED_STAFF1_PASS", "staff123"),
+        "pin": os.getenv("SEED_STAFF_PIN", "123456"),
+        "role_key": "server",
+        "store_code": "PKL-001",
+    },
+    {
+        "display_name": "Staff Two",
+        "email": "staff2@loyaltysystem.uk",
+        "employee_id": "EMP003",
+        "role": "server",
+        "password": os.getenv("SEED_STAFF2_PASS", "staff123"),
+        "pin": os.getenv("SEED_STAFF_PIN", "123456"),
+        "role_key": "server",
+        "store_code": "KLIA1-001",
     },
 ]
 
@@ -34,14 +55,14 @@ ph = PasswordHasher()
 
 async def seed():
     async with get_db() as db:
-        store_result = await db.execute(text("SELECT id FROM stores WHERE deleted_at IS NULL ORDER BY id LIMIT 1"))
-        store_row = store_result.first()
-        if not store_row:
+        store_result = await db.execute(text("SELECT id, store_code FROM stores WHERE deleted_at IS NULL"))
+        store_ids = {row.store_code: row.id for row in store_result}
+        if not store_ids:
             print("  No active store found. Run seed_stores.py first.")
             return
-        store_id = store_row[0]
 
         for staff in STAFF:
+            store_id = store_ids.get(staff.get("store_code")) or next(iter(store_ids.values()))
             existing = await db.execute(
                 text("SELECT id FROM staff_profiles WHERE email_address = :email"),
                 {"email": staff["email"]},

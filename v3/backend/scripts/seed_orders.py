@@ -37,6 +37,10 @@ async def seed():
     from app.models.order import Order, OrderLineItem, OrderStatusLog
     from app.models.store import Store
 
+    if not ORDER_SEED:
+        print("  No sample orders defined — skipping (order history comes from real usage)")
+        return
+
     async with get_db() as db:
         stores = (await db.execute(select(Store).where(Store.deleted_at.is_(None), Store.is_active.is_(True)))).scalars().all()
         if not stores:

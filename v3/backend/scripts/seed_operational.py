@@ -29,65 +29,11 @@ from scripts._db_utils import confirm, get_db, guard_production
 # Demo data
 # ---------------------------------------------------------------------------
 
-SUPPLIERS = [
-    {
-        "supplier_name": "Global Coffee Roasters",
-        "contact_person": "Ahmad bin Ismail",
-        "phone": "+60123456780",
-        "email": "orders@globalcoffee.my",
-        "address": "Lot 12, Jalan Industri 5, Shah Alam",
-        "payment_terms": "Net 30",
-        "lead_time_days": 7,
-    },
-    {
-        "supplier_name": "Dairy Fresh Sdn Bhd",
-        "contact_person": "Siti Nurhaliza",
-        "phone": "+60187654321",
-        "email": "sales@dairyfresh.my",
-        "address": "No 8, Persiaran Selangor, Kuala Lumpur",
-        "payment_terms": "Net 14",
-        "lead_time_days": 3,
-    },
-    {
-        "supplier_name": "Packaging World",
-        "contact_person": "Rajesh Kumar",
-        "phone": "+60192233445",
-        "email": "hello@packworld.my",
-        "address": "22 Jalan Tandang, Petaling Jaya",
-        "payment_terms": "Net 7",
-        "lead_time_days": 2,
-    },
-]
+# Fake demo suppliers/POs cleared 2026-07-21 — real suppliers and purchase
+# orders will be managed via Admin → Inventory when stocking begins.
+SUPPLIERS: list[dict] = []
 
-PURCHASE_ORDERS = [
-    {
-        "po_ref": "COFFEE-MONTHLY",
-        "supplier_index": 0,
-        "status": "sent",
-        "lines": [
-            {"item_code": "BEV-001", "quantity_ordered": 20.0, "unit_cost": 24.50},
-            {"item_code": "BEV-003", "quantity_ordered": 1000.0, "unit_cost": 0.12},
-        ],
-    },
-    {
-        "po_ref": "DAIRY-WEEKLY",
-        "supplier_index": 1,
-        "status": "draft",
-        "lines": [
-            {"item_code": "BEV-002", "quantity_ordered": 40.0, "unit_cost": 8.20},
-            {"item_code": "FOD-002", "quantity_ordered": 10.0, "unit_cost": 11.80},
-        ],
-    },
-    {
-        "po_ref": "PACKAGING-BULK",
-        "supplier_index": 2,
-        "status": "received",
-        "lines": [
-            {"item_code": "DIS-001", "quantity_ordered": 2000.0, "unit_cost": 0.18},
-            {"item_code": "DIS-002", "quantity_ordered": 1500.0, "unit_cost": 0.09},
-        ],
-    },
-]
+PURCHASE_ORDERS: list[dict] = []
 
 SHIFT_TEMPLATES = [
     {"name": "Morning", "start_time": "06:00", "end_time": "14:00"},

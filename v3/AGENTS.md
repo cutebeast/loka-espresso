@@ -280,3 +280,12 @@ Per owner decision, the menu must work before inventory management begins:
 - **Live DB**: all recipes, ingredients, stock, movement logs, POs cleared. Menu items (160) are untouched and fully sellable — no stock checks apply to anything.
 - **Seeder**: recipe/ingredient/stock seeding is now OPT-IN — `python3 scripts/seed_menu.py --with-recipes` (default run skips it). Recipe data stays in `seed_menu_data.py` (INGREDIENTS/RECIPES) ready for when inventory work starts.
 - **E2E**: recipe-list and inventory-list tests skip gracefully while inventory is empty (195 passed / 20 skipped).
+
+### Migration & seed hygiene (verified 2026-07-21)
+- **Alembic**: single linear chain, live DB at head `a1b2c3d4e5f7`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
+- **Full re-seed workflow verified end-to-end** (`clear_db --all` → `seed_all`): every part runs clean, no fake data reintroduced.
+- **seed_operational.py**: fake demo suppliers/POs removed (SUPPLIERS/PURCHASE_ORDERS emptied); shift templates (Morning/Evening/Night) kept.
+- **seed_orders.py**: skips quietly when ORDER_SEED is empty (no more "run seed_menu.py first" confusion — it used to probe the old fake ESP/LAT codes).
+- **seed_staff.py**: now seeds all 3 documented staff accounts with per-store assignment — Test Staff (PKL, cashier, E2E), Staff One staff1@loyaltysystem.uk (PKL, server), Staff Two staff2@loyaltysystem.uk (KLIA1, server).
+- **Translations**: only `admin-ui`/en (2435 real strings) remains in `translations`. All stale/E2E/English-placeholder content in `menu`/`campaign`/`voucher` namespaces was deleted. The new 160-item menu has NO ms/zh/ta/tr translations yet — for PWA locale testing, translate via Admin → Translations (needs live DeepSeek/DeepL keys for auto-translate; dev keys are placeholders so "auto-translate" just copies English).
+- **E2E residue cleaned** from DB: test campaigns, E2E vouchers, E2E menu items/categories, orders. `seed_staff_ui_translations.py` is legacy (staff portal uses static `src/lib/translations.ts`, nothing reads the `staff-ui` namespace) — kept for reference, not wired into `seed_all`.
