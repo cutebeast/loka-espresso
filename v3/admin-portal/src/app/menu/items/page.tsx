@@ -23,7 +23,7 @@ export default function MenuItemsPage() {
   useEffect(() => {
     api.getRaw<{
       items: any[];
-    }>("/admin/menu/items?per_page=100").then(d => setItems(d.items || [])).catch((e: any) => setError(e.message || t("admin.errors.loadFailed"))).finally(() => setLoading(false));
+    }>("/admin/menu/items?per_page=200").then(d => setItems(d.items || [])).catch((e: any) => setError(e.message || t("admin.errors.loadFailed"))).finally(() => setLoading(false));
     api.getRaw<{
       items: any[];
     }>("/admin/menu/categories?per_page=50").then(d => setCategories(d.items || [])).catch((e: any) => { console.error("Failed to load categories:", e); setError(e.message || t("admin.errors.loadFailed")); });
@@ -70,9 +70,10 @@ export default function MenuItemsPage() {
       </div>
       <div className="table-container">
         <table className="data-table">
-          <thead><tr><th>{t("menu_items.name")}</th><th>{t("menu_items.code")}</th><th>{t("menu_items.price")}</th><th>{t("menu_items.category_2")}</th><th>{t("menu_items.tags")}</th><th>{t("menu_items.add_ons")}</th><th>{t("menu_items.recipes")}</th><th>{t("menu_items.status")}</th><th>{t("menu_items.actions")}</th></tr></thead>
+          <thead><tr><th style={{ width: 56 }}>{t("menu_items.image")}</th><th>{t("menu_items.name")}</th><th>{t("menu_items.code")}</th><th>{t("menu_items.price")}</th><th>{t("menu_items.category_2")}</th><th>{t("menu_items.tags")}</th><th>{t("menu_items.add_ons")}</th><th>{t("menu_items.recipes")}</th><th>{t("menu_items.status")}</th><th>{t("menu_items.actions")}</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={9} className="data-table-empty">{t("menu_items.loading")}</td></tr> : filtered.map(item => <tr key={item.id}>
+            {loading ? <tr><td colSpan={10} className="data-table-empty">{t("menu_items.loading")}</td></tr> : filtered.map(item => <tr key={item.id}>
+                <td>{item.image_url ? <img src={item.image_url} alt={item.item_name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: "var(--radius-sm)", display: "block" }} /> : <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--color-bg-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--color-text-muted)" }}>—</div>}</td>
                 <td><div style={{
                 fontWeight: 600
               }}>{item.item_name}</div>{item.description && <div style={{

@@ -113,7 +113,7 @@ pytest -q
 - Voucher eligibility is enforced server-side: `max_global_uses`, `max_uses_per_customer`, `first_order_only`, `stackable`, store/item/category scope
 - Loyalty tier `points_multiplier` is applied on order points (customer + POS paths); `annual_spend` accrues on payment capture. Tier validity/downgrade EVALUATION job does not exist yet (fields are stored only)
 - Staff with `pin_last_changed_at IS NULL` are blocked (`403 must_change_pin`) on all staff endpoints except auth/me, change-pin/password, refresh, logout — E2E conftest rotates the Test Staff PIN (123456→654321→123456) to clear it
-- Alembic head: `a1b2c3d4e5f7`. Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
+- Alembic head: `b6729f513c8f`. Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
 
 ## What's been done (as of 2026-07-11)
 
@@ -302,8 +302,23 @@ Source of truth: `/root/CRM_Loyalty Program Structure.pdf`. Implementation statu
 - **Marketing section cleared & re-seeded properly**: old WELCOME10/FLAT5/fake campaign/banner removed; now 3 PDF-aligned voucher definitions (WELCOME-RM5, BDAY-UPGRADE, BDAY-GIFT), 3 marketplace rewards, Eco-Campaign (BYOT) as an active marketing campaign, 2 real promo banners (welcome + BYOT). Shared helper: `grant_voucher_to_customer()` in commerce.py.
 - Verified live: welcome voucher on registration (0 pts, voucher type), birthday perk grant + once-per-year guard + tier mapping, BYOT POS order RM24 → 48 pts (2x). E2E 195 passed.
 
+### Bundle products (2026-07-21)
+
+4 bundles seeded from the real menu via `scripts/seed_bundles.py` (idempotent by title; rebuilds groups/components). All are `multi_course` type with pick-groups (the engine's `combo` type requires EVERY component present — group picks only work as `multi_course`; single-item mandatory groups replace "fixed" components):
+
+| Bundle | Price | Groups |
+|---|---|---|
+| Loka Pair Set | RM 39 | Pick 1 food (4 gourmet sandwiches) + pick 1 drink (6 specialty coffees) |
+| Main & Treat | RM 45 | Pick 1 main (7 mains/pasta/pide) + pick 1 treat (drink OR dessert OR pastry, 10 items) |
+| Tea Time for Two | RM 55 | Pick 2 drinks + pick 2 pastries (duplicates allowed) |
+| Breakfast Duo | RM 39 | Turkish Mixed Bread (mandatory single-item group) + pick 2 drinks |
+
+Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48→39, Breakfast Duo RM56→39, Tea Time RM64→55 (discounts computed at order creation, not cart).
+
+- Admin menu items page (`/menu/items`) now shows image thumbnails (new `menu_items.image` admin-ui translation) and fetches per_page=200 (was 100 — silently truncated the 160-item menu).
+
 ### Migration & seed hygiene (verified 2026-07-21)
-- **Alembic**: single linear chain, live DB at head `a1b2c3d4e5f7`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
+- **Alembic**: single linear chain, live DB at head `b6729f513c8f`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
 - **Full re-seed workflow verified end-to-end** (`clear_db --all` → `seed_all`): every part runs clean, no fake data reintroduced.
 - **seed_operational.py**: fake demo suppliers/POs removed (SUPPLIERS/PURCHASE_ORDERS emptied); shift templates (Morning/Evening/Night) kept.
 - **seed_orders.py**: skips quietly when ORDER_SEED is empty (no more "run seed_menu.py first" confusion — it used to probe the old fake ESP/LAT codes).
