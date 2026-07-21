@@ -281,6 +281,23 @@ Per owner decision, the menu must work before inventory management begins:
 - **Seeder**: recipe/ingredient/stock seeding is now OPT-IN — `python3 scripts/seed_menu.py --with-recipes` (default run skips it). Recipe data stays in `seed_menu_data.py` (INGREDIENTS/RECIPES) ready for when inventory work starts.
 - **E2E**: recipe-list and inventory-list tests skip gracefully while inventory is empty (195 passed / 20 skipped).
 
+### Loyalty program — aligned to CRM structure PDF (2026-07-21)
+Source of truth: `/root/CRM_Loyalty Program Structure.pdf`. Implementation status:
+
+- **Tiers**: Bloom (sign-up) / Origin (RM500 rolling 12-mo spend) / Reserve (RM1,500) ✓
+- **Points**: RM1 = 1 / 1.2 / 1.5 pts by tier, applied on customer orders AND POS ✓
+- **Qualification**: now SPEND-based (was lifetime-points). `_recalculate_tier` upgrades on `annual_spend` (sen) vs `renewal_annual_spend` × 100, promote-only ✓
+- **Validity/renewal/downgrade**: `_evaluate_tier_renewal()` (commerce.py) — after `validity_months`, spend ≥ requirement → renew (new window), else downgrade ONE tier (Bloom: no expiry, never reviewed). Runs on every payment capture (`_accrue_loyalty_annual_spend`) and lazily on `GET /loyalty/me` ✓
+- **Birthday double points**: all tiers, birthday month ×2 on order points (both order + POS paths; ledger notes it). `_birthday_points_multiplier()` ✓
+- **POS spend accrual**: POS inline cash/card captures now accrue annual spend too (was missing — the main spend channel) ✓
+- Verified with scripted end-to-end checks (upgrade at RM500/RM1500, renewal keep, Reserve→Origin→Bloom downgrades, birthday ×2) + E2E 195 passed.
+
+**Not implemented (program-level, needs product decision)**:
+- Welcome reward CHOICE (PDF: RM5 voucher / coffee upgrade / pastry with purchase) — system currently grants 50 welcome points; WELCOME10/FLAT5 voucher definitions exist but aren't auto-granted
+- Birthday PERKS beyond points (Origin: complimentary drink upgrade; Reserve: birthday gift)
+- Eco-campaign BYOT 2x/3x points (needs a campaign mechanism flag on orders)
+- Monthly drink upgrade, early access, priority reservation, skip-the-queue, member events/omakase, hidden app content, annual appreciation gift, exclusive merchandise — marketing/ops features, no software support yet
+
 ### Migration & seed hygiene (verified 2026-07-21)
 - **Alembic**: single linear chain, live DB at head `a1b2c3d4e5f7`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
 - **Full re-seed workflow verified end-to-end** (`clear_db --all` → `seed_all`): every part runs clean, no fake data reintroduced.

@@ -756,13 +756,16 @@ async def _accrue_loyalty_annual_spend(db: AsyncSession, payment: Payment) -> No
         ).scalar_one_or_none()
         if account is None:
             return
+        from app.services.commerce import _evaluate_tier_renewal, _recalculate_tier
         now = datetime.now(timezone.utc)
-        window_start = account.annual_spend_window_start
-        if window_start is None or now - window_start > timedelta(days=365):
-            account.annual_spend = 0
+        # Run the 12-month renewal review first (may renew/downgrade + reset window)
+        await _evaluate_tier_renewal(db, account)
+        if account.annual_spend_window_start is None:
             account.annual_spend_window_start = now
         amount = payment.captured_amount or payment.amount or Decimal(0)
         account.annual_spend = (account.annual_spend or 0) + _to_cents(to_decimal(amount))
+        # Spend-based upgrade (RM500 → Origin, RM1500 → Reserve)
+        await _recalculate_tier(db, account)
     except Exception:
         logger.warning("Failed to accrue loyalty annual spend for payment %s", payment.id, exc_info=True)
 

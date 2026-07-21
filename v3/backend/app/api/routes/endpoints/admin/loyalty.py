@@ -391,6 +391,11 @@ async def get_my_loyalty_account(
             .where(LoyaltyAccount.id == account.id)
         )
         account = result.scalar_one()
+    else:
+        # Lazy 12-month renewal review on read (may renew/downgrade)
+        from app.services.commerce import _evaluate_tier_renewal
+        await _evaluate_tier_renewal(db, account)
+        await db.commit()
     return APIResponse(data=_serialize_account(account))
 
 

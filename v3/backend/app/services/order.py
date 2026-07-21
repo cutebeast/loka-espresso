@@ -976,6 +976,10 @@ async def create_order_from_cart(
                 tier = await db.get(LoyaltyTier, la.current_tier_id)
                 if tier and tier.is_active:
                     multiplier = to_decimal(tier.points_multiplier)
+            # Double points during the customer's birthday month (all tiers)
+            from app.services.commerce import _birthday_points_multiplier
+            birthday_mult = await _birthday_points_multiplier(db, customer_id)
+            multiplier = multiplier * birthday_mult
             if multiplier > 1:
                 loyalty_points_earned = int(
                     (Decimal(loyalty_points_earned) * multiplier).to_integral_value(rounding="ROUND_DOWN")
@@ -988,7 +992,8 @@ async def create_order_from_cart(
                 event_type="order_earned",
                 points_delta=loyalty_points_earned,
                 running_balance=la.points_balance + loyalty_points_earned,
-                description=f"Points earned from order {order.order_number}",
+                description=f"Points earned from order {order.order_number}"
+                + (" (birthday month double points)" if birthday_mult > 1 else ""),
             )
             db.add(ledger)
             la.points_balance += loyalty_points_earned

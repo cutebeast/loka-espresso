@@ -799,13 +799,22 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
                 (Decimal(points_earned) * Decimal(str(tier.points_multiplier))).to_integral_value(rounding="ROUND_DOWN")
             )
 
+    # Double points during the customer's birthday month (all tiers)
+    from app.services.commerce import _birthday_points_multiplier
+    birthday_mult = await _birthday_points_multiplier(db, customer_id)
+    if birthday_mult > 1:
+        points_earned = int(
+            (Decimal(points_earned) * birthday_mult).to_integral_value(rounding="ROUND_DOWN")
+        )
+
     ledger = LoyaltyPointsLedger(
         loyalty_account_id=la.id,
         customer_id=customer_id,
         event_type="order_earned",
         points_delta=points_earned,
         running_balance=la.points_balance + points_earned,
-        description=f"Points earned from POS order {order_number}",
+        description=f"Points earned from POS order {order_number}"
+        + (" (birthday month double points)" if birthday_mult > 1 else ""),
     )
     db.add(ledger)
     la.points_balance += points_earned
@@ -1105,6 +1114,9 @@ async def staff_pos_create_order(
                     amount=total,
                     provider_response={"method": payment_data.method, "tendered": float(amount_tendered) if payment_data.method == "cash" else None},
                 )
+                # Accrue annual spend + tier review/upgrade (loyalty program)
+                from app.services.payment import _accrue_loyalty_annual_spend
+                await _accrue_loyalty_annual_spend(db, payment)
 
         # Update table status if dine-in
         if dining_table_id and order_type == "dine_in":
