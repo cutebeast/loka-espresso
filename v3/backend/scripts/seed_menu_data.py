@@ -7,8 +7,8 @@ boss-confirmed recipes (with their inventory ingredients and starter stock
 so ordering/stock-deduction works).
 
 Halal note: the whole menu is tagged halal. All sausage items use chicken
-sausage (owner-confirmed); the Truffle Gold Potato recipe uses chicken floss
-instead of bacon bits (owner-confirmed 2026-07-21).
+sausage (owner-confirmed); the Truffle Gold Potato recipe uses chicken bacon
+bits instead of pork bacon bits (owner-confirmed 2026-07-21).
 """
 
 from pathlib import Path
@@ -334,7 +334,7 @@ ITEMS += [
      "img": "chilli-butter-corn-ribs.jpg",
      "allergens": ["dairy"], "dietary": ["vegetarian", "gluten_free"], "prep": 12},
     {"code": "SP-TRUFFLE-GOLD-POTATO", "name": "Truffle Gold Potato", "cat": "signatures-small-plates", "price": 22.00,
-     "desc": "Crispy russet potato loaded with a molten three-cheese blend, tangy Greek yogurt, and savory chicken floss, finished with a decadent drizzle of white truffle oil.",
+     "desc": "Crispy russet potato loaded with a molten three-cheese blend, tangy Greek yogurt, and savory chicken bacon bits, finished with a decadent drizzle of white truffle oil.",
      "img": "truffle-gold-potato.jpg",
      "allergens": ["dairy"], "dietary": ["gluten_free"], "prep": 15},
 
@@ -714,7 +714,7 @@ INGREDIENTS = [
     ("ING-SWEET-CORN", "Sweet Corn", "nos"),
     ("ING-RUSSET-POTATO", "Russet Potato", "nos"),
     ("ING-TRUFFLE-OIL", "White Truffle Oil", "g"),
-    ("ING-CHICKEN-FLOSS", "Chicken Floss", "g"),
+    ("ING-CHICKEN-BACON", "Chicken Bacon Bits", "g"),
 ]
 
 STARTER_STOCK = 1000.0
@@ -760,7 +760,7 @@ RECIPES = {
     "SP-TRUFFLE-GOLD-POTATO": [
         ("ING-RUSSET-POTATO", 1), ("ING-GREEK-YOGURT", 15), ("ING-TRUFFLE-OIL", 4),
         ("ING-SALT", 2), ("ING-BLACK-PEPPER", 1), ("ING-MOZZARELLA", 40),
-        ("ING-CHEDDAR", 30), ("ING-PARMESAN", 5), ("ING-CHICKEN-FLOSS", 10),
+        ("ING-CHEDDAR", 30), ("ING-PARMESAN", 5), ("ING-CHICKEN-BACON", 10),
     ],
     "PC-HUMMUS-MAC-CHEESE": [
         ("ING-CHICKEN-STOCK", 2), ("ING-HUMMUS", 100), ("ING-MACARONI", 140),
