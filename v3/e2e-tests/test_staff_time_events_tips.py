@@ -6,7 +6,7 @@ import httpx
 pytestmark = [pytest.mark.staff, pytest.mark.admin]
 
 
-async def _get_menu_item_id(client: httpx.AsyncClient, base_url: str, store_id: int, item_code: str = "ESP") -> int:
+async def _get_menu_item_id(client: httpx.AsyncClient, base_url: str, store_id: int, item_code: str = "CSC-ESPRESSO") -> int:
     r = await client.get(f"{base_url}/menu/stores/{store_id}")
     assert r.status_code == 200
     for item in r.json()["data"]["items"]:
@@ -20,7 +20,7 @@ async def _create_pos_order(client: httpx.AsyncClient, staff_headers: dict, base
         "store_id": store_id,
         "order_type": "dine_in",
         "line_items": [{"menu_item_id": menu_item_id, "quantity": 1}],
-        "payment": {"method": "cash", "amount_tendered": 10.00},
+        "payment": {"method": "cash", "amount_tendered": 20.00},
     }
     r = await client.post(f"{base_url}/staff/pos/orders", headers=staff_headers, json=payload)
     assert r.status_code == 201, f"POS order creation failed: {r.text}"

@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-"""Seed menu categories, items, modifiers, recipes and bundle products."""
+"""Seed the real Loka Espresso menu (boss-confirmed, 2026-07-20).
+
+Data lives in scripts/seed_menu_data.py. This script is idempotent: items are
+upserted by item_code; per-item children (variants, modifier groups/options,
+allergen links, dietary tag links, recipes) are rebuilt on each run. Item
+images are copied from backend/seed-assets/menu-images into the uploads dir.
+"""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import shutil
 import sys
 from pathlib import Path
 
@@ -12,23 +19,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import text
 
-from scripts._db_utils import confirm, get_db, guard_production
+from scripts._db_utils import SETTINGS, confirm, get_db, guard_production
+from scripts.seed_menu_data import (
+    ALLERGENS,
+    ASSETS,
+    BAKLAVA_VARIANTS,
+    CATEGORIES,
+    INGREDIENTS,
+    ITEMS,
+    MOD_DRINK,
+    MOD_PULLED_CHICKEN,
+    RECIPES,
+    STARTER_STOCK,
+    TAX_CATEGORY,
+)
 
-
-# Fake demo menu data cleared on 2026-07-20 (round 32) — the real menu will be
-# imported from the Loka Espresso menu source. Seed structures are kept so this
-# script stays a working template: populate the lists below and re-run.
-CATEGORIES: list[dict] = []
-
-TAX_CATEGORY = {"name": "SST", "rate": 0.0}
-
-MENU_ITEMS: list[tuple] = []
-
-MODIFIER_GROUPS: dict = {}
-
-RECIPES: dict = {}
-
-BUNDLES: list[dict] = []
+MOD_TEMPLATES = {"drink": MOD_DRINK, "chicken": MOD_PULLED_CHICKEN}
+IMG_URL_PREFIX = "/uploads/images/menu"
 
 
 async def _upsert_tax_category(db, data):
@@ -38,300 +45,284 @@ async def _upsert_tax_category(db, data):
     )
     tax_id = existing.scalar_one_or_none()
     if tax_id:
-        await db.execute(
-            text("UPDATE tax_categories SET rate = :rate WHERE id = :id"),
-            {"id": tax_id, "rate": data["rate"]},
-        )
         return tax_id
     result = await db.execute(
-        text("""
-            INSERT INTO tax_categories (category_name, rate, is_active)
-            VALUES (:name, :rate, true)
-            RETURNING id
-        """),
+        text("INSERT INTO tax_categories (category_name, rate, is_active) VALUES (:name, :rate, true) RETURNING id"),
         data,
     )
     return result.scalar_one()
 
 
-async def _upsert_menu_category(db, data):
-    existing = await db.execute(
-        text("SELECT id FROM menu_categories WHERE slug = :slug"),
-        {"slug": data["slug"]},
-    )
-    cat_id = existing.scalar_one_or_none()
-    if cat_id:
+async def _upsert_allergens(db):
+    for a in ALLERGENS:
         await db.execute(
             text("""
-                UPDATE menu_categories
-                SET category_name = :category_name,
-                    description = :description,
-                    display_order = :display_order,
-                    is_available = true
-                WHERE id = :id
+                INSERT INTO allergens (allergen_key, display_name, description, severity, is_active)
+                VALUES (:key, :name, :desc, 'high', true)
+                ON CONFLICT (allergen_key) DO UPDATE SET
+                    display_name = EXCLUDED.display_name,
+                    description = EXCLUDED.description,
+                    is_active = true
             """),
-            {"id": cat_id, **data},
+            {"key": a["key"], "name": a["name"], "desc": a["description"]},
         )
-        return cat_id
-    result = await db.execute(
-        text("""
-            INSERT INTO menu_categories (category_name, slug, description, display_order, is_available, category_type)
-            VALUES (:category_name, :slug, :description, :display_order, true, 'regular')
-            RETURNING id
-        """),
-        data,
+
+
+async def _upsert_categories(db):
+    # menu_categories.slug has no unique constraint — manual lookup-then-write.
+    cat_ids = {}
+    for c in CATEGORIES:
+        existing = await db.execute(
+            text("SELECT id FROM menu_categories WHERE slug = :slug"),
+            {"slug": c["slug"]},
+        )
+        row = existing.scalar_one_or_none()
+        if row:
+            await db.execute(
+                text("""
+                    UPDATE menu_categories SET
+                        category_name = :name, description = :desc,
+                        display_order = :order, is_available = true, deleted_at = NULL
+                    WHERE id = :id
+                """),
+                {"name": c["name"], "slug": c["slug"], "desc": c["description"], "order": c["order"], "id": row},
+            )
+            cat_ids[c["slug"]] = row
+        else:
+            result = await db.execute(
+                text("""
+                    INSERT INTO menu_categories (category_name, slug, description, display_order, is_available)
+                    VALUES (:name, :slug, :desc, :order, true)
+                    RETURNING id
+                """),
+                {"name": c["name"], "slug": c["slug"], "desc": c["description"], "order": c["order"]},
+            )
+            cat_ids[c["slug"]] = result.scalar_one()
+    return cat_ids
+
+
+def _copy_image(cat_slug: str, filename: str | None) -> str | None:
+    if not filename:
+        return None
+    src = ASSETS / cat_slug / filename
+    if not src.exists():
+        print(f"  WARNING: missing image {src}")
+        return None
+    dest_dir = Path(SETTINGS.upload_dir) / "images" / "menu" / cat_slug
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest_dir / filename)
+    return f"{IMG_URL_PREFIX}/{cat_slug}/{filename}"
+
+
+async def _clear_item_children(db, item_id):
+    await db.execute(
+        text("DELETE FROM menu_modifier_options WHERE modifier_group_id IN (SELECT id FROM menu_modifier_groups WHERE menu_item_id = :id)"),
+        {"id": item_id},
     )
-    return result.scalar_one()
+    await db.execute(text("DELETE FROM menu_modifier_groups WHERE menu_item_id = :id"), {"id": item_id})
+    await db.execute(text("DELETE FROM menu_variants WHERE parent_item_id = :id"), {"id": item_id})
+    await db.execute(text("DELETE FROM menu_item_allergens WHERE menu_item_id = :id"), {"id": item_id})
+    await db.execute(text("DELETE FROM menu_item_dietary_tags WHERE menu_item_id = :id"), {"id": item_id})
+    await db.execute(text("DELETE FROM menu_item_recipes WHERE menu_item_id = :id"), {"id": item_id})
 
 
-async def _upsert_menu_item(db, data):
+async def _upsert_item(db, item, cat_id, tax_id, image_url):
     result = await db.execute(
         text("""
-            INSERT INTO menu_items
-                (category_id, item_code, item_name, base_price, prep_time_minutes, tax_category_id, is_available, is_featured)
-            VALUES (:category_id, :code, :name, :price, :prep, :tax_id, true, true)
+            INSERT INTO menu_items (
+                category_id, item_code, item_name, description, base_price,
+                image_url, is_available, is_featured, is_popular, display_order,
+                prep_time_minutes, tax_category_id
+            ) VALUES (
+                :cat_id, :code, :name, :desc, :price,
+                :img, true, :featured, :featured, :order,
+                :prep, :tax_id
+            )
             ON CONFLICT (item_code) DO UPDATE SET
                 category_id = EXCLUDED.category_id,
                 item_name = EXCLUDED.item_name,
+                description = EXCLUDED.description,
                 base_price = EXCLUDED.base_price,
+                image_url = EXCLUDED.image_url,
+                is_available = true,
+                is_featured = EXCLUDED.is_featured,
+                is_popular = EXCLUDED.is_popular,
                 prep_time_minutes = EXCLUDED.prep_time_minutes,
                 tax_category_id = EXCLUDED.tax_category_id,
-                is_available = true
+                deleted_at = NULL
             RETURNING id
         """),
-        data,
+        {
+            "cat_id": cat_id,
+            "code": item["code"],
+            "name": item["name"],
+            "desc": item.get("desc"),
+            "price": item["price"],
+            "img": image_url,
+            "featured": bool(item.get("featured")),
+            "order": item.get("order", 0),
+            "prep": item.get("prep", 10),
+            "tax_id": tax_id,
+        },
     )
     return result.scalar_one()
 
 
-async def _load_existing_groups(db):
-    rows = await db.execute(text("SELECT id, menu_item_id, group_name FROM menu_modifier_groups"))
-    return {(row[1], row[2]): row[0] for row in rows.all()}
-
-
-async def _load_existing_options(db):
-    rows = await db.execute(text("SELECT id, modifier_group_id, option_name FROM menu_modifier_options"))
-    return {(row[1], row[2]): row[0] for row in rows.all()}
-
-
-async def _upsert_modifier_group(db, existing_groups, item_id, group):
-    key = (item_id, group["group_name"])
-    group_id = existing_groups.get(key)
-    if group_id:
+async def _seed_variants(db, item_id, item):
+    for v in item.get("variants", []):
+        sku = f"{item['code']}-{v['variant_name'].upper().replace(' ', '-')}"
         await db.execute(
             text("""
-                UPDATE menu_modifier_groups
-                SET selection_type = :selection_type,
-                    is_required = :is_required,
-                    min_selections = :min_selections,
-                    max_selections = :max_selections,
-                    display_order = :display_order
-                WHERE id = :id
+                INSERT INTO menu_variants (parent_item_id, variant_name, variant_sku, price_adjustment, is_default, is_available)
+                VALUES (:id, :name, :sku, :adj, :default, true)
             """),
-            {
-                "id": group_id,
-                "selection_type": group["selection_type"],
-                "is_required": group["is_required"],
-                "min_selections": group["min_selections"],
-                "max_selections": group["max_selections"],
-                "display_order": 0,
-            },
+            {"id": item_id, "name": v["variant_name"], "sku": sku, "adj": v["price_adjustment"], "default": v["is_default"]},
         )
-        return group_id
-    result = await db.execute(
-        text("""
-            INSERT INTO menu_modifier_groups
-                (menu_item_id, group_name, selection_type, is_required, min_selections, max_selections, display_order)
-            VALUES (:item_id, :group_name, :selection_type, :is_required, :min_selections, :max_selections, :display_order)
-            RETURNING id
-        """),
-        {
-            "item_id": item_id,
-            "group_name": group["group_name"],
-            "selection_type": group["selection_type"],
-            "is_required": group["is_required"],
-            "min_selections": group["min_selections"],
-            "max_selections": group["max_selections"],
-            "display_order": 0,
-        },
-    )
-    group_id = result.scalar_one()
-    existing_groups[key] = group_id
-    return group_id
 
 
-async def _upsert_modifier_option(db, existing_options, group_id, option):
-    key = (group_id, option["option_name"])
-    opt_id = existing_options.get(key)
-    if opt_id:
-        await db.execute(
-            text("""
-                UPDATE menu_modifier_options
-                SET price_adjustment = :price_adjustment,
-                    is_default = :is_default,
-                    is_available = true,
-                    display_order = :display_order
-                WHERE id = :id
-            """),
-            {
-                "id": opt_id,
-                "price_adjustment": option["price_adjustment"],
-                "is_default": option["is_default"],
-                "display_order": option["display_order"],
-            },
-        )
-        return opt_id
-    result = await db.execute(
-        text("""
-            INSERT INTO menu_modifier_options
-                (modifier_group_id, option_name, price_adjustment, is_default, is_available, display_order)
-            VALUES (:group_id, :option_name, :price_adjustment, :is_default, true, :display_order)
-            RETURNING id
-        """),
-        {
-            "group_id": group_id,
-            "option_name": option["option_name"],
-            "price_adjustment": option["price_adjustment"],
-            "is_default": option["is_default"],
-            "display_order": option["display_order"],
-        },
-    )
-    opt_id = result.scalar_one()
-    existing_options[key] = opt_id
-    return opt_id
-
-
-async def _upsert_bundle(db, data):
-    existing = await db.execute(
-        text("SELECT id FROM bundle_products WHERE title = :title AND deleted_at IS NULL"),
-        {"title": data["title"]},
-    )
-    bundle_id = existing.scalar_one_or_none()
-    if bundle_id:
-        await db.execute(
-            text("""
-                UPDATE bundle_products
-                SET bundle_type = :bundle_type,
-                    bundle_price = :bundle_price,
-                    is_active = true,
-                    max_per_order = :max_per_order
-                WHERE id = :id
-            """),
-            {
-                "id": bundle_id,
-                "bundle_type": data["bundle_type"],
-                "bundle_price": data["bundle_price"],
-                "max_per_order": data["max_per_order"],
-            },
-        )
-    else:
+async def _seed_modifiers(db, item_id, item):
+    for mod_key in item.get("mods", []):
+        tpl = MOD_TEMPLATES[mod_key]
         result = await db.execute(
             text("""
-                INSERT INTO bundle_products (bundle_type, title, bundle_price, is_active, max_per_order)
-                VALUES (:bundle_type, :title, :bundle_price, true, :max_per_order)
+                INSERT INTO menu_modifier_groups (menu_item_id, group_name, selection_type, is_required, min_selections, max_selections, display_order)
+                VALUES (:id, :name, :sel, :req, :min, :max, 1)
                 RETURNING id
             """),
-            {
-                "bundle_type": data["bundle_type"],
-                "title": data["title"],
-                "bundle_price": data["bundle_price"],
-                "max_per_order": data["max_per_order"],
-            },
+            {"id": item_id, "name": tpl["group_name"], "sel": tpl["selection_type"], "req": tpl["is_required"], "min": tpl["min_selections"], "max": tpl["max_selections"]},
         )
-        bundle_id = result.scalar_one()
+        group_id = result.scalar_one()
+        for o in tpl["options"]:
+            await db.execute(
+                text("""
+                    INSERT INTO menu_modifier_options (modifier_group_id, option_name, price_adjustment, is_default, is_available, display_order)
+                    VALUES (:gid, :name, :adj, :default, true, :order)
+                """),
+                {"gid": group_id, "name": o["option_name"], "adj": o["price_adjustment"], "default": o["is_default"], "order": o["display_order"]},
+            )
 
-    # Re-create components for idempotence (no unique constraint on components)
-    await db.execute(
-        text("DELETE FROM bundle_product_components WHERE bundle_product_id = :bundle_id"),
-        {"bundle_id": bundle_id},
-    )
-    return bundle_id
+
+async def _seed_allergens(db, item_id, item):
+    keys = set(item.get("allergens", []))
+    # Halal applies menu-wide; allergen rows are upserted by ALLERGENS above.
+    for key in sorted(keys):
+        await db.execute(
+            text("""
+                INSERT INTO menu_item_allergens (menu_item_id, allergen_id)
+                SELECT :id, id FROM allergens WHERE allergen_key = :key
+                ON CONFLICT DO NOTHING
+            """),
+            {"id": item_id, "key": key},
+        )
+
+
+async def _seed_dietary(db, item_id, item):
+    # Everything on the menu is halal; item-level tags add on top.
+    for key in sorted(set(item.get("dietary", [])) | {"halal"}):
+        await db.execute(
+            text("""
+                INSERT INTO menu_item_dietary_tags (menu_item_id, dietary_tag_id)
+                SELECT :id, id FROM dietary_tags WHERE tag_key = :key
+                ON CONFLICT DO NOTHING
+            """),
+            {"id": item_id, "key": key},
+        )
+
+
+async def _seed_ingredients(db):
+    ing_ids = {}
+    for code, name, uom in INGREDIENTS:
+        result = await db.execute(
+            text("""
+                INSERT INTO inventory_items (item_code, item_name, unit_of_measure, unit_cost, item_type, is_active)
+                VALUES (:code, :name, :uom, 0, 'fnb', true)
+                ON CONFLICT (item_code) DO UPDATE SET
+                    item_name = EXCLUDED.item_name,
+                    unit_of_measure = EXCLUDED.unit_of_measure,
+                    is_active = true,
+                    deleted_at = NULL
+                RETURNING id
+            """),
+            {"code": code, "name": name, "uom": uom},
+        )
+        ing_ids[code] = result.scalar_one()
+    return ing_ids
+
+
+async def _seed_starter_stock(db, ing_ids):
+    stores = await db.execute(text("SELECT id FROM stores WHERE deleted_at IS NULL AND is_active = true"))
+    store_ids = [r[0] for r in stores.all()]
+    for inv_id in ing_ids.values():
+        for store_id in store_ids:
+            await db.execute(
+                text("""
+                    INSERT INTO inventory_stock (inventory_item_id, store_id, current_stock, reserved_stock, reorder_level)
+                    VALUES (:inv, :store, :qty, 0, 50)
+                    ON CONFLICT (inventory_item_id, store_id) DO NOTHING
+                """),
+                {"inv": inv_id, "store": store_id, "qty": STARTER_STOCK},
+            )
+
+
+async def _seed_recipes(db, item_ids, ing_ids):
+    uom_by_code = {code: uom for code, _, uom in INGREDIENTS}
+    count = 0
+    for item_code, lines in RECIPES.items():
+        item_id = item_ids.get(item_code)
+        if not item_id:
+            print(f"  WARNING: recipe references unknown item {item_code}")
+            continue
+        for ing_code, qty in lines:
+            inv_id = ing_ids.get(ing_code)
+            if not inv_id:
+                print(f"  WARNING: recipe references unknown ingredient {ing_code}")
+                continue
+            await db.execute(
+                text("""
+                    INSERT INTO menu_item_recipes (menu_item_id, menu_variant_id, inventory_item_id, quantity_required, unit_of_measure)
+                    VALUES (:item, NULL, :inv, :qty, :uom)
+                """),
+                {"item": item_id, "inv": inv_id, "qty": qty, "uom": uom_by_code[ing_code]},
+            )
+            count += 1
+    return count
 
 
 async def seed():
     async with get_db() as db:
         tax_id = await _upsert_tax_category(db, TAX_CATEGORY)
+        await _upsert_allergens(db)
+        cat_ids = await _upsert_categories(db)
+        print(f"  Upserted {len(cat_ids)} categories")
 
-        cat_map = {}
-        for cat in CATEGORIES:
-            cat_map[cat["slug"]] = await _upsert_menu_category(db, cat)
+        item_ids = {}
+        for item in ITEMS:
+            image_url = _copy_image(item["cat"], item.get("img"))
+            item_id = await _upsert_item(db, item, cat_ids[item["cat"]], tax_id, image_url)
+            await _clear_item_children(db, item_id)
+            await _seed_variants(db, item_id, item)
+            await _seed_modifiers(db, item_id, item)
+            await _seed_allergens(db, item_id, item)
+            await _seed_dietary(db, item_id, item)
+            item_ids[item["code"]] = item_id
+        print(f"  Upserted {len(item_ids)} menu items")
 
-        inv_result = await db.execute(text("SELECT id, item_code FROM inventory_items"))
-        inv_map = {row[1]: row[0] for row in inv_result.all()}
+        ing_ids = await _seed_ingredients(db)
+        await _seed_starter_stock(db, ing_ids)
+        print(f"  Upserted {len(ing_ids)} ingredients + starter stock")
 
-        item_map = {}
-        for code, name, cat_slug, price, prep in MENU_ITEMS:
-            category_id = cat_map[cat_slug]
-            item_map[code] = await _upsert_menu_item(
-                db,
-                {
-                    "category_id": category_id,
-                    "code": code,
-                    "name": name,
-                    "price": price,
-                    "prep": prep,
-                    "tax_id": tax_id,
-                },
-            )
-
-        existing_groups = await _load_existing_groups(db)
-        existing_options = await _load_existing_options(db)
-        for item_code, groups in MODIFIER_GROUPS.items():
-            item_id = item_map[item_code]
-            for group in groups:
-                group_id = await _upsert_modifier_group(db, existing_groups, item_id, group)
-                for option in group["options"]:
-                    await _upsert_modifier_option(db, existing_options, group_id, option)
-
-        for item_code, ingredients in RECIPES.items():
-            item_id = item_map[item_code]
-            for inv_code, qty, uom in ingredients:
-                inv_id = inv_map.get(inv_code)
-                if not inv_id:
-                    print(f"  Warning: inventory item {inv_code} not found, skipping recipe for {item_code}")
-                    continue
-                await db.execute(
-                    text("""
-                        INSERT INTO menu_item_recipes
-                            (menu_item_id, inventory_item_id, quantity_required, unit_of_measure, is_primary_component, waste_factor)
-                        VALUES (:item_id, :inv_id, :qty, :uom, true, 0.05)
-                        ON CONFLICT (menu_item_id, menu_variant_id, inventory_item_id) DO UPDATE SET
-                            quantity_required = EXCLUDED.quantity_required,
-                            unit_of_measure = EXCLUDED.unit_of_measure
-                    """),
-                    {"item_id": item_id, "inv_id": inv_id, "qty": qty, "uom": uom},
-                )
-
-        for bundle in BUNDLES:
-            bundle_id = await _upsert_bundle(db, bundle)
-            for comp in bundle["components"]:
-                menu_item_id = item_map.get(comp["item_code"])
-                if not menu_item_id:
-                    continue
-                await db.execute(
-                    text("""
-                        INSERT INTO bundle_product_components
-                            (bundle_product_id, menu_item_id, default_quantity, sort_order)
-                        VALUES (:bundle_id, :menu_item_id, :qty, :sort)
-                    """),
-                    {
-                        "bundle_id": bundle_id,
-                        "menu_item_id": menu_item_id,
-                        "qty": comp["default_quantity"],
-                        "sort": 0,
-                    },
-                )
-            print(f"  Bundle '{bundle['title']}' id={bundle_id}")
+        recipe_count = await _seed_recipes(db, item_ids, ing_ids)
+        print(f"  Seeded {recipe_count} recipe lines across {len(RECIPES)} items")
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Seed menu data")
+    parser = argparse.ArgumentParser(description="Seed the real Loka Espresso menu")
     parser.add_argument("--yes", action="store_true", help="Skip confirmation")
     parser.add_argument("--force-prod", action="store_true", help="Allow running in production")
     args = parser.parse_args()
 
     guard_production(args.force_prod)
-    if not confirm("Seed menu categories, items, modifiers, recipes and bundles?", args.yes):
+    if not confirm("Seed the real Loka Espresso menu (categories, items, images, recipes)?", args.yes):
         print("Aborted.")
         return
 

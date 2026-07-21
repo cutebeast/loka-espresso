@@ -487,6 +487,10 @@ async def test_bundle_add_all_components_succeeds(
         assert r_create.status_code in (200, 201), f"Bundle creation failed: {r_create.text}"
         bp = r_create.json().get("data", {})
         created_bundle_id = bp.get("id")
+        # The create response may omit components — re-fetch the detail.
+        r_detail = await client.get(f"{base_url}/admin/menu/bundle-products/{created_bundle_id}", headers=admin_headers)
+        if r_detail.status_code == 200:
+            bp = r_detail.json().get("data", bp)
 
     bp_id = bp["id"]
     assert bp["components"] and len(bp["components"]) >= 2, "Bundle has fewer than 2 components"

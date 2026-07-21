@@ -107,7 +107,7 @@ async def test_list_menu_categories(client: httpx.AsyncClient, admin_headers: di
 @pytest.mark.asyncio
 async def test_list_menu_items_with_recipes(client: httpx.AsyncClient, admin_headers: dict, base_url: str):
     """Menu items exist and include recipes array."""
-    r = await client.get(f"{base_url}/admin/menu/items?per_page=50", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/menu/items?per_page=200", headers=admin_headers)
     assert r.status_code == 200
     items = r.json()["data"]["items"]
     assert len(items) >= 1
