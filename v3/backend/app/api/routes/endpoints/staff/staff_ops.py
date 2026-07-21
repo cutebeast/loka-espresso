@@ -57,7 +57,7 @@ from app.schemas.staff import (
     StaffTaskUpdate,
 )
 from app.services.auth import blacklist_refresh_token
-from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
+from app.services.order import OrderError, _compute_bundle_discount, _deduct_stock_for_order
 from app.services.payment import PaymentError, _add_payment_event, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 from app.core.auth_cookies import (
@@ -1141,6 +1141,9 @@ async def staff_pos_create_order(
     except HTTPException:
         await db.rollback()
         raise
+    except OrderError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
     await db.refresh(order)
 

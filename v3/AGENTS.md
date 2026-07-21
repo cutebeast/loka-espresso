@@ -267,3 +267,10 @@ The boss-confirmed menu from `/root/menu-item` is now the seed of record:
 - **Baklava pricing**: base RM 9/pc with variant "Per 100g" +RM 27; sets are separate items.
 - **Halal status (owner-confirmed 2026-07-21)**: all sausage items are chicken sausage (Sausage Bun described accordingly); Truffle Gold Potato uses **chicken bacon bits** (ingredient `ING-CHICKEN-BACON`) instead of pork bacon bits. No pork/ham anywhere on the menu.
 - **E2E**: suite green again (199 passed / 16 skipped). Test-side fixes: recipe-list test uses per_page=200, bundle test re-fetches detail after create, tips test uses real item code CSC-ESPRESSO + RM20 tender. E2E artifacts (E2E-* items/categories/bundles, orders) were cleaned from the DB afterwards.
+
+### Recipe ↔ inventory coupling (verified 2026-07-21)
+- Items WITHOUT recipes sell normally — no stock involvement (proven live: POS order for Espresso).
+- Items WITH recipes deduct stock at order creation (qty × waste_factor 1.05) and restock on cancellation. Variant orders fall back to the item-level (NULL-variant) recipe.
+- A recipe referencing an unstocked ingredient BLOCKS the order with a clean 400 ("Insufficient stock for X") — fixed a POS-path gap where `OrderError` escaped as a 500 (`staff_ops.py` now catches it). The starter stock (1000/store) exists precisely so this never triggers for seeded recipes.
+- A recipe referencing a deleted/missing inventory item is silently skipped (no deduction, no error).
+- Allergen/dietary framework: 9 allergens (peanuts, tree_nuts, gluten, dairy, eggs, soy, sesame, fish, shellfish) — aligned with common F&B labelling (FDA big-9 / Malaysian Food Act style). EU-14 extras (celery, mustard, sulphites, lupin, molluscs) don't occur in this menu; add them to `seed_menu_data.py ALLERGENS` if a future menu needs them.
