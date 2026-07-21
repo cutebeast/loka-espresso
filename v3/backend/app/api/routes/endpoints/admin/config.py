@@ -129,7 +129,7 @@ async def update_config(
 
     # Invalidate the in-memory translation credentials cache so key/model
     # changes take effect immediately instead of waiting up to 60s.
-    if effective_key.startswith(("integration.deepseek", "integration.deepl")):
+    if effective_key.startswith("integration.deepseek"):
         clear_translation_creds_cache()
 
     return APIResponse(

@@ -35,8 +35,6 @@ CONFIGS = [
     ("store.tax_registration", '"SST-123456789"', "string", "all", False, True),
     ("integration.pos_provider", '"Square"', "string", "all", False, True),
     ("integration.delivery_provider", '"GrabExpress"', "string", "all", False, True),
-    ("integration.deepl_api_url", '"https://api-free.deepl.com/v2/translate"', "string", "all", False, True),
-    ("integration.deepl_api_key", '""', "string", "all", True, True),
     ("integration.deepseek_api_key", '""', "string", "all", True, True),
     ("integration.deepseek_model", '"deepseek-chat"', "string", "all", False, True),
     ("integration.deepseek_fallback_model", '"deepseek-reasoner"', "string", "all", False, True),

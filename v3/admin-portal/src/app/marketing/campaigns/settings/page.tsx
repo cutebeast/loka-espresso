@@ -84,16 +84,6 @@ const KEYS: SettingDef[] = [{
   section: "Resend Email",
   sensitive: false
 }, {
-  k: "integration.deepl_api_key",
-  l: "DeepL API Key",
-  section: "Translation APIs",
-  sensitive: true
-}, {
-  k: "integration.deepl_api_url",
-  l: "DeepL API URL",
-  section: "Translation APIs",
-  sensitive: false
-}, {
   k: "integration.deepseek_api_key",
   l: "DeepSeek API Key",
   section: "Translation APIs",
@@ -212,7 +202,7 @@ export default function CampaignSettingsPage() {
           fontSize: 12,
           color: "var(--color-text-muted)"
         }}>
-                  <strong>ℹ️</strong>{t("marketing_campaigns_settings.deepl_translates_zh_tr_deepseek_v4")}</div>}
+                  <strong>ℹ️</strong>{t("marketing_campaigns_settings.deepseek_translates_all_locales")}</div>}
               <table className="data-table">
                 <thead><tr><th>{t("marketing_campaigns_settings.setting")}</th><th>{t("marketing_campaigns_settings.value")}</th><th style={{
                 width: 70

@@ -31,10 +31,9 @@ def _get_cache_stats_ctx():
 
 # Config keys stored in platform_config table
 TRANSLATION_CONFIG_KEYS = [
-    "integration.deepl_api_key",
-    "integration.deepl_api_url",
     "integration.deepseek_api_key",
     "integration.deepseek_model",
+    "integration.deepseek_fallback_model",
 ]
 
 _creds_cache: dict[str, str] | None = None
@@ -69,8 +68,6 @@ async def _get_translation_creds(db: AsyncSession | None = None) -> dict[str, st
         )
         rows = {r.config_key: str(r.config_value or "") for r in result.scalars().all()}
         _creds_cache = {
-            "deepl_key": rows.get("integration.deepl_api_key", ""),
-            "deepl_url": rows.get("integration.deepl_api_url", "https://api-free.deepl.com/v2/translate"),
             "deepseek_key": rows.get("integration.deepseek_api_key", ""),
             "deepseek_model": rows.get("integration.deepseek_model", "deepseek-chat"),
             "deepseek_fallback_model": rows.get("integration.deepseek_fallback_model", "deepseek-reasoner"),
@@ -85,37 +82,6 @@ async def _get_translation_creds(db: AsyncSession | None = None) -> dict[str, st
 def _compute_hash(source_locale: str, target_locale: str, text: str) -> str:
     payload = f"{source_locale}:{target_locale}:{text}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-async def _call_deepl(text: str, target_locale: str) -> str | None:
-    """Call DeepL API (primary). Returns translated text or None."""
-    creds = await _get_translation_creds()
-    api_key = creds.get("deepl_key", "")
-    api_url = creds.get("deepl_url", "https://api-free.deepl.com/v2/translate")
-    if not api_key:
-        return None
-    # DeepL supported target languages: skip unsupported locales
-    lang_map = {"ms": "MS", "zh": "ZH", "tr": "TR"}
-    target_lang = lang_map.get(target_locale)
-    if target_lang is None:
-        return None  # Let DeepSeek handle it
-    try:
-        async with AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                api_url,
-                data={"text": text, "target_lang": target_lang},
-                headers={"Authorization": f"DeepL-Auth-Key {api_key}"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                translations = data.get("translations", [])
-                if translations:
-                    return translations[0].get("text")
-    except Exception as e:
-        logger.error(f"DeepL API error: {e}")
-        return None
-
-    return None
 
 
 async def _call_deepseek(text: str, target_locale: str, model: str | None = None) -> str | None:
@@ -156,14 +122,10 @@ async def _call_deepseek(text: str, target_locale: str, model: str | None = None
 
 async def _fetch_translation(text: str, target_locale: str) -> str | None:
     """Call translation providers without touching the database.
-    Primary: DeepL (if configured) → DeepSeek flash → DeepSeek pro fallback → None.
+    DeepSeek primary → DeepSeek fallback model → None.
     Returns translated text or None if all providers fail."""
     # Ensure creds are loaded from DB; _get_translation_creds handles its own cache.
     creds = await _get_translation_creds()
-
-    translated = await _call_deepl(text, target_locale)
-    if translated is not None:
-        return translated
 
     translated = await _call_deepseek(text, target_locale)
     if translated is not None:
