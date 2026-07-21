@@ -44,13 +44,27 @@ CATEGORIES = [
     {"slug": "add-ons", "name": "Add-ons & Customizations", "description": "Drinks: sugar level (less / no / extra), ice level (less / no / extra), milk alternatives, extra shot / syrup / whipped cream. Food: spice level, sauce on the side, extra sauce / cheese / toppings, omit or substitute ingredients for dietary needs. Please inform staff of any allergies.", "order": 21},
 ]
 
-# Extra allergens to upsert (peanuts/gluten/dairy/shellfish already exist).
+# Allergens upserted by the menu seeder (all 9 — seed_content also seeds the
+# first 4, but seed_all runs content AFTER menu, so the menu seeder must be
+# self-sufficient or links are silently skipped).
 ALLERGENS = [
+    {"key": "peanuts", "name": "Peanuts", "description": "Peanuts and peanut-derived ingredients."},
+    {"key": "gluten", "name": "Gluten", "description": "Wheat, barley, rye and gluten-containing grains (bread, pastry, pasta)."},
+    {"key": "dairy", "name": "Dairy", "description": "Milk, cheese, butter, cream, yogurt and other dairy."},
+    {"key": "shellfish", "name": "Shellfish", "description": "Prawns, shrimp and other shellfish."},
     {"key": "tree_nuts", "name": "Tree Nuts", "description": "Pistachio, walnut, hazelnut, almond, pine nuts."},
     {"key": "eggs", "name": "Eggs", "description": "Eggs and egg-based ingredients such as mayonnaise."},
     {"key": "soy", "name": "Soy", "description": "Soy-based ingredients."},
     {"key": "sesame", "name": "Sesame", "description": "Sesame seeds, tahini, hummus, za'atar."},
     {"key": "fish", "name": "Fish", "description": "Fish including smoked salmon."},
+]
+
+# Dietary tags upserted by the menu seeder (same ordering reason as above).
+DIETARY_TAGS = [
+    {"key": "halal", "name": "Halal", "description": "Prepared with halal-certified ingredients; no pork, no lard, no alcohol."},
+    {"key": "vegetarian", "name": "Vegetarian", "description": "No meat, poultry or seafood."},
+    {"key": "vegan", "name": "Vegan", "description": "No animal products, including dairy, eggs and honey."},
+    {"key": "gluten_free", "name": "Gluten Free", "description": "No gluten-containing ingredients."},
 ]
 
 # ---------------------------------------------------------------------------

@@ -22,6 +22,7 @@ from sqlalchemy import text
 from scripts._db_utils import SETTINGS, confirm, get_db, guard_production
 from scripts.seed_menu_data import (
     ALLERGENS,
+    DIETARY_TAGS,
     ASSETS,
     BAKLAVA_VARIANTS,
     CATEGORIES,
@@ -62,9 +63,22 @@ async def _upsert_allergens(db):
                 ON CONFLICT (allergen_key) DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     description = EXCLUDED.description,
-                    is_active = true
+                    is_active = true,
+                    deleted_at = NULL
             """),
             {"key": a["key"], "name": a["name"], "desc": a["description"]},
+        )
+    for t in DIETARY_TAGS:
+        await db.execute(
+            text("""
+                INSERT INTO dietary_tags (tag_key, display_name, description, is_active)
+                VALUES (:key, :name, :desc, true)
+                ON CONFLICT (tag_key) DO UPDATE SET
+                    display_name = EXCLUDED.display_name,
+                    description = EXCLUDED.description,
+                    is_active = true
+            """),
+            {"key": t["key"], "name": t["name"], "desc": t["description"]},
         )
 
 
@@ -115,12 +129,9 @@ def _copy_image(cat_slug: str, filename: str | None) -> str | None:
 
 
 async def _clear_item_children(db, item_id):
-    await db.execute(
-        text("DELETE FROM menu_modifier_options WHERE modifier_group_id IN (SELECT id FROM menu_modifier_groups WHERE menu_item_id = :id)"),
-        {"id": item_id},
-    )
-    await db.execute(text("DELETE FROM menu_modifier_groups WHERE menu_item_id = :id"), {"id": item_id})
-    await db.execute(text("DELETE FROM menu_variants WHERE parent_item_id = :id"), {"id": item_id})
+    # NOTE: variants and modifier groups/options are upserted by stable keys
+    # (not delete+reinsert) so their ids stay stable across re-seeds —
+    # translations are keyed by record id and would otherwise go stale.
     await db.execute(text("DELETE FROM menu_item_allergens WHERE menu_item_id = :id"), {"id": item_id})
     await db.execute(text("DELETE FROM menu_item_dietary_tags WHERE menu_item_id = :id"), {"id": item_id})
     await db.execute(text("DELETE FROM menu_item_recipes WHERE menu_item_id = :id"), {"id": item_id})
@@ -169,37 +180,92 @@ async def _upsert_item(db, item, cat_id, tax_id, image_url):
 
 
 async def _seed_variants(db, item_id, item):
+    wanted = set()
     for v in item.get("variants", []):
         sku = f"{item['code']}-{v['variant_name'].upper().replace(' ', '-')}"
+        wanted.add(sku)
         await db.execute(
             text("""
                 INSERT INTO menu_variants (parent_item_id, variant_name, variant_sku, price_adjustment, is_default, is_available)
                 VALUES (:id, :name, :sku, :adj, :default, true)
+                ON CONFLICT (variant_sku) DO UPDATE SET
+                    variant_name = EXCLUDED.variant_name,
+                    price_adjustment = EXCLUDED.price_adjustment,
+                    is_default = EXCLUDED.is_default,
+                    is_available = true
             """),
             {"id": item_id, "name": v["variant_name"], "sku": sku, "adj": v["price_adjustment"], "default": v["is_default"]},
         )
+    # Remove variants no longer in the seed for this item
+    await db.execute(
+        text("DELETE FROM menu_variants WHERE parent_item_id = :id AND variant_sku != ALL(:skus)"),
+        {"id": item_id, "skus": list(wanted) or [""]},
+    )
 
 
 async def _seed_modifiers(db, item_id, item):
+    wanted_groups = set()
     for mod_key in item.get("mods", []):
         tpl = MOD_TEMPLATES[mod_key]
-        result = await db.execute(
-            text("""
-                INSERT INTO menu_modifier_groups (menu_item_id, group_name, selection_type, is_required, min_selections, max_selections, display_order)
-                VALUES (:id, :name, :sel, :req, :min, :max, 1)
-                RETURNING id
-            """),
-            {"id": item_id, "name": tpl["group_name"], "sel": tpl["selection_type"], "req": tpl["is_required"], "min": tpl["min_selections"], "max": tpl["max_selections"]},
+        wanted_groups.add(tpl["group_name"])
+        existing = await db.execute(
+            text("SELECT id FROM menu_modifier_groups WHERE menu_item_id = :id AND group_name = :name"),
+            {"id": item_id, "name": tpl["group_name"]},
         )
-        group_id = result.scalar_one()
+        group_id = existing.scalar_one_or_none()
+        if group_id:
+            await db.execute(
+                text("""
+                    UPDATE menu_modifier_groups SET selection_type = :sel, is_required = :req,
+                        min_selections = :min, max_selections = :max
+                    WHERE id = :gid
+                """),
+                {"gid": group_id, "sel": tpl["selection_type"], "req": tpl["is_required"], "min": tpl["min_selections"], "max": tpl["max_selections"]},
+            )
+        else:
+            result = await db.execute(
+                text("""
+                    INSERT INTO menu_modifier_groups (menu_item_id, group_name, selection_type, is_required, min_selections, max_selections, display_order)
+                    VALUES (:id, :name, :sel, :req, :min, :max, 1)
+                    RETURNING id
+                """),
+                {"id": item_id, "name": tpl["group_name"], "sel": tpl["selection_type"], "req": tpl["is_required"], "min": tpl["min_selections"], "max": tpl["max_selections"]},
+            )
+            group_id = result.scalar_one()
+        wanted_options = set()
         for o in tpl["options"]:
+            wanted_options.add(o["option_name"])
             await db.execute(
                 text("""
                     INSERT INTO menu_modifier_options (modifier_group_id, option_name, price_adjustment, is_default, is_available, display_order)
-                    VALUES (:gid, :name, :adj, :default, true, :order)
+                    SELECT :gid, CAST(:name AS varchar(100)), :adj, :default, true, :order
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM menu_modifier_options WHERE modifier_group_id = :gid AND option_name = CAST(:name AS varchar(100))
+                    )
                 """),
                 {"gid": group_id, "name": o["option_name"], "adj": o["price_adjustment"], "default": o["is_default"], "order": o["display_order"]},
             )
+            await db.execute(
+                text("""
+                    UPDATE menu_modifier_options SET price_adjustment = :adj, is_default = :default,
+                        is_available = true, display_order = :order
+                    WHERE modifier_group_id = :gid AND option_name = :name
+                """),
+                {"gid": group_id, "name": o["option_name"], "adj": o["price_adjustment"], "default": o["is_default"], "order": o["display_order"]},
+            )
+        # Remove options no longer in the seed for this group
+        await db.execute(
+            text("DELETE FROM menu_modifier_options WHERE modifier_group_id = :gid AND option_name != ALL(:names)"),
+            {"gid": group_id, "names": list(wanted_options) or [""]},
+        )
+    # Remove groups no longer in the seed for this item (cascade their options)
+    stale = await db.execute(
+        text("SELECT id FROM menu_modifier_groups WHERE menu_item_id = :id AND group_name != ALL(:names)"),
+        {"id": item_id, "names": list(wanted_groups) or [""]},
+    )
+    for (gid,) in stale.all():
+        await db.execute(text("DELETE FROM menu_modifier_options WHERE modifier_group_id = :gid"), {"gid": gid})
+        await db.execute(text("DELETE FROM menu_modifier_groups WHERE id = :gid"), {"gid": gid})
 
 
 async def _seed_allergens(db, item_id, item):

@@ -387,6 +387,10 @@ async def merge_translations(
     if not columns:
         return items
 
+    # Some serializers emit plain strings (e.g. dietary tag keys) — only
+    # dict records with an id can be merged.
+    items = [item for item in items if isinstance(item, dict)]
+
     ids = [item.get("id") for item in items if item.get("id")]
     if not ids:
         return items
