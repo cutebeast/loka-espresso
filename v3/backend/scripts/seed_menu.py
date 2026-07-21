@@ -15,107 +15,20 @@ from sqlalchemy import text
 from scripts._db_utils import confirm, get_db, guard_production
 
 
-CATEGORIES = [
-    {"category_name": "Beverages", "slug": "beverages", "description": "Coffee, tea and drinks", "display_order": 1},
-    {"category_name": "Food", "slug": "food", "description": "Pastries and bites", "display_order": 2},
-    {"category_name": "Add-ons", "slug": "add-ons", "description": "Extras and sides", "display_order": 3},
-]
+# Fake demo menu data cleared on 2026-07-20 (round 32) — the real menu will be
+# imported from the Loka Espresso menu source. Seed structures are kept so this
+# script stays a working template: populate the lists below and re-run.
+CATEGORIES: list[dict] = []
 
 TAX_CATEGORY = {"name": "SST", "rate": 0.0}
 
-MENU_ITEMS = [
-    # (item_code, item_name, category_slug, base_price, prep_time)
-    ("ESP", "Espresso", "beverages", 8.00, 3),
-    ("LAT", "Caffè Latte", "beverages", 12.00, 5),
-    ("CRO", "Butter Croissant", "food", 7.00, 2),
-    ("MUF", "Blueberry Muffin", "food", 8.00, 2),
-    ("WATER", "Mineral Water", "add-ons", 3.00, 1),
-]
+MENU_ITEMS: list[tuple] = []
 
-MODIFIER_GROUPS = {
-    "ESP": [
-        {
-            "group_name": "Size",
-            "selection_type": "single",
-            "is_required": True,
-            "min_selections": 1,
-            "max_selections": 1,
-            "options": [
-                {"option_name": "Single", "price_adjustment": 0, "is_default": True, "display_order": 1},
-                {"option_name": "Double", "price_adjustment": 2.00, "is_default": False, "display_order": 2},
-            ],
-        },
-    ],
-    "LAT": [
-        {
-            "group_name": "Size",
-            "selection_type": "single",
-            "is_required": True,
-            "min_selections": 1,
-            "max_selections": 1,
-            "options": [
-                {"option_name": "Regular", "price_adjustment": 0, "is_default": True, "display_order": 1},
-                {"option_name": "Large", "price_adjustment": 2.50, "is_default": False, "display_order": 2},
-            ],
-        },
-        {
-            "group_name": "Milk",
-            "selection_type": "single",
-            "is_required": True,
-            "min_selections": 1,
-            "max_selections": 1,
-            "options": [
-                {"option_name": "Regular Milk", "price_adjustment": 0, "is_default": True, "display_order": 1},
-                {"option_name": "Oat Milk", "price_adjustment": 2.00, "is_default": False, "display_order": 2},
-                {"option_name": "Almond Milk", "price_adjustment": 2.00, "is_default": False, "display_order": 3},
-            ],
-        },
-    ],
-}
+MODIFIER_GROUPS: dict = {}
 
-RECIPES = {
-    # item_code: list of (inventory_item_code, qty, uom)
-    "ESP": [("BEV-001", 0.02, "kg")],
-    "LAT": [("BEV-001", 0.02, "kg"), ("BEV-002", 0.20, "L")],
-    "CRO": [("FOD-001", 0.10, "kg"), ("FOD-002", 0.05, "kg")],
-    "MUF": [("FOD-001", 0.08, "kg"), ("FOD-002", 0.04, "kg")],
-}
+RECIPES: dict = {}
 
-BUNDLES = [
-    {
-        "title": "Coffee & Pastry",
-        "slug": "coffee-pastry",
-        "bundle_type": "combo",
-        "bundle_price": 12.00,
-        "max_per_order": 2,
-        "components": [
-            {"item_code": "ESP", "default_quantity": 1},
-            {"item_code": "CRO", "default_quantity": 1},
-        ],
-    },
-    {
-        "title": "Breakfast Combo",
-        "slug": "breakfast-combo",
-        "bundle_type": "combo",
-        "bundle_price": 18.00,
-        "max_per_order": 3,
-        "components": [
-            {"item_code": "LAT", "default_quantity": 1},
-            {"item_code": "MUF", "default_quantity": 1},
-        ],
-    },
-    {
-        "title": "Coffee Duo",
-        "slug": "coffee-duo",
-        "bundle_type": "combo",
-        "bundle_price": 14.00,
-        "max_per_order": 2,
-        "components": [
-            {"item_code": "ESP", "default_quantity": 1},
-            {"item_code": "LAT", "default_quantity": 1},
-        ],
-    },
-]
+BUNDLES: list[dict] = []
 
 
 async def _upsert_tax_category(db, data):

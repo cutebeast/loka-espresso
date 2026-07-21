@@ -22,57 +22,9 @@ from sqlalchemy import func, select
 from scripts._db_utils import confirm, get_db, guard_production
 
 
-ORDER_SEED = [
-    # (customer_email, order_type, fulfillment_type, status, payment_status, items)
-    {
-        "customer_email": "demo@lokaespresso.my",
-        "order_type": "dine_in",
-        "fulfillment_type": "dine_in_service",
-        "status": "delivered",
-        "payment_status": "captured",
-        "items": [("ESP", 2), ("CRO", 1)],
-    },
-    {
-        "customer_email": "vip@lokaespresso.my",
-        "order_type": "takeaway",
-        "fulfillment_type": "counter_pickup",
-        "status": "delivered",
-        "payment_status": "captured",
-        "items": [("LAT", 1), ("MUF", 2)],
-    },
-    {
-        "customer_email": "demo@lokaespresso.my",
-        "order_type": "delivery",
-        "fulfillment_type": "standard_delivery",
-        "status": "out_for_delivery",
-        "payment_status": "captured",
-        "items": [("LAT", 2), ("CRO", 1), ("MUF", 1)],
-    },
-    {
-        "customer_email": "vip@lokaespresso.my",
-        "order_type": "dine_in",
-        "fulfillment_type": "dine_in_service",
-        "status": "cancelled_by_customer",
-        "payment_status": "refunded",
-        "items": [("ESP", 1)],
-    },
-    {
-        "customer_email": "demo@lokaespresso.my",
-        "order_type": "takeaway",
-        "fulfillment_type": "curbside_pickup",
-        "status": "ready_for_pickup",
-        "payment_status": "captured",
-        "items": [("LAT", 1), ("CRO", 1)],
-    },
-    {
-        "customer_email": "vip@lokaespresso.my",
-        "order_type": "delivery",
-        "fulfillment_type": "express_delivery",
-        "status": "preparing",
-        "payment_status": "captured",
-        "items": [("ESP", 1), ("LAT", 1), ("MUF", 1)],
-    },
-]
+# Fake demo orders cleared on 2026-07-20 (round 32) — no sample orders are
+# seeded anymore; order history comes from real usage.
+ORDER_SEED: list[dict] = []
 
 
 def _now() -> datetime:

@@ -22,31 +22,11 @@ CATEGORIES = [
     {"category_name": "Cleaning", "slug": "cleaning", "display_order": 4},
 ]
 
-ITEMS = [
-    {"item_code": "BEV-001", "item_name": "Coffee Beans", "category_slug": "beverages", "unit_of_measure": "kg", "unit_cost": 25.00, "item_type": "fnb"},
-    {"item_code": "BEV-002", "item_name": "Fresh Milk", "category_slug": "beverages", "unit_of_measure": "L", "unit_cost": 8.50, "item_type": "fnb"},
-    {"item_code": "BEV-003", "item_name": "Tea Bags", "category_slug": "beverages", "unit_of_measure": "pcs", "unit_cost": 0.15, "item_type": "fnb"},
-    {"item_code": "BEV-004", "item_name": "Caster Sugar", "category_slug": "beverages", "unit_of_measure": "kg", "unit_cost": 3.50, "item_type": "fnb"},
-    {"item_code": "FOD-001", "item_name": "Premium Flour", "category_slug": "food-supplies", "unit_of_measure": "kg", "unit_cost": 4.00, "item_type": "fnb"},
-    {"item_code": "FOD-002", "item_name": "Unsalted Butter", "category_slug": "food-supplies", "unit_of_measure": "kg", "unit_cost": 12.00, "item_type": "fnb"},
-    {"item_code": "DIS-001", "item_name": "Paper Cups 12oz", "category_slug": "disposables", "unit_of_measure": "pcs", "unit_cost": 0.20, "item_type": "non_fnb"},
-    {"item_code": "DIS-002", "item_name": "Plastic Lids", "category_slug": "disposables", "unit_of_measure": "pcs", "unit_cost": 0.10, "item_type": "non_fnb"},
-    {"item_code": "CLN-001", "item_name": "Dishwashing Liquid", "category_slug": "cleaning", "unit_of_measure": "L", "unit_cost": 5.00, "item_type": "non_fnb"},
-    {"item_code": "CLN-002", "item_name": "Hand Sanitizer", "category_slug": "cleaning", "unit_of_measure": "L", "unit_cost": 8.00, "item_type": "non_fnb"},
-]
+# Fake demo inventory data cleared on 2026-07-20 (round 32) — real inventory
+# will be imported later. Populate the lists below and re-run.
+ITEMS: list[dict] = []
 
-STOCK_LEVELS = {
-    "BEV-001": {"current_stock": 50.0, "reserved_stock": 0, "reorder_level": 10.0, "reorder_quantity": 25.0, "par_level": 40.0, "storage_location": "Store Room A"},
-    "BEV-002": {"current_stock": 30.0, "reserved_stock": 0, "reorder_level": 5.0, "reorder_quantity": 15.0, "par_level": 20.0, "storage_location": "Fridge 1"},
-    "BEV-003": {"current_stock": 500.0, "reserved_stock": 0, "reorder_level": 100.0, "reorder_quantity": 200.0, "par_level": 300.0, "storage_location": "Store Room A"},
-    "BEV-004": {"current_stock": 20.0, "reserved_stock": 0, "reorder_level": 5.0, "reorder_quantity": 10.0, "par_level": 15.0, "storage_location": "Store Room A"},
-    "FOD-001": {"current_stock": 40.0, "reserved_stock": 0, "reorder_level": 10.0, "reorder_quantity": 20.0, "par_level": 30.0, "storage_location": "Store Room B"},
-    "FOD-002": {"current_stock": 15.0, "reserved_stock": 0, "reorder_level": 5.0, "reorder_quantity": 10.0, "par_level": 12.0, "storage_location": "Fridge 2"},
-    "DIS-001": {"current_stock": 1000.0, "reserved_stock": 0, "reorder_level": 200.0, "reorder_quantity": 500.0, "par_level": 800.0, "storage_location": "Store Room C"},
-    "DIS-002": {"current_stock": 800.0, "reserved_stock": 0, "reorder_level": 200.0, "reorder_quantity": 400.0, "par_level": 600.0, "storage_location": "Store Room C"},
-    "CLN-001": {"current_stock": 10.0, "reserved_stock": 0, "reorder_level": 2.0, "reorder_quantity": 5.0, "par_level": 8.0, "storage_location": "Janitor Closet"},
-    "CLN-002": {"current_stock": 8.0, "reserved_stock": 0, "reorder_level": 2.0, "reorder_quantity": 4.0, "par_level": 6.0, "storage_location": "Janitor Closet"},
-}
+STOCK_LEVELS: dict = {}
 
 
 async def seed():
