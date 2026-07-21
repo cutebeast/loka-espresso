@@ -135,7 +135,7 @@ ITEMS = [
      "mods": ["drink"], "allergens": ["dairy"], "dietary": ["vegetarian", "gluten_free"], "prep": 4},
     {"code": "CSC-AFFOGATO", "name": "Affogato", "cat": "cafe-specialty-coffee", "price": 22.00,
      "desc": "A scoop of premium vanilla ice cream with a shot of espresso.", "img": "affogato.jpg",
-     "allergens": ["dairy"], "dietary": ["vegetarian", "gluten_free"], "prep": 4},
+     "mods": ["drink"], "allergens": ["dairy"], "dietary": ["vegetarian", "gluten_free"], "prep": 4},
     {"code": "CSC-KAHVE-I-TURK", "name": "Kahve-i Türk", "cat": "cafe-specialty-coffee", "price": 24.00,
      "desc": "Specialty Turkish brew coffee.", "img": "kahve-i-turk.jpg",
      "variants": hc(), "mods": ["drink"], "allergens": [], "dietary": ["vegan", "gluten_free"], "prep": 6},
