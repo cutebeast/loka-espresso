@@ -288,7 +288,7 @@ async def _seed_recipes(db, item_ids, ing_ids):
     return count
 
 
-async def seed():
+async def seed(with_recipes: bool = False):
     async with get_db() as db:
         tax_id = await _upsert_tax_category(db, TAX_CATEGORY)
         await _upsert_allergens(db)
@@ -307,26 +307,34 @@ async def seed():
             item_ids[item["code"]] = item_id
         print(f"  Upserted {len(item_ids)} menu items")
 
-        ing_ids = await _seed_ingredients(db)
-        await _seed_starter_stock(db, ing_ids)
-        print(f"  Upserted {len(ing_ids)} ingredients + starter stock")
+        if with_recipes:
+            # Opt-in: recipes tie menu items to inventory stock, and ordering a
+            # recipe item without stock fails. Only seed these when the team is
+            # ready to manage inventory (python3 scripts/seed_menu.py --with-recipes).
+            ing_ids = await _seed_ingredients(db)
+            await _seed_starter_stock(db, ing_ids)
+            print(f"  Upserted {len(ing_ids)} ingredients + starter stock")
 
-        recipe_count = await _seed_recipes(db, item_ids, ing_ids)
-        print(f"  Seeded {recipe_count} recipe lines across {len(RECIPES)} items")
+            recipe_count = await _seed_recipes(db, item_ids, ing_ids)
+            print(f"  Seeded {recipe_count} recipe lines across {len(RECIPES)} items")
+        else:
+            print("  Skipped ingredients/stock/recipes (use --with-recipes to include)")
 
 
 async def main():
     parser = argparse.ArgumentParser(description="Seed the real Loka Espresso menu")
     parser.add_argument("--yes", action="store_true", help="Skip confirmation")
     parser.add_argument("--force-prod", action="store_true", help="Allow running in production")
+    parser.add_argument("--with-recipes", action="store_true",
+                        help="Also seed inventory ingredients, starter stock and recipes (menu works without them)")
     args = parser.parse_args()
 
     guard_production(args.force_prod)
-    if not confirm("Seed the real Loka Espresso menu (categories, items, images, recipes)?", args.yes):
+    if not confirm("Seed the real Loka Espresso menu (categories, items, images)?", args.yes):
         print("Aborted.")
         return
 
-    await seed()
+    await seed(with_recipes=args.with_recipes)
     print("Done.")
 
 

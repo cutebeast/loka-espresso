@@ -274,3 +274,9 @@ The boss-confirmed menu from `/root/menu-item` is now the seed of record:
 - A recipe referencing an unstocked ingredient BLOCKS the order with a clean 400 ("Insufficient stock for X") — fixed a POS-path gap where `OrderError` escaped as a 500 (`staff_ops.py` now catches it). The starter stock (1000/store) exists precisely so this never triggers for seeded recipes.
 - A recipe referencing a deleted/missing inventory item is silently skipped (no deduction, no error).
 - Allergen/dietary framework: 9 allergens (peanuts, tree_nuts, gluten, dairy, eggs, soy, sesame, fish, shellfish) — aligned with common F&B labelling (FDA big-9 / Malaysian Food Act style). EU-14 extras (celery, mustard, sulphites, lupin, molluscs) don't occur in this menu; add them to `seed_menu_data.py ALLERGENS` if a future menu needs them.
+
+### Inventory cleared — menu runs standalone (2026-07-21)
+Per owner decision, the menu must work before inventory management begins:
+- **Live DB**: all recipes, ingredients, stock, movement logs, POs cleared. Menu items (160) are untouched and fully sellable — no stock checks apply to anything.
+- **Seeder**: recipe/ingredient/stock seeding is now OPT-IN — `python3 scripts/seed_menu.py --with-recipes` (default run skips it). Recipe data stays in `seed_menu_data.py` (INGREDIENTS/RECIPES) ready for when inventory work starts.
+- **E2E**: recipe-list and inventory-list tests skip gracefully while inventory is empty (195 passed / 20 skipped).
