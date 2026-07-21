@@ -825,6 +825,7 @@ async def create_order_from_cart(
         total_amount_currency=store.currency_code,
         loyalty_points_earned=loyalty_points_earned,
         loyalty_points_redeemed=0,
+        is_byot=bool(getattr(data, "is_byot", False)),
         customer_notes=data.customer_notes,
         delivery_instructions=data.delivery_instructions,
         pickup_time=data.pickup_time,
@@ -972,14 +973,23 @@ async def create_order_from_cart(
         if la:
             # Apply the customer's current tier points multiplier
             multiplier = Decimal(1)
+            tier = None
             if la.current_tier_id:
                 tier = await db.get(LoyaltyTier, la.current_tier_id)
                 if tier and tier.is_active:
                     multiplier = to_decimal(tier.points_multiplier)
+            eco = False
+            if order.is_byot:
+                # Eco-campaign (BYOT): 2x points (Bloom/Origin), 3x (Reserve) — replaces tier multiplier
+                eco = True
+                multiplier = Decimal(3) if (tier and tier.tier_key == "reserve") else Decimal(2)
             # Double points during the customer's birthday month (all tiers)
-            from app.services.commerce import _birthday_points_multiplier
+            from app.services.commerce import _birthday_points_multiplier, grant_birthday_perk
             birthday_mult = await _birthday_points_multiplier(db, customer_id)
             multiplier = multiplier * birthday_mult
+            if birthday_mult > 1:
+                # Birthday perk voucher (Origin: drink upgrade / Reserve: gift), once per year
+                await grant_birthday_perk(db, customer_id, tier.tier_key if tier else None)
             if multiplier > 1:
                 loyalty_points_earned = int(
                     (Decimal(loyalty_points_earned) * multiplier).to_integral_value(rounding="ROUND_DOWN")
@@ -993,6 +1003,7 @@ async def create_order_from_cart(
                 points_delta=loyalty_points_earned,
                 running_balance=la.points_balance + loyalty_points_earned,
                 description=f"Points earned from order {order.order_number}"
+                + (" (BYOT eco-campaign)" if eco else "")
                 + (" (birthday month double points)" if birthday_mult > 1 else ""),
             )
             db.add(ledger)

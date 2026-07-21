@@ -428,6 +428,7 @@ export function usePosState() {
           bundle_component_id: c.bundle_component_id || undefined,
         })),
         order_notes: cartHook.orderNotes,
+        is_byot: cartHook.isByot ?? false,
         idempotency_key: idempotencyKey,
       });
       setResult(res);
@@ -592,6 +593,7 @@ export function usePosState() {
     tableId: cartHook.tableId, setTableId: cartHook.setTableId,
     orderType: cartHook.orderType, setOrderType: cartHook.setOrderType,
     orderNotes: cartHook.orderNotes, setOrderNotes: cartHook.setOrderNotes,
+    isByot: cartHook.isByot, setIsByot: cartHook.setIsByot,
     modifierItem: cartHook.modifierItem, setModifierItem: cartHook.setModifierItem,
     selectedModifiers: cartHook.selectedModifiers, setSelectedModifiers: cartHook.setSelectedModifiers,
     modifierQty: cartHook.modifierQty, setModifierQty: cartHook.setModifierQty,

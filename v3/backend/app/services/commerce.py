@@ -49,6 +49,101 @@ async def _birthday_points_multiplier(db: AsyncSession, customer_id: int) -> Dec
     return Decimal(1)
 
 
+async def grant_voucher_to_customer(
+    db: AsyncSession,
+    customer_id: int,
+    voucher_code: str,
+    source: str,
+    source_id: int | None = None,
+    expires_at: datetime | None = None,
+):
+    """Create a CustomerVoucher instance from a definition (shared by welcome
+    reward and birthday perks). Returns the CustomerVoucher or None."""
+    import secrets as _secrets
+    from app.models.store import Store
+    from app.models.voucher import CustomerVoucher, VoucherDefinition
+
+    result = await db.execute(
+        select(VoucherDefinition).where(
+            VoucherDefinition.voucher_code == voucher_code,
+            VoucherDefinition.deleted_at.is_(None),
+            VoucherDefinition.is_active.is_(True),
+        )
+    )
+    vd = result.scalar_one_or_none()
+    if vd is None:
+        return None
+    store_result = await db.execute(
+        select(Store.id).where(Store.deleted_at.is_(None), Store.is_active.is_(True)).limit(1)
+    )
+    store_id = store_result.scalar_one_or_none()
+    if store_id is None:
+        return None
+    now = datetime.now(timezone.utc)
+    if expires_at is None:
+        expires_at = now + timedelta(days=vd.validity_days or 30)
+    snapshot = {
+        "voucher_code": vd.voucher_code,
+        "voucher_type": str(vd.voucher_type),
+        "display_title": vd.display_title,
+        "description": vd.description,
+        "discount_value": float(vd.discount_value or 0),
+        "discount_max_amount": float(vd.discount_max_amount) if vd.discount_max_amount is not None else None,
+        "minimum_order_value": float(vd.minimum_order_value or 0),
+    }
+    cv = CustomerVoucher(
+        customer_id=customer_id,
+        voucher_definition_id=vd.id,
+        store_id=store_id,
+        source=source,
+        source_id=source_id,
+        voucher_code=f"{voucher_code.split('-')[0]}-{_secrets.token_hex(4).upper()}",
+        status="active",
+        voucher_snapshot=snapshot,
+        expires_at=expires_at,
+    )
+    db.add(cv)
+    return cv
+
+
+async def grant_birthday_perk(db: AsyncSession, customer_id: int, tier_key: str | None) -> None:
+    """Grant the tier-appropriate birthday perk voucher once per calendar year.
+
+    Per the program structure: Origin → complimentary drink upgrade,
+    Reserve → exclusive birthday gift. Bloom gets double points only.
+    """
+    from app.models.customer import Customer
+    from app.models.voucher import CustomerVoucher
+
+    if tier_key not in ("origin", "reserve"):
+        return
+    result = await db.execute(
+        select(Customer.date_of_birth).where(Customer.id == customer_id)
+    )
+    dob = result.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if not dob or dob.month != now.month:
+        return
+    # Once per calendar year (T&C)
+    year_start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+    existing = await db.execute(
+        select(CustomerVoucher.id).where(
+            CustomerVoucher.customer_id == customer_id,
+            CustomerVoucher.source == "birthday_perk",
+            CustomerVoucher.created_at >= year_start,
+        ).limit(1)
+    )
+    if existing.scalar_one_or_none():
+        return
+    # Valid until the end of the birthday month
+    if now.month == 12:
+        month_end = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        month_end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+    code = "BDAY-UPGRADE" if tier_key == "origin" else "BDAY-GIFT"
+    await grant_voucher_to_customer(db, customer_id, code, source="birthday_perk", expires_at=month_end)
+
+
 async def _evaluate_tier_renewal(db: AsyncSession, account: LoyaltyAccount):
     """12-month rolling tier review per the program structure.
 

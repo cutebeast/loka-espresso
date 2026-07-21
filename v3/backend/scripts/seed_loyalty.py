@@ -29,9 +29,14 @@ REWARDS = [
     ("fixed_discount", "RM5 Off", "RM5 discount on order subtotal", "fixed_discount", 150, 5, None, None),
 ]
 
+# (code, vtype, value, max_amount, min_order, title, description, first_order_only, min_tier_key, validity_days)
 VOUCHERS = [
-    ("WELCOME10", "percentage_off", 10, None, 0, "Welcome 10% Off", "10% off your first order"),
-    ("FLAT5", "fixed_amount_off", 5, None, 0, "RM5 Off", "RM5 off your order"),
+    ("WELCOME-RM5", "fixed_amount_off", 5, None, 0, "Welcome Reward — RM5 Off",
+     "Welcome to Loka Espresso! RM5 off your first purchase.", True, None, 30),
+    ("BDAY-UPGRADE", "fixed_amount_off", 5, None, 0, "Birthday Drink Upgrade",
+     "Happy birthday! Enjoy a complimentary drink upgrade on us, valid all birthday month. (Origin member perk)", False, "origin", 31),
+    ("BDAY-GIFT", "fixed_amount_off", 30, None, 0, "Reserve Birthday Gift",
+     "Happy birthday! An exclusive gift for our Reserve members — RM30 off specialty beans, merchandise or a dessert box.", False, "reserve", 31),
 ]
 
 
@@ -115,7 +120,11 @@ async def seed():
         # Voucher definitions
         valid_from = datetime.now(timezone.utc)
         valid_until = valid_from + timedelta(days=365)
-        for code, vtype, value, max_amount, min_order, title, description in VOUCHERS:
+        tier_ids = {
+            row.tier_key: row.id
+            for row in (await db.execute(text("SELECT id, tier_key FROM loyalty_tiers"))).all()
+        }
+        for code, vtype, value, max_amount, min_order, title, description, first_order_only, min_tier_key, validity_days in VOUCHERS:
             result = await db.execute(
                 text("SELECT id FROM voucher_definitions WHERE voucher_code = :code"),
                 {"code": code},
@@ -128,10 +137,12 @@ async def seed():
                     INSERT INTO voucher_definitions
                         (voucher_code, voucher_type, display_title, description,
                          discount_value, discount_max_amount, minimum_order_value,
-                         valid_from, valid_until, max_uses_per_customer, is_active)
+                         valid_from, valid_until, max_uses_per_customer, is_active,
+                         first_order_only, minimum_tier_id, validity_days)
                     VALUES (:code, :vtype, :title, :description,
                             :value, :max_amount, COALESCE(:min_order, 0),
-                            :valid_from, :valid_until, 1, true)
+                            :valid_from, :valid_until, 1, true,
+                            :first_order_only, :min_tier_id, :validity_days)
                 """),
                 {
                     "code": code,
@@ -143,6 +154,9 @@ async def seed():
                     "min_order": min_order,
                     "valid_from": valid_from,
                     "valid_until": valid_until,
+                    "first_order_only": first_order_only,
+                    "min_tier_id": tier_ids.get(min_tier_key) if min_tier_key else None,
+                    "validity_days": validity_days,
                 },
             )
             print(f"  Created voucher definition '{code}'")

@@ -12,7 +12,7 @@ interface ConfigItem {
   value_type: string;
   is_editable: boolean;
 }
-const KEYS = ["loyalty.points_per_currency", "loyalty.welcome_bonus"];
+const KEYS = ["loyalty.points_per_currency", "loyalty.welcome_bonus", "loyalty.welcome_reward_type", "loyalty.welcome_reward_voucher_code"];
 export default function LoyaltySettingsPage() {
   const {
     t

@@ -48,17 +48,18 @@ POS_TERMINALS = [
 
 CAMPAIGNS = [
     (
-        "summer-promo-2026",
-        "Summer Promo 2026",
+        "eco-campaign-byot",
+        "Eco-Campaign (BYOT)",
         "promotional",
         "in_app",
-        "draft",
-        "Enjoy 10% off all drinks this summer!",
+        "active",
+        "Bring your own tumbler and earn bonus points on every order! Bloom & Origin members earn 2x points, Reserve members earn 3x points. Better for the planet, better for you.",
     ),
 ]
 
 PROMO_BANNERS = [
-    ("Welcome Offer", "Get 10% off your first order", "read_claim", None),
+    ("Welcome Reward — RM5 Off", "New member? Enjoy RM5 off your first purchase with your welcome voucher!", "read_claim", None),
+    ("Eco-Campaign: BYOT & Earn", "Bring your own tumbler — earn 2x points (3x for Reserve members) on every order.", "read_claim", None),
 ]
 
 SURVEYS = [
@@ -349,7 +350,7 @@ async def seed():
 
         # Promo banners
         voucher_row = await db.execute(
-            text("SELECT id FROM voucher_definitions WHERE voucher_code = 'WELCOME10' LIMIT 1")
+            text("SELECT id FROM voucher_definitions WHERE voucher_code = 'WELCOME-RM5' LIMIT 1")
         )
         welcome_voucher_id = voucher_row.scalar_one_or_none()
 

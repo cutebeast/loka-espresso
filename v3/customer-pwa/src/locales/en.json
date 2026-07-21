@@ -226,7 +226,8 @@
     "walletBalance": "Wallet Balance",
     "yourRewards": "Your Rewards",
     "yourVouchers": "Your Vouchers",
-    "recipientPhonePlaceholder": "60123456789"
+    "recipientPhonePlaceholder": "60123456789",
+    "byotEco": "I brought my own tumbler (BYOT) — earn eco-campaign bonus points"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "Pay Online (Card / FPX / GrabPay)",

@@ -809,6 +809,7 @@ export function createPosOrder(payload: {
   order_type: string;
   line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; special_instructions?: string; bundle_product_id?: number; bundle_component_id?: number }>;
   order_notes?: string;
+  is_byot?: boolean;
   idempotency_key?: string;
   payment?: { amount_tendered?: number; method?: string };
 }) {

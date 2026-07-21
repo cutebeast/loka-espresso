@@ -23,6 +23,7 @@ export function usePosCart(crewName: string) {
   const [tableId, setTableId] = useState<number | null>(null);
   const [orderType, setOrderType] = useState<string>("dine_in");
   const [orderNotes, setOrderNotes] = useState("");
+  const [isByot, setIsByot] = useState(false);  // eco-campaign: bring-your-own-tumbler
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeld, setShowHeld] = useState(false);
 
@@ -126,6 +127,7 @@ export function usePosCart(crewName: string) {
     setTableId(null);
     setOrderType("dine_in");
     setOrderNotes("");
+    setIsByot(false);
     try { localStorage.removeItem("pos_active_cart"); } catch {}
   }, []);
 
@@ -218,6 +220,7 @@ export function usePosCart(crewName: string) {
     tableId, setTableId,
     orderType, setOrderType,
     orderNotes, setOrderNotes,
+    isByot, setIsByot,
     heldOrders, setHeldOrders,
     showHeld, setShowHeld,
     addToCart,

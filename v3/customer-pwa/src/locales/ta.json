@@ -226,7 +226,8 @@
     "walletBalance": "வாலட் இருப்பு",
     "yourRewards": "உங்கள் வெகுமதிகள்",
     "yourVouchers": "உங்கள் வவுச்சர்கள்",
-    "recipientPhonePlaceholder": "60123456789"
+    "recipientPhonePlaceholder": "60123456789",
+    "byotEco": "நான் எனது சொந்த டம்ளரைக் கொண்டு வந்தேன் (BYOT) — சூழலியல் பிரச்சார போனஸ் புள்ளிகளைப் பெறுங்கள்"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "ஆன்லைனில் செலுத்தவும் (கார்டு / FPX / GrabPay)",

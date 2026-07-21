@@ -764,7 +764,7 @@ def _is_walkin_customer(customer_id: int) -> bool:
 async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order, order_number: str) -> int:
     """Award loyalty points for a POS order, mirroring the customer flow."""
     from decimal import Decimal
-    from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger
+    from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
     from app.models.platform import PlatformConfig
     from app.services.commerce import _recalculate_tier
 
@@ -791,7 +791,16 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
         return 0  # No loyalty account — skip silently
 
     # Apply the customer's current tier points multiplier (mirrors the customer flow)
-    if la.current_tier_id:
+    eco = False
+    if getattr(order, "is_byot", False):
+        # Eco-campaign (BYOT): 2x points (Bloom/Origin), 3x (Reserve) — replaces tier multiplier
+        eco = True
+        tier_key_r = await db.execute(
+            select(LoyaltyTier.tier_key).where(LoyaltyTier.id == la.current_tier_id)
+        ) if la.current_tier_id else None
+        tier_key = tier_key_r.scalar_one_or_none() if tier_key_r else None
+        points_earned = int(points_earned * (3 if tier_key == "reserve" else 2))
+    elif la.current_tier_id:
         from app.models.loyalty import LoyaltyTier
         tier = await db.get(LoyaltyTier, la.current_tier_id)
         if tier and tier.is_active and tier.points_multiplier and Decimal(str(tier.points_multiplier)) > 1:
@@ -800,12 +809,17 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
             )
 
     # Double points during the customer's birthday month (all tiers)
-    from app.services.commerce import _birthday_points_multiplier
+    from app.services.commerce import _birthday_points_multiplier, grant_birthday_perk
     birthday_mult = await _birthday_points_multiplier(db, customer_id)
     if birthday_mult > 1:
         points_earned = int(
             (Decimal(points_earned) * birthday_mult).to_integral_value(rounding="ROUND_DOWN")
         )
+        # Birthday perk voucher (Origin: drink upgrade / Reserve: gift), once per year
+        tier_key_r = await db.execute(
+            select(LoyaltyTier.tier_key).where(LoyaltyTier.id == la.current_tier_id)
+        ) if la.current_tier_id else None
+        await grant_birthday_perk(db, customer_id, tier_key_r.scalar_one_or_none() if tier_key_r else None)
 
     ledger = LoyaltyPointsLedger(
         loyalty_account_id=la.id,
@@ -814,6 +828,7 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
         points_delta=points_earned,
         running_balance=la.points_balance + points_earned,
         description=f"Points earned from POS order {order_number}"
+        + (" (BYOT eco-campaign)" if eco else "")
         + (" (birthday month double points)" if birthday_mult > 1 else ""),
     )
     db.add(ledger)
@@ -1015,6 +1030,7 @@ async def staff_pos_create_order(
         addon_discount=money_round(addon_discount, precision, rounding_mode),
         total_amount=total,
         total_amount_currency=store.currency_code,
+        is_byot=bool(getattr(data, "is_byot", False)),
     )
 
     change = 0.0

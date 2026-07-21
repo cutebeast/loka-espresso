@@ -116,29 +116,41 @@ async def register_customer(
     db.add(loyalty)
     await db.flush()
     
-    # Credit welcome bonus
+    # Credit welcome reward (config-driven: points and/or voucher)
     try:
-        from app.core.config import get_settings as _get_auth_settings
         from app.models.platform import PlatformConfig
         result = await db.execute(
-            select(PlatformConfig).where(PlatformConfig.config_key == "loyalty.welcome_bonus")
+            select(PlatformConfig).where(PlatformConfig.config_key.in_([
+                "loyalty.welcome_bonus",
+                "loyalty.welcome_reward_type",
+                "loyalty.welcome_reward_voucher_code",
+            ]))
         )
-        config = result.scalar_one_or_none()
-        welcome_pts = int(config.config_value) if config and config.config_value else 50
+        cfg = {c.config_key: c.config_value for c in result.scalars().all()}
+        reward_type = str(cfg.get("loyalty.welcome_reward_type") or "voucher")
+        welcome_pts = int(cfg.get("loyalty.welcome_bonus") or 50)
     except Exception:
+        reward_type = "voucher"
         welcome_pts = 50
-    
-    ledger = LoyaltyPointsLedger(
-        loyalty_account_id=loyalty.id,
-        customer_id=customer.id,
-        event_type="welcome_bonus",
-        points_delta=welcome_pts,
-        running_balance=welcome_pts,
-        description=f"Welcome bonus: {welcome_pts} points",
-    )
-    loyalty.points_balance = welcome_pts
-    loyalty.lifetime_points_earned = welcome_pts
-    db.add(ledger)
+
+    if reward_type in ("points", "points_and_voucher"):
+        ledger = LoyaltyPointsLedger(
+            loyalty_account_id=loyalty.id,
+            customer_id=customer.id,
+            event_type="welcome_bonus",
+            points_delta=welcome_pts,
+            running_balance=welcome_pts,
+            description=f"Welcome bonus: {welcome_pts} points",
+        )
+        loyalty.points_balance = welcome_pts
+        loyalty.lifetime_points_earned = welcome_pts
+        db.add(ledger)
+
+    if reward_type in ("voucher", "points_and_voucher"):
+        # Welcome reward voucher per program structure (RM5 off first purchase)
+        from app.services.commerce import grant_voucher_to_customer
+        voucher_code = str(cfg.get("loyalty.welcome_reward_voucher_code") or "WELCOME-RM5")
+        await grant_voucher_to_customer(db, customer.id, voucher_code, source="welcome_reward")
     
     # Create device record if fingerprint provided
     if data.device_fingerprint:

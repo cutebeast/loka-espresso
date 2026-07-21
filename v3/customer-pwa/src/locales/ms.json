@@ -226,7 +226,8 @@
     "walletBalance": "Baki Dompet",
     "yourRewards": "Ganjaran Anda",
     "yourVouchers": "Baucar Anda",
-    "recipientPhonePlaceholder": "60123456789"
+    "recipientPhonePlaceholder": "60123456789",
+    "byotEco": "Saya bawa tumbler sendiri (BYOT) — dapatkan mata bonus kempen eko"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "Bayar Dalam Talian (Kad / FPX / GrabPay)",

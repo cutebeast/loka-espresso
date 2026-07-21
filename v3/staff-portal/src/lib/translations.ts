@@ -279,6 +279,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "pos.or_search_to_apply_rewards_vouchers": "or search to apply rewards/vouchers",
   "pos.order": "Order ",
   "pos.order_notes_e_g_extra_spicy": "Order notes (e.g., Extra spicy, Allergies...)",
+  "pos.byot_eco": "BYOT — customer brought own tumbler (eco-campaign, bonus points)",
   "pos.order_summary": "Order Summary",
   "pos.orders_you_park_will_appear_here": "Orders you park will appear here for up to 2 hours.",
   "pos.park": "Park",

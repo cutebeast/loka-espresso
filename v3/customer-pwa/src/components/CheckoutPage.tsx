@@ -82,6 +82,7 @@ export default function CheckoutPage() {
   const [deliveryInstr, setDeliveryInstr] = useState(checkoutDraft.deliveryInstructions || '');
   const [discountType, setDiscountType] = useState<'voucher' | 'reward' | null>(checkoutDraft.discountType ?? null);
   const [discountCode, setDiscountCode] = useState(checkoutDraft.discountCode || '');
+  const [isByot, setIsByot] = useState(false);
   const [discountValue, setDiscountValue] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway' | 'hitpay'>(checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet'));
   const [hitpayEnabled, setHitpayEnabled] = useState(false);
@@ -225,7 +226,8 @@ export default function CheckoutPage() {
           deliveryInstructions: deliveryInstr || undefined,
           voucherCode: discountType === 'voucher' ? discountCode : undefined,
           rewardRedemptionCode: discountType === 'reward' ? discountCode : undefined,
-          tableId: dineInSession?.tableId
+          tableId: dineInSession?.tableId,
+          isByot,
         });
         if ('queued' in result && result.queued) {
           clearCheckoutDraft();
@@ -416,6 +418,12 @@ export default function CheckoutPage() {
         <div className="checkout-section">
           <div className="co-section-title">{t('checkout.orderNotes')}</div>
           {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display co-notes-empty">{t('checkout.noNotes')}</div>}
+        </div>
+        <div className="checkout-section">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer', userSelect: 'none' }}>
+            <input type="checkbox" checked={isByot} onChange={e => setIsByot(e.target.checked)} />
+            <span>{t('checkout.byotEco')}</span>
+          </label>
         </div>
         <div className="checkout-section">
           <div className="co-section-title">{t('checkout.paymentMethod')}</div>

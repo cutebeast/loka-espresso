@@ -130,6 +130,7 @@ class POSOrderCreateRequest(BaseSchema):
     order_type: str = "dine_in"
     line_items: list[POSLineItem]
     payment: POSPayment | None = None
+    is_byot: bool = False  # eco-campaign: customer brought their own tumbler
     idempotency_key: str | None = None
 
 

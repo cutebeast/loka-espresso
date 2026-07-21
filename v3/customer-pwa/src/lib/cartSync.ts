@@ -147,6 +147,7 @@ export async function placeOrder(params: {
   recipientName?: string;
   recipientPhone?: string;
   deliveryInstructions?: string;
+  isByot?: boolean;  // eco-campaign: customer brought their own tumbler
 }) {
   const { items, clearCart } = useCartStore.getState();
 
@@ -194,6 +195,9 @@ export async function placeOrder(params: {
   }
   if (params.notes) {
     orderPayload.customer_notes = params.notes;
+  }
+  if (params.isByot) {
+    orderPayload.is_byot = true;
   }
   if (params.recipientName) {
     orderPayload.recipient_name = params.recipientName;

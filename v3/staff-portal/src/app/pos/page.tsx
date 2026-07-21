@@ -643,6 +643,18 @@ function PosPageContent() {
         fontSize: 13
       }} placeholder={t("pos.order_notes_e_g_extra_spicy")} value={pos.orderNotes} onChange={e => pos.setOrderNotes(e.target.value)} />
 
+          <label style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 13,
+        marginBottom: 10,
+        cursor: "pointer",
+        userSelect: "none",
+      }}>
+            <input type="checkbox" checked={pos.isByot} onChange={e => pos.setIsByot(e.target.checked)} />
+            {t("pos.byot_eco")}</label>
+
           {/* Group cart items: standalone first, then bundle groups */}
           {(() => {
         const standalone = pos.cart.filter(c => !c.bundle_product_id);

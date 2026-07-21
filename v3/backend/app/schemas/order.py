@@ -97,6 +97,7 @@ class OrderCreate(BaseSchema):
     recipient_name: str | None = Field(None, max_length=100)
     recipient_phone: str | None = Field(None, max_length=20)
     tip_amount: Money | None = Field(None, ge=0)
+    is_byot: bool = False  # eco-campaign: customer brought their own tumbler
     idempotency_key: str | None = Field(None, max_length=255)
 
 

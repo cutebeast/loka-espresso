@@ -226,7 +226,8 @@
     "walletBalance": "钱包余额",
     "yourRewards": "您的奖励",
     "yourVouchers": "您的优惠券",
-    "recipientPhonePlaceholder": "60123456789"
+    "recipientPhonePlaceholder": "60123456789",
+    "byotEco": "我自带随行杯（BYOT）— 赚取环保活动奖励积分"
   },
   "checkout_page": {
     "pay_online_card_fpx_grabpay": "在线支付（卡 / FPX / GrabPay）",

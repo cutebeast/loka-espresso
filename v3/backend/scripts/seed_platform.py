@@ -69,6 +69,8 @@ CONFIGS = [
     ("grabpay.webhook_secret", '""', "string", "all", True, True),
     ("loyalty.points_per_currency", "1", "integer", "all", False, True),
     ("loyalty.welcome_bonus", "50", "integer", "all", False, True),
+    ("loyalty.welcome_reward_type", '"voucher"', "string", "all", False, True),
+    ("loyalty.welcome_reward_voucher_code", '"WELCOME-RM5"', "string", "all", False, True),
     ("notifications.retention_days", "30", "integer", "all", False, True),
     ("upload.max_size_mb", "10", "integer", "all", False, True),
     ("accounting.decimal_places", "2", "integer", "all", False, True),

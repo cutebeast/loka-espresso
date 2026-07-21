@@ -293,10 +293,14 @@ Source of truth: `/root/CRM_Loyalty Program Structure.pdf`. Implementation statu
 - Verified with scripted end-to-end checks (upgrade at RM500/RM1500, renewal keep, Reserve→Origin→Bloom downgrades, birthday ×2) + E2E 195 passed.
 
 **Not implemented (program-level, needs product decision)**:
-- Welcome reward CHOICE (PDF: RM5 voucher / coffee upgrade / pastry with purchase) — system currently grants 50 welcome points; WELCOME10/FLAT5 voucher definitions exist but aren't auto-granted
-- Birthday PERKS beyond points (Origin: complimentary drink upgrade; Reserve: birthday gift)
-- Eco-campaign BYOT 2x/3x points (needs a campaign mechanism flag on orders)
 - Monthly drink upgrade, early access, priority reservation, skip-the-queue, member events/omakase, hidden app content, annual appreciation gift, exclusive merchandise — marketing/ops features, no software support yet
+
+**Implemented 2026-07-21 (second pass)**:
+- **Welcome reward (voucher)**: config-driven — `loyalty.welcome_reward_type` = `points` | `voucher` | `points_and_voucher` (default `voucher` per PDF), `loyalty.welcome_reward_voucher_code` (default `WELCOME-RM5`). Registration grants a WELCOME-RM5 customer voucher (RM5 off first purchase, first_order_only, 30-day validity). Editable in Admin → Loyalty → Settings.
+- **Birthday perks**: first order in the birthday month grants a perk voucher once per calendar year — Origin → `BDAY-UPGRADE` (complimentary drink upgrade, RM5), Reserve → `BDAY-GIFT` (RM30 gift credit). Bloom: double points only. `grant_birthday_perk()` in commerce.py, hooked into both award paths.
+- **Eco-campaign (BYOT)**: `orders.is_byot` flag (migration `b6729f513c8f`) — customer PWA checkout checkbox + staff POS toggle; BYOT orders earn **2x points (Bloom/Origin) / 3x (Reserve)** replacing the tier multiplier, noted in the ledger. Accepted in OrderCreate + POS create.
+- **Marketing section cleared & re-seeded properly**: old WELCOME10/FLAT5/fake campaign/banner removed; now 3 PDF-aligned voucher definitions (WELCOME-RM5, BDAY-UPGRADE, BDAY-GIFT), 3 marketplace rewards, Eco-Campaign (BYOT) as an active marketing campaign, 2 real promo banners (welcome + BYOT). Shared helper: `grant_voucher_to_customer()` in commerce.py.
+- Verified live: welcome voucher on registration (0 pts, voucher type), birthday perk grant + once-per-year guard + tier mapping, BYOT POS order RM24 → 48 pts (2x). E2E 195 passed.
 
 ### Migration & seed hygiene (verified 2026-07-21)
 - **Alembic**: single linear chain, live DB at head `a1b2c3d4e5f7`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
