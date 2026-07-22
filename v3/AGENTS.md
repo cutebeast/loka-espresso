@@ -302,6 +302,19 @@ Source of truth: `/root/CRM_Loyalty Program Structure.pdf`. Implementation statu
 - **Marketing section cleared & re-seeded properly**: old WELCOME10/FLAT5/fake campaign/banner removed; now 3 PDF-aligned voucher definitions (WELCOME-RM5, BDAY-UPGRADE, BDAY-GIFT), 3 marketplace rewards, Eco-Campaign (BYOT) as an active marketing campaign, 2 real promo banners (welcome + BYOT). Shared helper: `grant_voucher_to_customer()` in commerce.py.
 - Verified live: welcome voucher on registration (0 pts, voucher type), birthday perk grant + once-per-year guard + tier mapping, BYOT POS order RM24 → 48 pts (2x). E2E 195 passed.
 
+### Experiences & Workshops — paid classes (2026-07-22)
+
+Per `/root/Private booking charges & lucky draw.xlsx` (lucky draw is a SEPARATE feature, not built). Decision: **paid classes live as menu items** (checkout payment works today) and **event cards are marketing/discovery** (no payment, `action_url=#menu`, RSVP off).
+
+- New menu category **Experiences & Workshops** (order 17, baklava+ shifted to 18–22):
+  - `EX-COFFEE-OMAKASE` Coffee Omakase Experience — variants: 4 Pax RM299/pax · 2 Pax RM399/pax (+100) · 1 Pax VIP RM488/pax (+189); perks per package in description
+  - `EX-TURKISH-SAND-BREW` Turkish Sand Brew Workshop — RM199/pax (4-pax)
+  - `EX-ROASTERY-WORKSHOP` Roastery Workshop — RM199/pax (4-pax)
+  - All exclude taxes (SST 0% currently). Placeholder images (kahve-i-turk/gozleme/espresso) — replace with real photos later.
+- 3 event cards seeded in `seed_content.py` (EVENT_CARDS) promoting the classes with pricing + reward-redemption note (Omakase 5,980 pts, Sand Brew 3,980 pts — matches the rewards table).
+- Ties together: customers can PAY for a class via checkout OR Reserve members REDEEM it with points (rewards table).
+- Translated to all 4 locales (menu + event cards). E2E 195 passed.
+
 ### Rewards marketplace — boss's redemption table (2026-07-22)
 
 Reward catalog replaced per `/root/Point redemption Loka Espresso crm.xlsx` (1 pt = RM0.05 retail value, 5% return on spend). Old placeholder rewards (free_delivery / 10% off / RM5 off) removed. 13 rewards, all `free_item` type, tier-gated via `minimum_tier_id` (redeem check is hierarchical by tier id):

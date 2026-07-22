@@ -37,11 +37,12 @@ CATEGORIES = [
     {"slug": "turkish-pide", "name": "Turkish Pide", "description": "Hand-stretched boat-shaped pide.", "order": 14},
     {"slug": "pasta-creations", "name": "Pasta Creations", "description": "Al dente pasta, house sauces.", "order": 15},
     {"slug": "main-courses", "name": "Main Courses", "description": "Hearty mains.", "order": 16},
-    {"slug": "baklava", "name": "Baklava", "description": "Available per piece, per 100g, or as sets.", "order": 17},
-    {"slug": "cake", "name": "Cake", "description": "Cakes and entremets.", "order": 18},
-    {"slug": "pastry", "name": "Pastry", "description": "Freshly baked pastries.", "order": 19},
-    {"slug": "scone", "name": "Scone", "description": "Buttery scones.", "order": 20},
-    {"slug": "add-ons", "name": "Add-ons & Customizations", "description": "Drinks: sugar level (less / no / extra), ice level (less / no / extra), milk alternatives, extra shot / syrup / whipped cream. Food: spice level, sauce on the side, extra sauce / cheese / toppings, omit or substitute ingredients for dietary needs. Please inform staff of any allergies.", "order": 21},
+    {"slug": "experiences", "name": "Experiences & Workshops", "description": "Guided coffee classes and curated experiences. Priced per person; book for your party size.", "order": 17},
+    {"slug": "baklava", "name": "Baklava", "description": "Available per piece, per 100g, or as sets.", "order": 18},
+    {"slug": "cake", "name": "Cake", "description": "Cakes and entremets.", "order": 19},
+    {"slug": "pastry", "name": "Pastry", "description": "Freshly baked pastries.", "order": 20},
+    {"slug": "scone", "name": "Scone", "description": "Buttery scones.", "order": 21},
+    {"slug": "add-ons", "name": "Add-ons & Customizations", "description": "Drinks: sugar level (less / no / extra), ice level (less / no / extra), milk alternatives, extra shot / syrup / whipped cream. Food: spice level, sauce on the side, extra sauce / cheese / toppings, omit or substitute ingredients for dietary needs. Please inform staff of any allergies.", "order": 22},
 ]
 
 # Allergens upserted by the menu seeder (all 9 — seed_content also seeds the
@@ -441,6 +442,25 @@ ITEMS += [
      "desc": "Fragrant rice baked under a rich blanket of molten mozzarella and cheddar. Topped with savory eggplant Patlıcan Soslu and tender roasted beef cubes.",
      "img": "turkish-spiced-beef-baked-rice.jpg",
      "allergens": ["dairy"], "dietary": ["gluten_free"], "prep": 18},
+
+    # ── Experiences & Workshops (per-pax pricing, exclude taxes) ────────
+    {"code": "EX-COFFEE-OMAKASE", "name": "Coffee Omakase Experience", "cat": "experiences", "price": 299.00,
+     "desc": "A curated multi-course coffee tasting with standard food pairing, guided by our baristas. 2-pax package includes FREE single-origin beans, limited edition mugs and exclusive vouchers; 1-pax VIP includes upgraded premium food pairing, limited edition beans and an exclusive gift pack. Price per person, excludes taxes.",
+     "img": "kahve-i-turk.jpg",
+     "variants": [
+         {"variant_name": "4 Pax (RM 299/pax)", "price_adjustment": 0, "is_default": True},
+         {"variant_name": "2 Pax (RM 399/pax)", "price_adjustment": 100.00, "is_default": False},
+         {"variant_name": "1 Pax VIP (RM 488/pax)", "price_adjustment": 189.00, "is_default": False},
+     ],
+     "allergens": ["dairy"], "dietary": [], "prep": 120},
+    {"code": "EX-TURKISH-SAND-BREW", "name": "Turkish Sand Brew Workshop", "cat": "experiences", "price": 199.00,
+     "desc": "Hands-on sand brewing class with food tasting of Turkish delights. 4-pax package. Price per person, excludes taxes.",
+     "img": "gozleme.jpg",
+     "allergens": ["gluten", "dairy", "sesame"], "dietary": [], "prep": 120},
+    {"code": "EX-ROASTERY-WORKSHOP", "name": "Roastery Workshop", "cat": "experiences", "price": 199.00,
+     "desc": "Roastery demo with equipment experience and coffee tasting. 4-pax package. Price per person, excludes taxes.",
+     "img": "espresso.jpg",
+     "allergens": [], "dietary": [], "prep": 120},
 
     # ── Baklava ──────────────────────────────────────────────────────────
     {"code": "BK-PISTACHIO", "name": "Pistachio Baklava", "cat": "baklava", "price": 9.00,

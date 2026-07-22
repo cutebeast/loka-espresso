@@ -436,6 +436,58 @@ async def seed():
                 )
         print(f"  Upserted {len(NOTIFICATION_TEMPLATES)} notification template(s)")
 
+        # Event cards — discovery/marketing for the paid classes (bookable as
+        # menu items under "Experiences & Workshops"; payment via checkout).
+        EVENT_CARDS = [
+            {
+                "slug": "coffee-omakase-experience",
+                "title": "Coffee Omakase Experience",
+                "short_description": "A curated multi-course coffee tasting guided by our baristas — from RM 299/pax.",
+                "long_description": "Full multi-course coffee tasting with standard food pairing. 2-pax package (RM 399/pax) includes FREE single-origin beans, limited edition mugs and exclusive vouchers. 1-pax VIP (RM 488) includes upgraded premium food pairing, limited edition beans and an exclusive gift pack. Reserve members can also redeem this experience for 5,980 points.",
+                "image_url": "/uploads/images/menu/experiences/kahve-i-turk.jpg",
+                "location": "Loka Espresso (PKL)",
+                "position": 1,
+            },
+            {
+                "slug": "turkish-sand-brew-workshop",
+                "title": "Turkish Sand Brew Workshop",
+                "short_description": "Hands-on sand brewing class with Turkish delight tasting — RM 199/pax (4-pax package).",
+                "long_description": "Learn the art of traditional Turkish sand brewing in a guided hands-on session, with food tasting of Turkish delights. 4-pax package at RM 199 per person. Reserve members can also redeem this workshop for 3,980 points.",
+                "image_url": "/uploads/images/menu/experiences/gozleme.jpg",
+                "location": "Loka Espresso (PKL)",
+                "position": 2,
+            },
+            {
+                "slug": "roastery-workshop",
+                "title": "Roastery Workshop",
+                "short_description": "Roastery demo, equipment experience and coffee tasting — RM 199/pax (4-pax package).",
+                "long_description": "Go behind the scenes with a roastery demonstration, hands-on equipment experience and guided coffee tasting. 4-pax package at RM 199 per person.",
+                "image_url": "/uploads/images/menu/experiences/espresso.jpg",
+                "location": "Loka Espresso (PKL)",
+                "position": 3,
+            },
+        ]
+        for card in EVENT_CARDS:
+            await db.execute(
+                text("""
+                    INSERT INTO event_cards (slug, title, short_description, long_description, image_url,
+                                             action_url, action_label, is_active, position, location, rsvp_enabled)
+                    VALUES (:slug, :title, :short_description, :long_description, :img, '#menu', 'Book on the Menu', true, :position, :location, false)
+                    ON CONFLICT (slug) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        short_description = EXCLUDED.short_description,
+                        long_description = EXCLUDED.long_description,
+                        image_url = EXCLUDED.image_url,
+                        action_url = EXCLUDED.action_url,
+                        action_label = EXCLUDED.action_label,
+                        is_active = true,
+                        position = EXCLUDED.position,
+                        location = EXCLUDED.location
+                """),
+                {**card, "img": card["image_url"]},
+            )
+        print(f"  Upserted {len(EVENT_CARDS)} event card(s)")
+
 
 async def main():
     parser = argparse.ArgumentParser(description="Seed content/marketing data")
