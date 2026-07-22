@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       secure,
       sameSite: "strict",
       path: "/",
-      maxAge: 60 * 15,
+      maxAge: 60 * 480, // 8 hours — matches backend JWT lifetime (jwt_expire_minutes=480)
     });
 
     if (json.tokens?.refresh_token) {
