@@ -302,6 +302,16 @@ Source of truth: `/root/CRM_Loyalty Program Structure.pdf`. Implementation statu
 - **Marketing section cleared & re-seeded properly**: old WELCOME10/FLAT5/fake campaign/banner removed; now 3 PDF-aligned voucher definitions (WELCOME-RM5, BDAY-UPGRADE, BDAY-GIFT), 3 marketplace rewards, Eco-Campaign (BYOT) as an active marketing campaign, 2 real promo banners (welcome + BYOT). Shared helper: `grant_voucher_to_customer()` in commerce.py.
 - Verified live: welcome voucher on registration (0 pts, voucher type), birthday perk grant + once-per-year guard + tier mapping, BYOT POS order RM24 → 48 pts (2x). E2E 195 passed.
 
+### Rewards marketplace — boss's redemption table (2026-07-22)
+
+Reward catalog replaced per `/root/Point redemption Loka Espresso crm.xlsx` (1 pt = RM0.05 retail value, 5% return on spend). Old placeholder rewards (free_delivery / 10% off / RM5 off) removed. 13 rewards, all `free_item` type, tier-gated via `minimum_tier_id` (redeem check is hierarchical by tier id):
+
+- **All tiers (Bloom+)**: Espresso Shot/Syrup Add-on 50pts · Single-Origin Bean Upgrade 100 · Signature Sandwich 500 · Signature Pasta Meal 700 · Loka Drip Coffee Bags 560
+- **Origin & Reserve**: House Blend Beans 250g 900 · Ceramic Eco-Tumbler 1,400 · Concinare Hand Grinder 12,600 · Muvna Brewing Set 13,760
+- **Reserve only**: Concinare Signature Kettle 19,800 · Kesu Travel Pack 31,400 · Manual Brewing & Sand Workshop 3,980 · Coffee Omakase 5,980
+
+Seeded in `seed_loyalty.py` (REWARDS, upsert by reward_key); names/descriptions translated to all 4 locales (52 translations). E2E 195 passed after replacement.
+
 ### Bundle products (2026-07-21)
 
 4 bundles seeded from the real menu via `scripts/seed_bundles.py` (idempotent by title; rebuilds groups/components). All are `multi_course` type with pick-groups (the engine's `combo` type requires EVERY component present — group picks only work as `multi_course`; single-item mandatory groups replace "fixed" components):

@@ -24,9 +24,25 @@ TIERS = [
 ]
 
 REWARDS = [
-    ("free_delivery", "Free Delivery", "Waives the delivery fee", "free_delivery", 100, 0, 0, None),
-    ("percentage_discount", "10% Off", "10% discount on order subtotal", "percentage_discount", 200, 10, None, None),
-    ("fixed_discount", "RM5 Off", "RM5 discount on order subtotal", "fixed_discount", 150, 5, None, None),
+    # (key, name, description, points_cost, min_tier_key or None)
+    # Per "Point redemption Loka Espresso crm.xlsx" (1 pt = RM0.05 retail value).
+    # High-Margin Profit Engines
+    ("espresso_shot_addon", "Espresso Shot / Syrup Add-on", "Free espresso shot or syrup add-on for any drink. (RM 2.50 value)", 50, None),
+    ("single_origin_upgrade", "Single-Origin Bean Upgrade", "Upgrade your coffee to single-origin beans. (RM 5.00 value)", 100, None),
+    ("signature_sandwich", "Signature Sandwich", "Any signature gourmet sandwich, on us. (RM 25.00 value)", 500, None),
+    ("signature_pasta", "Signature Pasta Meal", "Any signature pasta creation, on us. (RM 35.00 value)", 700, None),
+    # Inventory & Merchandise
+    ("drip_coffee_bags", "Loka Drip Coffee Bags (Single Origin)", "Retail pack of single-origin drip coffee bags. (RM 28.00 value)", 560, None),
+    ("house_blend_beans", "Loka House Blend Beans (250g)", "250g bag of our house blend coffee beans. (RM 45.00 value)", 900, "origin"),
+    ("eco_tumbler", "Loka Minimalist Ceramic Eco-Tumbler", "Branded minimalist ceramic eco-tumbler. (RM 70.00 value)", 1400, "origin"),
+    # Specialty Coffee Gadgets
+    ("hand_grinder", "Concinare Hand Grinder", "Premium Concinare hand grinder. (RM 630.00 value)", 12600, "origin"),
+    ("muvna_brewing_set", "Muvna Brewing Set", "Complete Muvna brewing set. (RM 688.00 value)", 13760, "origin"),
+    ("signature_kettle", "Concinare Signature Kettle", "Concinare signature kettle. (RM 990.00 value)", 19800, "reserve"),
+    ("kesu_travel_pack", "Kesu Travel Pack Brewing Set", "Ultra-premium Kesu travel pack brewing set. (RM 1,570.00 value)", 31400, "reserve"),
+    # Brand Experiences
+    ("brewing_workshop", "Manual Brewing & Sand Workshop", "Hands-on manual brewing workshop session. (RM 199.00 value)", 3980, "reserve"),
+    ("coffee_omakase", "Coffee Omakase Experience", "Premium curated coffee omakase experience. (RM 299.00 value)", 5980, "reserve"),
 ]
 
 # (code, vtype, value, max_amount, min_order, title, description, first_order_only, min_tier_key, validity_days)
@@ -84,22 +100,24 @@ async def seed():
             {"keys": [t[0] for t in TIERS]},
         )
 
-        # Rewards
+        # Rewards (per boss's point redemption table)
+        tier_ids = {
+            row.tier_key: row.id
+            for row in (await db.execute(text("SELECT id, tier_key FROM loyalty_tiers"))).all()
+        }
         await db.execute(
             text("""
                 INSERT INTO reward_catalog
                     (reward_key, reward_name, description, reward_type, points_cost,
-                     discount_value, discount_max_amount, minimum_order_value, is_active)
-                VALUES (:key, :name, :desc, :rtype, :points_cost,
-                        :value, :max_amount, COALESCE(:min_order, 0), true)
+                     minimum_order_value, minimum_tier_id, is_active)
+                VALUES (:key, :name, :desc, 'free_item', :points_cost,
+                        0, :min_tier_id, true)
                 ON CONFLICT (reward_key) DO UPDATE SET
                     reward_name = EXCLUDED.reward_name,
                     description = EXCLUDED.description,
                     reward_type = EXCLUDED.reward_type,
                     points_cost = EXCLUDED.points_cost,
-                    discount_value = EXCLUDED.discount_value,
-                    discount_max_amount = EXCLUDED.discount_max_amount,
-                    minimum_order_value = EXCLUDED.minimum_order_value,
+                    minimum_tier_id = EXCLUDED.minimum_tier_id,
                     is_active = true
             """),
             [
@@ -107,13 +125,10 @@ async def seed():
                     "key": key,
                     "name": name,
                     "desc": desc,
-                    "rtype": rtype,
                     "points_cost": points_cost,
-                    "value": value,
-                    "max_amount": max_amount,
-                    "min_order": min_order,
+                    "min_tier_id": tier_ids.get(min_tier_key) if min_tier_key else None,
                 }
-                for key, name, desc, rtype, points_cost, value, max_amount, min_order in REWARDS
+                for key, name, desc, points_cost, min_tier_key in REWARDS
             ],
         )
 
