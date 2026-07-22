@@ -198,6 +198,24 @@ async def _resolve_audience_customers(db, segment: str) -> list[int]:
             stmt = stmt.join(
                 LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id
             ).where(LoyaltyAccount.current_tier_id == top_tier_id)
+    elif segment.startswith("tier:"):
+        # Dynamic per-tier segment — resolve against loyalty_tiers.tier_key
+        tier_key = segment[len("tier:"):]
+        tier_result = await db.execute(
+            select(LoyaltyTier.id).where(
+                LoyaltyTier.tier_key == tier_key,
+                LoyaltyTier.is_active.is_(True),
+            )
+        )
+        tier_id = tier_result.scalar_one_or_none()
+        if tier_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown or inactive loyalty tier: {tier_key}",
+            )
+        stmt = stmt.join(
+            LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id
+        ).where(LoyaltyAccount.current_tier_id == tier_id)
 
     result = await db.execute(stmt)
     return [row[0] for row in result.all()]
@@ -350,7 +368,7 @@ async def send_campaign(
     admin: CurrentAdmin,
     campaign_id: int,
 ):
-    """Send campaign — delivers via push, SMS, or email based on channel."""
+    """Send campaign — delivers via push/in-app inbox, SMS, WhatsApp, or email based on channel."""
     campaign = await _get_campaign_or_404(db, campaign_id)
 
     campaign.status = "active"
@@ -364,7 +382,8 @@ async def send_campaign(
     if campaign.audience_segment:
         customer_ids = await _resolve_audience_customers(db, campaign.audience_segment)
 
-    if campaign.channel == "push_notification" and customer_ids:
+    if campaign.channel in ("push_notification", "in_app") and customer_ids:
+        # Inbox delivery — mirrors the admin notifications send path
         type_map = {"promotional": "promotion", "informational": "system", "event": "promotion", "loyalty": "loyalty"}
         msg_type = type_map.get(campaign.campaign_type, "system")
         for cid in customer_ids:

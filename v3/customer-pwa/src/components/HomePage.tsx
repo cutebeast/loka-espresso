@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { Gift, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -9,6 +10,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard } from '@/lib/api';
+import { LOKA } from '@/lib/tokens';
 
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
 
@@ -26,6 +28,7 @@ export default function HomePage() {
   const [infoCards, setInfoCards] = useState<InformationCard[]>([]);
   const [productCards, setProductCards] = useState<InformationCard[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [luckyDrawLive, setLuckyDrawLive] = useState(false);
   const isLoading = loadingFeatured || loadingBanners || loadingInfo;
 
   const loadFeatured = useCallback(async (signal?: AbortSignal) => {
@@ -130,6 +133,10 @@ export default function HomePage() {
     loadFeatured(ac.signal);
     loadBanners(ac.signal);
     loadInfoCards(ac.signal);
+    // Lucky draw banner visibility — 404 simply means no live campaign
+    api.get('/lucky-draw/active', { signal: ac.signal })
+      .then(() => setLuckyDrawLive(true))
+      .catch(() => setLuckyDrawLive(false));
     return () => ac.abort();
   }, [loadFeatured, loadBanners, loadInfoCards]);
 
@@ -184,6 +191,47 @@ export default function HomePage() {
           onViewAllPromos={() => setPage('promotions')}
           onViewAllDiscover={() => setPage('information')}
         />
+
+        {/* Lucky Draw banner — only when a campaign is live */}
+        {luckyDrawLive && (
+          <motion.div variants={itemVariants}>
+            <button
+              onClick={() => setPage('lucky-draw')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '16px 18px',
+                borderRadius: 16,
+                border: 'none',
+                background: `linear-gradient(135deg, ${LOKA.gold}, ${LOKA.copper})`,
+                color: '#fff',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: '0 4px 16px rgba(196,137,58,0.3)',
+              }}
+            >
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Gift size={22} color="#fff" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800 }}>{t('luckyDraw.homeBannerTitle')}</div>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>{t('luckyDraw.homeBannerSubtitle')}</div>
+              </div>
+              <ChevronRight size={20} color="#fff" />
+            </button>
+          </motion.div>
+        )}
 
         {/* Today's Picks */}
         <motion.div variants={itemVariants}>

@@ -467,6 +467,23 @@
   "legal_page": {
     "made_with_care_by_loka_espresso": "LOKA Espresso tarafından özenle hazırlanmıştır"
   },
+  "luckyDraw": {
+    "title": "Şans Çarkı",
+    "subtitle": "Her gün çarkı çevirin ve ödüller kazanın",
+    "spin": "ÇEVİR",
+    "spinning": "Çevriliyor…",
+    "youWon": "Kazandınız!",
+    "voucherCode": "Kupon kodu",
+    "viewInWallet": "Cüzdanda Gör",
+    "signInToSpin": "Çevirmek için giriş yapın",
+    "comeBackTomorrow": "Hakkınız kalmadı — yarın tekrar gelin!",
+    "spinsLeft_one": "Bugün {count} hakkınız kaldı",
+    "spinsLeft_other": "Bugün {count} hakkınız kaldı",
+    "noCampaign": "Şu anda aktif bir şans çarkı kampanyası yok. Yakında tekrar kontrol edin!",
+    "spinFailed": "Çevirme başarısız. Lütfen tekrar deneyin.",
+    "homeBannerTitle": "Şans Çarkı",
+    "homeBannerSubtitle": "Çarkı çevirin, günlük ödüller kazanın"
+  },
   "menu": {
     "addPrice": "Fiyat Ekle",
     "addQuantity": "Miktar Ekle",

@@ -61,6 +61,7 @@ const pageImporters: Record<string, () => Promise<{
   reservations: () => import('./ReservationsPage'),
   events: () => import('./EventsPage'),
   checkin: () => import('./CheckinPage'),
+  'lucky-draw': () => import('./LuckyDrawPage'),
   kiosk: () => import('./KioskPage')
 };
 
@@ -293,6 +294,8 @@ export default function AppShell() {
         return <LazyRenderer pageKey="events" onBack={onBackProfile} />;
       case 'checkin':
         return <LazyRenderer pageKey="checkin" onBack={onBackHome} />;
+      case 'lucky-draw':
+        return <LazyRenderer pageKey="lucky-draw" />;
       case 'kiosk':
         return <LazyRenderer pageKey="kiosk" />;
       default:

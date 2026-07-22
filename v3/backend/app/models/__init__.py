@@ -160,3 +160,8 @@ from app.models.bundle_product import (
     BundleComponentModifier,
     BundleGroup,
 )
+from app.models.lucky_draw import (
+    LuckyDrawCampaign,
+    LuckyDrawSegment,
+    LuckyDrawSpin,
+)

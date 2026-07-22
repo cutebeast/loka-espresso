@@ -113,7 +113,7 @@ pytest -q
 - Voucher eligibility is enforced server-side: `max_global_uses`, `max_uses_per_customer`, `first_order_only`, `stackable`, store/item/category scope
 - Loyalty tier `points_multiplier` is applied on order points (customer + POS paths); `annual_spend` accrues on payment capture. Tier validity/downgrade EVALUATION job does not exist yet (fields are stored only)
 - Staff with `pin_last_changed_at IS NULL` are blocked (`403 must_change_pin`) on all staff endpoints except auth/me, change-pin/password, refresh, logout — E2E conftest rotates the Test Staff PIN (123456→654321→123456) to clear it
-- Alembic head: `b6729f513c8f`. Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
+- Alembic head: `9e63748a26c8` (lucky draw tables; previously `b6729f513c8f`). Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
 
 ## What's been done (as of 2026-07-11)
 
@@ -315,6 +315,26 @@ Per `/root/Private booking charges & lucky draw.xlsx` (lucky draw is a SEPARATE 
 - Ties together: customers can PAY for a class via checkout OR Reserve members REDEEM it with points (rewards table).
 - Translated to all 4 locales (menu + event cards). E2E 195 passed.
 
+### Bookings, marketing fixes & lucky draw (2026-07-22)
+
+**Two separate booking tracks, both now working:**
+- **Table reservations**: `/staff/reservations` was completely broken (500 — referenced nonexistent `table_id`/`customer_name`/`notes` model attrs). Rewritten against the real model (`dining_table_id`, Customer join, `special_requests`), added `status` filter; PATCH status now validates via `ReservationStatusUpdate`, persists table assignment (was silently dropped), and runs the admin overlap check. Staff portal reservations page works end-to-end.
+- **Workshop/class bookings** (EX-* items): `GET /admin/orders?category_slug=experiences` filters orders by live menu category; admin orders page has a Category dropdown. Order `search` also matches customer phone now.
+
+**Marketing audit fixes** (all verified live):
+- DANGEROUS: campaign `tier:<key>` audience fell through to ALL customers — now resolves against loyalty tiers (400 on unknown tier).
+- `in_app` campaign channel did nothing — now creates inbox NotificationMessages like the notifications path.
+- `GET /promos/banners/{id}/status` was a hardcoded placeholder — returns real per-customer state (action_type, survey_completed, voucher_claimed/used, voucher_code).
+- Referral chain: signup accepts `referral_code` (PWA captures `?ref=` to localStorage via new `src/lib/referral.ts`, sends on register), first order auto-marks the event `converted` (in `create_order_from_cart`, also increments the never-maintained `Customer.order_count`), `credit_referral_points` updates `referral_count`/`referral_earnings_total`, POST /referrals blocks self/wrong codes.
+- Known follow-ups: campaign scheduler, transactional notifications (order/reservation events), real web-push delivery, delivery-log writes, bulk voucher issuance, content_sections is dead code.
+
+**Lucky draw (spin wheel)** — new feature, end-to-end:
+- Backend: `lucky_draw_campaigns`/`_segments`/`_spins` (migration `9e63748a26c8`, current head). Public `GET /lucky-draw/active` (404 when none; `spins_remaining` when authed), `POST /lucky-draw/spin` (ActiveCustomer, weighted pick over active segments, issues a real voucher via `grant_voucher_to_customer(source="lucky_draw")`, daily limit per campaign → 429 with next-spin time). Admin `/admin/lucky-draw`: campaign GET/POST/PUT, segment CRUD (voucher_definition_id + label + color_hex + probability_weight + sort_order + is_active), paginated spins report.
+- PWA `#lucky-draw`: SVG wheel with segment colors/labels, server-first spin then animated landing (5 turns + offset, 4.5s ease-out), result modal with voucher + "View in Wallet", guest-viewable (spin prompts sign-in), 429 → "come back tomorrow". Home banner appears only when a campaign is live. 15 locale keys × 5 languages.
+- Admin `/marketing/lucky-draw`: campaign card (create/edit), segment table with voucher dropdown + live chance % + color picker, recent spins table. Sidebar entry under Marketing.
+- Verified live end-to-end: created "Daily Lucky Spin" (kept active: WELCOME-RM5 70% / BDAY-UPGRADE 30%), spin won a real RM5 voucher, second spin 429'd.
+- E2E: 195 passed / 20 skipped.
+
 ### PWA variant selection (2026-07-22)
 
 The customer PWA previously had NO variant support (kiosk had it since round 32) — drinks defaulted to Hot and Omakase to the 4-pax price, and variant-only items (no modifiers) never opened the customize sheet at all. Fixed:
@@ -368,7 +388,7 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
 - Refresh rotation is atomic with replay protection (old token 401s on reuse) — verified live on all 3 portals.
 
 ### Migration & seed hygiene (verified 2026-07-21)
-- **Alembic**: single linear chain, live DB at head `b6729f513c8f`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
+- **Alembic**: single linear chain, live DB at head `9e63748a26c8`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
 - **Full re-seed workflow verified end-to-end** (`clear_db --all` → `seed_all`): every part runs clean, no fake data reintroduced.
 - **seed_operational.py**: fake demo suppliers/POs removed (SUPPLIERS/PURCHASE_ORDERS emptied); shift templates (Morning/Evening/Night) kept.
 - **seed_orders.py**: skips quietly when ORDER_SEED is empty (no more "run seed_menu.py first" confusion — it used to probe the old fake ESP/LAT codes).

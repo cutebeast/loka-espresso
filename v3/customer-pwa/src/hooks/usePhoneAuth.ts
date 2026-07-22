@@ -7,6 +7,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { normalizePhone } from '@/lib/phone';
 import api from '@/lib/api';
 import type { UserProfile } from '@/lib/api';
+import { getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export type AuthStep = 'phone' | 'otp' | 'profile';
@@ -96,11 +97,15 @@ export function usePhoneAuth() {
     setLoading(true);
     setError('');
     try {
+      // Attach a persisted referral code (?ref=CODE) if one was captured on landing
+      const referralCode = getStoredReferralCode();
       await api.post('/auth/register', {
         phone_number: phoneNumber,
         display_name: name,
         email_address: email || undefined,
+        referral_code: referralCode || undefined,
       });
+      clearStoredReferralCode();
       await fetchAndSetUser();
       setIsNewUser(false);
       return true;

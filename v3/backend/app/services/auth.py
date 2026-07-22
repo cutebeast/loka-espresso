@@ -14,7 +14,7 @@ from app.core.security import (
     decode_token,
     verify_password,
 )
-from app.models.customer import Customer, CustomerDevice
+from app.models.customer import Customer, CustomerDevice, ReferralEvent
 from app.models.iam import AdminAccount, TokenBlacklist
 from app.models.wallet import Wallet
 from app.models.loyalty import LoyaltyAccount
@@ -89,7 +89,24 @@ async def register_customer(
     )
     db.add(customer)
     await db.flush()  # Get customer.id
-    
+
+    # Record referral if the customer signed up via a referrer's code (?ref=CODE).
+    # Unknown codes are ignored — a bad ref link must not block registration.
+    if data.referral_code:
+        ref_code = data.referral_code.strip().upper()
+        referrer_result = await db.execute(
+            select(Customer).where(Customer.referral_code == ref_code)
+        )
+        referrer = referrer_result.scalar_one_or_none()
+        if referrer is not None:
+            customer.referred_by_customer_id = referrer.id
+            db.add(ReferralEvent(
+                referrer_customer_id=referrer.id,
+                invitee_customer_id=customer.id,
+                referral_code=ref_code,
+                status="pending",  # converted on the invitee's first paid order
+            ))
+
     # Auto-create wallet for new customer
     from app.models.platform import PlatformConfig
     currency_result = await db.execute(

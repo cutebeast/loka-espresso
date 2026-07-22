@@ -71,6 +71,7 @@ const navItems: NavItem[] = [
       { id: "marketingCheckinSettings", labelKey: "admin.nav.marketing.checkinSettings", href: "/checkins/settings" },
       { id: "marketingCampaigns", labelKey: "admin.nav.marketing.campaigns", href: "/marketing/campaigns" },
       { id: "marketingCampaignSettings", labelKey: "admin.nav.marketing.campaignSettings", href: "/marketing/campaigns/settings" },
+      { id: "marketingLuckyDraw", labelKey: "admin.nav.marketing.luckyDraw", href: "/marketing/lucky-draw" },
     ],
   },
   {

@@ -3,10 +3,14 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 
 from app.api.routes.deps import DBDependency, OptionalLocale, CurrentCustomer
+from app.core.auth_cookies import get_customer_access_token
+from app.core.security import decode_token
+from app.models.customer import Customer
 from app.services.platform_config import PlatformConfigService
 from app.services.translation import merge_translations, translate_single
 from app.models.info_card import (
@@ -29,6 +33,39 @@ from app.schemas.content import (
 )
 
 router = APIRouter(tags=["public — content"])
+
+_optional_bearer = HTTPBearer(auto_error=False)
+
+
+async def _get_optional_customer(
+    request: Request,
+    db: DBDependency,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
+) -> Customer | None:
+    """Resolve the current customer when a valid token is present, else None.
+
+    Same cookie-first/header-fallback resolution as get_current_customer, but
+    never raises — public endpoints use it for personalized-but-anonymous-OK reads.
+    """
+    token = get_customer_access_token(request)
+    if not token and credentials is not None:
+        token = credentials.credentials
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return None
+    if payload.get("type") != "access":
+        return None
+    customer_id = int(payload.get("sub", 0))
+    if not customer_id:
+        return None
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if customer is None or customer.deleted_at is not None:
+        return None
+    return customer
 
 
 # ── Promo Banners ──
@@ -79,12 +116,54 @@ async def get_promo_banner(
 async def get_banner_status(
     db: DBDependency,
     banner_id: int,
+    customer: Customer | None = Depends(_get_optional_customer),
 ):
-    """Get customer's interaction status with a banner (placeholder — no auth required)."""
+    """Get the current customer's interaction status with a banner.
+
+    Works unauthenticated (all-false state); authenticated customers get their
+    real voucher / survey state for the banner's linked voucher or survey.
+    """
     item = await db.get(PromoBanner, banner_id)
     if not item:
         raise HTTPException(status_code=404, detail="Banner not found")
-    return APIResponse(data={"claimed": False, "viewed": False, "banner_id": banner_id})
+
+    data: dict = {
+        "banner_id": banner_id,
+        "action_type": item.action_type,
+        "survey_completed": False,
+        "voucher_claimed": False,
+        "voucher_used": False,
+        "voucher_code": None,
+    }
+    if customer is None:
+        return APIResponse(data=data)
+
+    if item.voucher_id:
+        from app.models.voucher import CustomerVoucher
+        # Same lookup as the claim flow, minus the status filter — latest wins
+        cv_result = await db.execute(
+            select(CustomerVoucher).where(
+                CustomerVoucher.customer_id == customer.id,
+                CustomerVoucher.voucher_definition_id == item.voucher_id,
+            ).order_by(CustomerVoucher.id.desc()).limit(1)
+        )
+        cv = cv_result.scalar_one_or_none()
+        if cv is not None:
+            data["voucher_claimed"] = True
+            data["voucher_used"] = cv.status in ("used", "expired")
+            data["voucher_code"] = cv.voucher_code
+
+    if item.survey_id:
+        from app.models.survey import SurveyResponse
+        resp_result = await db.execute(
+            select(SurveyResponse.id).where(
+                SurveyResponse.customer_id == customer.id,
+                SurveyResponse.survey_id == item.survey_id,
+            ).limit(1)
+        )
+        data["survey_completed"] = resp_result.scalar_one_or_none() is not None
+
+    return APIResponse(data=data)
 
 
 @router.post("/promos/banners/{banner_id}/claim", response_model=APIResponse[dict])

@@ -84,5 +84,6 @@
   "admin.table.actions": "Actions",
   "admin.table.status": "Status",
   "notFound.message": "The requested record could not be found. It may have been removed or the link might be incorrect.",
-  "notFound.title": "Not Found"
+  "notFound.title": "Not Found",
+  "admin.nav.marketing.luckyDraw": "Lucky Draw"
 }

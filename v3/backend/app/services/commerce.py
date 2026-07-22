@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.customer import ReferralEvent
+from app.models.customer import Customer, ReferralEvent
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 
 
@@ -251,6 +251,12 @@ async def credit_referral_points(
 
     account.points_balance += points
     account.lifetime_points_earned += points
+
+    # Track referral stats on the referrer (surfaced via GET /me)
+    referrer = await db.get(Customer, referrer_customer_id)
+    if referrer is not None:
+        referrer.referral_count = (referrer.referral_count or 0) + 1
+        referrer.referral_earnings_total = (referrer.referral_earnings_total or 0) + points
 
     # Auto-upgrade tier (only goes up, never down)
     await _recalculate_tier(db, account)

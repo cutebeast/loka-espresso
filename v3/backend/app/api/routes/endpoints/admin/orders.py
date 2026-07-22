@@ -6,14 +6,14 @@ from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import Field
-from sqlalchemy import select, func, text, case
+from sqlalchemy import select, func, text, case, or_
 from sqlalchemy.orm import joinedload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
-from app.models.menu import MenuItem
+from app.models.menu import MenuItem, MenuCategory
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
@@ -69,7 +69,8 @@ async def list_orders(
     order_type: str | None = Query(None),
     store_id: int | None = Query(None),
     payment_status: str | None = Query(None),
-    search: str | None = Query(None, description="Search by order number"),
+    search: str | None = Query(None, description="Search by order number or customer phone"),
+    category_slug: str | None = Query(None, description="Only orders containing a line item whose menu item is in this category (e.g. 'experiences')"),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -129,8 +130,27 @@ async def list_orders(
             base_stmt = base_stmt.where(Order.store_id == store_id)
             count_stmt = count_stmt.where(Order.store_id == store_id)
     if search:
-        base_stmt = base_stmt.where(Order.order_number.ilike(f"%{search}%"))
-        count_stmt = count_stmt.where(Order.order_number.ilike(f"%{search}%"))
+        base_stmt = base_stmt.outerjoin(Customer, Customer.id == Order.customer_id).where(
+            or_(
+                Order.order_number.ilike(f"%{search}%"),
+                Customer.phone_number.ilike(f"%{search}%"),
+            )
+        )
+        count_stmt = count_stmt.outerjoin(Customer, Customer.id == Order.customer_id).where(
+            or_(
+                Order.order_number.ilike(f"%{search}%"),
+                Customer.phone_number.ilike(f"%{search}%"),
+            )
+        )
+    if category_slug:
+        category_order_ids = (
+            select(OrderLineItem.order_id)
+            .join(MenuItem, MenuItem.id == OrderLineItem.menu_item_id)
+            .join(MenuCategory, MenuCategory.id == MenuItem.category_id)
+            .where(MenuCategory.slug == category_slug)
+        )
+        base_stmt = base_stmt.where(Order.id.in_(category_order_ids))
+        count_stmt = count_stmt.where(Order.id.in_(category_order_ids))
     if date_from:
         try:
             dfrom = datetime.fromisoformat(date_from)

@@ -467,6 +467,23 @@
   "legal_page": {
     "made_with_care_by_loka_espresso": "Dibuat dengan penuh perhatian oleh LOKA Espresso"
   },
+  "luckyDraw": {
+    "title": "Cabutan Bertuah",
+    "subtitle": "Putar roda setiap hari untuk memenangi ganjaran",
+    "spin": "PUTAR",
+    "spinning": "Sedang berputar…",
+    "youWon": "Anda menang!",
+    "voucherCode": "Kod baucar",
+    "viewInWallet": "Lihat dalam Dompet",
+    "signInToSpin": "Log masuk untuk berputar",
+    "comeBackTomorrow": "Tiada putaran tinggal — datang semula esok!",
+    "spinsLeft_one": "{count} putaran tinggal hari ini",
+    "spinsLeft_other": "{count} putaran tinggal hari ini",
+    "noCampaign": "Tiada cabutan bertuah sedang berjalan buat masa ini. Semak semula nanti!",
+    "spinFailed": "Putaran gagal. Sila cuba lagi.",
+    "homeBannerTitle": "Cabutan Bertuah",
+    "homeBannerSubtitle": "Putar roda & menangi ganjaran harian"
+  },
   "menu": {
     "addPrice": "Tambah Harga",
     "addQuantity": "Tambah Kuantiti",

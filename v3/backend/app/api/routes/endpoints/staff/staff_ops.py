@@ -37,6 +37,8 @@ from app.models.staff import StaffProfile, StaffShift, StaffTask, StaffTimeEvent
 from app.models.platform import PlatformConfig
 from app.models.store import Store, DiningTable, Reservation, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.reservation import ReservationStatusUpdate
+from app.api.routes.endpoints.admin.reservations import _check_table_availability
 from app.schemas.menu import (
     AllergenOut,
     MenuModifierGroupOut,
@@ -1983,6 +1985,7 @@ async def staff_list_orders(
 async def staff_list_reservations(
     staff: CurrentStaff,
     db: DBDependency,
+    status_filter: str | None = Query(None, alias="status"),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -1990,10 +1993,13 @@ async def staff_list_reservations(
 ):
     """List reservations for the staff member's store."""
     stmt = (
-        select(Reservation, DiningTable)
-        .outerjoin(DiningTable, DiningTable.id == Reservation.table_id)
+        select(Reservation, Customer, DiningTable)
+        .outerjoin(Customer, Customer.id == Reservation.customer_id)
+        .outerjoin(DiningTable, DiningTable.id == Reservation.dining_table_id)
         .where(Reservation.store_id == staff.store_id)
     )
+    if status_filter:
+        stmt = stmt.where(Reservation.status == status_filter)
     if date_from:
         from datetime import date as date_cls
         stmt = stmt.where(Reservation.reservation_date >= date_cls.fromisoformat(date_from))
@@ -2007,19 +2013,20 @@ async def staff_list_reservations(
         {
             "id": r.id,
             "store_id": r.store_id,
-            "customer_name": r.customer_name,
-            "customer_phone": r.customer_phone,
+            "customer_id": r.customer_id,
+            "customer_name": c.display_name if c else None,
+            "customer_phone": c.phone_number if c else None,
             "party_size": r.party_size,
             "reservation_date": r.reservation_date.isoformat() if r.reservation_date else None,
             "reservation_time": r.reservation_time.isoformat() if r.reservation_time else None,
+            "duration_minutes": r.duration_minutes,
             "status": r.status,
-            "table_id": r.table_id,
-            "dining_table_id": r.table_id,
+            "dining_table_id": r.dining_table_id,
             "table_number": t.table_number if t else None,
-            "notes": r.notes,
+            "special_requests": r.special_requests,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         }
-        for r, t in rows
+        for r, c, t in rows
     ])
 
 
@@ -2176,7 +2183,7 @@ async def staff_update_reservation_status(
     staff: CurrentStaff,
     db: DBDependency,
     reservation_id: int,
-    body: dict,
+    data: ReservationStatusUpdate,
 ):
     """Update reservation status (staff endpoint)."""
     result = await db.execute(
@@ -2188,11 +2195,15 @@ async def staff_update_reservation_status(
     reservation = result.scalar_one_or_none()
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
-    new_status = body.get("status")
-    if new_status:
-        reservation.status = new_status
-    if body.get("dining_table_id") is not None:
-        reservation.table_id = int(body["dining_table_id"])
+    reservation.status = data.status
+    if data.dining_table_id is not None and data.status == "confirmed":
+        await _check_table_availability(
+            db, data.dining_table_id, reservation.reservation_date,
+            reservation.reservation_time, reservation.duration_minutes,
+            exclude_reservation_id=reservation.id,
+        )
+        reservation.dining_table_id = data.dining_table_id
+    reservation.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"id": reservation.id, "status": reservation.status})
 

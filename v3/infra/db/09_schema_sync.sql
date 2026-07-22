@@ -38,6 +38,21 @@ CREATE TABLE IF NOT EXISTS help_articles (
 	UNIQUE (slug)
 );
 
+CREATE TABLE IF NOT EXISTS lucky_draw_campaigns (
+	id SERIAL NOT NULL, 
+	title VARCHAR(150) NOT NULL, 
+	description TEXT, 
+	is_active BOOLEAN NOT NULL, 
+	start_date TIMESTAMP WITH TIME ZONE, 
+	end_date TIMESTAMP WITH TIME ZONE, 
+	spins_per_day INTEGER NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_lucky_draw_campaigns_spins_per_day CHECK (spins_per_day > 0), 
+	CONSTRAINT ck_lucky_draw_campaigns_dates CHECK (start_date IS NULL OR end_date IS NULL OR end_date > start_date)
+);
+
 CREATE TABLE IF NOT EXISTS notification_templates (
 	id SERIAL NOT NULL, 
 	name VARCHAR(100) NOT NULL, 
@@ -367,6 +382,26 @@ CREATE TABLE IF NOT EXISTS inventory_stock (
 CREATE INDEX IF NOT EXISTS ix_inventory_stock_inventory_item_id ON inventory_stock (inventory_item_id);
 CREATE INDEX IF NOT EXISTS ix_inventory_stock_store_id ON inventory_stock (store_id);
 
+CREATE TABLE IF NOT EXISTS lucky_draw_segments (
+	id SERIAL NOT NULL, 
+	campaign_id INTEGER NOT NULL, 
+	voucher_definition_id INTEGER NOT NULL, 
+	label VARCHAR(100) NOT NULL, 
+	color_hex VARCHAR(20) NOT NULL, 
+	probability_weight INTEGER NOT NULL, 
+	sort_order INTEGER NOT NULL, 
+	is_active BOOLEAN NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_lucky_draw_segments_probability_weight CHECK (probability_weight > 0), 
+	CONSTRAINT ck_lucky_draw_segments_sort_order CHECK (sort_order >= 0), 
+	FOREIGN KEY(campaign_id) REFERENCES lucky_draw_campaigns (id) ON DELETE CASCADE, 
+	FOREIGN KEY(voucher_definition_id) REFERENCES voucher_definitions (id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS ix_lucky_draw_segments_campaign_id ON lucky_draw_segments (campaign_id);
+
 CREATE TABLE IF NOT EXISTS bundle_component_modifiers (
 	id SERIAL NOT NULL, 
 	bundle_product_component_id INTEGER NOT NULL, 
@@ -377,6 +412,23 @@ CREATE TABLE IF NOT EXISTS bundle_component_modifiers (
 	FOREIGN KEY(bundle_product_component_id) REFERENCES bundle_product_components (id) ON DELETE CASCADE, 
 	FOREIGN KEY(modifier_option_id) REFERENCES menu_modifier_options (id) ON DELETE RESTRICT
 );
+
+CREATE TABLE IF NOT EXISTS lucky_draw_spins (
+	id BIGSERIAL NOT NULL, 
+	campaign_id INTEGER NOT NULL, 
+	segment_id INTEGER, 
+	customer_id BIGINT NOT NULL, 
+	customer_voucher_id BIGINT, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(campaign_id) REFERENCES lucky_draw_campaigns (id) ON DELETE CASCADE, 
+	FOREIGN KEY(segment_id) REFERENCES lucky_draw_segments (id) ON DELETE SET NULL, 
+	FOREIGN KEY(customer_id) REFERENCES customers (id) ON DELETE CASCADE, 
+	FOREIGN KEY(customer_voucher_id) REFERENCES customer_vouchers (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lucky_draw_spins_customer_created ON lucky_draw_spins (customer_id, created_at);
+CREATE INDEX IF NOT EXISTS ix_lucky_draw_spins_campaign_id ON lucky_draw_spins (campaign_id);
 
 CREATE TABLE IF NOT EXISTS order_modification_logs (
 	id BIGSERIAL NOT NULL, 
@@ -453,6 +505,7 @@ ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS bundle_component_id INTEGE
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS addon_discount NUMERIC(12, 4) DEFAULT 0 NOT NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_byot BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_instructions TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS pickup_time TIMESTAMP WITH TIME ZONE;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_by_staff_id BIGINT REFERENCES staff_profiles (id);
@@ -502,4 +555,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'a1b2c3d4e5f7' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT '9e63748a26c8' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

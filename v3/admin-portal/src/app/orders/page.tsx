@@ -21,6 +21,11 @@ interface Store {
   id: number;
   store_name: string;
 }
+interface MenuCategory {
+  id: number;
+  category_name: string;
+  slug: string;
+}
 const PAGE_SIZE = 20;
 export default function OrdersPage() {
   const {
@@ -38,6 +43,8 @@ export default function OrdersPage() {
   const [storeId, setStoreId] = useState("");
   const [status, setStatus] = useState("");
   const [orderType, setOrderType] = useState("");
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [categorySlug, setCategorySlug] = useState("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const pagination = usePagination({
@@ -55,6 +62,15 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchStores();
   }, [fetchStores]);
+  const fetchCategories = useCallback(async () => {
+    try {
+      const d = await api.getRaw<any>("/admin/menu/categories?per_page=50");
+      setCategories(d.items || []);
+    } catch (e: any) { console.error("Failed to load categories:", e); }
+  }, []);
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
   const fetchOrders = useCallback(async (p: number = 1) => {
     setLoading(true);
     try {
@@ -65,6 +81,7 @@ export default function OrdersPage() {
       if (storeId) params.set("store_id", storeId);
       if (status) params.set("status", status);
       if (orderType) params.set("order_type", orderType);
+      if (categorySlug) params.set("category_slug", categorySlug);
       if (debouncedSearch) params.set("search", debouncedSearch);
       const d = await api.getRaw<any>(`/admin/orders?${params}`);
       setItems(d.items || []);
@@ -76,7 +93,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [storeId, status, orderType, debouncedSearch, pagination.setTotal, pagination.setTotalPages, pagination.setPage]);
+  }, [storeId, status, orderType, categorySlug, debouncedSearch, pagination.setTotal, pagination.setTotalPages, pagination.setPage]);
   useEffect(() => {
     fetchOrders(1);
   }, [fetchOrders]);
@@ -148,6 +165,19 @@ export default function OrdersPage() {
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border-light)"
         }}><option value="">{t("orders.all_2")}</option><option value="dine_in">{t("orders.dine_in")}</option><option value="takeaway">{t("orders.takeaway")}</option><option value="delivery">{t("orders.delivery")}</option></select></div>
+        <div><label htmlFor="order-category-filter" style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--color-text-muted)",
+          display: "block",
+          marginBottom: 4
+        }}>{t("orders.category", "Category")}</label>
+          <select id="order-category-filter" value={categorySlug} onChange={e => setCategorySlug(e.target.value)} style={{
+          padding: "6px 12px",
+          fontSize: 13,
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--color-border-light)"
+        }}><option value="">{t("orders.allCategories", "All categories")}</option>{categories.map(c => <option key={c.id} value={c.slug}>{c.category_name}</option>)}</select></div>
         <div><label htmlFor="order-search" style={{
           fontSize: 11,
           fontWeight: 600,

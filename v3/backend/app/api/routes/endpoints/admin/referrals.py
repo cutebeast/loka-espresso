@@ -145,6 +145,19 @@ async def create_referral(
             detail="Cannot create referral for another customer",
         )
 
+    if data.invitee_customer_id == customer.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot refer yourself",
+        )
+
+    # The referral code must be the referrer's own code
+    if not customer.referral_code or data.referral_code != customer.referral_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid referral code",
+        )
+
     # Verify invitee exists
     result = await db.execute(select(Customer).where(Customer.id == data.invitee_customer_id))
     invitee = result.scalar_one_or_none()

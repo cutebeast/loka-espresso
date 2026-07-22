@@ -3,7 +3,7 @@
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import inspect as sa_inspect, select, func
+from sqlalchemy import inspect as sa_inspect, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -1012,6 +1012,24 @@ async def create_order_from_cart(
             # Auto-upgrade tier if applicable
             from app.services.commerce import _recalculate_tier
             await _recalculate_tier(db, la)
+
+    # Track order count + referral conversion (first order converts a pending referral)
+    if customer_id:
+        from app.models.customer import Customer
+        from app.models.customer import ReferralEvent
+        cust = await db.get(Customer, customer_id)
+        if cust is not None:
+            prior_orders = cust.order_count or 0
+            cust.order_count = prior_orders + 1
+            if prior_orders == 0:
+                await db.execute(
+                    update(ReferralEvent)
+                    .where(
+                        ReferralEvent.invitee_customer_id == customer_id,
+                        ReferralEvent.status == "pending",
+                    )
+                    .values(status="converted", converted_at=datetime.now(timezone.utc))
+                )
 
     # Clear the cart
     for ci in cart_items:

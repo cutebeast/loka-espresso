@@ -8,10 +8,11 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useConfigStore } from '@/stores/configStore';
 import api from '@/lib/api';
 import { autoDetectStore } from '@/lib/geolocation';
+import { storeReferralCode } from '@/lib/referral';
 import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
-  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'guest-pay',
+  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'guest-pay', 'lucky-draw',
 ];
 
 function isPublicPage(page: PageId): boolean {
@@ -64,11 +65,18 @@ export function useAuthFlow() {
       }
     }
 
-    if (article || slug || promo) {
+    // Referral share link (?ref=CODE) — persist until registration completes
+    const ref = params.get('ref');
+    if (ref) {
+      storeReferralCode(ref);
+    }
+
+    if (article || slug || promo || ref) {
       const url = new URL(window.location.href);
       url.searchParams.delete('article');
       url.searchParams.delete('slug');
       url.searchParams.delete('promo');
+      url.searchParams.delete('ref');
       window.history.replaceState({}, '', url.toString());
     }
   }, [setPage]);

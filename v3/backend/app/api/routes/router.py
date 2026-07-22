@@ -68,6 +68,8 @@ from app.api.routes.endpoints.admin import scan as admin_scan
 from app.api.routes.endpoints.admin import pos as admin_pos
 from app.api.routes.endpoints.admin import equipment as admin_equipment
 from app.api.routes.endpoints.admin import bundle_products as admin_bundle_products
+from app.api.routes.endpoints.admin import lucky_draw as admin_lucky_draw
+from app.api.routes.endpoints.public import lucky_draw as public_lucky_draw
 
 api_router = APIRouter()
 
@@ -239,3 +241,7 @@ api_router.include_router(customer_order.router, tags=["orders"])
 api_router.include_router(payment_endpoints.router, prefix="/payments", tags=["payments"])
 api_router.include_router(payment_endpoints.webhook_router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(webhooks_endpoints.router, prefix="/webhooks", tags=["webhooks"])
+
+# Lucky Draw (spin wheel)
+api_router.include_router(admin_lucky_draw.router, tags=["admin — lucky draw"])
+api_router.include_router(public_lucky_draw.router, tags=["lucky draw"])

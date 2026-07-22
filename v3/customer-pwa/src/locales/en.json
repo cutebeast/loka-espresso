@@ -467,6 +467,23 @@
   "legal_page": {
     "made_with_care_by_loka_espresso": "Made with care by LOKA Espresso"
   },
+  "luckyDraw": {
+    "title": "Lucky Draw",
+    "subtitle": "Spin the wheel daily to win rewards",
+    "spin": "SPIN",
+    "spinning": "Spinning…",
+    "youWon": "You won!",
+    "voucherCode": "Voucher code",
+    "viewInWallet": "View in Wallet",
+    "signInToSpin": "Sign in to spin",
+    "comeBackTomorrow": "No spins left — come back tomorrow!",
+    "spinsLeft_one": "{count} spin left today",
+    "spinsLeft_other": "{count} spins left today",
+    "noCampaign": "No lucky draw is running right now. Check back soon!",
+    "spinFailed": "Spin failed. Please try again.",
+    "homeBannerTitle": "Lucky Draw",
+    "homeBannerSubtitle": "Spin the wheel & win daily rewards"
+  },
   "menu": {
     "addPrice": "Add Price",
     "addQuantity": "Add Quantity",

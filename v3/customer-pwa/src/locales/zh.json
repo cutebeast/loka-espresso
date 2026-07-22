@@ -467,6 +467,23 @@
   "legal_page": {
     "made_with_care_by_loka_espresso": "由 LOKA Espresso 精心制作"
   },
+  "luckyDraw": {
+    "title": "幸运抽奖",
+    "subtitle": "每天转动轮盘赢取奖励",
+    "spin": "抽奖",
+    "spinning": "转动中…",
+    "youWon": "恭喜中奖！",
+    "voucherCode": "优惠券代码",
+    "viewInWallet": "在钱包中查看",
+    "signInToSpin": "登录后即可抽奖",
+    "comeBackTomorrow": "今日抽奖次数已用完 — 明天再来！",
+    "spinsLeft_one": "今日还剩 {count} 次抽奖机会",
+    "spinsLeft_other": "今日还剩 {count} 次抽奖机会",
+    "noCampaign": "目前没有进行中的抽奖活动，请稍后再来看看！",
+    "spinFailed": "抽奖失败，请重试。",
+    "homeBannerTitle": "幸运抽奖",
+    "homeBannerSubtitle": "转动轮盘，赢取每日奖励"
+  },
   "menu": {
     "addPrice": "添加价格",
     "addQuantity": "添加数量",
