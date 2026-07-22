@@ -9,7 +9,7 @@ import {
   FileText, Bell, UserCircle, BarChart3,
   LayoutTemplate, ShoppingBag, Grid3X3,
   Star, Settings, Languages, TrendingUp, Wrench,
-  Shield, ClipboardCheck, HelpCircle,
+  Shield, ClipboardCheck, HelpCircle, GraduationCap,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
@@ -41,7 +41,6 @@ const navItems: NavItem[] = [
     children: [
       { id: "menuCategories", labelKey: "admin.nav.menu.categories", href: "/menu/categories" },
       { id: "menuItems", labelKey: "admin.nav.menu.items", href: "/menu/items" },
-      { id: "menuExperiences", labelKey: "admin.nav.menu.experiences", href: "/menu/experiences" },
       { id: "menuBundles", labelKey: "admin.nav.menu.bundleProducts", href: "/menu/bundle-products" },
       { id: "menuAllergens", labelKey: "admin.nav.menu.allergens", href: "/menu/allergens" },
       { id: "menuDietary", labelKey: "admin.nav.menu.dietaryTags", href: "/menu/dietary-tags" },
@@ -55,6 +54,14 @@ const navItems: NavItem[] = [
       { id: "loyaltyAccounts", labelKey: "admin.nav.loyalty.accounts", href: "/loyalty/accounts" },
       { id: "loyaltyLedger", labelKey: "admin.nav.loyalty.ledger", href: "/loyalty/ledger" },
       { id: "loyaltySettings", labelKey: "admin.nav.loyalty.settings", href: "/loyalty/settings" },
+    ],
+  },
+  {
+    id: "eventsClasses", labelKey: "admin.nav.eventsClasses", href: "/menu/experiences", icon: GraduationCap,
+    children: [
+      { id: "eventsClassesWorkshops", labelKey: "admin.nav.eventsClasses.workshops", href: "/menu/experiences" },
+      { id: "eventsClassesCards", labelKey: "admin.nav.eventsClasses.eventCards", href: "/content/events" },
+      { id: "eventsClassesReport", labelKey: "admin.nav.eventsClasses.rsvpReport", href: "/content/events/report" },
     ],
   },
   {
@@ -80,8 +87,6 @@ const navItems: NavItem[] = [
     children: [
       { id: "contentInfoCards", labelKey: "admin.nav.content.infoCards", href: "/content/info-cards" },
       { id: "contentProducts", labelKey: "admin.nav.content.products", href: "/content/products" },
-      { id: "contentEvents", labelKey: "admin.nav.content.events", href: "/content/events" },
-      { id: "contentEventReport", labelKey: "admin.nav.content.eventReport", href: "/content/events/report" },
       { id: "contentSystem", labelKey: "admin.nav.content.systemPages", href: "/content/system" },
       { id: "contentPwaSplash", labelKey: "admin.nav.content.pwaSplash", href: "/content/pwa-splash" },
     ],
