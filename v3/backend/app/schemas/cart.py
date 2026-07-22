@@ -17,6 +17,7 @@ class CartModifierSelection(BaseSchema):
 class CartLineItemBase(BaseSchema):
     menu_item_id: int
     menu_variant_id: int | None = None
+    class_session_id: int | None = None  # experience items: booked class session
     quantity: int = Field(..., ge=1, le=99)
     selected_modifiers: list[CartModifierSelection] = []
     special_instructions: str | None = Field(None, max_length=255)
@@ -39,6 +40,7 @@ class CartLineItemOut(BaseSchema):
     cart_id: int
     menu_item_id: int
     menu_variant_id: int | None
+    class_session_id: int | None
     quantity: int
     unit_price: Money
     line_total: Money

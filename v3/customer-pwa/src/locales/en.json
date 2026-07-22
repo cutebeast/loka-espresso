@@ -543,7 +543,12 @@
     "itemFallback": "Item",
     "moreCount": "+{count} more",
     "bundleIncompleteToast": "Bundle unavailable:",
-    "variant": "Options"
+    "variant": "Options",
+    "selectSession": "Select a session",
+    "noSessions": "No upcoming sessions — please check back soon.",
+    "sessionFull": "Full",
+    "seatsLeft": "{count} seats left",
+    "selectSessionFirst": "Select a session first"
   },
   "menu_page": {
     "kcal": "kcal",

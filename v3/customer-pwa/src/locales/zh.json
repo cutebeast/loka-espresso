@@ -543,7 +543,12 @@
     "itemFallback": "Item",
     "moreCount": "+{count} more",
     "bundleIncompleteToast": "Bundle unavailable:",
-    "variant": "规格"
+    "variant": "规格",
+    "selectSession": "选择场次",
+    "noSessions": "暂无即将到来的场次——请稍后再查看。",
+    "sessionFull": "已满",
+    "seatsLeft": "剩 {count} 个座位",
+    "selectSessionFirst": "请先选择场次"
   },
   "menu_page": {
     "kcal": "千卡",

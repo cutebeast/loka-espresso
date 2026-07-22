@@ -108,6 +108,9 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
           if (desired.variant_id) {
             payload.menu_variant_id = desired.variant_id;
           }
+          if (desired.class_session_id) {
+            payload.class_session_id = desired.class_session_id;
+          }
           if (specialInstructions) {
             payload.special_instructions = specialInstructions;
           }

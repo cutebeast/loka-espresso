@@ -543,7 +543,12 @@
     "itemFallback": "Item",
     "moreCount": "+{count} more",
     "bundleIncompleteToast": "Bundle unavailable:",
-    "variant": "Pilihan"
+    "variant": "Pilihan",
+    "selectSession": "Pilih sesi",
+    "noSessions": "Tiada sesi akan datang — sila semak semula nanti.",
+    "sessionFull": "Penuh",
+    "seatsLeft": "{count} tempat lagi",
+    "selectSessionFirst": "Pilih sesi dahulu"
   },
   "menu_page": {
     "kcal": "kcal",

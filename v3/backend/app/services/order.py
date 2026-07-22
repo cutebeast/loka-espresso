@@ -415,9 +415,26 @@ async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
 
     Claws back loyalty points (negative ledger entry mirroring the award),
     releases any voucher/reward consumed by the order (decrementing global
-    usage counters), and restores recipe-based stock. Callers must hold a row
-    lock on the order and manage the surrounding transaction/commit.
+    usage counters), restores recipe-based stock, and frees booked class
+    session seats. Callers must hold a row lock on the order and manage the
+    surrounding transaction/commit.
     """
+    # ── Class session seats release ──
+    session_lines = await db.execute(
+        select(OrderLineItem).where(
+            OrderLineItem.order_id == order.id,
+            OrderLineItem.class_session_id.is_not(None),
+        )
+    )
+    for line in session_lines.scalars().all():
+        from app.models.class_session import ClassSession
+        sess_result = await db.execute(
+            select(ClassSession).where(ClassSession.id == line.class_session_id).with_for_update()
+        )
+        sess = sess_result.scalar_one_or_none()
+        if sess is not None:
+            sess.booked_pax = max(0, sess.booked_pax - line.quantity)
+
     # ── Loyalty points clawback ──
     points = int(order.loyalty_points_earned or 0)
     if points > 0 and order.customer_id:
@@ -914,8 +931,31 @@ async def create_order_from_cart(
             special_instructions=ci.special_instructions,
             bundle_product_id=ci.bundle_product_id,
             bundle_component_id=ci.bundle_component_id,
+            class_session_id=ci.class_session_id,
         )
         db.add(oli)
+
+    # Consume class session seats (locked; fails the whole order when full)
+    for ci in cart_items:
+        if not ci.class_session_id:
+            continue
+        from app.models.class_session import ClassSession
+        sess_result = await db.execute(
+            select(ClassSession).where(ClassSession.id == ci.class_session_id).with_for_update()
+        )
+        sess = sess_result.scalar_one_or_none()
+        if sess is None or not sess.is_active:
+            raise OrderError("The selected class session is no longer available", 400)
+        if sess.menu_item_id != ci.menu_item_id:
+            raise OrderError("The selected class session does not match this class", 400)
+        if sess.session_date < datetime.now(timezone.utc).date():
+            raise OrderError("The selected class session has already passed", 400)
+        if sess.booked_pax + ci.quantity > sess.capacity:
+            remaining = sess.capacity - sess.booked_pax
+            raise OrderError(
+                f"Not enough seats left in this session ({remaining} of {sess.capacity} remaining)", 400
+            )
+        sess.booked_pax += ci.quantity
 
     # Deduct recipe-based stock
     await _deduct_stock_for_order(db, order, cart_items)

@@ -335,6 +335,19 @@ Per `/root/Private booking charges & lucky draw.xlsx` (lucky draw is a SEPARATE 
 - Verified live end-to-end: created "Daily Lucky Spin" (kept active: WELCOME-RM5 70% / BDAY-UPGRADE 30%), spin won a real RM5 voucher, second spin 429'd.
 - E2E: 195 passed / 20 skipped.
 
+### Class sessions with capacity (2026-07-22)
+
+Experience items (EX-*) now have dated, seat-limited sessions — booking consumes seats, cancellation restores them:
+
+- **Model**: `class_sessions` (menu_item_id, session_date, start_time, capacity, booked_pax, location, notes, is_active; capacity ≥ booked CHECK) + `class_session_id` FK on cart_line_items and order_line_items. Migration `3f36206b0cbd` (current head).
+- **Enforcement** (`create_order_from_cart`): session row locked, must be active/future/matching item, `booked + qty ≤ capacity` else 400 "Not enough seats left (N of C remaining)". `reverse_order_effects` restores seats on any cancel path.
+- **Endpoints**: public `GET /menu/items/{id}/sessions` (active, future, with `remaining`); admin `GET/POST /admin/menu/items/{id}/sessions`, `PUT/DELETE /admin/class-sessions/{id}` (capacity can't go below booked; delete blocked when booked).
+- **PWA**: customize sheet for EX items shows a required session picker (date · time · location + seats left; full sessions disabled; Add button blocked until picked) → `class_session_id` through cart → order. Cart lines key on session id too.
+- **Admin** (Events & Classes → Classes & Workshops): per-class session manager — list with booked/capacity badge, activate/deactivate toggle, delete (unbooked only), inline add form (date/time/seats/location).
+- Verified live end-to-end: session cap 4 → 3-pax booking consumed (booked=3) → 2-pax attempt 400 "1 of 4 remaining" → cancel restored to 0.
+- One test session left seeded for demo: Turkish Sand Brew Workshop, 2026-07-23 10:00, 4 seats at PKL.
+- E2E: 195 passed / 20 skipped.
+
 ### PWA variant selection (2026-07-22)
 
 The customer PWA previously had NO variant support (kiosk had it since round 32) — drinks defaulted to Hot and Omakase to the 4-pax price, and variant-only items (no modifiers) never opened the customize sheet at all. Fixed:

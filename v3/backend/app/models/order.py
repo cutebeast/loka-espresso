@@ -193,6 +193,9 @@ class OrderLineItem(Base):
     bundle_component_id: Mapped[int | None] = mapped_column(
         ForeignKey("bundle_product_components.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    class_session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("class_sessions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     served_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     served_by: Mapped[int | None] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True, index=True

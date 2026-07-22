@@ -543,7 +543,12 @@
     "itemFallback": "Item",
     "moreCount": "+{count} more",
     "bundleIncompleteToast": "Bundle unavailable:",
-    "variant": "விருப்பங்கள்"
+    "variant": "விருப்பங்கள்",
+    "selectSession": "அமர்வைத் தேர்ந்தெடுக்கவும்",
+    "noSessions": "வரவிருக்கும் அமர்வுகள் இல்லை — விரைவில் மீண்டும் பார்க்கவும்.",
+    "sessionFull": "நிரம்பியது",
+    "seatsLeft": "{count} இடங்கள் மீதம்",
+    "selectSessionFirst": "முதலில் அமர்வைத் தேர்ந்தெடுக்கவும்"
   },
   "menu_page": {
     "kcal": "கிலோ கலோரி",

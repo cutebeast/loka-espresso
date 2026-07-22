@@ -459,6 +459,37 @@ async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
     return APIResponse(data=item_dict)
 
 
+@router.get("/items/{item_id}/sessions", response_model=APIResponse[list[dict]])
+async def get_item_sessions(item_id: int, db: DBDependency):
+    """Available class sessions for an experience item (active, not past, with remaining seats)."""
+    from app.models.class_session import ClassSession
+    today = datetime.now(timezone.utc).date()
+    result = await db.execute(
+        select(ClassSession)
+        .where(
+            ClassSession.menu_item_id == item_id,
+            ClassSession.is_active.is_(True),
+            ClassSession.session_date >= today,
+        )
+        .order_by(ClassSession.session_date, ClassSession.start_time)
+    )
+    sessions = [
+        {
+            "id": s.id,
+            "menu_item_id": s.menu_item_id,
+            "session_date": s.session_date.isoformat(),
+            "start_time": s.start_time.strftime("%H:%M"),
+            "capacity": s.capacity,
+            "booked_pax": s.booked_pax,
+            "remaining": s.capacity - s.booked_pax,
+            "location": s.location,
+            "notes": s.notes,
+        }
+        for s in result.scalars().all()
+    ]
+    return APIResponse(data=sessions)
+
+
 @router.get("/bundle-products", response_model=APIResponse[list[dict]])
 async def list_bundle_products_public(
     db: DBDependency,

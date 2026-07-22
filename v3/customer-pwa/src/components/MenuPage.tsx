@@ -153,7 +153,13 @@ export default function MenuPage() {
     id: number;
     variant_name: string;
     price_adjustment: number;
+  } | null, session?: {
+    id: number;
+    session_date: string;
+    start_time: string;
+    location: string | null;
   } | null) => {
+    const sessionLabel = session ? `${new Date(`${session.session_date}T${session.start_time}`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${session.start_time}` : undefined;
     addItem({
       menu_item_id: item.id,
       name: variant ? `${item.item_name} (${variant.variant_name})` : item.item_name,
@@ -162,6 +168,8 @@ export default function MenuPage() {
       quantity,
       variant_id: variant?.id,
       variant_name: variant?.variant_name,
+      class_session_id: session?.id,
+      class_session_label: sessionLabel,
       customizations: {
         options: selectedOptions.map(o => ({
           id: o.id,

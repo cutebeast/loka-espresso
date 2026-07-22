@@ -153,6 +153,18 @@ export interface MenuItemVariant {
   is_available: boolean;
 }
 
+export interface ClassSession {
+  id: number;
+  menu_item_id: number;
+  session_date: string;
+  start_time: string;
+  capacity: number;
+  booked_pax: number;
+  remaining: number;
+  location: string | null;
+  notes: string | null;
+}
+
 // ---------- Store ----------
 
 export interface Store {
@@ -199,6 +211,7 @@ export interface MenuCategory {
 export interface MenuItem {
   id: number;
   category_id: number;
+  item_code?: string;
   item_name: string;
   description: string | null;
   long_description?: string | null;
@@ -260,6 +273,8 @@ export interface CartItem {
   store_id?: number;
   variant_id?: number;
   variant_name?: string;
+  class_session_id?: number;
+  class_session_label?: string;
   bundle_product_id?: number;
   bundle_component_id?: number;
   customizations?: Record<string, unknown>;

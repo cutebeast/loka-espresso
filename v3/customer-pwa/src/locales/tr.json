@@ -543,7 +543,12 @@
     "itemFallback": "Item",
     "moreCount": "+{count} more",
     "bundleIncompleteToast": "Bundle unavailable:",
-    "variant": "Seçenekler"
+    "variant": "Seçenekler",
+    "selectSession": "Seans seçin",
+    "noSessions": "Yaklaşan seans yok — lütfen daha sonra tekrar kontrol edin.",
+    "sessionFull": "Dolu",
+    "seatsLeft": "{count} koltuk kaldı",
+    "selectSessionFirst": "Önce bir seans seçin"
   },
   "menu_page": {
     "kcal": "kcal",

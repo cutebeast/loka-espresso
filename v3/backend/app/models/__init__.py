@@ -165,3 +165,4 @@ from app.models.lucky_draw import (
     LuckyDrawSegment,
     LuckyDrawSpin,
 )
+from app.models.class_session import ClassSession

@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, Coffee, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { MenuItem, CustomizationOption } from '@/lib/api';
+import api from '@/lib/api';
+import type { MenuItem, CustomizationOption, ClassSession } from '@/lib/api';
 import { resolveAssetUrl, formatPrice, LOKA } from '@/lib/tokens';
 interface SelectedOption {
   id: number;
@@ -21,7 +22,7 @@ interface ItemCustomizeSheetProps {
   item: MenuItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number, variant?: SelectedVariant | null) => void;
+  onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number, variant?: SelectedVariant | null, session?: ClassSession | null) => void;
   loadingOptions?: boolean;
   customizations?: CustomizationOption[];
   initialSelections?: SelectedOption[];
@@ -82,6 +83,10 @@ export default function ItemCustomizeSheet({
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const [notes, setNotes] = useState('');
+  // Class sessions (experience items only)
+  const isExperience = (item?.item_code ?? '').startsWith('EX-');
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const variants = (item?.variants ?? []).filter(v => v.is_available);
   useEffect(() => {
     if (item && isOpen) {
@@ -91,7 +96,13 @@ export default function ItemCustomizeSheet({
       const avail = (item.variants ?? []).filter(v => v.is_available);
       const first = avail[0];
       setSelectedVariant(first ? { id: first.id, variant_name: first.variant_name, price_adjustment: first.price_adjustment } : null);
+      setSelectedSession(null);
       setNotes('');
+      if ((item.item_code ?? '').startsWith('EX-')) {
+        api.get(`/menu/items/${item.id}/sessions`)
+          .then(res => setSessions(Array.isArray(res.data) ? res.data : []))
+          .catch(() => setSessions([]));
+      }
     }
   }, [item, isOpen]);
   const toggleOption = useCallback((opt: CustomizationOption) => {
@@ -139,7 +150,8 @@ export default function ItemCustomizeSheet({
   }, {});
   const handleAdd = () => {
     if (!item) return;
-    onAdd(item, quantity, selectedOptions, totalPrice, selectedVariant);
+    if (isExperience && !selectedSession) return; // session required for classes
+    onAdd(item, quantity, selectedOptions, totalPrice, selectedVariant, selectedSession);
     onClose();
   };
   const imgSrc = item?.image_url ? resolveAssetUrl(item.image_url) : null;
@@ -223,6 +235,32 @@ export default function ItemCustomizeSheet({
                 </div>
               )}
 
+              {/* Class session picker (experience items — required) */}
+              {isExperience && (
+                <div className="ics-group">
+                  <div className="ics-group-header">
+                    <span className="ics-group-title">{t('menu.selectSession')}</span>
+                    <span className="ics-group-req">{t('menu.required')}</span>
+                  </div>
+                  {sessions.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '4px 0' }}>{t('menu.noSessions')}</p>
+                  ) : (
+                    <div className="ics-options-list">
+                      {sessions.map(s => {
+                        const sel = selectedSession?.id === s.id;
+                        const full = s.remaining <= 0;
+                        const d = new Date(`${s.session_date}T${s.start_time}`);
+                        const dateLabel = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                        return <button key={s.id} disabled={full} onClick={() => setSelectedSession(s)} className={`ics-option-btn ${sel ? 'selected' : ''}`} style={full ? { opacity: 0.5 } : undefined}>
+                          <span>{dateLabel} · {s.start_time}{s.location ? ` · ${s.location}` : ''}</span>
+                          <span className="ics-option-price">{full ? t('menu.sessionFull') : t('menu.seatsLeft', { count: s.remaining })}</span>
+                        </button>;
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Option groups */}
               {loadingOptions ? <div className="ics-skeleton-wrap">
                   {[1, 2].map(i => <div key={i} className="skeleton ics-skeleton" />)}
@@ -303,8 +341,8 @@ export default function ItemCustomizeSheet({
                   <Plus size={14} />
                 </button>
               </div>
-              <button onClick={handleAdd} className="ics-add-btn">
-                {quantity > 1 ? t('menu.addQuantity', {
+              <button onClick={handleAdd} className="ics-add-btn" disabled={isExperience && !selectedSession} style={isExperience && !selectedSession ? { opacity: 0.6 } : undefined}>
+                {isExperience && !selectedSession ? t('menu.selectSessionFirst') : quantity > 1 ? t('menu.addQuantity', {
               quantity,
               price: formatPrice(totalPrice * quantity)
             }) : t('menu.addPrice', {

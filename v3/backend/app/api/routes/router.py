@@ -70,6 +70,7 @@ from app.api.routes.endpoints.admin import equipment as admin_equipment
 from app.api.routes.endpoints.admin import bundle_products as admin_bundle_products
 from app.api.routes.endpoints.admin import lucky_draw as admin_lucky_draw
 from app.api.routes.endpoints.public import lucky_draw as public_lucky_draw
+from app.api.routes.endpoints.admin import class_sessions as admin_class_sessions
 
 api_router = APIRouter()
 
@@ -245,3 +246,6 @@ api_router.include_router(webhooks_endpoints.router, prefix="/webhooks", tags=["
 # Lucky Draw (spin wheel)
 api_router.include_router(admin_lucky_draw.router, tags=["admin — lucky draw"])
 api_router.include_router(public_lucky_draw.router, tags=["lucky draw"])
+
+# Class sessions (experience capacity)
+api_router.include_router(admin_class_sessions.router, prefix="/admin", tags=["admin — class sessions"])

@@ -46,9 +46,9 @@ export const useCartStore = create<CartState>()(
             }
             return stableStringify(c.customizations ?? null);
           };
-          const itemKey = `${item.menu_item_id}:${item.variant_id ?? ''}:${optIds(item)}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}`;
+          const itemKey = `${item.menu_item_id}:${item.variant_id ?? ''}:${item.class_session_id ?? ''}:${optIds(item)}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}`;
           const existingIdx = state.items.findIndex(
-            (c) => `${c.menu_item_id}:${c.variant_id ?? ''}:${optIds(c)}:${c.bundle_product_id ?? ''}:${c.bundle_component_id ?? ''}` === itemKey
+            (c) => `${c.menu_item_id}:${c.variant_id ?? ''}:${c.class_session_id ?? ''}:${optIds(c)}:${c.bundle_product_id ?? ''}:${c.bundle_component_id ?? ''}` === itemKey
           );
           if (existingIdx >= 0) {
             return {

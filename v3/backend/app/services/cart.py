@@ -244,6 +244,7 @@ async def add_line_item(
             special_instructions=data.special_instructions,
             bundle_product_id=data.bundle_product_id,
             bundle_component_id=data.bundle_component_id,
+            class_session_id=data.class_session_id,
         )
         db.add(line_item)
     
