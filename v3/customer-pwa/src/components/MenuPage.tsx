@@ -130,7 +130,7 @@ export default function MenuPage() {
     };
   }, [categories, menuItems]);
   const openItem = useCallback((item: MenuItem) => {
-    if ((item.modifier_groups?.length ?? 0) > 0) {
+    if ((item.modifier_groups?.length ?? 0) > 0 || (item.variants?.length ?? 0) > 0) {
       setCustomizeItem(item);
       return;
     }
@@ -149,13 +149,19 @@ export default function MenuPage() {
     id: number;
     name: string;
     price_adjustment: number;
-  }[], totalPrice: number) => {
+  }[], totalPrice: number, variant?: {
+    id: number;
+    variant_name: string;
+    price_adjustment: number;
+  } | null) => {
     addItem({
       menu_item_id: item.id,
-      name: item.item_name,
+      name: variant ? `${item.item_name} (${variant.variant_name})` : item.item_name,
       price: totalPrice,
       base_price: item.base_price,
       quantity,
+      variant_id: variant?.id,
+      variant_name: variant?.variant_name,
       customizations: {
         options: selectedOptions.map(o => ({
           id: o.id,

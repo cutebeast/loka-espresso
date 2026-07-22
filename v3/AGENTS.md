@@ -315,6 +315,15 @@ Per `/root/Private booking charges & lucky draw.xlsx` (lucky draw is a SEPARATE 
 - Ties together: customers can PAY for a class via checkout OR Reserve members REDEEM it with points (rewards table).
 - Translated to all 4 locales (menu + event cards). E2E 195 passed.
 
+### PWA variant selection (2026-07-22)
+
+The customer PWA previously had NO variant support (kiosk had it since round 32) — drinks defaulted to Hot and Omakase to the 4-pax price, and variant-only items (no modifiers) never opened the customize sheet at all. Fixed:
+- `ItemCustomizeSheet`: variant picker section (Hot/Cold, pax packages…) above modifier groups; price = base + variant + modifiers; opens for items with variants even without modifier groups.
+- Cart identity includes `variant_id` (Hot and Cold of the same drink are separate lines); cart lines show the variant name.
+- `cartSync` sends `menu_variant_id` (server-side variant pricing was already correct).
+- Verified live: Omakase VIP RM488 + Cold Latté RM20 → order total RM508.
+- New `menu.variant` locale key (5 languages).
+
 ### PWA event → payment flow (2026-07-22)
 
 No special page needed — the event page carries information, the menu carries payment:

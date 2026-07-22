@@ -525,7 +525,8 @@
     "customizeItemAriaLabel": "Customize item",
     "itemFallback": "Item",
     "moreCount": "+{count} more",
-    "bundleIncompleteToast": "Bundle unavailable:"
+    "bundleIncompleteToast": "Bundle unavailable:",
+    "variant": "Seçenekler"
   },
   "menu_page": {
     "kcal": "kcal",

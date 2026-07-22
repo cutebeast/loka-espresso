@@ -525,7 +525,8 @@
     "customizeItemAriaLabel": "Customize item",
     "itemFallback": "Item",
     "moreCount": "+{count} more",
-    "bundleIncompleteToast": "Bundle unavailable:"
+    "bundleIncompleteToast": "Bundle unavailable:",
+    "variant": "விருப்பங்கள்"
   },
   "menu_page": {
     "kcal": "கிலோ கலோரி",

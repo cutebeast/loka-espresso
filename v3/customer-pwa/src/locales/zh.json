@@ -525,7 +525,8 @@
     "customizeItemAriaLabel": "Customize item",
     "itemFallback": "Item",
     "moreCount": "+{count} more",
-    "bundleIncompleteToast": "Bundle unavailable:"
+    "bundleIncompleteToast": "Bundle unavailable:",
+    "variant": "规格"
   },
   "menu_page": {
     "kcal": "千卡",

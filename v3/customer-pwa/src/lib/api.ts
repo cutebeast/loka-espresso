@@ -258,6 +258,8 @@ export interface CartItem {
   base_price?: number;
   quantity: number;
   store_id?: number;
+  variant_id?: number;
+  variant_name?: string;
   bundle_product_id?: number;
   bundle_component_id?: number;
   customizations?: Record<string, unknown>;

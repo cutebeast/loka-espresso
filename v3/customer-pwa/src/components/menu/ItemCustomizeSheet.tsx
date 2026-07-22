@@ -12,11 +12,16 @@ interface SelectedOption {
   option_type: string;
   price_adjustment: number;
 }
+interface SelectedVariant {
+  id: number;
+  variant_name: string;
+  price_adjustment: number;
+}
 interface ItemCustomizeSheetProps {
   item: MenuItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => void;
+  onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number, variant?: SelectedVariant | null) => void;
   loadingOptions?: boolean;
   customizations?: CustomizationOption[];
   initialSelections?: SelectedOption[];
@@ -75,11 +80,17 @@ export default function ItemCustomizeSheet({
   };
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const [notes, setNotes] = useState('');
+  const variants = (item?.variants ?? []).filter(v => v.is_available);
   useEffect(() => {
     if (item && isOpen) {
       setQuantity(1);
       setSelectedOptions(initialSelections || []);
+      // Default to the item's default variant (or first available)
+      const avail = (item.variants ?? []).filter(v => v.is_available);
+      const first = avail[0];
+      setSelectedVariant(first ? { id: first.id, variant_name: first.variant_name, price_adjustment: first.price_adjustment } : null);
       setNotes('');
     }
   }, [item, isOpen]);
@@ -117,8 +128,9 @@ export default function ItemCustomizeSheet({
     return t('menu.allergenWarning');
   }, [t]);
   const basePrice = item?.base_price ?? 0;
+  const variantDelta = selectedVariant?.price_adjustment ?? 0;
   const optionDelta = selectedOptions.reduce((sum, o) => sum + o.price_adjustment, 0);
-  const totalPrice = basePrice + optionDelta;
+  const totalPrice = basePrice + variantDelta + optionDelta;
   const groupedOptions = customizations.reduce<Record<string, CustomizationOption[]>>((acc, opt) => {
     const type = opt.option_type || 'other';
     if (!acc[type]) acc[type] = [];
@@ -127,7 +139,7 @@ export default function ItemCustomizeSheet({
   }, {});
   const handleAdd = () => {
     if (!item) return;
-    onAdd(item, quantity, selectedOptions, totalPrice);
+    onAdd(item, quantity, selectedOptions, totalPrice, selectedVariant);
     onClose();
   };
   const imgSrc = item?.image_url ? resolveAssetUrl(item.image_url) : null;
@@ -189,6 +201,27 @@ export default function ItemCustomizeSheet({
                   <AlertTriangle size={16} />
                   <div className="ics-allergen-text">{allergenWarning}</div>
                 </div>}
+
+              {/* Variant picker (Hot/Cold, package size, etc.) */}
+              {variants.length > 0 && (
+                <div className="ics-group">
+                  <div className="ics-group-header">
+                    <span className="ics-group-title">{t('menu.variant')}</span>
+                    <span className="ics-group-req">{t('menu.required')}</span>
+                  </div>
+                  <div className="ics-options-list">
+                    {variants.map(v => {
+                      const sel = selectedVariant?.id === v.id;
+                      return <button key={v.id} onClick={() => setSelectedVariant(v)} className={`ics-option-btn ${sel ? 'selected' : ''}`}>
+                        <span>{v.variant_name}</span>
+                        <span className="ics-option-price">
+                          {v.price_adjustment > 0 ? `+${formatPrice(v.price_adjustment)}` : ''}
+                        </span>
+                      </button>;
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Option groups */}
               {loadingOptions ? <div className="ics-skeleton-wrap">
