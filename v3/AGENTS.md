@@ -315,6 +315,13 @@ Per `/root/Private booking charges & lucky draw.xlsx` (lucky draw is a SEPARATE 
 - Ties together: customers can PAY for a class via checkout OR Reserve members REDEEM it with points (rewards table).
 - Translated to all 4 locales (menu + event cards). E2E 195 passed.
 
+### PWA event → payment flow (2026-07-22)
+
+No special page needed — the event page carries information, the menu carries payment:
+- **Event card detail** (PWA `#events`) now renders the card's `action_url`/`action_label` as a "Book Now" button, hides the date/time block when `event_datetime` is null, and shows `long_description` properly.
+- **Deep link**: action URL `#menu?cat=experiences` is parsed by EventsPage → navigates to the menu with the Experiences & Workshops category pre-selected and scrolled into view (`selectedCategoryId` in uiStore, honored by MenuPage).
+- Customer flow: Events → tap class → Book Now → menu opens at Experiences → pick package variant → checkout (wallet/Stripe/HitPay/cash). Seed: `seed_content.py` EVENT_CARDS uses `#menu?cat=experiences` + "Book Now".
+
 ### Rewards marketplace — boss's redemption table (2026-07-22)
 
 Reward catalog replaced per `/root/Point redemption Loka Espresso crm.xlsx` (1 pt = RM0.05 retail value, 5% return on spend). Old placeholder rewards (free_delivery / 10% off / RM5 off) removed. 13 rewards, all `free_item` type, tier-gated via `minimum_tier_id` (redeem check is hierarchical by tier id):

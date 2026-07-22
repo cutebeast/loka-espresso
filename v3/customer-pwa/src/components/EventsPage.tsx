@@ -14,6 +14,8 @@ interface EventItem {
   title: string;
   image_url: string | null;
   description: string;
+  short_description: string;
+  long_description: string | null;
   event_datetime: string;
   location: string;
   slug: string;
@@ -21,6 +23,8 @@ interface EventItem {
   rsvp_max_capacity: number;
   rsvp_count: number;
   is_active: boolean;
+  action_url: string | null;
+  action_label: string | null;
 }
 
 interface EventsPageProps {
@@ -47,9 +51,25 @@ function formatEventTime(dateStr: string): string {
 
 export default function EventsPage({ onBack }: EventsPageProps) {
   const { t } = useTranslation();
-  const { showToast } = useUIStore();
+  const { showToast, setPage, categories } = useUIStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const triggerSignIn = useUIStore((s) => s.triggerSignIn);
+
+  // Navigate an event card's action (e.g. "Book on the Menu" → menu category)
+  const handleAction = (event: EventItem) => {
+    const url = event.action_url || '';
+    const menuMatch = url.match(/^#menu(?:\?.*?\bcat=([\w-]+))?/);
+    if (menuMatch) {
+      const slug = menuMatch[1];
+      const cat = slug ? categories.find(c => c.slug === slug) : null;
+      setPage('menu', cat ? { selectedCategoryId: cat.id } : {});
+      return;
+    }
+    if (url.startsWith('#')) {
+      const target = url.slice(1).split('?')[0];
+      if (target) setPage(target as Parameters<typeof setPage>[0]);
+    }
+  };
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
@@ -134,14 +154,16 @@ export default function EventsPage({ onBack }: EventsPageProps) {
         <div className="info-detail-content">
           <h1 className="info-detail-title">{selectedEvent.title}</h1>
 
-          <div className="info-detail-meta">
-            <span className="info-detail-meta-item">
-              <Calendar size={16} /> {formatEventDate(selectedEvent.event_datetime)}
-            </span>
-            <span className="info-detail-meta-item">
-              <Clock size={16} /> {formatEventTime(selectedEvent.event_datetime)}
-            </span>
-          </div>
+          {selectedEvent.event_datetime && (
+            <div className="info-detail-meta">
+              <span className="info-detail-meta-item">
+                <Calendar size={16} /> {formatEventDate(selectedEvent.event_datetime)}
+              </span>
+              <span className="info-detail-meta-item">
+                <Clock size={16} /> {formatEventTime(selectedEvent.event_datetime)}
+              </span>
+            </div>
+          )}
           {selectedEvent.location && (
             <div className="info-detail-meta">
               <span className="info-detail-meta-item">
@@ -158,9 +180,18 @@ export default function EventsPage({ onBack }: EventsPageProps) {
           )}
 
           <p className="info-detail-desc">
-            {selectedEvent.description || t('events.noDescription')}
+            {selectedEvent.long_description || selectedEvent.short_description || selectedEvent.description || t('events.noDescription')}
           </p>
         </div>
+
+        {selectedEvent.action_url && selectedEvent.action_label && (
+          <div className="info-detail-footer">
+            <button className="info-share-btn" onClick={() => handleAction(selectedEvent)} style={{ justifyContent: 'center', gap: '8px' }}>
+              <span>{selectedEvent.action_label}</span>
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
 
         {selectedEvent.rsvp_enabled && (
           <div className="info-detail-footer">

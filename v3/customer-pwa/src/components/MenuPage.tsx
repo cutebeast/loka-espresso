@@ -41,6 +41,9 @@ export default function MenuPage() {
   const [inputValue, setInputValue] = useState(searchQuery);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  // Deep-link target (e.g. from an event card's "Book on the Menu" action)
+  const deepLinkCategoryId = useUIStore(s => s.selectedCategoryId);
+  const setDeepLinkCategoryId = useUIStore(s => s.setSelectedCategoryId);
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
@@ -237,8 +240,7 @@ export default function MenuPage() {
   }))], [categories, t]);
   const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
-    if (categoryId === null) {
-      const firstCatId = categories[0]?.id;
+    if (categoryId === null) {      const firstCatId = categories[0]?.id;
       if (firstCatId !== undefined) {
         const first = sectionRefs.current.get(firstCatId);
         if (first) first.scrollIntoView({
@@ -254,6 +256,14 @@ export default function MenuPage() {
       });
     }
   }, [categories, setActiveCategoryId]);
+
+  // Honor deep-link category selection (e.g. event card "Book on the Menu")
+  useEffect(() => {
+    if (deepLinkCategoryId != null && categories.length > 0) {
+      scrollToCategory(deepLinkCategoryId);
+      setDeepLinkCategoryId(null);
+    }
+  }, [deepLinkCategoryId, categories, scrollToCategory, setDeepLinkCategoryId]);
 
   // Auto-scroll active tab into view in the horizontal category bar
   useEffect(() => {

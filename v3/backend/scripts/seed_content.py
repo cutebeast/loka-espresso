@@ -472,7 +472,7 @@ async def seed():
                 text("""
                     INSERT INTO event_cards (slug, title, short_description, long_description, image_url,
                                              action_url, action_label, is_active, position, location, rsvp_enabled)
-                    VALUES (:slug, :title, :short_description, :long_description, :img, '#menu', 'Book on the Menu', true, :position, :location, false)
+                    VALUES (:slug, :title, :short_description, :long_description, :img, '#menu?cat=experiences', 'Book Now', true, :position, :location, false)
                     ON CONFLICT (slug) DO UPDATE SET
                         title = EXCLUDED.title,
                         short_description = EXCLUDED.short_description,
