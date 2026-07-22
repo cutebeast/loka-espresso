@@ -13,6 +13,8 @@ interface ConfigItem {
   is_editable: boolean;
 }
 const KEYS = ["loyalty.points_per_currency", "loyalty.welcome_bonus", "loyalty.welcome_reward_type", "loyalty.welcome_reward_voucher_code"];
+const REWARD_TYPES = ["points", "voucher", "points_and_voucher"];
+const NUMERIC_KEYS = new Set(["loyalty.points_per_currency", "loyalty.welcome_bonus"]);
 export default function LoyaltySettingsPage() {
   const {
     t
@@ -89,7 +91,8 @@ export default function LoyaltySettingsPage() {
                 textTransform: "capitalize"
               }}>{key.replace("loyalty.", "").replace(/_/g, " ")}</td>
                     <td>
-                      <input type="number" value={val} onChange={e => setValues(prev => ({
+                      {key === "loyalty.welcome_reward_type" ? (
+                        <select value={val} onChange={e => setValues(prev => ({
                   ...prev,
                   [key]: e.target.value
                 }))} style={{
@@ -97,8 +100,22 @@ export default function LoyaltySettingsPage() {
                   borderRadius: "var(--radius-sm)",
                   padding: "4px 8px",
                   fontSize: 13,
-                  width: 100
+                  width: 180
+                }}>
+                          {REWARD_TYPES.map(rt => <option key={rt} value={rt}>{rt}</option>)}
+                        </select>
+                      ) : (
+                        <input type={NUMERIC_KEYS.has(key) ? "number" : "text"} value={val} onChange={e => setValues(prev => ({
+                  ...prev,
+                  [key]: e.target.value
+                }))} style={{
+                  border: "1px solid var(--color-border-light)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px",
+                  fontSize: 13,
+                  width: NUMERIC_KEYS.has(key) ? 100 : 180
                 }} />
+                      )}
                     </td>
                     <td>
                       <button type="button" className="btn btn-sm btn-primary" onClick={() => save(key, values[key] ?? c.config_value)} disabled={saving !== null}>
@@ -109,6 +126,10 @@ export default function LoyaltySettingsPage() {
           })}
             </tbody>
           </table>
+          <p style={{ marginTop: 12, fontSize: 12, color: "var(--color-text-muted)" }}>
+            Welcome reward type: <code>points</code> (loyalty points only), <code>voucher</code> (welcome voucher only), or <code>points_and_voucher</code> (both).
+            The voucher code must match an active voucher definition (default: <code>WELCOME-RM5</code>).
+          </p>
         </div>}
     </div>;
 }
