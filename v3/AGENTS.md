@@ -317,6 +317,17 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
 
 - Admin menu items page (`/menu/items`) now shows image thumbnails (new `menu_items.image` admin-ui translation) and fetches per_page=200 (was 100 — silently truncated the 160-item menu).
 
+### Session lifetimes (2026-07-22, verified live)
+
+| Portal | Access token | Cookie | Refresh token | Refresh cookie | Notes |
+|---|---|---|---|---|---|
+| Admin | 8h | 8h | 7 days | 7 days | Plus 30-min idle timeout (deliberate). Was broken: portal set a 15-min cookie (fixed) |
+| Staff | 8h | 24h | **30 days** | **30 days** | Rotates on every refresh (sliding) |
+| Customer PWA | 8h | 8h | **90 days** | **90 days** | Rotates on every refresh — active customers effectively never re-login |
+
+- `create_refresh_token(..., days=N)` per-type lifetimes; cookie ages in `auth_cookies.py` (`CUSTOMER_REFRESH_MAX_AGE` 90d, `STAFF_REFRESH_MAX_AGE` 30d, admin stays 7d for security).
+- Refresh rotation is atomic with replay protection (old token 401s on reuse) — verified live on all 3 portals.
+
 ### Migration & seed hygiene (verified 2026-07-21)
 - **Alembic**: single linear chain, live DB at head `b6729f513c8f`, `alembic check` reports no drift. `clear_db --all` preserves `alembic_version`.
 - **Full re-seed workflow verified end-to-end** (`clear_db --all` → `seed_all`): every part runs clean, no fake data reintroduced.

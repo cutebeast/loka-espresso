@@ -16,7 +16,9 @@ ADMIN_REFRESH_COOKIE_NAME = "admin_refresh_token"
 
 # Max-age values (seconds)
 ACCESS_MAX_AGE = 60 * 480  # 8 hours — matches jwt_expire_minutes
-REFRESH_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
+REFRESH_MAX_AGE = 60 * 60 * 24 * 7  # 7 days (admin)
+CUSTOMER_REFRESH_MAX_AGE = 60 * 60 * 24 * 90  # 90 days — app-like PWA sessions
+STAFF_REFRESH_MAX_AGE = 60 * 60 * 24 * 30  # 30 days — staff stay signed in across rosters
 
 
 def _is_secure() -> bool:
@@ -55,7 +57,7 @@ def set_customer_auth_cookies(
     refresh_token: str,
 ) -> None:
     _set_cookie(response, ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE, "/")
-    _set_cookie(response, REFRESH_COOKIE_NAME, refresh_token, REFRESH_MAX_AGE, "/api/auth/refresh")
+    _set_cookie(response, REFRESH_COOKIE_NAME, refresh_token, CUSTOMER_REFRESH_MAX_AGE, "/api/auth/refresh")
 
 
 def set_staff_auth_cookies(
@@ -65,7 +67,7 @@ def set_staff_auth_cookies(
 ) -> None:
     _set_cookie(response, STAFF_ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE, "/")
     if refresh_token:
-        _set_cookie(response, STAFF_REFRESH_COOKIE_NAME, refresh_token, REFRESH_MAX_AGE, "/api/staff/auth/refresh")
+        _set_cookie(response, STAFF_REFRESH_COOKIE_NAME, refresh_token, STAFF_REFRESH_MAX_AGE, "/api/staff/auth/refresh")
 
 
 def clear_customer_auth_cookies(response: Response) -> None:

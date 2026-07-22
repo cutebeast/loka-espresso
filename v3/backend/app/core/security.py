@@ -107,8 +107,9 @@ def create_access_token(
 def create_refresh_token(
     subject: str | int,
     extra_claims: Optional[Dict[str, Any]] = None,
+    days: Optional[int] = None,
 ) -> str:
-    expires_delta = timedelta(days=settings.jwt_refresh_expire_days)
+    expires_delta = timedelta(days=days if days is not None else settings.jwt_refresh_expire_days)
     return create_access_token(
         subject,
         token_type="refresh",

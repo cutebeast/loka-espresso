@@ -233,7 +233,8 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
         )
         refresh_token = create_refresh_token(
             admin.id,
-            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id}
+            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id},
+            days=30,
         )
         set_staff_auth_cookies(response, access_token, refresh_token)
         return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id), "is_admin": True}}
@@ -247,7 +248,8 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
     )
     refresh_token = create_refresh_token(
         admin.id,
-        extra_claims={"admin_id": admin.id}
+        extra_claims={"admin_id": admin.id},
+        days=30,
     )
     set_staff_auth_cookies(response, access_token, refresh_token)
     return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "is_admin": True, "stores": stores}}
@@ -332,7 +334,8 @@ def _make_token(staff):
     )
     refresh = create_refresh_token(
         staff.principal_id,
-        extra_claims={"staff_id": staff.id, "store_id": staff.store_id}
+        extra_claims={"staff_id": staff.id, "store_id": staff.store_id},
+        days=30,
     )
     return {"tokens": {"access_token": access, "refresh_token": refresh}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
 
@@ -423,7 +426,8 @@ async def staff_refresh_token(request: Request, response: Response, db: DBDepend
         # next refresh would 401 (token is blacklisted below).
         new_refresh_token = create_refresh_token(
             admin.id,
-            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id}
+            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id},
+            days=30,
         )
         # Revoke this refresh token so it cannot be reused (atomic)
         await blacklist_refresh_token(db, jti, admin.principal_id, payload)

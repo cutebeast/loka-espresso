@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         name: REFRESH_COOKIE_NAME,
         value: newRefreshToken,
         ...cookieOptions,
-        maxAge: 60 * 60 * 24 * 7,
+        maxAge: 60 * 60 * 24 * 30,
       });
     }
 

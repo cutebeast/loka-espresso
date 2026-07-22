@@ -192,6 +192,7 @@ async def create_customer_tokens(customer: Customer) -> TokenPair:
     refresh = create_refresh_token(
         subject=str(customer.id),
         extra_claims=extra,
+        days=90,  # app-like PWA session; sliding rotation keeps active customers signed in
     )
     return TokenPair(
         access_token=access,
