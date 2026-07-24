@@ -76,6 +76,7 @@ async def main():
     parser.add_argument("--force-prod", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--locale", choices=LOCALES, default=None)
+    parser.add_argument("--namespace", default=NAMESPACE, help="Translation namespace (default: admin-ui)")
     parser.add_argument("--batch", type=int, default=25)
     args = parser.parse_args()
 
@@ -90,16 +91,16 @@ async def main():
 
         en_rows = (await db.execute(
             select(Translation.translation_key, Translation.translated_text).where(
-                Translation.namespace == NAMESPACE, Translation.locale == "en"
+                Translation.namespace == args.namespace, Translation.locale == "en"
             )
         )).all()
         en_map = {k: v for k, v in en_rows}
-        print(f"admin-ui/en: {len(en_map)} keys")
+        print(f"{args.namespace}/en: {len(en_map)} keys")
 
         for locale in ([args.locale] if args.locale else LOCALES):
             existing = set((await db.execute(
                 select(Translation.translation_key).where(
-                    Translation.namespace == NAMESPACE, Translation.locale == locale
+                    Translation.namespace == args.namespace, Translation.locale == locale
                 )
             )).scalars().all())
             missing = [(k, v) for k, v in sorted(en_map.items()) if k not in existing]
@@ -122,7 +123,7 @@ async def main():
                     await db.execute(
                         pg_insert(Translation)
                         .values(
-                            namespace=NAMESPACE,
+                            namespace=args.namespace,
                             translation_key=key,
                             locale=locale,
                             translated_text=text,
