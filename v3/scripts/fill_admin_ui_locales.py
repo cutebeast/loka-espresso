@@ -33,7 +33,11 @@ LOCALE_NAMES = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil"
 
 PROMPT = """You are translating admin-panel UI strings for Loka Espresso, a Malaysian café loyalty platform (English → {lang}).
 
-Translate each numbered string naturally for an admin dashboard. Keep product/brand names (Loka, Bloom, Origin, Reserve), proper nouns and technical tokens (RM, BYOT, PWA, POS, OTP, CSV, QR) as-is. Keep {{placeholders}} and punctuation.
+Translate each numbered string naturally for an admin dashboard.
+
+TERMINOLOGY RULES — keep these in English, never translate them: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve), technical/URL terms (Slug, SKU, QR, QR Code, URL, API, ID, POS, KDS, PWA, OTP, CSV, PDF, RM, BYOT, SST, HitPay, Stripe, Twilio, DeepSeek, Resend, GrabPay), and standard dashboard terms where the English is clearer (e.g. Dashboard, Settings). "Slug" always means the URL slug — it is NOT an animal.
+
+Keep {{placeholders}} and punctuation. Keep translations concise (dashboard labels, not sentences).
 
 Strings (JSON):
 {items}

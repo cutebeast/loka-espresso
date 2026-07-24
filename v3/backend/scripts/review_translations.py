@@ -67,6 +67,20 @@ Reply with ONLY a JSON array, one object per item, no markdown fences:
 [{{"n": 1, "ok": true}}, {{"n": 2, "ok": false, "fix": "corrected {lang} text"}}]
 Include every item number. Keep "fix" concise (menu text, not explanations)."""
 
+ADMIN_UI_PROMPT_TEMPLATE = """You are reviewing {lang} translations of admin-dashboard UI strings for Loka Espresso, a Malaysian café loyalty platform.
+
+For EACH numbered item (English source + current {lang} translation), decide whether the translation is correct and natural for an admin panel. Watch especially for:
+- Technical terms wrongly translated (e.g. "Slug" = URL slug, NOT the animal — keep as "Slug"; also keep SKU, QR, URL, API, ID, POS, KDS, PWA, OTP, CSV, RM, BYOT, SST, Stripe, HitPay, Twilio, DeepSeek in English)
+- Brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve) — never translate
+- Overly literal or wrong-word-trap translations (common MT errors in admin vocabulary)
+
+Items (JSON):
+{items}
+
+Reply with ONLY a JSON array, one object per item, no markdown fences:
+[{{"n": 1, "ok": true}}, {{"n": 2, "ok": false, "fix": "corrected {lang} text"}}]
+Include every item number. Keep "fix" concise (dashboard label, not a sentence)."""
+
 
 async def _resolve_source(db, row: Translation) -> str | None:
     """English source for a translation row: source_text column, else the live record."""
@@ -83,13 +97,14 @@ async def _resolve_source(db, row: Translation) -> str | None:
     return rec.get(col) or rec.get("item_name")
 
 
-async def _review_batch(rows: list[dict], locale: str, model: str) -> dict[int, dict]:
+async def _review_batch(rows: list[dict], locale: str, model: str, namespace: str = "menu") -> dict[int, dict]:
     lang = LOCALE_NAMES.get(locale, locale)
     items_json = json.dumps(
         [{"n": i + 1, "en": r["source"], "lang": r["current"]} for i, r in enumerate(rows)],
         ensure_ascii=False,
     )
-    prompt = PROMPT_TEMPLATE.format(lang=lang, items=items_json)
+    template = PROMPT_TEMPLATE if namespace == "menu" else ADMIN_UI_PROMPT_TEMPLATE
+    prompt = template.format(lang=lang, items=items_json)
     raw = await _call_raw(prompt, model)
     if not raw:
         return {}
@@ -196,7 +211,7 @@ async def main():
         for locale, rows in sorted(by_locale.items()):
             for start in range(0, len(rows), args.batch):
                 batch = rows[start:start + args.batch]
-                verdicts = await _review_batch(batch, locale, model)
+                verdicts = await _review_batch(batch, locale, model, namespace=args.namespace)
                 for i, entry in enumerate(batch, 1):
                     verdict = verdicts.get(i)
                     if not verdict or verdict.get("ok", True):
