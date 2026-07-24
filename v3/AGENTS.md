@@ -335,6 +335,15 @@ Per `/root/Private booking charges & lucky draw.xlsx` (lucky draw is a SEPARATE 
 - Verified live end-to-end: created "Daily Lucky Spin" (kept active: WELCOME-RM5 70% / BDAY-UPGRADE 30%), spin won a real RM5 voucher, second spin 429'd.
 - E2E: 195 passed / 20 skipped.
 
+### Translation system overhaul (2026-07-22)
+
+The translations admin page (`/translations`, tabs PWA/Staff/Admin) showed big gaps in `admin-ui`:
+- **Problem**: `admin-ui/en` had 2,440 seed keys — 223 in-use keys missing (new pages/features) and 805 stale keys from the old hardcoded seed; `zh` partially translated (1,966, with 607 stale); **`ms`/`ta`/`tr` completely empty**.
+- **Sync**: `v3/scripts/sync_admin_ui_translations.py` scans the portal source for `t()` calls and inserts missing en keys (inline default or humanized text). Idempotent; `--prune` deletes stale auto-seeded keys. Run after any admin portal change. Pruned 696 obsolete seed keys (kept `admin.common.*`/`admin.nav.*` shared keys deliberately — dynamic usage).
+- **Locale fill**: `v3/scripts/fill_admin_ui_locales.py` batch-translates missing keys per locale via DeepSeek (`--locale`, `--batch`, idempotent). Filled zh (+608 → aligned to 1,967 after stale prune), then ms/ta/tr to full 1,967 keys each.
+- Weekly `review_translations.py` cron only covers the `menu` namespace; admin-ui UI strings are covered by the fill script on demand.
+- Content namespaces (menu/allergens/dietary/reward/voucher/event/bundle/campaign) are fully translated from the DeepSeek work in previous rounds.
+
 ### Class sessions with capacity (2026-07-22)
 
 Experience items (EX-*) now have dated, seat-limited sessions — booking consumes seats, cancellation restores them:
