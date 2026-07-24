@@ -40,6 +40,8 @@ KEY_RE = re.compile(r"^[a-z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_-]+)+$")
 
 def humanize(key: str) -> str:
     tail = key.split(".")[-1].replace("-", " ").replace("_", " ").strip()
+    # split camelCase humps: "addLog" -> "add Log"
+    tail = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", tail)
     return tail[:1].upper() + tail[1:] if tail else key
 
 
