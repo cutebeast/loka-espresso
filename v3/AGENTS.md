@@ -344,6 +344,14 @@ The translations admin page (`/translations`, tabs PWA/Staff/Admin) showed big g
 - Weekly `review_translations.py` cron only covers the `menu` namespace; admin-ui UI strings are covered by the fill script on demand.
 - Content namespaces (menu/allergens/dietary/reward/voucher/event/bundle/campaign) are fully translated from the DeepSeek work in previous rounds.
 
+### Auto-translation for ALL content + schedule (2026-07-22, second pass)
+
+Root cause found in audit: only API-created content auto-translated (admin endpoints call `auto_translate_record`) — **SQL-seeded content (stores, loyalty tiers, promo banners, vouchers, bundles) never got translations**, and `bundle_products` wasn't even in `TRANSLATABLE_ENTITIES` (its API hook was a silent no-op).
+
+- **Fixed**: `bundle_products` added to `TRANSLATABLE_ENTITIES` (title, description) + `TABLE_TO_NAMESPACE` (`bundle`). Also fixed a latent cache bug: identical texts across fields/records crashed the `translation_cache` insert on its unique hash (now deduped).
+- **`backend/scripts/translate_missing_content.py`**: iterates ALL translatable tables, auto-translates every record's texts into all 4 locales (cache-cheap on re-runs — only new/changed text hits the API), and purges translation rows pointing at deleted records. First full run wrote 2,508 translations (stores, tiers, banners, bundles, help articles, surveys…).
+- **Schedule**: cron **daily 04:23** (`crontab -l`): `... translate_missing_content.py --yes --force-prod >> logs/translate_missing_cron.log 2>&1`. Any content seeded or created later is translated within 24h. Weekly `review_translations.py` (Sun 03:17) still quality-reviews the `menu` namespace.
+
 ### Class sessions with capacity (2026-07-22)
 
 Experience items (EX-*) now have dated, seat-limited sessions — booking consumes seats, cancellation restores them:

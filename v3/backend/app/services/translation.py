@@ -213,6 +213,7 @@ TRANSLATABLE_ENTITIES: dict[str, list[str]] = {
     "marketing_campaigns": ["campaign_name", "body_content"],
     "notification_templates": ["title", "body"],
     "admin_notifications": ["title", "body"],
+    "bundle_products": ["title", "description"],
 }
 
 # Map DB table names to UI namespace (used in admin Translations page filter)
@@ -231,6 +232,7 @@ TABLE_TO_NAMESPACE = {
     "help_articles": "help",
     "survey_definitions": "survey",
     "marketing_campaigns": "campaign",
+    "bundle_products": "bundle",
 }
 
 
@@ -335,7 +337,13 @@ async def auto_translate_record(
                 count += 1
 
             # Persist new cache entries in the same transaction.
+            # Dedupe by hash — identical texts across fields/records would
+            # otherwise violate the cache's unique hash constraint.
+            seen_hashes: set[str] = set()
             for _, loc, text, cache_hash in missing_meta:
+                if cache_hash in seen_hashes:
+                    continue
+                seen_hashes.add(cache_hash)
                 translated = cache_map[cache_hash]
                 db.add(TranslationCache(
                     source_text=text,
