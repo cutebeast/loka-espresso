@@ -62,14 +62,14 @@ STORES = [
 
 # (day_of_week, open_time, close_time, last_order_time, is_24_hours)
 OPERATING_HOURS = {
-    1: [  # Loka Espresso Pavilion — closes 10pm daily
-        (0, "08:00", "22:00", "21:30", False),
-        (1, "08:00", "22:00", "21:30", False),
-        (2, "08:00", "22:00", "21:30", False),
-        (3, "08:00", "22:00", "21:30", False),
-        (4, "08:00", "22:00", "21:30", False),
-        (5, "08:00", "23:00", "22:30", False),
-        (6, "08:00", "22:00", "21:30", False),
+    1: [  # Loka Espresso Pavilion — 10:00 AM – 10:00 PM daily (per brand brief)
+        (0, "10:00", "22:00", "21:30", False),
+        (1, "10:00", "22:00", "21:30", False),
+        (2, "10:00", "22:00", "21:30", False),
+        (3, "10:00", "22:00", "21:30", False),
+        (4, "10:00", "22:00", "21:30", False),
+        (5, "10:00", "22:00", "21:30", False),
+        (6, "10:00", "22:00", "21:30", False),
     ],
     2: [  # Loka Loka Cafe KLIA — 24 hours
         (0, "00:00", "23:59", "23:30", True),
