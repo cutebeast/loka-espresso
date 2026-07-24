@@ -488,6 +488,169 @@ async def seed():
             )
         print(f"  Upserted {len(EVENT_CARDS)} event card(s)")
 
+        # System pages (legal content served on the PWA #legal page)
+        SYSTEM_PAGES = [
+            {
+                "page_key": "terms",
+                "title": "Terms & Conditions",
+                "body_text": """Welcome to Loka Espresso. By using our app and services, you agree to these terms.
+
+1. General
+Loka Espresso ("we", "us") operates this mobile application and loyalty programme for our cafés. By creating an account, you confirm the information you provide is accurate.
+
+2. Loyalty Programme
+- Membership is free. Tiers (Bloom, Origin, Reserve) are awarded based on eligible spending within a rolling 12-month period and reviewed every 12 months.
+- Points are earned on eligible purchases only and may exclude gift cards, vouchers and selected promotions.
+- Points can be redeemed for rewards listed in the app's Rewards Marketplace while stocks last.
+- Birthday rewards are available once per calendar year and are non-transferable.
+- Unless otherwise stated, member promotions cannot be combined with other discounts or vouchers.
+- We may amend tier benefits, qualifying spend and programme terms with prior notice.
+
+3. Orders & Payment
+- Prices are in Ringgit Malaysia (RM) and may change without notice. Unless stated otherwise, prices exclude taxes.
+- Orders placed through the app are subject to acceptance and availability. Class/workshop bookings are subject to session capacity.
+- Refunds are handled per store policy; contact the store for assistance.
+
+4. Wallet
+- Wallet credit is non-refundable, non-transferable and not redeemable for cash.
+
+5. Acceptable Use
+- Do not misuse the app, attempt fraud, or interfere with our systems. Accounts involved in abuse may be suspended.
+
+6. Liability
+- The app is provided "as is". To the extent permitted by law, we are not liable for indirect losses arising from its use.
+
+7. Contact
+Loka Espresso, Pavilion Kuala Lumpur. Reach us via the Help & Support section in the app.""",
+            },
+            {
+                "page_key": "privacy",
+                "title": "Privacy Policy",
+                "body_text": """Your privacy matters to us. This policy explains what Loka Espresso collects and why.
+
+1. What We Collect
+- Account details: name, phone number, email (if provided), date of birth (for birthday rewards).
+- Order and transaction history, loyalty activity, wallet transactions.
+- Device information and push-notification tokens.
+- Approximate location (only when you grant permission, for store services).
+
+2. How We Use It
+- To operate your account, orders, reservations, class bookings, wallet and loyalty rewards.
+- To send service messages (order updates) and, with your consent, marketing communications.
+- To improve our menu, stores and app experience.
+
+3. Sharing
+- We do not sell your personal data. It is shared only with service providers that operate our platform (payment, messaging, hosting) under confidentiality obligations.
+
+4. Retention & Security
+- Data is kept only as long as needed for the purposes above and protected with industry-standard safeguards.
+
+5. Your Rights
+- You may access, correct or request deletion of your personal data, and opt out of marketing at any time via the app settings or Help & Support.
+
+6. Contact
+For privacy questions, contact us via the Help & Support section in the app.""",
+            },
+        ]
+        for page in SYSTEM_PAGES:
+            await db.execute(
+                text("""
+                    INSERT INTO system_pages (page_key, title, body_text, is_active)
+                    VALUES (:page_key, :title, :body, true)
+                    ON CONFLICT (page_key) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        body_text = EXCLUDED.body_text,
+                        is_active = true
+                """),
+                {"page_key": page["page_key"], "title": page["title"], "body": page["body_text"]},
+            )
+        print(f"  Upserted {len(SYSTEM_PAGES)} system page(s)")
+
+        # PWA splash screen (no unique constraint on screen_name — lookup-then-write)
+        existing = await db.execute(
+            text("SELECT id FROM splash_screens WHERE screen_name = 'welcome-splash' AND deleted_at IS NULL")
+        )
+        splash_id = existing.scalar_one_or_none()
+        if splash_id:
+            await db.execute(
+                text("""
+                    UPDATE splash_screens SET title = 'Welcome to Loka Espresso',
+                        subtitle = 'Specialty coffee, Turkish flavours, and rewards in every cup.',
+                        image_url = '/uploads/images/menu/cafe-specialty-coffee/kahve-i-turk.jpg',
+                        is_active = true, deleted_at = NULL
+                    WHERE id = :id
+                """),
+                {"id": splash_id},
+            )
+        else:
+            await db.execute(
+                text("""
+                    INSERT INTO splash_screens (screen_name, title, subtitle, image_url, show_frequency, dismissible, is_active)
+                    VALUES ('welcome-splash', 'Welcome to Loka Espresso', 'Specialty coffee, Turkish flavours, and rewards in every cup.', '/uploads/images/menu/cafe-specialty-coffee/kahve-i-turk.jpg', 'once_per_session', true, true)
+                """),
+            )
+        print("  Upserted 1 splash screen")
+
+        # Information cards
+        INFO_CARDS = [
+            {
+                "title": "Our Story",
+                "short_description": "Specialty coffee meets Turkish hospitality — right here in Kuala Lumpur.",
+                "long_description": "Loka Espresso began with a simple idea: great coffee brings people together. From our signature espresso to Turkish sand brews, pide, meze and baklava, everything we serve is crafted with care — and everything is halal. Join our loyalty family and let every cup count.",
+                "position": 1,
+            },
+            {
+                "title": "100% Halal, Always",
+                "short_description": "Every item on our menu is halal — no compromises.",
+                "long_description": "From chicken sausage to chicken bacon bits, every ingredient is sourced and prepared to halal standards. If you have allergies or dietary needs, tell our staff — we are happy to help.",
+                "position": 2,
+            },
+        ]
+        for card in INFO_CARDS:
+            existing = await db.execute(
+                text("SELECT id FROM information_cards WHERE title = :title"),
+                {"title": card["title"]},
+            )
+            if existing.scalar_one_or_none():
+                await db.execute(
+                    text("UPDATE information_cards SET short_description = :short, long_description = :long, is_active = true, position = :position WHERE title = :title"),
+                    {"short": card["short_description"], "long": card["long_description"], "position": card["position"], "title": card["title"]},
+                )
+            else:
+                await db.execute(
+                    text("""
+                        INSERT INTO information_cards (title, short_description, long_description, is_active, position)
+                        VALUES (:title, :short, :long, true, :position)
+                    """),
+                    {"title": card["title"], "short": card["short_description"], "long": card["long_description"], "position": card["position"]},
+                )
+        print(f"  Upserted {len(INFO_CARDS)} information card(s)")
+
+        # Product cards (featured on the PWA home page)
+        PRODUCT_CARDS = [
+            {"slug": "kahve-i-turk", "title": "Kahve-i Türk", "short_description": "Our specialty Turkish brew — rich, smooth, unforgettable.", "image_url": "/uploads/images/menu/cafe-specialty-coffee/kahve-i-turk.jpg", "price": 24.00, "position": 1},
+            {"slug": "mother-earth", "title": "Mother Earth", "short_description": "The Loka signature layered specialty drink.", "image_url": "/uploads/images/menu/loka-specialty/mother-earth.jpg", "price": 26.00, "position": 2},
+            {"slug": "baklava-sets", "title": "Baklava Sets", "short_description": "Layered filo with pistachio or walnut — gift-ready boxes from RM 24.", "image_url": "/uploads/images/menu/baklava/pistachio-baklava.jpg", "price": 24.00, "position": 3},
+        ]
+        for card in PRODUCT_CARDS:
+            await db.execute(
+                text("""
+                    INSERT INTO product_cards (slug, title, short_description, image_url, price, action_url, action_label, is_active, position)
+                    VALUES (:slug, :title, :short, :img, :price, '#menu', 'Order Now', true, :position)
+                    ON CONFLICT (slug) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        short_description = EXCLUDED.short_description,
+                        image_url = EXCLUDED.image_url,
+                        price = EXCLUDED.price,
+                        action_url = EXCLUDED.action_url,
+                        action_label = EXCLUDED.action_label,
+                        is_active = true,
+                        position = EXCLUDED.position
+                """),
+                {"slug": card["slug"], "title": card["title"], "short": card["short_description"], "img": card["image_url"], "price": card["price"], "position": card["position"]},
+            )
+        print(f"  Upserted {len(PRODUCT_CARDS)} product card(s)")
+
 
 async def main():
     parser = argparse.ArgumentParser(description="Seed content/marketing data")
