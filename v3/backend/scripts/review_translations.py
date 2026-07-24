@@ -160,6 +160,8 @@ async def main():
     parser.add_argument("--batch", type=int, default=BATCH_DEFAULT, help="Rows per DeepSeek call")
     parser.add_argument("--model", default=None, help="Override review model (default: deepseek_fallback_model config = deepseek-v4-pro)")
     parser.add_argument("--limit", type=int, default=0, help="Only review the first N rows (testing)")
+    parser.add_argument("--include-manual", action="store_true", help="Also review rows with is_auto_translated=false (manual/legacy translations)")
+    parser.add_argument("--locale", default=None, choices=["ms", "zh", "ta", "tr"], help="Only review one locale")
     args = parser.parse_args()
 
     guard_production(args.force_prod)
@@ -181,11 +183,13 @@ async def main():
         await _get_translation_creds(db)  # prime creds cache
         model = args.model or (await _get_translation_creds(db)).get("deepseek_fallback_model", "deepseek-v4-pro")
 
+        where_clauses = [Translation.namespace == args.namespace]
+        if not args.include_manual:
+            where_clauses.append(Translation.is_auto_translated.is_(True))
+        if args.locale:
+            where_clauses.append(Translation.locale == args.locale)
         result = await db.execute(
-            select(Translation).where(
-                Translation.namespace == args.namespace,
-                Translation.is_auto_translated.is_(True),
-            ).order_by(Translation.locale, Translation.id)
+            select(Translation).where(*where_clauses).order_by(Translation.locale, Translation.id)
         )
         rows_all = result.scalars().all()
         if args.limit:
