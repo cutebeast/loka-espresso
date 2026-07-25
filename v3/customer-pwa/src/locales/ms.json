@@ -1144,5 +1144,16 @@
     "noRedirect": "Tidak dapat memulakan pembayaran. Sila cuba lagi.",
     "noProvider": "Pembayaran dalam talian tidak tersedia. Sila bayar di kaunter.",
     "browseMenu": "Lihat Menu Kami"
+  },
+  "workshops": {
+    "addedToCart": "Ditambah ke troli",
+    "book": "Tempah Sekarang",
+    "checkBackSoon": "Semak semula untuk kelas baharu",
+    "full": "Penuh",
+    "loadFailed": "Gagal memuatkan bengkel",
+    "noSessions": "Tiada sesi akan datang",
+    "noWorkshops": "Tiada bengkel tersedia",
+    "seatsLeft": "{count} tempat duduk tinggal",
+    "title": "Bengkel & Kelas"
   }
 }

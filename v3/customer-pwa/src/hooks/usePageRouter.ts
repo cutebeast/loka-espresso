@@ -8,13 +8,13 @@ import type { PageId } from '@/lib/api';
 const VALID_PAGES: PageId[] = [
   'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
   'wallet', 'history', 'promotions', 'information', 'my-rewards',
-  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'guest-pay', 'referral', 'reservations', 'events', 'checkin', 'lucky-draw', 'kiosk',
+  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'guest-pay', 'referral', 'reservations', 'events', 'workshops', 'checkin', 'lucky-draw', 'kiosk',
 ];
 
 export const SUB_PAGES: PageId[] = [
   'cart', 'checkout', 'order-detail', 'guest-pay', 'wallet', 'history',
   'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'referral', 'checkin', 'lucky-draw',
+  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'workshops', 'referral', 'checkin', 'lucky-draw',
 ];
 
 // 'checkin' requires auth upfront (nav triggers the sign-in modal);

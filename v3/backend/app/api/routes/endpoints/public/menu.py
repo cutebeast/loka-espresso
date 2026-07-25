@@ -490,6 +490,100 @@ async def get_item_sessions(item_id: int, db: DBDependency):
     return APIResponse(data=sessions)
 
 
+@router.get("/workshops", response_model=APIResponse[list[dict]])
+async def list_workshops(db: DBDependency, locale: OptionalLocale):
+    """Workshop/class catalog for dedicated booking layouts (PWA workshops page).
+
+    One call returns every available experience-category item with its
+    variants (pax packages), minimum tier, and upcoming sessions with
+    remaining seats — everything a class-booking UI needs, without walking
+    the generic menu tree. Content is localized like the menu endpoint.
+    """
+    from app.models.class_session import ClassSession
+
+    cat_result = await db.execute(
+        select(MenuCategory).where(MenuCategory.slug == "experiences")
+    )
+    exp_cat = cat_result.scalar_one_or_none()
+    if exp_cat is None:
+        return APIResponse(data=[])
+
+    item_result = await db.execute(
+        select(MenuItem)
+        .where(
+            MenuItem.category_id == exp_cat.id,
+            MenuItem.is_available.is_(True),
+            MenuItem.deleted_at.is_(None),
+        )
+        .order_by(MenuItem.display_order, MenuItem.id)
+    )
+    items = item_result.scalars().all()
+    item_ids = [i.id for i in items]
+
+    variants_result = await db.execute(
+        select(MenuVariant).where(
+            MenuVariant.parent_item_id.in_(item_ids),
+            MenuVariant.is_available.is_(True),
+        )
+    ) if item_ids else None
+    variants_map: dict[int, list] = {}
+    if variants_result is not None:
+        for v in variants_result.scalars().all():
+            variants_map.setdefault(v.parent_item_id, []).append(v)
+
+    today = datetime.now(timezone.utc).date()
+    sessions_result = await db.execute(
+        select(ClassSession)
+        .where(
+            ClassSession.menu_item_id.in_(item_ids),
+            ClassSession.is_active.is_(True),
+            ClassSession.session_date >= today,
+        )
+        .order_by(ClassSession.session_date, ClassSession.start_time)
+    ) if item_ids else None
+    sessions_map: dict[int, list] = {}
+    if sessions_result is not None:
+        for s in sessions_result.scalars().all():
+            sessions_map.setdefault(s.menu_item_id, []).append({
+                "id": s.id,
+                "session_date": s.session_date.isoformat(),
+                "start_time": s.start_time.strftime("%H:%M"),
+                "capacity": s.capacity,
+                "booked_pax": s.booked_pax,
+                "remaining": s.capacity - s.booked_pax,
+                "location": s.location,
+            })
+
+    data = []
+    for item in items:
+        variants = [
+            {
+                "id": v.id,
+                "variant_name": v.variant_name,
+                "price_adjustment": str(v.price_adjustment or 0),
+            }
+            for v in variants_map.get(item.id, [])
+        ]
+        item_sessions = sessions_map.get(item.id, [])
+        data.append({
+            "id": item.id,
+            "item_code": item.item_code,
+            "item_name": item.item_name,
+            "description": item.description,
+            "long_description": item.long_description,
+            "image_url": item.image_url,
+            "base_price": str(item.base_price),
+            "minimum_tier_id": item.minimum_tier_id,
+            "variants": variants,
+            "sessions": item_sessions,
+            "total_remaining": sum(s["remaining"] for s in item_sessions),
+        })
+
+    from app.services.translation import merge_translations
+    await merge_translations(db, data, "menu_items", locale)
+    return APIResponse(data=data)
+
+
 @router.get("/bundle-products", response_model=APIResponse[list[dict]])
 async def list_bundle_products_public(
     db: DBDependency,

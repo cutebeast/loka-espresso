@@ -1144,5 +1144,16 @@
     "noRedirect": "Ödeme başlatılamadı. Lütfen tekrar deneyin.",
     "noProvider": "Çevrimiçi ödeme mevcut değil. Lütfen kasada ödeyin.",
     "browseMenu": "Menümüze Göz Atın"
+  },
+  "workshops": {
+    "addedToCart": "Sepete eklendi",
+    "book": "Şimdi Rezervasyon Yap",
+    "checkBackSoon": "Yeni dersler için daha sonra tekrar kontrol edin",
+    "full": "Dolu",
+    "loadFailed": "Atölyeler yüklenemedi",
+    "noSessions": "Yaklaşan oturum yok",
+    "noWorkshops": "Kullanılabilir atölye yok",
+    "seatsLeft": "{count} koltuk kaldı",
+    "title": "Atölyeler ve Dersler"
   }
 }

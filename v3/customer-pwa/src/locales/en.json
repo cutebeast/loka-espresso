@@ -1144,5 +1144,16 @@
     "noRedirect": "Could not start payment. Please try again.",
     "noProvider": "Online payment is not available. Please pay at the counter.",
     "browseMenu": "Browse Our Menu"
+  },
+  "workshops": {
+    "title": "Workshops & Classes",
+    "loadFailed": "Failed to load workshops",
+    "noWorkshops": "No workshops available",
+    "checkBackSoon": "Check back soon for new classes",
+    "noSessions": "No upcoming sessions",
+    "book": "Book Now",
+    "full": "Full",
+    "seatsLeft": "{count} seats left",
+    "addedToCart": "Added to cart"
   }
 }

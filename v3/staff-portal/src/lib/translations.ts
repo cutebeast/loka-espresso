@@ -750,6 +750,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "error.something_went_wrong_try_again": "Something went wrong. Please try again.",
   "error.unexpected_error_go_back": "An unexpected error occurred. Please go back and try again.",
   "pos.workshop_customer_required": "Customer phone number required for workshop bookings",
+  "pos.customer_required_for_workshop": "Customer phone number required for workshop booking",
   "pos.select_session": "Select session",
   "pos.no_sessions": "No upcoming sessions",
   "pos.session_full": "Full",

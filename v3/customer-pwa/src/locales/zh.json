@@ -1144,5 +1144,16 @@
     "noRedirect": "无法启动支付。请重试。",
     "noProvider": "在线支付不可用。请到柜台付款。",
     "browseMenu": "浏览我们的菜单"
+  },
+  "workshops": {
+    "addedToCart": "已加入购物车",
+    "book": "立即预订",
+    "checkBackSoon": "敬请期待新课程",
+    "full": "已满",
+    "loadFailed": "加载工作坊失败",
+    "noSessions": "暂无即将开始的场次",
+    "noWorkshops": "暂无工作坊",
+    "seatsLeft": "剩余{count}个座位",
+    "title": "工作坊与课程"
   }
 }

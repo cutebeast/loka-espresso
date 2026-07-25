@@ -69,3 +69,26 @@ async def test_content_products_endpoint(client: httpx.AsyncClient, base_url: st
     """GET /content/products returns product cards."""
     r = await client.get(f"{base_url}/content/products", params={"limit": 5})
     assert r.status_code == 200, f"Products failed: {r.text}"
+
+
+@pytest.mark.public
+@pytest.mark.asyncio
+async def test_workshops_endpoint(client: httpx.AsyncClient, base_url: str):
+    """GET /menu/workshops returns the class catalog for booking layouts:
+    variants (pax packages) + upcoming sessions with remaining seats."""
+    r = await client.get(f"{base_url}/menu/workshops")
+    assert r.status_code == 200, f"Workshops failed: {r.text}"
+    data = r.json().get("data", [])
+    assert len(data) >= 1, "expected seeded workshop items"
+    for w in data:
+        assert w["item_code"].startswith("EX-")
+        assert "base_price" in w and "variants" in w and "sessions" in w
+        assert isinstance(w["total_remaining"], int)
+        for s in w["sessions"]:
+            assert s["remaining"] == s["capacity"] - s["booked_pax"]
+    # localized content
+    r = await client.get(f"{base_url}/menu/workshops", params={"locale": "ms"})
+    assert r.status_code == 200
+    ms_names = [w["item_name"] for w in r.json()["data"]]
+    en_names = [w["item_name"] for w in data]
+    assert any(a != b for a, b in zip(ms_names, en_names)), "locale=ms should localize names"

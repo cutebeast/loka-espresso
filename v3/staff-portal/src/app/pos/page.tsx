@@ -229,11 +229,18 @@ function PosPageContent() {
         }}>{t("pos.currency_symbol")}{pos.total.toFixed(2)}</span>}
         </div>
 
-        {/* Customer Search */}
+        {/* Customer Search — highlighted when a workshop line needs an identified customer */}
+        {(() => {
+          const workshopNeedsCustomer = pos.cart.some(c => c.class_session_id != null) && !pos.selectedCustomer;
+          return <>
         <div style={{
         display: "flex",
         gap: 6,
-        marginBottom: 8
+        marginBottom: workshopNeedsCustomer ? 2 : 8,
+        padding: workshopNeedsCustomer ? 6 : 0,
+        borderRadius: workshopNeedsCustomer ? 8 : 0,
+        outline: workshopNeedsCustomer ? "2px solid var(--color-warning, #D97706)" : "none",
+        background: workshopNeedsCustomer ? "var(--color-warning-light, #FEF3C7)" : "transparent"
       }}>
           <div style={{
           flex: 1,
@@ -375,6 +382,9 @@ function PosPageContent() {
             <UserPlus size={14} />{t("pos.add_new_customer_by_phone")}
           </button>}
         </div>}
+        {workshopNeedsCustomer && <p style={{ fontSize: 11, color: "var(--color-warning, #8A7030)", margin: "0 0 8px 8px" }}>{t("pos.customer_required_for_workshop")}</p>}
+        </>;
+        })()}
 
         {/* Table Picker */}
         {pos.orderType === "dine_in" && <div style={{
@@ -868,6 +878,6 @@ function PosPageContent() {
 
       <BundlePickerModal open={pos.pickerBundle !== null} bundle={pos.pickerBundle} menuItems={pos.items} onClose={() => pos.setPickerBundle(null)} onAdd={pos.handleBundlePickerAdd} />
 
-      <PosSessionDrawer item={pos.sessionItem} onSelect={pos.confirmSession} onCancel={() => pos.setSessionItem(null)} />
+      <PosSessionDrawer item={pos.sessionItem} customerAttached={pos.selectedCustomer != null} onSelect={pos.confirmSession} onCancel={() => pos.setSessionItem(null)} />
     </div>;
 }

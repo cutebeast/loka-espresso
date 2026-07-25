@@ -12,7 +12,7 @@ import { storeReferralCode } from '@/lib/referral';
 import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
-  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'guest-pay', 'lucky-draw',
+  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'workshops', 'guest-pay', 'lucky-draw',
 ];
 
 function isPublicPage(page: PageId): boolean {

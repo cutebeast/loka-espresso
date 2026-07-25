@@ -8,13 +8,14 @@ import { Calendar, MapPin, Users } from "lucide-react";
 
 interface PosSessionDrawerProps {
   item: MenuItem | null;
+  customerAttached: boolean;
   onSelect: (item: MenuItem, session: { id: number; label: string }) => void;
   onCancel: () => void;
 }
 
 /** Session picker for workshop/class items — staff must pick a session
  * before the item enters the cart (capacity is tracked per session). */
-export default function PosSessionDrawer({ item, onSelect, onCancel }: PosSessionDrawerProps) {
+export default function PosSessionDrawer({ item, customerAttached, onSelect, onCancel }: PosSessionDrawerProps) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,6 +40,15 @@ export default function PosSessionDrawer({ item, onSelect, onCancel }: PosSessio
   return (
     <Drawer open={!!item} onClose={onCancel} title={item.item_name} position="bottom">
       <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{t("pos.select_session")}</h4>
+      {!customerAttached && (
+        <p style={{
+          fontSize: 12, padding: "8px 10px", marginBottom: 10,
+          background: "var(--color-warning-light, #FEF3C7)", color: "var(--color-warning, #8A7030)",
+          borderRadius: "var(--radius-sm)",
+        }}>
+          {t("pos.customer_required_for_workshop")}
+        </p>
+      )}
       {error && <p style={{ color: "var(--color-error)", fontSize: 13 }}>{error}</p>}
       {loading ? (
         <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>{t("common.loading")}</p>
