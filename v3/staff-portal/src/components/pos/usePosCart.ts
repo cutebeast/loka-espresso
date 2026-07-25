@@ -33,7 +33,7 @@ export function usePosCart(crewName: string) {
     const modPrice = allModIds.reduce((sum, modId) => {
       for (const g of item.modifier_groups || []) {
         const m = g.options.find((x) => x.id === modId);
-        if (m) return sum + m.price_adjustment;
+        if (m) return sum + Number(m.price_adjustment || 0);
       }
       return sum;
     }, 0);

@@ -52,12 +52,12 @@ export default function PosSuccessScreen({
       opacity: 0.7,
       margin: "4px 0 0"
     }}>
-        {mode === "checkout" ? `${paymentMethod === "stripe_qr" ? "QR" : t(`pos.${paymentMethod}_label`)}` : t("pos.kitchen_notified")}{t("pos.total_rm")}{(result.total ?? total).toFixed(2)}
+        {mode === "checkout" ? `${paymentMethod === "stripe_qr" ? "QR" : t(`pos.${paymentMethod}_label`)} ` : `${t("pos.kitchen_notified")} `}{t("pos.total_rm")}{Number(result.total ?? total ?? 0).toFixed(2)}
       </p>
       {change > 0 && <p style={{
       fontSize: 13,
       opacity: 0.7
-    }}>{t("pos.change_rm")}{change.toFixed(2)}</p>}
+    }}>{t("pos.change_rm")}{Number(change ?? 0).toFixed(2)}</p>}
 
       <div style={{
       display: "flex",

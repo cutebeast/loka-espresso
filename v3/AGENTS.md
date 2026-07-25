@@ -546,3 +546,9 @@ Full sweep beyond the category seal, per "make sure you don't miss it out from b
 - **POS phone UX** (owner feedback "many issue on using customer phone"): guide early instead of erroring at the end — session drawer shows a yellow "customer phone required" hint when no customer attached; the customer search box gets an amber outline + helper text whenever a workshop line sits in the cart without a customer. The hard guards stay (400s, checkout block) — these are just affordances.
 - **Caught earlier**: `getMenuItems(perPage=100)` truncated the POS menu; default now 500.
 - E2E: `test_workshops_endpoint` (shape, remaining math, ms localization). Sweep 26 passed.
+
+### POS health check + Decimal-string crash sweep (2026-07-25)
+Full counter-flow audit (owner rules: phone OPTIONAL for F&B, REQUIRED for workshops):
+- **Verified working (API + UI)**: walk-in F&B orders (no customer → system Walk-in +0000000000), cash with change (RM 50 tendered → change RM 10), order embedded payment, dine-in table guard ("Please assign a table"), mixed food+workshop rules (400 without customer, 201 with customer+session, seats tracked), wallet-payment graceful failure ("Customer has no wallet"), modifier drawer (Extra Shot RM 4.00 etc.), kitchen send → success screen.
+- **Bug family fixed**: backend serializes money Decimals as STRINGS ("40.00") but POS code called `.toFixed()` / summed them raw → crashes `*.toFixed is not a function` and string-concat prices. Sites fixed: `PosModifierDrawer` (option price + modifier sum), `usePosCart` (modifier sum), `PosSuccessScreen` (total + change, plus missing space "Kitchen notifiedTotal RM"), `PosQrPaymentScreen` (total). Rule: **always `Number(...)` API money before `.toFixed()`/math** — JS only auto-coerces strings in `-`, `*`, `/`, never in `.toFixed()` or `+`.
+- E2E sweep 22 passed; test orders/customers/sessions cleaned (residue 0).

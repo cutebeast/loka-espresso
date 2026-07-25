@@ -125,7 +125,7 @@ export default function PosQrPaymentScreen({
       fontSize: 28,
       fontWeight: 700,
       marginBottom: 24
-    }}>{t("pos.currency_symbol")}{total.toFixed(2)}</div>
+    }}>{t("pos.currency_symbol")}{Number(total ?? 0).toFixed(2)}</div>
 
       <div style={{
       width: 280,

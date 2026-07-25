@@ -28,7 +28,7 @@ export default function PosModifierDrawer({
   const modPrice = Object.values(selectedModifiers).flat().reduce((sum, modId) => {
     for (const g of item.modifier_groups || []) {
       const m = g.options.find(x => x.id === modId);
-      if (m) return sum + m.price_adjustment;
+      if (m) return sum + Number(m.price_adjustment || 0);
     }
     return sum;
   }, 0);
@@ -60,7 +60,7 @@ export default function PosModifierDrawer({
             justifyContent: "space-between"
           }} onClick={() => onToggleModifier(group.id, mod.id, group.selection_type || "single", group.max_selections || 1)}>
                   <span>{mod.option_name}</span>
-                  {mod.price_adjustment > 0 && <span>{t("pos.currency_symbol")}{mod.price_adjustment.toFixed(2)}</span>}
+                  {Number(mod.price_adjustment || 0) > 0 && <span>{t("pos.currency_symbol")}{Number(mod.price_adjustment || 0).toFixed(2)}</span>}
                 </button>;
         })}
           </div>
