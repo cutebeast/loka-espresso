@@ -45,92 +45,97 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")
 
-    # Create a voucher definition with a unique code
-    now = datetime.now(timezone.utc)
-    voucher_code = f"E2E{uuid.uuid4().hex[:8].upper()}"
-    vd = await client.post(f"{base_url}/admin/vouchers", headers=admin_headers, json={
-        "voucher_type": "fixed_amount_off",
-        "display_title": "E2E Test Voucher",
-        "discount_value": 5.00,
-        "minimum_order_value": 10.00,
-        "is_active": True,
-        "voucher_code": voucher_code,
-        "scope": "global",
-        "valid_from": now.isoformat(),
-        "valid_until": (now + timedelta(days=7)).isoformat(),
-    })
     vd_id = None
-    if vd.status_code in (200, 201):
-        vd_data = vd.json().get("data", {})
-        voucher_code = vd_data.get("voucher_code", voucher_code)
-        vd_id = vd_data.get("id")
-    else:
-        pytest.skip(f"Cannot create voucher: {vd.status_code} {vd.text}")
+    try:
+        # Create a voucher definition with a unique code
+        now = datetime.now(timezone.utc)
+        voucher_code = f"E2E{uuid.uuid4().hex[:8].upper()}"
+        vd = await client.post(f"{base_url}/admin/vouchers", headers=admin_headers, json={
+            "voucher_type": "fixed_amount_off",
+            "display_title": "E2E Test Voucher",
+            "discount_value": 5.00,
+            "minimum_order_value": 10.00,
+            "is_active": True,
+            "voucher_code": voucher_code,
+            "scope": "global",
+            "valid_from": now.isoformat(),
+            "valid_until": (now + timedelta(days=7)).isoformat(),
+        })
+        vd_id = None
+        if vd.status_code in (200, 201):
+            vd_data = vd.json().get("data", {})
+            voucher_code = vd_data.get("voucher_code", voucher_code)
+            vd_id = vd_data.get("id")
+        else:
+            pytest.skip(f"Cannot create voucher: {vd.status_code} {vd.text}")
 
-    # Assign voucher to customer via award-voucher endpoint
-    me = await client.get(f"{base_url}/me", headers={"Authorization": f"Bearer {token}"})
-    if me.status_code == 200:
-        cust_id = me.json().get("data", {}).get("profile", {}).get("id")
-        if not cust_id:
-            pytest.skip("Cannot determine customer ID from /me response")
-        cleanup_registry["customers"].append({"id": cust_id})
-        r_assign = await client.post(
-            f"{base_url}/admin/customers/{cust_id}/award-voucher",
-            headers=admin_headers,
-            json={"voucher_id": vd_id or 1, "reason": "E2E test assignment"},
-        )
-    else:
-        r_assign = httpx.Response(400)
-    if r_assign.status_code >= 400:
-        pytest.skip(f"Cannot assign voucher to customer: {r_assign.status_code} {r_assign.text}")
+        # Assign voucher to customer via award-voucher endpoint
+        me = await client.get(f"{base_url}/me", headers={"Authorization": f"Bearer {token}"})
+        if me.status_code == 200:
+            cust_id = me.json().get("data", {}).get("profile", {}).get("id")
+            if not cust_id:
+                pytest.skip("Cannot determine customer ID from /me response")
+            cleanup_registry["customers"].append({"id": cust_id})
+            r_assign = await client.post(
+                f"{base_url}/admin/customers/{cust_id}/award-voucher",
+                headers=admin_headers,
+                json={"voucher_id": vd_id or 1, "reason": "E2E test assignment"},
+            )
+        else:
+            r_assign = httpx.Response(400)
+        if r_assign.status_code >= 400:
+            pytest.skip(f"Cannot assign voucher to customer: {r_assign.status_code} {r_assign.text}")
 
-    # Get customer's vouchers to find the assigned code
-    r_vc = await client.get(f"{base_url}/vouchers/me", headers={
-        "Authorization": f"Bearer {token}",
-    })
-    voucher_list = r_vc.json().get("data", [])
-    if isinstance(voucher_list, dict):
-        voucher_list = voucher_list.get("items", [])
+        # Get customer's vouchers to find the assigned code
+        r_vc = await client.get(f"{base_url}/vouchers/me", headers={
+            "Authorization": f"Bearer {token}",
+        })
+        voucher_list = r_vc.json().get("data", [])
+        if isinstance(voucher_list, dict):
+            voucher_list = voucher_list.get("items", [])
 
-    assigned_code = None
-    for v in voucher_list:
-        if v.get("voucher_code"):
-            assigned_code = v["voucher_code"]
-            break
+        assigned_code = None
+        for v in voucher_list:
+            if v.get("voucher_code"):
+                assigned_code = v["voucher_code"]
+                break
 
-    if not assigned_code:
-        pytest.skip("No active vouchers found for customer")
+        if not assigned_code:
+            pytest.skip("No active vouchers found for customer")
 
-    # Add item to cart
-    r_items = await client.get(f"{base_url}/menu/items", params={"limit": 1})
-    items_data = r_items.json().get("data", {}).get("items", [])
-    if not items_data:
-        pytest.skip("No menu items available")
-    menu_item_id = items_data[0]["id"]
+        # Add item to cart
+        r_items = await client.get(f"{base_url}/menu/items", params={"limit": 1})
+        items_data = r_items.json().get("data", {}).get("items", [])
+        if not items_data:
+            pytest.skip("No menu items available")
+        menu_item_id = items_data[0]["id"]
 
-    r_cart = await client.post(f"{base_url}/cart/items?store_id={store_id}", headers={
-        "Authorization": f"Bearer {token}",
-    }, json={"menu_item_id": menu_item_id, "quantity": 2})
-    assert r_cart.status_code == 200, f"Add to cart failed: {r_cart.text}"
+        r_cart = await client.post(f"{base_url}/cart/items?store_id={store_id}", headers={
+            "Authorization": f"Bearer {token}",
+        }, json={"menu_item_id": menu_item_id, "quantity": 2})
+        assert r_cart.status_code == 200, f"Add to cart failed: {r_cart.text}"
 
-    # Place order with voucher
-    r_order = await client.post(f"{base_url}/orders", headers={
-        "Authorization": f"Bearer {token}",
-    }, json={
-        "store_id": store_id,
-        "order_type": "dine_in",
-        "fulfillment_type": "dine_in_service",
-        "payment_method": "cash",
-        "voucher_code": assigned_code,
-    })
+        # Place order with voucher
+        r_order = await client.post(f"{base_url}/orders", headers={
+            "Authorization": f"Bearer {token}",
+        }, json={
+            "store_id": store_id,
+            "order_type": "dine_in",
+            "fulfillment_type": "dine_in_service",
+            "payment_method": "cash",
+            "voucher_code": assigned_code,
+        })
 
-    assert r_order.status_code in (200, 201), f"Order with voucher failed: {r_order.text}"
-    order_data = r_order.json().get("data", r_order.json())
-    # Voucher discount should be > 0 for a freshly assigned voucher.
-    voucher_discount = order_data.get("voucher_discount", 0)
-    discount_amount = order_data.get("discount_amount", 0)
-    print(f"voucher_discount={voucher_discount}, discount_amount={discount_amount}")
-    assert voucher_discount > 0 or discount_amount > 0, "Voucher was applied but produced no discount"
+        assert r_order.status_code in (200, 201), f"Order with voucher failed: {r_order.text}"
+        order_data = r_order.json().get("data", r_order.json())
+        # Voucher discount should be > 0 for a freshly assigned voucher.
+        voucher_discount = order_data.get("voucher_discount", 0)
+        discount_amount = order_data.get("discount_amount", 0)
+        print(f"voucher_discount={voucher_discount}, discount_amount={discount_amount}")
+        assert voucher_discount > 0 or discount_amount > 0, "Voucher was applied but produced no discount"
+    finally:
+        if vd_id:
+            await client.delete(f"{base_url}/admin/vouchers/{vd_id}", headers=admin_headers)
 
 
 @pytest.mark.customer

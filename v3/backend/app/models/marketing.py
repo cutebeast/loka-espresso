@@ -67,7 +67,11 @@ class MarketingCampaign(Base, TimestampMixin):
     )
 
     analytics: Mapped["CampaignAnalytics | None"] = relationship(
-        "CampaignAnalytics", back_populates="campaign", uselist=False
+        "CampaignAnalytics", back_populates="campaign", uselist=False,
+        # DB FK is ON DELETE CASCADE — let the database handle it instead of
+        # the ORM NULL-ing campaign_id first (which violates NOT NULL).
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     __table_args__ = (

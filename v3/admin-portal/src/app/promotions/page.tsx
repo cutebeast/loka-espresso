@@ -14,6 +14,7 @@ interface Banner {
   start_date?: string;
   end_date?: string;
   is_active: boolean;
+  image_url?: string;
 }
 const ACTION_TYPES = [{
   value: "read_claim",
@@ -91,12 +92,15 @@ export default function PromotionsPage() {
           }} onClick={() => router.push(`/promotions/${b.id}`)} style={{
             cursor: "pointer"
           }}>
-                <td><div style={{
+                <td><div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {b.image_url ? <img src={b.image_url} alt="" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: "var(--radius-sm)", flexShrink: 0, display: "block" }} /> : <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--color-bg-muted)", flexShrink: 0 }} />}
+                  <div><div style={{
                 fontWeight: 600
               }}>{b.title}</div>{b.short_description && <div style={{
                 fontSize: 12,
                 color: "var(--color-text-muted)"
-              }}>{b.short_description.slice(0, 60)}</div>}</td>
+              }}>{b.short_description.slice(0, 60)}</div>}</div>
+                </div></td>
                 <td>{actionBadge(b.action_type || "")}</td>
                 <td style={{
               fontSize: 12
@@ -104,7 +108,12 @@ export default function PromotionsPage() {
                 <td style={{
               fontSize: 12
             }}>{b.start_date ? b.start_date.slice(0, 10) : "—"} {b.end_date ? `→ ${b.end_date.slice(0, 10)}` : ""}</td>
-                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
+                <td onClick={e => e.stopPropagation()}>{(() => {
+                  const expired = !!b.end_date && new Date(b.end_date) < new Date();
+                  return expired
+                    ? <span className="badge badge-sm badge-red">{t("promotions.expired")}</span>
+                    : <span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span>;
+                })()}</td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{
                 display: "flex",

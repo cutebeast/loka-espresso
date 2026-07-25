@@ -38,6 +38,8 @@ async def test_marketing_campaign_lifecycle(client: httpx.AsyncClient, admin_hea
     assert r.status_code == 200
     assert any(a["campaign_id"] == campaign_id for a in r.json()["data"]["items"])
 
-    # NOTE: campaign deletion is omitted because the current endpoint fails to
-    # cascade-disassociate analytics rows. The uniquely-keyed campaign is left
-    # in place; it does not affect subsequent test runs.
+    # Delete — cascades the analytics row (DB ON DELETE CASCADE + passive_deletes)
+    r = await client.delete(f"{base_url}/admin/marketing/campaigns/{campaign_id}", headers=admin_headers)
+    assert r.status_code == 200, f"Campaign delete failed: {r.text}"
+    r = await client.get(f"{base_url}/admin/marketing/analytics", headers=admin_headers)
+    assert not any(a["campaign_id"] == campaign_id for a in r.json()["data"]["items"])
