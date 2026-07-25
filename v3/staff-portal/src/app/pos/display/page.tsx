@@ -193,7 +193,7 @@ export default function CustomerDisplayPage() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  const fmt = useCallback((amt: number) => `${t("pos.currency_symbol")}${amt.toFixed(2)}`, [t]);
+  const fmt = useCallback((amt: number | string) => `${t("pos.currency_symbol")}${Number(amt ?? 0).toFixed(2)}`, [t]);
 
   // ── IDLE / WELCOME ──
   if (state.phase === "idle" || (state.phase === "browsing" && state.cart.length === 0)) {

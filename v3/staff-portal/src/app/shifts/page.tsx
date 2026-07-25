@@ -40,7 +40,7 @@ function statusBadge(status: string, t: (key: string) => string) {
     color: "white",
     background: map[status] || "#6B7280"
   }}>
-      {t(`staff.status.${status.replace(/-/g, "_")}`)}
+      {t(`staff.status.${(status || "scheduled").replace(/-/g, "_")}`)}
     </span>;
 }
 export default function ShiftsPage() {
