@@ -3,7 +3,7 @@ import { RoleGuard, canUsePOS } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCallback, useRef, useEffect, useState } from "react";
-import { Search, QrCode, Plus, Minus, Trash2, Pause, Wallet, User, Send, ImageOff, LayoutGrid, Monitor } from "lucide-react";
+import { Search, QrCode, Plus, Minus, Trash2, Pause, Wallet, User, UserPlus, Send, ImageOff, LayoutGrid, Monitor } from "lucide-react";
 import Alert from "@/components/Alert";
 import SkeletonCard from "@/components/SkeletonCard";
 import EmptyState from "@/components/EmptyState";
@@ -11,13 +11,14 @@ import PosSuccessScreen from "@/components/pos/PosSuccessScreen";
 import PosQrPaymentScreen from "@/components/pos/PosQrPaymentScreen";
 import PosCheckoutPanel from "@/components/pos/PosCheckoutPanel";
 import PosModifierDrawer from "@/components/pos/PosModifierDrawer";
+import PosSessionDrawer from "@/components/pos/PosSessionDrawer";
 import PosQrScannerModal from "@/components/pos/PosQrScannerModal";
 import PosHeldOrdersDrawer from "@/components/pos/PosHeldOrdersDrawer";
 import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
-import { api } from "@/lib/api";
+import { api, findOrCreateCustomer } from "@/lib/api";
 export default function PosPage() {
   return <RoleGuard allowed={canUsePOS}>
     <PosPageContent />
@@ -30,6 +31,9 @@ function PosPageContent() {
   const pos = usePosState();
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddName, setQuickAddName] = useState("");
+  const [quickAddBusy, setQuickAddBusy] = useState(false);
   const [storeConfig, setStoreConfig] = useState<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number; display_key?: string } | null>(null);
 
   // Load store config for customer display branding and fees
@@ -346,6 +350,32 @@ function PosPageContent() {
               </button>)}
           </div>}
 
+        {/* Quick add — new customer by phone (workshop bookings need an identified customer) */}
+        {pos.searchQ.trim().length >= 3 && !pos.selectedCustomer && <div style={{
+        display: "flex",
+        gap: 6,
+        marginBottom: 8,
+        alignItems: "center"
+      }}>
+          {quickAddOpen ? <>
+            <input className="form-input" style={{ flex: 1 }} placeholder={t("pos.customer_name")} value={quickAddName} onChange={e => setQuickAddName(e.target.value)} />
+            <button className="btn btn-primary btn-sm" disabled={quickAddBusy || !quickAddName.trim()} onClick={async () => {
+              setQuickAddBusy(true);
+              try {
+                const c = await findOrCreateCustomer(pos.searchQ.trim(), quickAddName.trim());
+                pos.handleCustomerSelect(c);
+                pos.setSearchQ("");
+                pos.setSearchResults([]);
+                setQuickAddName("");
+                setQuickAddOpen(false);
+              } catch (e: unknown) { pos.setError((e as Error).message); } finally { setQuickAddBusy(false); }
+            }}>{quickAddBusy ? "…" : t("pos.create_customer")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setQuickAddOpen(false)}>{t("common.back")}</button>
+          </> : <button className="btn btn-ghost btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setQuickAddOpen(true)}>
+            <UserPlus size={14} />{t("pos.add_new_customer_by_phone")}
+          </button>}
+        </div>}
+
         {/* Table Picker */}
         {pos.orderType === "dine_in" && <div style={{
         display: "flex",
@@ -488,7 +518,7 @@ function PosPageContent() {
               }}>{t("pos.currency_symbol")}{Number(bp.bundle_price ?? 0).toFixed(2)}</div>
                   </div>
                 </button>)}
-            {pos.filteredItems.map(item => <button key={item.id} onClick={() => pos.handleItemClick(item)} className="card" style={{
+            {pos.filteredItems.map(item => <button key={item.id} onClick={() => pos.expCatId != null && item.category_id === pos.expCatId ? pos.openSessionPicker(item) : pos.handleItemClick(item)} className="card" style={{
             padding: 0,
             textAlign: "left",
             cursor: "pointer",
@@ -697,7 +727,7 @@ function PosPageContent() {
                   <button className="btn btn-ghost btn-icon" style={{
               width: 36,
               height: 36
-            }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, -1, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined)} aria-label={t("pos.decrease_quantity")}><Minus size={16} /></button>
+            }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, -1, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined, c.class_session_id ?? undefined)} aria-label={t("pos.decrease_quantity")}><Minus size={16} /></button>
                   <span style={{
               minWidth: 28,
               textAlign: "center",
@@ -707,7 +737,7 @@ function PosPageContent() {
                   <button className="btn btn-ghost btn-icon" style={{
               width: 36,
               height: 36
-            }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, 1, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined)} aria-label={t("pos.increase_quantity")}><Plus size={16} /></button>
+            }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, 1, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined, c.class_session_id ?? undefined)} aria-label={t("pos.increase_quantity")}><Plus size={16} /></button>
                 </div>
                 <span style={{
             minWidth: 70,
@@ -719,7 +749,7 @@ function PosPageContent() {
             color: "var(--color-error)",
             width: 32,
             height: 32
-          }} onClick={() => pos.removeFromCart(c.menu_item_id, c.modifier_ids, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined)} aria-label={t("pos.remove_item")}><Trash2 size={16} /></button>
+          }} onClick={() => pos.removeFromCart(c.menu_item_id, c.modifier_ids, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined, c.class_session_id ?? undefined)} aria-label={t("pos.remove_item")}><Trash2 size={16} /></button>
               </div>;
         return <>
                 {standalone.map(c => renderCartItem(c, false))}
@@ -747,7 +777,7 @@ function PosPageContent() {
                   color: "var(--color-error)",
                   width: 28,
                   height: 28
-                }} onClick={() => items.forEach(c => pos.removeFromCart(c.menu_item_id, c.modifier_ids, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined))} aria-label={t("pos.remove_combo")}><Trash2 size={14} /></button>
+                }} onClick={() => items.forEach(c => pos.removeFromCart(c.menu_item_id, c.modifier_ids, c.bundle_product_id ?? undefined, c.bundle_component_id ?? undefined, c.class_session_id ?? undefined))} aria-label={t("pos.remove_combo")}><Trash2 size={14} /></button>
                       </div>
                       {items.map(c => renderCartItem(c, true))}
                       <div style={{
@@ -837,5 +867,7 @@ function PosPageContent() {
       <PosUnpaidOrdersDrawer open={pos.showUnpaid} orders={pos.unpaidOrders} loading={pos.unpaidLoading} onClose={() => pos.setShowUnpaid(false)} />
 
       <BundlePickerModal open={pos.pickerBundle !== null} bundle={pos.pickerBundle} menuItems={pos.items} onClose={() => pos.setPickerBundle(null)} onAdd={pos.handleBundlePickerAdd} />
+
+      <PosSessionDrawer item={pos.sessionItem} onSelect={pos.confirmSession} onCancel={() => pos.setSessionItem(null)} />
     </div>;
 }

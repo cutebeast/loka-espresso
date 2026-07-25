@@ -20,6 +20,7 @@ export function usePosCart(crewName: string) {
   const [selectedModifiers, setSelectedModifiers] = useState<Record<number, number[]>>({});
   const [modifierQty, setModifierQty] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [sessionItem, setSessionItem] = useState<MenuItem | null>(null);
   const [tableId, setTableId] = useState<number | null>(null);
   const [orderType, setOrderType] = useState<string>("dine_in");
   const [orderNotes, setOrderNotes] = useState("");
@@ -27,7 +28,7 @@ export function usePosCart(crewName: string) {
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeld, setShowHeld] = useState(false);
 
-  const addToCart = useCallback((item: MenuItem, modifiers: Record<number, number[]> = {}, modifierLabel = "", qty = 1, bundleProductId?: number, bundleComponentId?: number) => {
+  const addToCart = useCallback((item: MenuItem, modifiers: Record<number, number[]> = {}, modifierLabel = "", qty = 1, bundleProductId?: number, bundleComponentId?: number, session?: { id: number; label: string }) => {
     const allModIds = Object.values(modifiers).flat();
     const modPrice = allModIds.reduce((sum, modId) => {
       for (const g of item.modifier_groups || []) {
@@ -38,11 +39,13 @@ export function usePosCart(crewName: string) {
     }, 0);
 
     const modifierIds = Object.values(modifiers).flat().sort((a, b) => a - b);
+    const sessionId = session?.id;
     setCart((prev) => {
       const existing = prev.find(
         (c) => c.menu_item_id === item.id &&
         (c.bundle_product_id ?? undefined) === (bundleProductId ?? undefined) &&
         (c.bundle_component_id ?? undefined) === (bundleComponentId ?? undefined) &&
+        (c.class_session_id ?? undefined) === (sessionId ?? undefined) &&
         [...c.modifier_ids].sort((a, b) => a - b).join(',') === modifierIds.join(',')
       );
       if (existing) {
@@ -50,6 +53,7 @@ export function usePosCart(crewName: string) {
           c.menu_item_id === item.id &&
           (c.bundle_product_id ?? undefined) === (bundleProductId ?? undefined) &&
           (c.bundle_component_id ?? undefined) === (bundleComponentId ?? undefined) &&
+          (c.class_session_id ?? undefined) === (sessionId ?? undefined) &&
           [...c.modifier_ids].sort((a, b) => a - b).join(',') === modifierIds.join(',')
             ? { ...c, qty: c.qty + qty, bundle_product_id: bundleProductId ?? c.bundle_product_id, bundle_component_id: bundleComponentId ?? c.bundle_component_id }
             : c
@@ -57,16 +61,26 @@ export function usePosCart(crewName: string) {
       }
       return [...prev, {
         menu_item_id: item.id,
-        name: item.item_name,
+        name: session?.label ? `${item.item_name} · ${session.label}` : item.item_name,
         qty,
         price: item.base_price + modPrice,
         modifier_ids: modifierIds,
         modifiers_label: modifierLabel,
         bundle_product_id: bundleProductId,
         bundle_component_id: bundleComponentId,
+        class_session_id: session?.id,
+        class_session_label: session?.label,
       }];
     });
   }, []);
+
+  // Workshops/classes: staff must pick a session before the item enters the cart
+  const openSessionPicker = useCallback((item: MenuItem) => { setSessionItem(item); }, []);
+  const confirmSession = useCallback((item: MenuItem, session: { id: number; label: string }) => {
+    addToCart(item, {}, "", 1, undefined, undefined, session);
+    setSessionItem(null);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
+  }, [addToCart]);
 
   const handleItemClick = useCallback((item: MenuItem) => {
     if (!item.is_available) return;
@@ -94,25 +108,27 @@ export function usePosCart(crewName: string) {
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
   }, [modifierItem, selectedModifiers, modifierQty, addToCart]);
 
-  const removeFromCart = useCallback((menu_item_id: number, modifier_ids: number[], bundleProductId?: number, bundleComponentId?: number) => {
+  const removeFromCart = useCallback((menu_item_id: number, modifier_ids: number[], bundleProductId?: number, bundleComponentId?: number, classSessionId?: number) => {
     const sorted = [...modifier_ids].sort((a, b) => a - b);
     setCart((prev) => prev.filter(
       (c) => !(
         c.menu_item_id === menu_item_id &&
         (c.bundle_product_id ?? undefined) === (bundleProductId ?? undefined) &&
         (c.bundle_component_id ?? undefined) === (bundleComponentId ?? undefined) &&
+        (c.class_session_id ?? undefined) === (classSessionId ?? undefined) &&
         [...c.modifier_ids].sort((a, b) => a - b).join(',') === sorted.join(',')
       )
     ));
   }, []);
 
-  const updateQty = useCallback((menu_item_id: number, modifier_ids: number[], delta: number, bundleProductId?: number, bundleComponentId?: number) => {
+  const updateQty = useCallback((menu_item_id: number, modifier_ids: number[], delta: number, bundleProductId?: number, bundleComponentId?: number, classSessionId?: number) => {
     const sorted = [...modifier_ids].sort((a, b) => a - b);
     setCart((prev) => prev.map((c) => {
       if (
         c.menu_item_id !== menu_item_id ||
         (c.bundle_product_id ?? undefined) !== (bundleProductId ?? undefined) ||
         (c.bundle_component_id ?? undefined) !== (bundleComponentId ?? undefined) ||
+        (c.class_session_id ?? undefined) !== (classSessionId ?? undefined) ||
         [...c.modifier_ids].sort((a, b) => a - b).join(',') !== sorted.join(',')
       )
         return c;
@@ -232,5 +248,8 @@ export function usePosCart(crewName: string) {
     recallOrder,
     newOrder,
     subtotal,
+    sessionItem, setSessionItem,
+    openSessionPicker,
+    confirmSession,
   };
 }

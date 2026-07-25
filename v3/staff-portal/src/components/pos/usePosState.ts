@@ -80,6 +80,7 @@ export function usePosState() {
   const [tables, setTables] = useState<Table[]>([]);
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [activeCat, setActiveCat] = useState<number | null>(null);
+  const expCatId = categories.find((c) => c.slug === "experiences")?.id ?? null;
   const [menuSearch, setMenuSearch] = useState("");
   const [menuSearchInput, setMenuSearchInput] = useState("");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -408,6 +409,13 @@ export function usePosState() {
       return;
     }
 
+    // Workshop bookings need an identified customer (phone) — staff must
+    // attach one before sending the order through.
+    if (cartHook.cart.some((c) => c.class_session_id != null) && !cartHook.selectedCustomer) {
+      setError(t("pos.workshop_customer_required"));
+      return;
+    }
+
     isKitchenProcessingRef.current = true;
     setSaving(true);
     try {
@@ -426,6 +434,7 @@ export function usePosState() {
           special_instructions: c.modifiers_label || undefined,
           bundle_product_id: c.bundle_product_id || undefined,
           bundle_component_id: c.bundle_component_id || undefined,
+          class_session_id: c.class_session_id || undefined,
         })),
         order_notes: cartHook.orderNotes,
         is_byot: cartHook.isByot ?? false,
@@ -582,6 +591,7 @@ export function usePosState() {
     items, setItems,
     tables, setTables,
     activeCat, setActiveCat,
+    expCatId,
     bundleProducts, setBundleProducts,
     loading, setLoading,
     error, setError,
@@ -602,6 +612,10 @@ export function usePosState() {
     addToCart: cartHook.addToCart,
     handleItemClick: cartHook.handleItemClick,
     applyModifiers: cartHook.applyModifiers,
+    sessionItem: cartHook.sessionItem,
+    setSessionItem: cartHook.setSessionItem,
+    openSessionPicker: cartHook.openSessionPicker,
+    confirmSession: cartHook.confirmSession,
     removeFromCart: cartHook.removeFromCart,
     updateQty: cartHook.updateQty,
     subtotal: cartHook.subtotal,

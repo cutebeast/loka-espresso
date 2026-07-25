@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import uuid
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
@@ -632,6 +634,70 @@ async def staff_customer_search(staff: CurrentStaff, db: DBDependency, request: 
     return APIResponse(data={"items": items})
 
 
+class FindOrCreateCustomerRequest(BaseModel):
+    phone_number: str = Field(..., min_length=5, max_length=25)
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+
+@router.post("/staff/customers/find-or-create", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def staff_find_or_create_customer(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    data: FindOrCreateCustomerRequest,
+):
+    """POS walk-in lookup: find a customer by phone or create a minimal profile.
+
+    Phone is the identity anchor (passwordless login). No OTP here — staff are
+    facing the customer in person; if the customer later signs up with the
+    same phone via OTP, they take over this very profile, so workshop bookings
+    and loyalty history stay attached to the phone.
+
+    Accepts Malaysian formats (012…, 012-345 6001, 6012…, +6012…).
+    """
+    digits = re.sub(r"\D", "", data.phone_number or "")
+    if digits.startswith("60"):
+        phone = f"+{digits}"
+    elif digits.startswith("0"):
+        phone = f"+6{digits}"
+    elif digits:
+        phone = f"+{digits}"
+    else:
+        phone = ""
+    if not re.fullmatch(r"^\+[0-9]{7,20}$", phone):
+        raise HTTPException(status_code=400, detail="Invalid phone number — use a Malaysian mobile (e.g. 0123456789)")
+
+    result = await db.execute(
+        select(Customer).where(Customer.phone_number == phone)
+    )
+    cust = result.scalar_one_or_none()
+    created = False
+    revived = False
+    name = data.display_name.strip()
+    if cust is None:
+        cust = Customer(phone_number=phone, display_name=name, is_active=True)
+        db.add(cust)
+        await db.flush()
+        created = True
+    elif cust.deleted_at is not None:
+        # Previously archived profile — customer is physically here, restore it
+        cust.deleted_at = None
+        cust.is_active = True
+        cust.display_name = name
+        revived = True
+    elif name and (not cust.display_name or cust.display_name in ("Walk-in", cust.phone_number)):
+        # Upgrade placeholder names with the one staff collected
+        cust.display_name = name
+    await db.commit()
+    return APIResponse(data={
+        "id": cust.id,
+        "display_name": cust.display_name or name,
+        "phone_number": cust.phone_number,
+        "loyalty_tier": "Standard",
+        "created": created,
+        "revived": revived,
+    })
+
+
 # ── Staff Store Config (POS display) ──
 
 @router.get("/staff/store")
@@ -870,6 +936,33 @@ async def staff_pos_create_order(
     if not line_items_data:
         raise HTTPException(status_code=400, detail="At least one line item required")
 
+    # Workshops/classes (experiences category) at POS: every workshop line
+    # needs a session AND a real customer attached (phone is the identity
+    # anchor) — the anonymous walk-in profile can't hold class bookings.
+    exp_cat_r = await db.execute(select(MenuCategory.id).where(MenuCategory.slug == "experiences"))
+    exp_cat_id = exp_cat_r.scalar_one_or_none()
+    workshop_item_ids: set[int] = set()
+    if exp_cat_id is not None:
+        li_ids = {li.menu_item_id for li in line_items_data}
+        wr = await db.execute(
+            select(MenuItem.id).where(MenuItem.id.in_(li_ids), MenuItem.category_id == exp_cat_id)
+        )
+        workshop_item_ids = set(wr.scalars().all())
+    has_workshop = bool(workshop_item_ids)
+
+    if has_workshop:
+        if not customer_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer phone number is required for workshop bookings — attach a customer first",
+            )
+        for li in line_items_data:
+            if li.menu_item_id in workshop_item_ids and not li.class_session_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Please select a session for the workshop item",
+                )
+
     # Validate customer if provided
     if customer_id:
         cust_r = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_active.is_(True), Customer.deleted_at.is_(None)))
@@ -937,7 +1030,23 @@ async def staff_pos_create_order(
             special_instructions=special,
             bundle_product_id=li.bundle_product_id,
             bundle_component_id=li.bundle_component_id,
+            class_session_id=li.class_session_id,
         ))
+
+    # Consume workshop session seats (locked; whole order fails when full)
+    if has_workshop:
+        from app.services.class_sessions import ClassSessionError, consume_session_seats
+        for li in line_items_data:
+            if li.menu_item_id in workshop_item_ids and li.class_session_id:
+                try:
+                    await consume_session_seats(
+                        db,
+                        menu_item_id=li.menu_item_id,
+                        class_session_id=li.class_session_id,
+                        quantity=max(1, li.quantity),
+                    )
+                except ClassSessionError as e:
+                    raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     # Compute fees from store config
     config_r = await db.execute(
@@ -1800,13 +1909,11 @@ async def staff_list_menu_categories(
 ):
     """List menu categories for the staff member's store.
 
-    Excludes the experiences category: workshops/classes are session-booked on
-    the customer PWA, never sold at POS (POS has no session picker and would
-    bypass capacity tracking)."""
+    Includes the experiences category: workshops are sellable at POS, but the
+    order endpoint enforces a session + attached customer for them."""
     result = await db.execute(
         select(MenuCategory)
         .where(MenuCategory.deleted_at.is_(None))
-        .where(MenuCategory.slug != "experiences")
         .order_by(MenuCategory.display_order)
         .limit(per_page)
     )
@@ -1821,15 +1928,10 @@ async def staff_list_menu_items(
     per_page: int = Query(500, ge=1, le=1000),
     category_id: int | None = Query(None),
 ):
-    """List menu items for the staff member's store (full POS shape).
-
-    Excludes workshop/class items (experiences category) — session-booked on
-    the customer PWA only."""
+    """List menu items for the staff member's store (full POS shape)."""
     stmt = (
         select(MenuItem)
-        .outerjoin(MenuCategory, MenuItem.category_id == MenuCategory.id)
         .where(MenuItem.deleted_at.is_(None), MenuItem.is_available.is_(True))
-        .where((MenuCategory.slug.is_(None)) | (MenuCategory.slug != "experiences"))
         .order_by(MenuItem.category_id, MenuItem.display_order)
         .limit(per_page)
     )

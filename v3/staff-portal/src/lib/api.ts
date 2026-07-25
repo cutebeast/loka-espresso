@@ -529,6 +529,7 @@ export interface Category {
   id: number;
   category_name: string;
   category_type?: string;
+  slug?: string;
 }
 
 export interface CartItem {
@@ -540,6 +541,27 @@ export interface CartItem {
   modifiers_label: string;
   bundle_product_id?: number;
   bundle_component_id?: number;
+  class_session_id?: number;
+  class_session_label?: string;
+}
+
+export interface ClassSession {
+  id: number;
+  menu_item_id: number;
+  session_date: string;
+  start_time: string;
+  capacity: number;
+  booked_pax: number;
+  remaining: number;
+  location: string | null;
+}
+
+export function getClassSessions(itemId: number) {
+  return api.get<ClassSession[]>(`/menu/items/${itemId}/sessions`);
+}
+
+export function findOrCreateCustomer(phone_number: string, display_name: string) {
+  return api.post<Customer & { created?: boolean }>("/staff/customers/find-or-create", { phone_number, display_name });
 }
 
 export interface Customer {
@@ -747,7 +769,7 @@ export function completeMyTask(taskId: number) {
 /*  POS Helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-export function getMenuItems(perPage = 100) {
+export function getMenuItems(perPage = 500) {
   return api.get<MenuItem[]>(`/staff/menu/items?per_page=${perPage}`);
 }
 
@@ -807,7 +829,7 @@ export function createPosOrder(payload: {
   customer_id?: number | null;
   dining_table_id?: number | null;
   order_type: string;
-  line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; special_instructions?: string; bundle_product_id?: number; bundle_component_id?: number }>;
+  line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; special_instructions?: string; bundle_product_id?: number; bundle_component_id?: number; class_session_id?: number }>;
   order_notes?: string;
   is_byot?: boolean;
   idempotency_key?: string;

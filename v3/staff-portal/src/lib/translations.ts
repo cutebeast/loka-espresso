@@ -748,5 +748,13 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
 
   "error.unexpected_error": "An unexpected error occurred. Please try again.",
   "error.something_went_wrong_try_again": "Something went wrong. Please try again.",
-  "error.unexpected_error_go_back": "An unexpected error occurred. Please go back and try again."
+  "error.unexpected_error_go_back": "An unexpected error occurred. Please go back and try again.",
+  "pos.workshop_customer_required": "Customer phone number required for workshop bookings",
+  "pos.select_session": "Select session",
+  "pos.no_sessions": "No upcoming sessions",
+  "pos.session_full": "Full",
+  "pos.seats_left": "{count} seats left",
+  "pos.customer_name": "Customer name",
+  "pos.create_customer": "Add customer",
+  "pos.add_new_customer_by_phone": "New customer by phone"
 };

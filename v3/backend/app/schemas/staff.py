@@ -116,6 +116,7 @@ class POSLineItem(BaseSchema):
     modifier_ids: list[int] | None = None
     bundle_product_id: int | None = None
     bundle_component_id: int | None = None
+    class_session_id: int | None = None  # required for workshop/class items
 
 
 class POSPayment(BaseSchema):

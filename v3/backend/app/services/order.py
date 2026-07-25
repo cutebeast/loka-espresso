@@ -952,23 +952,16 @@ async def create_order_from_cart(
     for ci in cart_items:
         if not ci.class_session_id:
             continue
-        from app.models.class_session import ClassSession
-        sess_result = await db.execute(
-            select(ClassSession).where(ClassSession.id == ci.class_session_id).with_for_update()
-        )
-        sess = sess_result.scalar_one_or_none()
-        if sess is None or not sess.is_active:
-            raise OrderError("The selected class session is no longer available", 400)
-        if sess.menu_item_id != ci.menu_item_id:
-            raise OrderError("The selected class session does not match this class", 400)
-        if sess.session_date < datetime.now(timezone.utc).date():
-            raise OrderError("The selected class session has already passed", 400)
-        if sess.booked_pax + ci.quantity > sess.capacity:
-            remaining = sess.capacity - sess.booked_pax
-            raise OrderError(
-                f"Not enough seats left in this session ({remaining} of {sess.capacity} remaining)", 400
+        from app.services.class_sessions import ClassSessionError, consume_session_seats
+        try:
+            await consume_session_seats(
+                db,
+                menu_item_id=ci.menu_item_id,
+                class_session_id=ci.class_session_id,
+                quantity=ci.quantity,
             )
-        sess.booked_pax += ci.quantity
+        except ClassSessionError as e:
+            raise OrderError(e.detail, e.status_code)
 
     # Deduct recipe-based stock
     await _deduct_stock_for_order(db, order, cart_items)
