@@ -160,7 +160,9 @@ def _build_out(bp: BundleProduct) -> dict:
 
 
 async def _validate_bundle_component_items(db, components_data: list):
-    """Ensure every component points to an active, non-deleted menu item."""
+    """Ensure every component points to an active, non-deleted menu item —
+    and never to a workshop (experiences category): classes are booked per
+    session, not sold inside food bundles."""
     if not components_data:
         return
     menu_item_ids = {c["menu_item_id"] for c in components_data if isinstance(c, dict) and c.get("menu_item_id")}
@@ -170,21 +172,30 @@ async def _validate_bundle_component_items(db, components_data: list):
         return
 
     result = await db.execute(
-        select(MenuItem).where(MenuItem.id.in_(menu_item_ids))
+        select(MenuItem, MenuCategory.slug)
+        .outerjoin(MenuCategory, MenuItem.category_id == MenuCategory.id)
+        .where(MenuItem.id.in_(menu_item_ids))
     )
-    items = {item.id: item for item in result.scalars().all()}
+    items = {row[0].id: (row[0], row[1]) for row in result.all()}
     missing = []
     unavailable = []
+    workshop = []
     for mid in menu_item_ids:
-        item = items.get(mid)
-        if item is None:
+        entry = items.get(mid)
+        if entry is None:
             missing.append(mid)
-        elif not item.is_available or item.deleted_at is not None:
+            continue
+        item, cat_slug = entry
+        if not item.is_available or item.deleted_at is not None:
             unavailable.append(mid)
+        elif cat_slug == "experiences":
+            workshop.append(mid)
     if missing:
         raise HTTPException(status_code=400, detail=f"Menu items not found: {missing}")
     if unavailable:
         raise HTTPException(status_code=400, detail=f"Menu items unavailable or deleted: {unavailable}")
+    if workshop:
+        raise HTTPException(status_code=400, detail=f"Workshop items cannot be bundle components: {workshop}")
 
 
 async def _create_components(

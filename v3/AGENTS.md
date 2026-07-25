@@ -519,3 +519,14 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
   - **Dropdowns**: food items never see "Experiences & Workshops" in the category options (`/menu/items/[id]` and `/menu/items/new`); workshop items see only that option (locked). `?cat=experiences` on the new page remains the Add Class path.
   - **Backend**: `PATCH /admin/menu/items/{id}` now also 400s when moving a NON-experiences item INTO the category ("Only workshop items can use the Experiences category — create classes from Events & Classes → Workshops"), on top of the earlier out-direction guard. POST create into experiences stays allowed (Add Class flow).
 - Verified: all 3 backend paths via curl; dropdown option lists checked in-browser for food edit / workshop edit / plain new / ?cat=experiences.
+
+### Experiences leak audit — bundles / POS / kiosk / cart / order (2026-07-25)
+Full sweep beyond the category seal, per "make sure you don't miss it out from bundle etc":
+- **Bundles**: admin picker already filtered by `is_bundle_eligible` (all 3 workshops are `false` ✓, and the checkbox is now hidden on the workshop editor). Backend had NO check — `_validate_bundle_component_items` now 400s `Workshop items cannot be bundle components: [ids]` (joins category, after the existing exists/available checks). 102 existing components audited: zero linked to workshops.
+- **Cart** (`services/cart.py add_line_item`): 400 `"<name>" is a class — please select a session first` when adding an experiences item without `class_session_id` (PWA picker already enforced this in UI; this is the backend guarantee).
+- **Order creation** (`services/order.py`): same requirement enforced again before seat consumption (defense for any client that reaches checkout with a session-less workshop line). Seat consume (locked, capacity-checked) and release-on-cancel were already correct.
+- **Staff POS** (`/staff/menu/categories` + `/staff/menu/items`): experiences category EXCLUDED — POS has no session picker and would bypass capacity. Workshops are customer-self-booking on PWA only (a deliberate product decision; revisit if counter class-booking is needed — would need a POS session picker).
+- **Kiosk checkout**: 400 `"<name>" is a class — please book it on the mobile app` (kiosk has no session concept either).
+- **PWA public menu unchanged** — experiences category + workshops + future sessions still served (that's the intended booking path).
+- Verified live: bundle reject + normal bundle create OK; cart reject; POS menu 0 workshops / 22 cats; bundle e2e 18 passed; order flows 25 passed.
+- Pre-existing issue spotted (not fixed, low priority): invalid `bundle_type` (e.g. "fixed") passes the pydantic schema but violates `ck_bundle_products_bundle_type` → unhandled IntegrityError 500 instead of a clean 422. Valid: combo, value_meal, family_meal, breakfast_set, promotional, pick_x, multi_course.

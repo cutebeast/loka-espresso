@@ -124,6 +124,23 @@ async def create_kiosk_order(
     )
     menu_items_map = {mi.id: mi for mi in items_result.scalars().all()}
 
+    # Workshops/classes (experiences category) are session-booked on the PWA —
+    # the kiosk checkout has no session concept, so reject them outright.
+    if menu_items_map:
+        from app.models.menu import MenuCategory
+        exp_cat_result = await db.execute(
+            select(MenuCategory.id).where(MenuCategory.slug == "experiences")
+        )
+        exp_cat_id = exp_cat_result.scalar_one_or_none()
+        if exp_cat_id is not None:
+            for line in data.items:
+                mi = menu_items_map.get(line.menu_item_id)
+                if mi is not None and mi.category_id == exp_cat_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"“{mi.item_name}” is a class — please book it on the mobile app",
+                    )
+
     # Batch-load modifier options and variants for price calculation
     from app.models.menu import MenuModifierGroup, MenuModifierOption, MenuVariant
     all_modifier_option_ids = set()

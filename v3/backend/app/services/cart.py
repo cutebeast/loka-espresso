@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.money import to_decimal
 from app.models.bundle_product import BundleProduct, BundleProductComponent
 from app.models.cart import CartLineItem, CustomerCart
-from app.models.menu import MenuItem, MenuModifierOption, MenuVariant
+from app.models.menu import MenuCategory, MenuItem, MenuModifierOption, MenuVariant
 from app.schemas.cart import CartLineItemCreate, CartLineItemUpdate
 
 
@@ -185,6 +185,17 @@ async def add_line_item(
         raise CartError("Menu item not found", 404)
     if not item.is_available or item.deleted_at is not None:
         raise CartError("Menu item is not available", 400)
+
+    # Workshops/classes (experiences category) must be booked with a session —
+    # hard backend guarantee; the PWA picker already enforces this in the UI.
+    if not data.class_session_id and item.category_id is not None:
+        cat = (await db.execute(
+            select(MenuCategory).where(MenuCategory.id == item.category_id)
+        )).scalar_one_or_none()
+        if cat is not None and cat.slug == "experiences":
+            raise CartError(
+                f"“{item.item_name}” is a class — please select a session first", 400
+            )
 
     await _validate_bundle_cart_item(db, cart, data, data.quantity)
 

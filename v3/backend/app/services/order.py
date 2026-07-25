@@ -14,7 +14,7 @@ from app.core.money import money_round, to_decimal
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
-from app.models.menu import MenuItem, MenuItemRecipe, MenuVariant
+from app.models.menu import MenuCategory, MenuItem, MenuItemRecipe, MenuVariant
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
@@ -936,6 +936,19 @@ async def create_order_from_cart(
         db.add(oli)
 
     # Consume class session seats (locked; fails the whole order when full)
+    # First the hard guarantee: workshop items must carry a session — the PWA
+    # enforces this in the UI, this catches any other client.
+    exp_cat_result = await db.execute(
+        select(MenuCategory.id).where(MenuCategory.slug == "experiences")
+    )
+    exp_cat_id = exp_cat_result.scalar_one_or_none()
+    if exp_cat_id is not None:
+        for ci in cart_items:
+            item = items_map.get(ci.menu_item_id)
+            if item and item.category_id == exp_cat_id and not ci.class_session_id:
+                raise OrderError(
+                    f"“{item.item_name}” is a class — please select a session before checkout", 400
+                )
     for ci in cart_items:
         if not ci.class_session_id:
             continue

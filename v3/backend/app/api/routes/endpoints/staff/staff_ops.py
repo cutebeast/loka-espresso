@@ -1798,10 +1798,15 @@ async def staff_list_menu_categories(
     db: DBDependency,
     per_page: int = Query(100, ge=1, le=500),
 ):
-    """List menu categories for the staff member's store."""
+    """List menu categories for the staff member's store.
+
+    Excludes the experiences category: workshops/classes are session-booked on
+    the customer PWA, never sold at POS (POS has no session picker and would
+    bypass capacity tracking)."""
     result = await db.execute(
         select(MenuCategory)
         .where(MenuCategory.deleted_at.is_(None))
+        .where(MenuCategory.slug != "experiences")
         .order_by(MenuCategory.display_order)
         .limit(per_page)
     )
@@ -1816,10 +1821,15 @@ async def staff_list_menu_items(
     per_page: int = Query(500, ge=1, le=1000),
     category_id: int | None = Query(None),
 ):
-    """List menu items for the staff member's store (full POS shape)."""
+    """List menu items for the staff member's store (full POS shape).
+
+    Excludes workshop/class items (experiences category) — session-booked on
+    the customer PWA only."""
     stmt = (
         select(MenuItem)
+        .outerjoin(MenuCategory, MenuItem.category_id == MenuCategory.id)
         .where(MenuItem.deleted_at.is_(None), MenuItem.is_available.is_(True))
+        .where((MenuCategory.slug.is_(None)) | (MenuCategory.slug != "experiences"))
         .order_by(MenuItem.category_id, MenuItem.display_order)
         .limit(per_page)
     )
