@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/hooks/useCurrency";
-import { Edit2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Variant {
   id: number;
@@ -49,12 +49,16 @@ interface ClassSession {
 }
 
 const PAGE_SIZE = 10;
+const CLASS_PAGE_SIZE = 12;
 
 export default function ExperiencesPage() {
   const { t, locale } = useTranslation();
   const router = useRouter();
   const { format } = useCurrency();
   const [items, setItems] = useState<ExperienceItem[]>([]);
+  const [classesTotal, setClassesTotal] = useState(0);
+  const [classPage, setClassPage] = useState(1);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [sessions, setSessions] = useState<Record<number, ClassSession[]>>({});
   const [sessionForm, setSessionForm] = useState<Record<number, { date: string; time: string; capacity: string; location: string }>>({});
   const [sessionSaving, setSessionSaving] = useState<number | null>(null);
@@ -72,15 +76,17 @@ export default function ExperiencesPage() {
       const expCat = (cats.items || []).find(c => c.slug === "experiences");
       if (!expCat) {
         setItems([]);
+        setClassesTotal(0);
         setBookings([]);
         setBookingsTotal(0);
         return;
       }
       const [itemsRes, ordersRes] = await Promise.all([
-        api.getRaw<{ items: ExperienceItem[] }>(`/admin/menu/items?category_id=${expCat.id}&per_page=50`),
+        api.getRaw<{ items: ExperienceItem[]; total: number }>(`/admin/menu/items?category_id=${expCat.id}&per_page=${CLASS_PAGE_SIZE}&page=${classPage}`),
         api.getRaw<{ items: BookingOrder[]; total: number }>(`/admin/orders?category_slug=experiences&per_page=${PAGE_SIZE}&page=${page}`),
       ]);
       setItems(itemsRes.items || []);
+      setClassesTotal(itemsRes.total || 0);
       setBookings(ordersRes.items || []);
       setBookingsTotal(ordersRes.total || 0);
       // Load sessions per class
@@ -97,13 +103,14 @@ export default function ExperiencesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, t]);
+  }, [page, classPage, t]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(bookingsTotal / PAGE_SIZE));
+  const classTotalPages = Math.max(1, Math.ceil(classesTotal / CLASS_PAGE_SIZE));
 
   const formFor = (itemId: number) =>
     sessionForm[itemId] ?? { date: "", time: "10:00", capacity: "4", location: "" };
@@ -152,13 +159,52 @@ export default function ExperiencesPage() {
     }
   };
 
+  const renderSessionManager = (item: ExperienceItem) => (
+    <div>
+      {(sessions[item.id] || []).length === 0 && (
+        <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>{t("menu_experiences.no_sessions", "No sessions yet.")}</div>
+      )}
+      {(sessions[item.id] || []).map(s => {
+        const d = new Date(`${s.session_date}T${s.start_time}`);
+        const full = s.capacity - s.booked_pax <= 0;
+        return (
+          <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 12, padding: "3px 0", opacity: s.is_active ? 1 : 0.5, maxWidth: 560 }}>
+            <span>
+              {d.toLocaleDateString(locale, { month: "short", day: "numeric" })} {s.start_time.slice(0, 5)}
+              {s.location ? ` · ${s.location}` : ""}
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className={`badge ${full ? "badge-muted" : "badge-success"}`}>
+                {s.booked_pax}/{s.capacity}
+              </span>
+              <button className="btn btn-ghost btn-sm" style={{ padding: "1px 6px" }} onClick={() => toggleSession(s)}>
+                {s.is_active ? t("menu_experiences.deactivate", "Off") : t("menu_experiences.activate", "On")}
+              </button>
+              {s.booked_pax === 0 && (
+                <button className="btn btn-ghost btn-sm" style={{ padding: "1px 6px", color: "var(--color-danger)" }} onClick={() => deleteSession(s)}>×</button>
+              )}
+            </span>
+          </div>
+        );
+      })}
+      <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+        <input type="date" value={formFor(item.id).date} onChange={e => setFormFor(item.id, { date: e.target.value })} style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)" }} />
+        <input type="time" value={formFor(item.id).time} onChange={e => setFormFor(item.id, { time: e.target.value })} style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", width: 80 }} />
+        <input type="number" min={1} value={formFor(item.id).capacity} onChange={e => setFormFor(item.id, { capacity: e.target.value })} placeholder={t("menu_experiences.seats", "Seats")} style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", width: 60 }} />
+        <button className="btn btn-primary btn-sm" disabled={sessionSaving === item.id || !formFor(item.id).date} onClick={() => addSession(item.id)}>
+          {sessionSaving === item.id ? "..." : t("menu_experiences.add_session", "Add")}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ padding: 32 }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("menu_experiences.experiences_workshops", "Experiences & Workshops")}</h1>
           <p className="page-subtitle">
-            {items.length} {t("menu_experiences.classes", "classes")} · {bookingsTotal} {t("menu_experiences.bookings", "bookings")}
+            {classesTotal} {t("menu_experiences.classes", "classes")} · {bookingsTotal} {t("menu_experiences.bookings", "bookings")}
           </p>
         </div>
         <button onClick={() => router.push("/menu/items/new")} className="btn btn-primary btn-sm">
@@ -167,7 +213,7 @@ export default function ExperiencesPage() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
-      {/* Classes */}
+      {/* Classes — compact list with expandable session manager */}
       <div className="card" style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>{t("menu_experiences.classes", "Classes")}</h2>
         {loading ? (
@@ -175,87 +221,79 @@ export default function ExperiencesPage() {
         ) : items.length === 0 ? (
           <p style={{ color: "var(--color-text-muted)" }}>{t("menu_experiences.no_classes", "No classes yet.")}</p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-            {items.map(item => (
-              <div key={item.id} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.item_name} style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }} />
-                ) : (
-                  <div style={{ width: "100%", height: 140, background: "var(--color-bg-muted)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: 12 }}>—</div>
-                )}
-                <div style={{ padding: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{item.item_name}</div>
-                    <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" title={t("common.edit", "Edit")}>
-                      <Edit2 size={14} />
-                    </button>
-                  </div>
-                  <div className="font-mono" style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{item.item_code}</div>
-                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 6 }}>{item.description?.slice(0, 100)}{item.description && item.description.length > 100 ? "…" : ""}</div>
-                  <div style={{ marginTop: 8, fontSize: 13 }}>
-                    {(item.variants && item.variants.length > 0) ? (
-                      item.variants.map(v => (
-                        <div key={v.id} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-                          <span style={{ color: "var(--color-text-muted)" }}>{v.variant_name}</span>
-                          <span style={{ fontWeight: 600 }}>{format(Number(item.base_price) + Number(v.price_adjustment))}</span>
+          <>
+          <div className="table-container"><table className="data-table">
+            <thead><tr>
+              <th>{t("menu_experiences.class_col", "Class")}</th>
+              <th>{t("menu_experiences.price_col", "Price")}</th>
+              <th>{t("menu_experiences.status", "Status")}</th>
+              <th>{t("menu_experiences.sessions", "Sessions")}</th>
+              <th style={{ width: 150 }}>{t("menu_experiences.actions", "Actions")}</th>
+            </tr></thead>
+            <tbody>
+              {items.map(item => {
+                const sess = sessions[item.id] || [];
+                const upcoming = sess.filter(s => s.is_active).sort((a, b) => `${a.session_date}T${a.start_time}`.localeCompare(`${b.session_date}T${b.start_time}`))[0];
+                const prices = (item.variants && item.variants.length > 0)
+                  ? item.variants.map(v => Number(item.base_price) + Number(v.price_adjustment))
+                  : [Number(item.base_price)];
+                const minP = Math.min(...prices), maxP = Math.max(...prices);
+                const expanded = expandedId === item.id;
+                return (
+                  <Fragment key={item.id}>
+                    <tr>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {item.image_url ? (
+                            <img src={item.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                          ) : (
+                            <div style={{ width: 44, height: 44, borderRadius: 6, background: "var(--color-bg-muted)", flexShrink: 0 }} />
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{item.item_name}</div>
+                            <div className="font-mono" style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{item.item_code}</div>
+                          </div>
                         </div>
-                      ))
-                    ) : (
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "var(--color-text-muted)" }}>{t("menu_experiences.per_person", "per person")}</span>
-                        <span style={{ fontWeight: 600 }}>{format(item.base_price)}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ marginTop: 8 }}>
-                    <span className={`badge ${item.is_available ? "badge-success" : "badge-muted"}`}>
-                      {item.is_available ? t("menu_experiences.available", "Available") : t("menu_experiences.unavailable", "Unavailable")}
-                    </span>
-                  </div>
-
-                  {/* Sessions */}
-                  <div style={{ marginTop: 12, borderTop: "1px solid var(--color-border-light)", paddingTop: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{t("menu_experiences.sessions", "Sessions")}</div>
-                    {(sessions[item.id] || []).length === 0 && (
-                      <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>{t("menu_experiences.no_sessions", "No sessions yet.")}</div>
-                    )}
-                    {(sessions[item.id] || []).map(s => {
-                      const d = new Date(`${s.session_date}T${s.start_time}`);
-                      const full = s.capacity - s.booked_pax <= 0;
-                      return (
-                        <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 12, padding: "3px 0", opacity: s.is_active ? 1 : 0.5 }}>
-                          <span>
-                            {d.toLocaleDateString(locale, { month: "short", day: "numeric" })} {s.start_time.slice(0, 5)}
-                            {s.location ? ` · ${s.location}` : ""}
-                          </span>
-                          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span className={`badge ${full ? "badge-muted" : "badge-success"}`}>
-                              {s.booked_pax}/{s.capacity}
-                            </span>
-                            <button className="btn btn-ghost btn-sm" style={{ padding: "1px 6px" }} onClick={() => toggleSession(s)}>
-                              {s.is_active ? t("menu_experiences.deactivate", "Off") : t("menu_experiences.activate", "On")}
-                            </button>
-                            {s.booked_pax === 0 && (
-                              <button className="btn btn-ghost btn-sm" style={{ padding: "1px 6px", color: "var(--color-danger)" }} onClick={() => deleteSession(s)}>×</button>
-                            )}
-                          </span>
+                      </td>
+                      <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{minP === maxP ? format(minP) : `${format(minP)} – ${format(maxP)}`}</td>
+                      <td><span className={`badge ${item.is_available ? "badge-success" : "badge-muted"}`}>{item.is_available ? t("menu_experiences.available", "Available") : t("menu_experiences.unavailable", "Unavailable")}</span></td>
+                      <td style={{ fontSize: 12 }}>
+                        {upcoming ? (
+                          <span>{new Date(`${upcoming.session_date}T${upcoming.start_time}`).toLocaleDateString(locale, { month: "short", day: "numeric" })} {upcoming.start_time.slice(0, 5)} · <span className={`badge ${upcoming.capacity - upcoming.booked_pax <= 0 ? "badge-muted" : "badge-success"}`}>{upcoming.booked_pax}/{upcoming.capacity}</span>{sess.length > 1 ? ` +${sess.length - 1} ${t("menu_experiences.more", "more")}` : ""}</span>
+                        ) : <span style={{ color: "var(--color-text-muted)" }}>{t("menu_experiences.no_sessions", "No sessions yet.")}</span>}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setExpandedId(expanded ? null : item.id)} title={t("menu_experiences.sessions", "Sessions")}>
+                            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" title={t("common.edit", "Edit")} style={{ color: "var(--color-info)" }}>
+                            <Edit2 size={14} />
+                          </button>
                         </div>
-                      );
-                    })}
-                    {/* Add session */}
-                    <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-                      <input type="date" value={formFor(item.id).date} onChange={e => setFormFor(item.id, { date: e.target.value })} style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)" }} />
-                      <input type="time" value={formFor(item.id).time} onChange={e => setFormFor(item.id, { time: e.target.value })} style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", width: 80 }} />
-                      <input type="number" min={1} value={formFor(item.id).capacity} onChange={e => setFormFor(item.id, { capacity: e.target.value })} placeholder={t("menu_experiences.seats", "Seats")} style={{ fontSize: 12, padding: "3px 6px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", width: 60 }} />
-                      <button className="btn btn-primary btn-sm" disabled={sessionSaving === item.id || !formFor(item.id).date} onClick={() => addSession(item.id)}>
-                        {sessionSaving === item.id ? "..." : t("menu_experiences.add_session", "Add")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr>
+                        <td colSpan={5} style={{ background: "var(--color-bg-muted)", padding: "12px 16px" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{t("menu_experiences.sessions", "Sessions")}</div>
+                          {renderSessionManager(item)}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table></div>
+          {classTotalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+              <button className="btn btn-ghost btn-sm" disabled={classPage <= 1} onClick={() => setClassPage(p => p - 1)}><ChevronLeft size={14} /></button>
+              <span style={{ fontSize: 12, alignSelf: "center" }}>{classPage} / {classTotalPages}</span>
+              <button className="btn btn-ghost btn-sm" disabled={classPage >= classTotalPages} onClick={() => setClassPage(p => p + 1)}><ChevronRight size={14} /></button>
+            </div>
+          )}
+          </>
         )}
       </div>
 

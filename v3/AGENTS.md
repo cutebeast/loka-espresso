@@ -502,3 +502,7 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
 - **Admin UI**: the RSVP report Message modal has channel checkboxes (Inbox always-on; Push/SMS/WhatsApp optional) and shows per-channel stats after send — on dev, SMS/WA report "skipped (not configured)" because live Twilio creds aren't set there.
 - **Go-live note**: SMS/WhatsApp need live `integration.twilio_account_sid/auth_token/from_number/whatsapp_from` in platform_config (or the test toggle for Twilio test creds); push needs `VAPID_*` env (already on the domain-migration checklist).
 - **E2E**: `test_event_attendee_messaging` extended — channels array echoed, `channel_stats` covers all 3 extra channels, inbox unaffected. Content suite 17 passed.
+
+### Workshops page — list view + pagination (2026-07-25)
+- `/events/workshops` classes switched from card grid (tall cards, one sessions API call each, no pagination — silently truncated past 50) to a **compact table**: thumbnail+name+code, price (single or min–max variant range), availability, next-session summary (`date time · booked/capacity`, `+N more`), actions. Sessions management (add/toggle/delete) moved into an **expandable row** per class — same controls as before, one class expanded at a time.
+- **Pagination**: classes now paginate at 12/page (`classPage`, uses `total` from `/admin/menu/items`); bookings table was already paginated at 10/page. Subtitle uses `classesTotal` (was page-size-capped `items.length`).
