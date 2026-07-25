@@ -397,7 +397,14 @@ async def get_legal_page(
         raise HTTPException(status_code=404, detail="Page not found")
     item_dict = SystemPageOut.model_validate(item).model_dump()
     await translate_single(db, item_dict, "system_pages", locale)
-    item_dict["sections"] = _parse_legal_sections(item_dict.get("body_text") or "", locale)
+    body = item_dict.get("body_text") or ""
+    lines = body.splitlines()
+    # Drop a leading title-like line (short, no sentence punctuation) that just
+    # repeats the document title — e.g. "Terms & Conditions" / "About LOKA Espresso"
+    first = lines[0].strip() if lines else ""
+    if first and len(first) <= 40 and not any(c in first for c in ".!?"):  # looks like a repeated title
+        body = "\n".join(lines[1:]).lstrip()
+    item_dict["sections"] = _parse_legal_sections(body, locale)
     return APIResponse(data=item_dict)
 
 

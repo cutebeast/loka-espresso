@@ -268,10 +268,12 @@ export default function EventsPage({ onBack }: EventsPageProps) {
                 </div>
                 <div className="info-card-body">
                   <div className="info-card-title">{event.title}</div>
-                  <div className="info-card-desc">
-                    <Calendar size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-                    {formatEventDate(event.event_datetime)}
-                  </div>
+                  {event.event_datetime && (
+                    <div className="info-card-desc">
+                      <Calendar size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                      {formatEventDate(event.event_datetime)}
+                    </div>
+                  )}
                   {event.location && (
                     <div className="info-card-desc">
                       <MapPin size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
