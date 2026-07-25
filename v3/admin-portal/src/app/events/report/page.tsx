@@ -29,6 +29,7 @@ export default function EventRsvpReportPage() {
   const [msgFor, setMsgFor] = useState<Event | null>(null);
   const [msgTitle, setMsgTitle] = useState("");
   const [msgBody, setMsgBody] = useState("");
+  const [msgChannels, setMsgChannels] = useState<Record<string, boolean>>({ push_notification: false, sms: false, whatsapp: false });
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
 
@@ -39,21 +40,31 @@ export default function EventRsvpReportPage() {
       setAttendees(d.items || []);
     } catch (err: any) { setError(err.message); } finally { setAttLoading(false); }
   };
-  const openMessage = (e: Event) => { setMsgFor(e); setMsgTitle(""); setMsgBody(""); setSendResult(""); };
+  const openMessage = (e: Event) => { setMsgFor(e); setMsgTitle(""); setMsgBody(""); setSendResult(""); setMsgChannels({ push_notification: false, sms: false, whatsapp: false }); };
   const sendMessage = async () => {
     if (!msgFor || !msgTitle.trim() || sending) return;
     setSending(true); setSendResult("");
     try {
+      const channels = ["in_app", ...Object.keys(msgChannels).filter(k => msgChannels[k])];
       const created = await api.post<any>("/admin/notifications", {
         title: msgTitle.trim(),
         body: msgBody.trim(),
         notification_type: "event",
         audience_segment: `event:${msgFor.id}`,
+        channels,
       });
       const nid = created?.id ?? created?.data?.id;
       const sent = await api.post<any>(`/admin/notifications/${nid}/send`, {});
       const count = sent?.delivered_count ?? sent?.data?.delivered_count ?? 0;
-      setSendResult(`${t("content_events_report.sent_to")} ${count} ${t("content_events_report.recipients")}`);
+      const stats = sent?.channel_stats ?? sent?.data?.channel_stats ?? {};
+      const lines = [`${t("content_events_report.sent_to")} ${count} ${t("content_events_report.recipients")}`];
+      for (const [ch, s] of Object.entries<any>(stats)) {
+        const parts = [`${s.sent} ${t("content_events_report.ch_sent")}`];
+        if (s.failed) parts.push(`${s.failed} ${t("content_events_report.ch_failed")}`);
+        if (s.skipped) parts.push(`${s.skipped} ${t("content_events_report.ch_skipped")}`);
+        lines.push(`${t(`content_events_report.ch_${ch === "push_notification" ? "push" : ch}`)}: ${parts.join(" · ")}`);
+      }
+      setSendResult(lines.join("\n"));
       setMsgTitle(""); setMsgBody("");
     } catch (err: any) { setSendResult(err.message || t("admin.errors.loadFailed")); }
     finally { setSending(false); }
@@ -154,12 +165,19 @@ export default function EventRsvpReportPage() {
             <button onClick={() => setMsgFor(null)} className="btn btn-ghost btn-sm" aria-label={t("admin.common.close")}><X size={16} /></button>
           </div>
           <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 16 }}>{msgFor.rsvp_count} {t("content_events_report.recipients")}</p>
-          {sendResult && <div className="alert alert-success" style={{ marginBottom: 12 }}>{sendResult}</div>}
+          {sendResult && <div className="alert alert-success" style={{ marginBottom: 12, whiteSpace: "pre-line" }}>{sendResult}</div>}
           <div className="df-field" style={{ marginBottom: 12 }}>
             <input value={msgTitle} onChange={ev => setMsgTitle(ev.target.value)} placeholder={t("content_events_report.msg_title_ph")} style={{ width: "100%" }} maxLength={200} />
           </div>
-          <div className="df-field" style={{ marginBottom: 16 }}>
+          <div className="df-field" style={{ marginBottom: 12 }}>
             <textarea rows={4} value={msgBody} onChange={ev => setMsgBody(ev.target.value)} placeholder={t("content_events_report.msg_body_ph")} style={{ width: "100%" }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, fontSize: 13 }}>
+            <span style={{ color: "var(--color-text-muted)", fontWeight: 600 }}>{t("content_events_report.channels")}:</span>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.6 }}><input type="checkbox" checked disabled />{t("content_events_report.ch_inbox")}</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" checked={msgChannels.push_notification} onChange={ev => setMsgChannels({ ...msgChannels, push_notification: ev.target.checked })} />{t("content_events_report.ch_push")}</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" checked={msgChannels.sms} onChange={ev => setMsgChannels({ ...msgChannels, sms: ev.target.checked })} />{t("content_events_report.ch_sms")}</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" checked={msgChannels.whatsapp} onChange={ev => setMsgChannels({ ...msgChannels, whatsapp: ev.target.checked })} />{t("content_events_report.ch_whatsapp")}</label>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button onClick={() => setMsgFor(null)} className="btn btn-ghost">{t("admin.common.cancel")}</button>

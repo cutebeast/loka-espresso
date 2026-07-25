@@ -334,6 +334,7 @@ async def send_notification(
 
     # Create NotificationMessage for each matched customer
     created_count = 0
+    message_ids: dict[int, int] = {}  # customer_id -> message_id (for delivery logs)
     for cid in customer_ids:
         msg = NotificationMessage(
             customer_id=cid,
@@ -345,7 +346,12 @@ async def send_notification(
             action_url=notif.action_url,
         )
         db.add(msg)
+        await db.flush()
+        message_ids[cid] = msg.id
         created_count += 1
+
+    # ── Channel fan-out (push / sms / whatsapp) ──
+    channel_stats = await _fan_out_channels(db, notif, customer_ids, message_ids)
 
     notif.status = "sent"
     notif.sent_at = now
@@ -355,7 +361,119 @@ async def send_notification(
     # Log delivery count in response
     out = AdminNotificationOut.model_validate(notif)
     out.delivered_count = created_count
+    out.channel_stats = channel_stats or None
     return APIResponse(data=out)
+
+
+async def _fan_out_channels(
+    db, notif: AdminNotification, customer_ids: list[int], message_ids: dict[int, int]
+) -> dict:
+    """Deliver a sent admin notification over its extra channels
+    (push_notification / sms / whatsapp) and log every attempt to
+    notification_delivery_log. In-app inbox rows are created by the caller.
+
+    Returns {channel: {"sent": n, "failed": n, "skipped": n}} — empty when no
+    extra channels are configured on the notification.
+    """
+    extra = [c for c in (notif.channels or ["in_app"]) if c != "in_app"]
+    if not extra or not customer_ids:
+        return {}
+
+    from app.models.customer import CustomerDevice
+    from app.services.messaging import get_twilio_credentials, send_sms_via_twilio, send_whatsapp_via_twilio
+    from app.services.web_push import send_web_push
+
+    # Per-channel customer opt-outs (default: enabled when no preference row)
+    pref_result = await db.execute(
+        select(NotificationPreference).where(
+            NotificationPreference.customer_id.in_(customer_ids),
+            NotificationPreference.channel.in_(extra),
+        )
+    )
+    opted_out: set[tuple[int, str]] = {
+        (p.customer_id, p.channel) for p in pref_result.scalars().all() if not p.is_enabled
+    }
+
+    phone_map: dict[int, str] = {}
+    if "sms" in extra or "whatsapp" in extra:
+        phone_result = await db.execute(
+            select(Customer.id, Customer.phone_number)
+            .where(Customer.id.in_(customer_ids))
+            .where(Customer.phone_number.isnot(None))
+            .where(Customer.phone_number != "")
+        )
+        phone_map = {row[0]: row[1] for row in phone_result.all()}
+
+    devices: list[CustomerDevice] = []
+    if "push_notification" in extra:
+        dev_result = await db.execute(
+            select(CustomerDevice).where(
+                CustomerDevice.customer_id.in_(customer_ids),
+                CustomerDevice.is_active.is_(True),
+                CustomerDevice.deleted_at.is_(None),
+                CustomerDevice.web_push_subscription.isnot(None),
+            )
+        )
+        devices = [d for d in dev_result.scalars().all() if d.web_push_subscription]
+
+    twilio_sid = twilio_token = sms_from = wa_from = ""
+    if "sms" in extra or "whatsapp" in extra:
+        twilio_sid, twilio_token, sms_from, wa_from = await get_twilio_credentials(db)
+
+    now = datetime.now(timezone.utc)
+    stats: dict[str, dict[str, int]] = {c: {"sent": 0, "failed": 0, "skipped": 0} for c in extra}
+
+    def _log(message_id: int, channel: str, ok: bool, *, device_id=None, address=None, provider=None, error=None):
+        db.add(NotificationDeliveryLog(
+            message_id=message_id,
+            channel=channel,
+            device_id=device_id,
+            recipient_address=address,
+            status="sent" if ok else "failed",
+            provider=provider,
+            error_message=error,
+            sent_at=now if ok else None,
+        ))
+
+    push_payload = {"title": notif.title, "body": notif.body or "", "url": notif.action_url or "/"}
+
+    for cid in customer_ids:
+        mid = message_ids[cid]
+
+        if "push_notification" in extra:
+            if (cid, "push_notification") in opted_out:
+                stats["push_notification"]["skipped"] += 1
+            else:
+                cust_devices = [d for d in devices if d.customer_id == cid]
+                if not cust_devices:
+                    stats["push_notification"]["skipped"] += 1
+                for dev in cust_devices:
+                    result = send_web_push(dev.web_push_subscription, push_payload)
+                    ok = bool(result.get("success"))
+                    stats["push_notification"]["sent" if ok else "failed"] += 1
+                    _log(mid, "push_notification", ok, device_id=dev.id,
+                         address=str((dev.web_push_subscription or {}).get("endpoint", ""))[:255],
+                         provider="webpush", error=None if ok else str(result.get("error", ""))[:500])
+
+        if "sms" in extra:
+            phone = phone_map.get(cid)
+            if (cid, "sms") in opted_out or not phone or not (twilio_sid and twilio_token and sms_from):
+                stats["sms"]["skipped"] += 1
+            else:
+                ok = await send_sms_via_twilio(twilio_sid, twilio_token, sms_from, phone, f"{notif.title}\n\n{notif.body or ''}", db=db)
+                stats["sms"]["sent" if ok else "failed"] += 1
+                _log(mid, "sms", ok, address=phone, provider="twilio")
+
+        if "whatsapp" in extra:
+            phone = phone_map.get(cid)
+            if (cid, "whatsapp") in opted_out or not phone or not (twilio_sid and twilio_token and wa_from):
+                stats["whatsapp"]["skipped"] += 1
+            else:
+                ok = await send_whatsapp_via_twilio(twilio_sid, twilio_token, wa_from, phone, f"{notif.title}\n\n{notif.body or ''}", db=db)
+                stats["whatsapp"]["sent" if ok else "failed"] += 1
+                _log(mid, "whatsapp", ok, address=phone, provider="twilio")
+
+    return stats
 
 
 # ---------------------------------------------------------------------------

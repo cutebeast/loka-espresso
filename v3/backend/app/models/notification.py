@@ -40,6 +40,9 @@ class AdminNotification(Base, TimestampMixin):
     audience_segment: Mapped[str] = mapped_column(
         String(50), nullable=False, default="all_users"
     )
+    # Delivery channels: subset of ["in_app","push_notification","sms","whatsapp"].
+    # in_app (PWA inbox) is always implied; others fan out at send time.
+    channels: Mapped[list] = mapped_column(JSONB, nullable=False, default=lambda: ["in_app"])
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="draft"
     )

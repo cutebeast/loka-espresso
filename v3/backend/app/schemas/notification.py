@@ -93,12 +93,22 @@ def _validate_audience_segment(value: str) -> str:
 
 AudienceSegment = Annotated[str, AfterValidator(_validate_audience_segment)]
 
+NOTIFICATION_CHANNELS = frozenset({"in_app", "push_notification", "sms", "whatsapp"})
+
+
+def _validate_channels(value: list[str]) -> list[str]:
+    channels = [c for c in dict.fromkeys(value) if c in NOTIFICATION_CHANNELS]
+    if "in_app" not in channels:
+        channels.insert(0, "in_app")  # inbox delivery is always implied
+    return channels
+
 
 class AdminNotificationBase(BaseSchema):
     title: str = Field(..., max_length=200)
     body: str | None = None
     notification_type: ADMIN_NOTIFICATION_TYPES = "general"
     audience_segment: AudienceSegment = "all_users"
+    channels: Annotated[list[str], AfterValidator(_validate_channels)] = Field(default=["in_app"])
     image_url: str | None = Field(None, max_length=500)
     action_url: str | None = Field(None, max_length=500)
     scheduled_at: datetime | None = None
@@ -114,6 +124,7 @@ class AdminNotificationUpdate(BaseSchema):
     body: str | None = None
     notification_type: ADMIN_NOTIFICATION_TYPES | None = None
     audience_segment: AudienceSegment | None = None
+    channels: Annotated[list[str], AfterValidator(_validate_channels)] | None = None
     image_url: str | None = Field(None, max_length=500)
     action_url: str | None = Field(None, max_length=500)
     scheduled_at: datetime | None = None
@@ -126,7 +137,8 @@ class AdminNotificationOut(AdminNotificationBase, TimestampedSchema):
     sent_at: datetime | None = None
     is_archived: bool = False
     created_by: int | None = None
-    delivered_count: int | None = None  # computed — set by send endpoint
+    delivered_count: int | None = None  # computed — set by send endpoint (in-app inbox)
+    channel_stats: dict | None = None   # computed — per-channel sent/failed/skipped counts
 
 
 # ---------------------------------------------------------------------------

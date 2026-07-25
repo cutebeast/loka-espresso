@@ -245,7 +245,9 @@ async def test_event_attendee_messaging(
         items = r.json()["data"]["items"]
         assert len(items) == 1 and items[0]["customer_id"] == customer_account["id"]
 
-        # Compose + send a notification to event attendees
+        # Compose + send a notification to event attendees — all channels on.
+        # Extra channels degrade gracefully (no devices / no Twilio on this env)
+        # and must not affect inbox delivery.
         r = await client.post(
             f"{base_url}/admin/notifications",
             headers=admin_headers,
@@ -254,14 +256,21 @@ async def test_event_attendee_messaging(
                 "body": "See you there!",
                 "notification_type": "event",
                 "audience_segment": f"event:{card_id}",
+                "channels": ["in_app", "push_notification", "sms", "whatsapp"],
             },
         )
         assert r.status_code == 201, r.text
         notif_id = r.json()["data"]["id"]
+        assert r.json()["data"]["channels"] == ["in_app", "push_notification", "sms", "whatsapp"]
 
         r = await client.post(f"{base_url}/admin/notifications/{notif_id}/send", headers=admin_headers)
         assert r.status_code == 200, r.text
-        assert r.json()["data"]["delivered_count"] == 1
+        data = r.json()["data"]
+        assert data["delivered_count"] == 1
+        stats = data["channel_stats"]
+        for ch in ("push_notification", "sms", "whatsapp"):
+            assert ch in stats, f"missing channel_stats for {ch}"
+            assert stats[ch]["sent"] + stats[ch]["failed"] + stats[ch]["skipped"] >= 1
 
         # The attendee received the message in their inbox
         r = await client.get(f"{base_url}/notifications/me?per_page=10", headers=headers)

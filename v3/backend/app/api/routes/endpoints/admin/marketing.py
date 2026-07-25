@@ -22,51 +22,11 @@ from app.schemas.marketing import (
     MarketingCampaignUpdate,
 )
 from app.services.translation import auto_translate_record, delete_translations
+from app.services.messaging import get_twilio_credentials, send_sms_via_twilio
 
 logger = logging.getLogger(__name__)
 
 admin_router = APIRouter(prefix="/admin/marketing", tags=["admin — marketing"])
-
-
-async def _get_twilio_creds(db) -> tuple[str, str, str, str]:
-    """Get Twilio credentials from platform_config (set via Campaign Settings page).
-
-    Returns (account_sid, auth_token, sms_from, whatsapp_from).
-    Uses test credentials when integration.twilio_use_test_credentials is true.
-    """
-    use_test_result = await db.execute(
-        select(PlatformConfig).where(PlatformConfig.config_key == "integration.twilio_use_test_credentials")
-    )
-    use_test_row = use_test_result.scalar_one_or_none()
-    use_test = bool(
-        use_test_row and str(use_test_row.config_value).lower() in ("true", "1", "yes", "on")
-    )
-
-    if use_test:
-        keys = [
-            "integration.twilio_test_account_sid",
-            "integration.twilio_test_auth_token",
-            "integration.twilio_test_from_number",
-            "integration.twilio_test_whatsapp_from",
-        ]
-    else:
-        keys = [
-            "integration.twilio_account_sid",
-            "integration.twilio_auth_token",
-            "integration.twilio_from_number",
-            "integration.twilio_whatsapp_from",
-        ]
-
-    result = await db.execute(
-        select(PlatformConfig).where(PlatformConfig.config_key.in_(keys))
-    )
-    rows = {r.config_key: str(r.config_value or "") for r in result.scalars().all()}
-    return (
-        rows.get(keys[0], ""),
-        rows.get(keys[1], ""),
-        rows.get(keys[2], ""),
-        rows.get(keys[3], ""),
-    )
 
 
 async def _get_resend_api_url(db) -> str:
@@ -138,38 +98,6 @@ async def _send_email_via_resend(
     except Exception:
         logger.error("Marketing email delivery failed via Resend", exc_info=True)
         return False
-async def _get_twilio_api_url(db, account_sid: str) -> str:
-    """Get Twilio API URL from platform_config."""
-    result = await db.execute(
-        select(PlatformConfig).where(PlatformConfig.config_key == "integration.twilio_api_url")
-    )
-    row = result.scalar_one_or_none()
-    if row and row.config_value:
-        template = str(row.config_value).strip().strip('"')
-        return template.format(account_sid=account_sid)
-    return f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
-
-
-async def _send_sms_via_twilio(
-    account_sid: str, auth_token: str, from_number: str,
-    to_number: str, body: str,
-    db = None,
-) -> bool:
-    """Send an SMS via Twilio REST API. Returns True on success."""
-    if not account_sid or not auth_token or not from_number:
-        return False
-    url = await _get_twilio_api_url(db, account_sid) if db else f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
-    data = {"From": from_number, "To": to_number, "Body": body}
-    auth = (account_sid, auth_token)
-    try:
-        async with AsyncClient(timeout=15) as client:
-            resp = await client.post(url, data=data, auth=auth)
-            return resp.status_code == 201
-    except Exception:
-        logger.error("Marketing SMS delivery failed via Twilio", exc_info=True)
-        return False
-
-
 async def _resolve_audience_customers(db, segment: str) -> list[int]:
     """Get customer IDs matching an audience segment (excluding opt-outs)."""
     stmt = select(Customer.id).where(
@@ -395,7 +323,7 @@ async def send_campaign(
             delivered_count += 1
 
     elif campaign.channel == "sms" and customer_ids:
-        sid, token, sms_from, _ = await _get_twilio_creds(db)
+        sid, token, sms_from, _ = await get_twilio_credentials(db)
         if sid and token and sms_from:
             phone_result = await db.execute(
                 select(Customer.id, Customer.phone_number)
@@ -408,14 +336,14 @@ async def send_campaign(
             sem = asyncio.Semaphore(50)
             async def _send_sms(phone: str, cid: int) -> bool:
                 async with sem:
-                    return await _send_sms_via_twilio(sid, token, sms_from, phone, body, db=db)
+                    return await send_sms_via_twilio(sid, token, sms_from, phone, body, db=db)
             tasks = [_send_sms(phone, cid) for cid in customer_ids if (phone := phone_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
                 delivered_count = sum(1 for r in results if r)
 
     elif campaign.channel == "whatsapp" and customer_ids:
-        sid, token, _, wa_from = await _get_twilio_creds(db)
+        sid, token, _, wa_from = await get_twilio_credentials(db)
         if sid and token and wa_from:
             phone_result = await db.execute(
                 select(Customer.id, Customer.phone_number)
@@ -429,7 +357,7 @@ async def send_campaign(
             async def _send_wa(phone: str, cid: int) -> bool:
                 async with sem:
                     wa_to = f"whatsapp:{phone}" if not phone.startswith("whatsapp:") else phone
-                    return await _send_sms_via_twilio(sid, token, wa_from, wa_to, body, db=db)
+                    return await send_sms_via_twilio(sid, token, wa_from, wa_to, body, db=db)
             tasks = [_send_wa(phone, cid) for cid in customer_ids if (phone := phone_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
