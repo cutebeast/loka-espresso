@@ -14,6 +14,7 @@ interface Event {
   rsvp_max_capacity?: number;
   rsvp_count: number;
   is_active: boolean;
+  event_type?: string;
 }
 export default function EventRsvpReportPage() {
   const {
@@ -23,6 +24,9 @@ export default function EventRsvpReportPage() {
   const [items, setItems] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filterEvent, setFilterEvent] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [attendeesFor, setAttendeesFor] = useState<Event | null>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [attLoading, setAttLoading] = useState(false);
@@ -80,7 +84,12 @@ export default function EventRsvpReportPage() {
       fetch();
     })();
   }, [fetch]);
-  const totalRsvp = items.reduce((s, i) => s + (i.rsvp_count || 0), 0);
+  const filtered = items.filter(e =>
+    (filterEvent === "all" || e.id === Number(filterEvent)) &&
+    (filterType === "all" || (e.event_type || "public") === filterType) &&
+    (filterStatus === "all" || (filterStatus === "active" ? e.is_active : !e.is_active))
+  );
+  const totalRsvp = filtered.reduce((s, i) => s + (i.rsvp_count || 0), 0);
   return <div style={{
     padding: 32
   }}>
@@ -95,22 +104,40 @@ export default function EventRsvpReportPage() {
           margin: 0
         }}>{t("content_events_report.event_rsvp_report")}</h1><p className="page-subtitle" style={{
           marginTop: 2
-        }}>{items.length} {t("content_events_report.events_with_rsvp")} · {totalRsvp} {t("content_events_report.total_sign_ups")}</p></div>
+        }}>{filtered.length} {t("content_events_report.events_with_rsvp")} · {totalRsvp} {t("content_events_report.total_sign_ups")}</p></div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="kpi-grid" style={{
       marginBottom: 24
     }}>
-        <div className="kpi-card"><div className="kpi-label">{t("content_events_report.events_with_rsvp_2")}</div><div className="kpi-value">{items.length}</div></div>
+        <div className="kpi-card"><div className="kpi-label">{t("content_events_report.events_with_rsvp_2")}</div><div className="kpi-value">{filtered.length}</div></div>
         <div className="kpi-card"><div className="kpi-label">{t("content_events_report.total_sign_ups_2")}</div><div className="kpi-value">{totalRsvp}</div></div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {t("content_events_report.events")}</span></div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <select value={filterEvent} onChange={e => setFilterEvent(e.target.value)} style={{ minWidth: 220 }}>
+          <option value="all">{t("content_events_report.all_events")}</option>
+          {items.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+        </select>
+        <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ minWidth: 150 }}>
+          <option value="all">{t("content_events_report.all_types")}</option>
+          <option value="public">{t("content_events.type_public")}</option>
+          <option value="invite_only">{t("content_events.type_invite_only")}</option>
+          <option value="paid">{t("content_events.type_paid")}</option>
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ minWidth: 130 }}>
+          <option value="all">{t("content_events_report.all_status")}</option>
+          <option value="active">{t("admin.status.active")}</option>
+          <option value="inactive">{t("admin.status.inactive")}</option>
+        </select>
+      </div>
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{filtered.length} {t("content_events_report.events")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("content_events_report.event")}</th><th>{t("content_events_report.location")}</th><th>{t("content_events_report.date")}</th><th>{t("content_events_report.capacity")}</th><th>{t("content_events_report.sign_ups")}</th><th>{t("content_events_report.fill")}</th><th>{t("content_events_report.status")}</th><th style={{ width: 90 }}>{t("content_events_report.actions")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={8} className="data-table-empty">{t("content_events_report.loading")}</td></tr> : items.map(e => {
+          {loading ? <tr><td colSpan={8} className="data-table-empty">{t("content_events_report.loading")}</td></tr> : filtered.length === 0 ? <tr><td colSpan={8} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : filtered.map(e => {
             const pct = e.rsvp_max_capacity ? Math.round(e.rsvp_count / e.rsvp_max_capacity * 100) : 0;
             return <tr key={e.id} style={{
               cursor: "pointer"
