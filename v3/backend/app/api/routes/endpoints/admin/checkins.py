@@ -48,7 +48,9 @@ async def checkin_stats(db: DBDependency, admin: CurrentAdmin):
     total = (await db.execute(select(func.count(CustomerDailyCheckin.id)))).scalar() or 0
     today_cnt = (await db.execute(
         select(func.count(func.distinct(CustomerDailyCheckin.customer_id)))
-        .where(CustomerDailyCheckin.checkin_date == today)
+        # checkin_date is a full timestamp — compare on its date part, else only
+        # check-ins exactly at 00:00:00 would match
+        .where(func.date(CustomerDailyCheckin.checkin_date) == today)
     )).scalar() or 0
     week_cnt = (await db.execute(
         select(func.count(func.distinct(CustomerDailyCheckin.customer_id)))

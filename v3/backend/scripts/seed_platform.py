@@ -71,6 +71,11 @@ CONFIGS = [
     ("loyalty.welcome_bonus", "50", "integer", "all", False, True),
     ("loyalty.welcome_reward_type", '"voucher"', "string", "all", False, True),
     ("loyalty.welcome_reward_voucher_code", '"WELCOME-RM5"', "string", "all", False, True),
+    # Daily check-in streak rewards (read by /checkin + admin check-in settings)
+    ("checkin.daily_base_points", "10", "integer", "all", False, True),
+    ("checkin.streak_increment", "2", "integer", "all", False, True),
+    ("checkin.streak_7day_bonus", "20", "integer", "all", False, True),
+    ("checkin.max_streak_days", "7", "integer", "all", False, True),
     ("notifications.retention_days", "30", "integer", "all", False, True),
     ("upload.max_size_mb", "10", "integer", "all", False, True),
     ("accounting.decimal_places", "2", "integer", "all", False, True),

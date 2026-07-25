@@ -575,3 +575,9 @@ Full counter-flow audit (owner rules: phone OPTIONAL for F&B, REQUIRED for works
 - **Promo Banners admin list**: thumbnails added (plain `<img>`, same `/uploads` rule as rewards) and the status badge is now date-aware — date-expired banners show red "Expired" instead of a misleading green "Active" (PWA already filtered them out by date; this was admin-display only).
 - Other marketing pages verified healthy: vouchers (+report), surveys (+report), referrals (+settings), check-ins (+settings), campaigns (+settings), lucky draw (segments 70/30 weights, spin history) — no crashes, no broken images.
 - Sweep: 14 passed (marketing/voucher/promo/reward).
+
+### Check-in rewards config seeded + stats fix (2026-07-25)
+- The 4 check-in config keys existed only as code defaults (admin settings page had nothing to read/write). Seeded into `platform_config` via `seed_platform.py`: `checkin.daily_base_points=10`, `checkin.streak_increment=2`, `checkin.streak_7day_bonus=20`, `checkin.max_streak_days=7` (≈RM0.50/day, RM2.10 on day 7 at 1pt=RM0.05; a perfect 7-day week = 132 pts ≈ RM6.60).
+- **Flow verified live**: day 1 → 10 pts; day 7 (seeded 6-day history) → 42 pts (10+12+20); day 8 → resets to streak 1 (10 pts); duplicate same-day → 409; loyalty balance/ledger updated; status endpoint echoes config + state.
+- **Bug fixed**: admin check-in stats "today" compared full timestamp to a bare date (`checkin_date == today`) — only check-ins exactly at 00:00:00 counted, so Today always showed 0. Now `func.date(checkin_date) == today` (verified 0 → correct count).
+- Admin pages verified: Daily Check-ins list + KPIs, Check-in Settings shows seeded values (editable). E2E checkin suite 3 passed; verification customers cleaned.
