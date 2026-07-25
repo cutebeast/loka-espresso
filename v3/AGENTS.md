@@ -513,3 +513,9 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
   - **Food-only fields hidden** for experience items: allergens, dietary tags, calories, prep time, bundle eligibility, add-on deals, recipe/inventory components. Everything else stays (pricing, variants/modifiers for pax packages, minimum tier for Reserve redemption, availability, featured).
 - **Backend guard**: `PATCH /admin/menu/items/{id}` → 400 "Workshop items must stay in the Experiences category" when moving an `experiences` item elsewhere (same-category saves and normal food-item moves unaffected — verified all 3 paths live).
 - Verified: workshop editor clean + locked, new-class form preselected + locked, Espresso (food) shows every field as before. E2E menu/content/bundle sweep 73 passed.
+
+### Experiences category sealed both ways (2026-07-25)
+- Follow-up to the workshop-aware editor: the `experiences` category is now fully sealed.
+  - **Dropdowns**: food items never see "Experiences & Workshops" in the category options (`/menu/items/[id]` and `/menu/items/new`); workshop items see only that option (locked). `?cat=experiences` on the new page remains the Add Class path.
+  - **Backend**: `PATCH /admin/menu/items/{id}` now also 400s when moving a NON-experiences item INTO the category ("Only workshop items can use the Experiences category — create classes from Events & Classes → Workshops"), on top of the earlier out-direction guard. POST create into experiences stays allowed (Add Class flow).
+- Verified: all 3 backend paths via curl; dropdown option lists checked in-browser for food edit / workshop edit / plain new / ?cat=experiences.

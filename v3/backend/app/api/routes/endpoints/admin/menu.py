@@ -523,16 +523,26 @@ async def update_item(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Workshops/classes live in the "experiences" category — moving them out
-    # would silently drop them from the workshops page and event-card flow.
+    # Workshops/classes live in the "experiences" category — sealed in BOTH
+    # directions: experience items can't move out (they'd vanish from the
+    # workshops page/event cards), and regular items can't move in (they'd
+    # appear as fake classes).
     if "category_id" in update_data and update_data["category_id"] != item.category_id:
-        cat = (await db.execute(
+        cur_cat = (await db.execute(
             select(MenuCategory).where(MenuCategory.id == item.category_id)
         )).scalar_one_or_none()
-        if cat is not None and cat.slug == "experiences":
+        if cur_cat is not None and cur_cat.slug == "experiences":
             raise HTTPException(
                 status_code=400,
                 detail="Workshop items must stay in the Experiences category",
+            )
+        new_cat = (await db.execute(
+            select(MenuCategory).where(MenuCategory.id == update_data["category_id"])
+        )).scalar_one_or_none()
+        if new_cat is not None and new_cat.slug == "experiences":
+            raise HTTPException(
+                status_code=400,
+                detail="Only workshop items can use the Experiences category — create classes from Events & Classes → Workshops",
             )
 
     modifier_groups_data = update_data.pop("modifier_groups", None)
