@@ -581,3 +581,9 @@ Full counter-flow audit (owner rules: phone OPTIONAL for F&B, REQUIRED for works
 - **Flow verified live**: day 1 → 10 pts; day 7 (seeded 6-day history) → 42 pts (10+12+20); day 8 → resets to streak 1 (10 pts); duplicate same-day → 409; loyalty balance/ledger updated; status endpoint echoes config + state.
 - **Bug fixed**: admin check-in stats "today" compared full timestamp to a bare date (`checkin_date == today`) — only check-ins exactly at 00:00:00 counted, so Today always showed 0. Now `func.date(checkin_date) == today` (verified 0 → correct count).
 - Admin pages verified: Daily Check-ins list + KPIs, Check-in Settings shows seeded values (editable). E2E checkin suite 3 passed; verification customers cleaned.
+
+### PWA check-in + lucky draw verified live (2026-07-25)
+- **Check-in PWA page**: renders streak progress (D1–D7 dots), reward tiers from the seeded config (10/2/20/7), "Check In Now" → "✅ You're checked in! +10 points earned" → streak advances to 1/7. Verified logged in as demo customer.
+- **Lucky draw PWA page**: wheel renders both segments (RM5 Off 70% / Free Drink Upgrade 30%), guest view prompts "Sign in to spin", logged-in full flow verified with a fresh customer: SPIN → wheel animation → "You won!" modal with real voucher code (WELCOME-EA129259, 70% segment) → voucher active in wallet → "0 spins left — come back tomorrow" state correctly locks the button. Admin Lucky Draw page shows the win in Recent Spins (cleaned after verification).
+- The "internal error" reported during this round was most plausibly a transient 502/500 while the backend was restarting mid-fix (several restarts happened today). No persistent error found anywhere: all PWA pages + both flows pass.
+- E2E checkin+lucky sweep 3 passed.
