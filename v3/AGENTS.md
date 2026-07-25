@@ -441,3 +441,14 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
 - Allergen + dietary tag display names translated to all 4 locales (88 translations via `auto_translate_record`); `merge_translations` now skips non-dict entries (menu list endpoint emits dietary tags as plain tag-key strings — those localize client-side).
 - **Seeder id-stability fix**: `seed_menu.py` previously deleted and re-inserted variants/modifier groups/options on every run, rotating their ids — and since translations are keyed by record id, every re-seed silently orphaned modifier translations. Variants are now upserted by `variant_sku`, groups by (menu_item_id, group_name), options by (group_id, option_name); stale children are pruned by name. Verified ids stable across 3 consecutive runs. Modifier translations re-generated (416) after the fix; "Single Origin Bean" ms correction re-applied (`Biji Single Origin`, flagged manual).
 - Purged orphaned translations (refs to deleted records) from the `menu` namespace. Current state: 160 items + 21 categories + 104 modifier rows fully translated × 4 locales; allergens (9) and dietary tags (4) all in use, nothing unused.
+
+### Promo banner images complete (2026-07-25)
+- All 7 promo banners now have real images (AI-generated via OpenRouter `google/gemini-3.1-flash-image`, stored in `backend/uploads/promos/` — note: `uploads/` is gitignored, so these files must be rsynced to the live server at deploy time, same as the 25 live-server images already migrated):
+  - `promo-survey.jpg` — Take Our Survey & Get RM5 Off
+  - `promo-eco-byot.jpg` — Eco-Campaign: BYOT & Earn (bamboo tumbler + latte art)
+  - `promo-welcome-reward.jpg` — Welcome Reward — RM5 Off (kraft gift box + latte)
+  - `promo-new-menu.jpg` — New Menu — Vote & Save 10%
+  - `promo-store-review.jpg` — Store Review — Free Coffee!
+  - `promo-56-summer.jpg` — Summer Promo (date-expired, not served)
+  - Holiday Deal (Expired) — intentionally image-less; date-expired so the public API never returns it (`GET /api/promos/banners` filters `start_date`/`end_date` against now)
+- Verified: public API serves all 5 active banners with correct `image_url` over `https://app.loyaltysystem.uk`, image files return HTTP 200, and the PWA home Promotions carousel renders them (screenshot-verified in guest mode).
