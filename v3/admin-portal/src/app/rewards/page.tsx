@@ -5,7 +5,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import Image from "next/image";
 import { useCurrency } from "@/hooks/useCurrency";
 interface Reward {
   id: number;
@@ -99,9 +98,12 @@ export default function RewardsPage() {
           }} onClick={() => router.push(`/rewards/${item.id}`)} style={{
             cursor: "pointer"
           }}>
-                <td>{item.image_url ? <Image src={item.image_url} alt={item.reward_name} width={32} height={32} style={{
+                <td>{item.image_url ? <img src={item.image_url} alt={item.reward_name} style={{
+                width: 40,
+                height: 40,
                 borderRadius: 6,
-                objectFit: "cover"
+                objectFit: "cover",
+                display: "block"
               }} /> : <span style={{
                 fontSize: 16
               }}>🎁</span>}</td>

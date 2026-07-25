@@ -24,25 +24,25 @@ TIERS = [
 ]
 
 REWARDS = [
-    # (key, name, description, points_cost, min_tier_key or None)
+    # (key, name, description, points_cost, min_tier_key or None, image_url)
     # Per "Point redemption Loka Espresso crm.xlsx" (1 pt = RM0.05 retail value).
     # High-Margin Profit Engines
-    ("espresso_shot_addon", "Espresso Shot / Syrup Add-on", "Free espresso shot or syrup add-on for any drink. (RM 2.50 value)", 50, None),
-    ("single_origin_upgrade", "Single-Origin Bean Upgrade", "Upgrade your coffee to single-origin beans. (RM 5.00 value)", 100, None),
-    ("signature_sandwich", "Signature Sandwich", "Any signature gourmet sandwich, on us. (RM 25.00 value)", 500, None),
-    ("signature_pasta", "Signature Pasta Meal", "Any signature pasta creation, on us. (RM 35.00 value)", 700, None),
+    ("espresso_shot_addon", "Espresso Shot / Syrup Add-on", "Free espresso shot or syrup add-on for any drink. (RM 2.50 value)", 50, None, "/uploads/images/menu/cafe-specialty-coffee/espresso.jpg"),
+    ("single_origin_upgrade", "Single-Origin Bean Upgrade", "Upgrade your coffee to single-origin beans. (RM 5.00 value)", 100, None, "/uploads/rewards/single-origin-beans.jpg"),
+    ("signature_sandwich", "Signature Sandwich", "Any signature gourmet sandwich, on us. (RM 25.00 value)", 500, None, "/uploads/images/menu/gourmet-sandwiches/smoked-salmon-cream-cheese-sandwich.jpg"),
+    ("signature_pasta", "Signature Pasta Meal", "Any signature pasta creation, on us. (RM 35.00 value)", 700, None, "/uploads/images/menu/pasta-creations/pesto-genovese-portobello-steak.jpg"),
     # Inventory & Merchandise
-    ("drip_coffee_bags", "Loka Drip Coffee Bags (Single Origin)", "Retail pack of single-origin drip coffee bags. (RM 28.00 value)", 560, None),
-    ("house_blend_beans", "Loka House Blend Beans (250g)", "250g bag of our house blend coffee beans. (RM 45.00 value)", 900, "origin"),
-    ("eco_tumbler", "Loka Minimalist Ceramic Eco-Tumbler", "Branded minimalist ceramic eco-tumbler. (RM 70.00 value)", 1400, "origin"),
+    ("drip_coffee_bags", "Loka Drip Coffee Bags (Single Origin)", "Retail pack of single-origin drip coffee bags. (RM 28.00 value)", 560, None, "/uploads/rewards/drip-coffee-bags.jpg"),
+    ("house_blend_beans", "Loka House Blend Beans (250g)", "250g bag of our house blend coffee beans. (RM 45.00 value)", 900, "origin", "/uploads/rewards/house-blend-beans.jpg"),
+    ("eco_tumbler", "Loka Minimalist Ceramic Eco-Tumbler", "Branded minimalist ceramic eco-tumbler. (RM 70.00 value)", 1400, "origin", "/uploads/information/g-18-loveramics-1.webp"),
     # Specialty Coffee Gadgets
-    ("hand_grinder", "Concinare Hand Grinder", "Premium Concinare hand grinder. (RM 630.00 value)", 12600, "origin"),
-    ("muvna_brewing_set", "Muvna Brewing Set", "Complete Muvna brewing set. (RM 688.00 value)", 13760, "origin"),
-    ("signature_kettle", "Concinare Signature Kettle", "Concinare signature kettle. (RM 990.00 value)", 19800, "reserve"),
-    ("kesu_travel_pack", "Kesu Travel Pack Brewing Set", "Ultra-premium Kesu travel pack brewing set. (RM 1,570.00 value)", 31400, "reserve"),
+    ("hand_grinder", "Concinare Hand Grinder", "Premium Concinare hand grinder. (RM 630.00 value)", 12600, "origin", "/uploads/information/g-13-duo-1.jpg"),
+    ("muvna_brewing_set", "Muvna Brewing Set", "Complete Muvna brewing set. (RM 688.00 value)", 13760, "origin", "/uploads/information/g-16-muvna-brew-1.webp"),
+    ("signature_kettle", "Concinare Signature Kettle", "Concinare signature kettle. (RM 990.00 value)", 19800, "reserve", "/uploads/information/g-19-kettle-1.webp"),
+    ("kesu_travel_pack", "Kesu Travel Pack Brewing Set", "Ultra-premium Kesu travel pack brewing set. (RM 1,570.00 value)", 31400, "reserve", "/uploads/information/g-15-kesu-1.jpg"),
     # Brand Experiences
-    ("brewing_workshop", "Manual Brewing & Sand Workshop", "Hands-on manual brewing workshop session. (RM 199.00 value)", 3980, "reserve"),
-    ("coffee_omakase", "Coffee Omakase Experience", "Premium curated coffee omakase experience. (RM 299.00 value)", 5980, "reserve"),
+    ("brewing_workshop", "Manual Brewing & Sand Workshop", "Hands-on manual brewing workshop session. (RM 199.00 value)", 3980, "reserve", "/uploads/images/menu/experiences/gozleme.jpg"),
+    ("coffee_omakase", "Coffee Omakase Experience", "Premium curated coffee omakase experience. (RM 299.00 value)", 5980, "reserve", "/uploads/images/menu/experiences/kahve-i-turk.jpg"),
 ]
 
 # (code, vtype, value, max_amount, min_order, title, description, first_order_only, min_tier_key, validity_days)
@@ -109,16 +109,17 @@ async def seed():
             text("""
                 INSERT INTO reward_catalog
                     (reward_key, reward_name, description, reward_type, points_cost,
-                     minimum_order_value, minimum_tier_id, is_active)
+                     minimum_order_value, minimum_tier_id, is_active, image_url)
                 VALUES (:key, :name, :desc, 'free_item', :points_cost,
-                        0, :min_tier_id, true)
+                        0, :min_tier_id, true, :image_url)
                 ON CONFLICT (reward_key) DO UPDATE SET
                     reward_name = EXCLUDED.reward_name,
                     description = EXCLUDED.description,
                     reward_type = EXCLUDED.reward_type,
                     points_cost = EXCLUDED.points_cost,
                     minimum_tier_id = EXCLUDED.minimum_tier_id,
-                    is_active = true
+                    is_active = true,
+                    image_url = EXCLUDED.image_url
             """),
             [
                 {
@@ -127,8 +128,9 @@ async def seed():
                     "desc": desc,
                     "points_cost": points_cost,
                     "min_tier_id": tier_ids.get(min_tier_key) if min_tier_key else None,
+                    "image_url": image_url,
                 }
-                for key, name, desc, points_cost, min_tier_key in REWARDS
+                for key, name, desc, points_cost, min_tier_key, image_url in REWARDS
             ],
         )
 

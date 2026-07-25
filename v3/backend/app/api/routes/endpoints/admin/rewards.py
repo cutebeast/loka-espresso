@@ -202,13 +202,13 @@ async def list_reward_redemptions(
 
 @public_router.get("/catalog", response_model=APIResponse[PaginatedResponse[RewardCatalogOut]])
 async def list_reward_catalog(
-    customer: ActiveCustomer,
     db: DBDependency,
     locale: OptionalLocale,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
 ):
-    """List available rewards for the current customer."""
+    """List available rewards. Public — the catalog is the signup motivator;
+    only redemption requires an account."""
     base_stmt = select(RewardCatalog).where(
         RewardCatalog.is_active.is_(True),
         RewardCatalog.deleted_at.is_(None),
