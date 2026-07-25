@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Calendar, MapPin, Users, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, CheckCircle, Clock, ChevronRight, Lock, Ticket } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
@@ -23,6 +23,8 @@ interface EventItem {
   rsvp_max_capacity: number;
   rsvp_count: number;
   is_active: boolean;
+  event_type: 'public' | 'invite_only' | 'paid';
+  is_invited?: boolean | null;
   action_url: string | null;
   action_label: string | null;
 }
@@ -76,6 +78,20 @@ export default function EventsPage({ onBack }: EventsPageProps) {
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [rsvping, setRsvping] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<Record<number, string>>({});
+  const [inviteInfo, setInviteInfo] = useState<Record<number, boolean>>({});
+
+  // Open detail view; for invite_only events fetch the detail endpoint to
+  // learn whether the signed-in customer is on the invite list.
+  const openEvent = useCallback(async (event: EventItem) => {
+    setSelectedEvent(event);
+    if (event.event_type === 'invite_only' && isAuthenticated) {
+      try {
+        const res = await api.get(`/content/events/${event.slug}`);
+        const d = res.data?.data ?? res.data;
+        setInviteInfo(prev => ({ ...prev, [event.id]: !!d?.is_invited }));
+      } catch { /* leave invite state unknown — button stays locked */ }
+    }
+  }, [isAuthenticated]);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -102,7 +118,10 @@ export default function EventsPage({ onBack }: EventsPageProps) {
       loadEvents();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || '';
-      if (msg.toLowerCase().includes('capacity')) {
+      if (msg.toLowerCase().includes('invite-only')) {
+        setRsvpStatus(prev => ({ ...prev, [eventId]: 'locked' }));
+        showToast(t('events.inviteOnly'), 'info');
+      } else if (msg.toLowerCase().includes('capacity')) {
         setRsvpStatus(prev => ({ ...prev, [eventId]: 'full' }));
         showToast(t('events.capacityFull'), 'error');
       } else if (msg.toLowerCase().includes('already')) {
@@ -120,6 +139,8 @@ export default function EventsPage({ onBack }: EventsPageProps) {
     const img = resolveCardImage(selectedEvent);
     const status = rsvpStatus[selectedEvent.id];
     const isFull = selectedEvent.rsvp_max_capacity > 0 && selectedEvent.rsvp_count >= selectedEvent.rsvp_max_capacity;
+    const isInviteOnly = selectedEvent.event_type === 'invite_only';
+    const invited = !!inviteInfo[selectedEvent.id];
 
     return (
       <div className="info-detail-screen">
@@ -178,6 +199,13 @@ export default function EventsPage({ onBack }: EventsPageProps) {
               </span>
             </div>
           )}
+          {isInviteOnly && (
+            <div className="info-detail-meta">
+              <span className="info-detail-meta-item">
+                <Lock size={16} /> {t('events.inviteOnlyDesc')}
+              </span>
+            </div>
+          )}
 
           <p className="info-detail-desc">
             {selectedEvent.long_description || selectedEvent.short_description || selectedEvent.description || t('events.noDescription')}
@@ -209,6 +237,11 @@ export default function EventsPage({ onBack }: EventsPageProps) {
               <button className="info-share-btn" disabled style={{ opacity: 0.5 }}>
                 <CheckCircle size={18} />
                 <span>{t('events.alreadyRsvpd')}</span>
+              </button>
+            ) : (isInviteOnly && !invited) || status === 'locked' ? (
+              <button className="info-share-btn" disabled style={{ opacity: 0.5 }}>
+                <Lock size={18} />
+                <span>{t('events.inviteOnly')}</span>
               </button>
             ) : (
               <button className="info-share-btn" onClick={() => handleRsvp(selectedEvent.id)} disabled={rsvping} style={{ justifyContent: 'center', gap: '8px' }}>
@@ -251,7 +284,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
           events.map((event) => {
             const img = resolveCardImage(event);
             return (
-              <div key={event.id} className="info-card" onClick={() => setSelectedEvent(event)}>
+              <div key={event.id} className="info-card" onClick={() => openEvent(event)}>
                 <div className="info-card-thumb">
                   {img && !brokenImages.has(event.id) ? (
                     <img
@@ -280,7 +313,17 @@ export default function EventsPage({ onBack }: EventsPageProps) {
                       {event.location}
                     </div>
                   )}
-                  {event.rsvp_enabled && (
+                  {event.event_type === 'paid' && (
+                    <div className="info-card-tag experience">
+                      <Ticket size={12} /> {t('events.paidEvent')}
+                    </div>
+                  )}
+                  {event.event_type === 'invite_only' && (
+                    <div className="info-card-tag experience">
+                      <Lock size={12} /> {t('events.inviteOnly')}
+                    </div>
+                  )}
+                  {event.rsvp_enabled && event.event_type !== 'invite_only' && (
                     <div className="info-card-tag experience">
                       <Users size={12} /> {event.rsvp_count}{event.rsvp_max_capacity > 0 ? `/${event.rsvp_max_capacity}` : ''} {t('events.rsvpTag')}
                     </div>

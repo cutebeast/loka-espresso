@@ -471,8 +471,8 @@ async def seed():
             await db.execute(
                 text("""
                     INSERT INTO event_cards (slug, title, short_description, long_description, image_url,
-                                             action_url, action_label, is_active, position, location, rsvp_enabled)
-                    VALUES (:slug, :title, :short_description, :long_description, :img, '#menu?cat=experiences', 'Book Now', true, :position, :location, false)
+                                             action_url, action_label, is_active, position, location, rsvp_enabled, event_type)
+                    VALUES (:slug, :title, :short_description, :long_description, :img, '#menu?cat=experiences', 'Book Now', true, :position, :location, false, 'paid')
                     ON CONFLICT (slug) DO UPDATE SET
                         title = EXCLUDED.title,
                         short_description = EXCLUDED.short_description,
@@ -482,7 +482,8 @@ async def seed():
                         action_label = EXCLUDED.action_label,
                         is_active = true,
                         position = EXCLUDED.position,
-                        location = EXCLUDED.location
+                        location = EXCLUDED.location,
+                        event_type = 'paid'
                 """),
                 {**card, "img": card["image_url"]},
             )

@@ -328,7 +328,10 @@
     "rsvpd": "Gidiyorsun!",
     "title": "Etkinlikler",
     "upcoming": "Yaklaşan",
-    "eventImageFallback": "Event image"
+    "eventImageFallback": "Event image",
+    "inviteOnly": "Sadece Davetli",
+    "inviteOnlyDesc": "Bu etkinlik yalnızca davetli misafirlere açıktır.",
+    "paidEvent": "Ücretli Etkinlik"
   },
   "helpSupport": {
     "backToHome": "Ana Sayfaya Dön",

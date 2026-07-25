@@ -16,6 +16,7 @@ from app.services.platform_config import PlatformConfigService
 from app.services.translation import merge_translations, translate_single
 from app.models.info_card import (
     EventCard,
+    EventInvite,
     InformationCard,
     ProductCard,
     PromoBanner,
@@ -360,11 +361,16 @@ async def list_event_cards(
 
 @router.get("/content/events/{slug}", response_model=APIResponse[EventCardOut])
 async def get_event_card(
+    request: Request,
     db: DBDependency,
     locale: OptionalLocale,
     slug: str,
 ):
-    """Get a single event card by slug."""
+    """Get a single event card by slug.
+
+    Adds `is_invited` when an authenticated customer requests an invite_only
+    event, so the PWA can unlock the RSVP button for invitees.
+    """
     stmt = select(EventCard).where(
         EventCard.slug == slug,
         EventCard.is_active.is_(True),
@@ -374,6 +380,18 @@ async def get_event_card(
     if not item:
         raise HTTPException(status_code=404, detail="Event card not found")
     item_dict = EventCardOut.model_validate(item).model_dump()
+    item_dict["is_invited"] = False
+    if item.event_type == "invite_only":
+        # Resolve bearer exactly as FastAPI DI would for _get_optional_customer
+        customer = await _get_optional_customer(request, db, await _optional_bearer(request))
+        if customer is not None:
+            invite = await db.execute(
+                select(EventInvite).where(
+                    EventInvite.event_id == item.id,
+                    EventInvite.customer_id == customer.id,
+                )
+            )
+            item_dict["is_invited"] = invite.scalar_one_or_none() is not None
     await translate_single(db, item_dict, "event_cards", locale)
     return APIResponse(data=item_dict)
 

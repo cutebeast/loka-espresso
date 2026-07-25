@@ -31,17 +31,25 @@ PORTAL_SRC = Path(__file__).resolve().parent.parent / "admin-portal" / "src"
 NAMESPACE = "admin-ui"
 
 # t("some.key") / t('some.key') / t("some.key", ...) / t(some.key)
-CALL_RE = re.compile(r"""\bt\(\s*["']([a-zA-Z0-9_.-]+)["']""")
+# NOTE: key chars include [ ] — dynamic-route namespaces like content_events_[id].*
+CALL_RE = re.compile(r"""\bt\(\s*["']([a-zA-Z0-9_.\[\]-]+)["']""")
 # t("some.key", "Inline default")
-DEFAULT_RE = re.compile(r"""\bt\(\s*["']([a-zA-Z0-9_.-]+)["']\s*,\s*["']([^"']+)["']""")
+DEFAULT_RE = re.compile(r"""\bt\(\s*["']([a-zA-Z0-9_.\[\]-]+)["']\s*,\s*["']([^"']+)["']""")
 # translation keys look like dotted paths, not single words or junk
-KEY_RE = re.compile(r"^[a-z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_-]+)+$")
+# (brackets allowed in ANY segment: dynamic-route namespaces join as
+# "content_events_[id].title" — no dot before the bracket)
+KEY_RE = re.compile(r"^[a-z][a-zA-Z0-9_\[\]-]*(\.[a-zA-Z0-9_\[\]-]+)+$")
+
+
+_ACRONYMS = {"rsvp", "otp", "pos", "sku", "qr", "url", "api", "id", "pdf", "csv", "pwa", "byot", "sst", "rm", "kds", "en", "ms", "zh", "ta", "tr"}
 
 
 def humanize(key: str) -> str:
     tail = key.split(".")[-1].replace("-", " ").replace("_", " ").strip()
     # split camelCase humps: "addLog" -> "add Log"
     tail = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", tail)
+    # keep known acronyms/locale codes uppercase: "enable rsvp" -> "Enable RSVP"
+    tail = " ".join(w.upper() if w.lower() in _ACRONYMS else w for w in tail.split(" "))
     return tail[:1].upper() + tail[1:] if tail else key
 
 

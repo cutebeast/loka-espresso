@@ -328,7 +328,10 @@
     "rsvpd": "Anda akan pergi!",
     "title": "Acara",
     "upcoming": "Akan Datang",
-    "eventImageFallback": "Event image"
+    "eventImageFallback": "Event image",
+    "inviteOnly": "Jemputan Sahaja",
+    "inviteOnlyDesc": "Acara ini terbuka kepada tetamu yang dijemput sahaja.",
+    "paidEvent": "Acara Berbayar"
   },
   "helpSupport": {
     "backToHome": "Kembali ke Laman Utama",

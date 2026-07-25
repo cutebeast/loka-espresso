@@ -6,8 +6,9 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
-from app.models.info_card import EventCard
-from app.schemas.content import EventCardCreate, EventCardOut, EventCardUpdate
+from app.models.customer import Customer
+from app.models.info_card import EventCard, EventInvite, EventRsvp
+from app.schemas.content import EventCardCreate, EventCardOut, EventCardUpdate, EventInviteAdd
 from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -75,3 +76,62 @@ async def delete_item(db: DBDependency, admin: CurrentAdmin, id: int):
     await db.delete(item); await db.commit()
     await delete_translations(db, "event_cards", id)
     return APIResponse(data={"id": id, "deleted": True})
+
+
+# ── Invite list (invite_only events) ──
+
+@router.get("/{id}/invites", response_model=APIResponse[dict])
+async def list_invites(db: DBDependency, admin: CurrentAdmin, id: int):
+    """List invited customers for an event, with RSVP status per invitee."""
+    result = await db.execute(
+        select(EventInvite, Customer, EventRsvp.id)
+        .join(Customer, EventInvite.customer_id == Customer.id)
+        .outerjoin(
+            EventRsvp,
+            (EventRsvp.event_id == EventInvite.event_id)
+            & (EventRsvp.customer_id == EventInvite.customer_id),
+        )
+        .where(EventInvite.event_id == id)
+        .order_by(EventInvite.created_at.desc())
+    )
+    items = [
+        {
+            "invite_id": inv.id,
+            "customer_id": cust.id,
+            "display_name": cust.display_name or " ".join(filter(None, [cust.given_name, cust.family_name])) or None,
+            "phone_number": cust.phone_number,
+            "email_address": cust.email_address,
+            "customer_segment": cust.customer_segment,
+            "invited_at": inv.created_at.isoformat() if inv.created_at else None,
+            "rsvped": rsvp_id is not None,
+        }
+        for inv, cust, rsvp_id in result.all()
+    ]
+    return APIResponse(data={"items": items, "total": len(items)})
+
+
+@router.post("/{id}/invites", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def add_invite(db: DBDependency, admin: CurrentAdmin, id: int, data: EventInviteAdd):
+    event = (await db.execute(select(EventCard).where(EventCard.id == id))).scalar_one_or_none()
+    if not event: raise HTTPException(404, "Event not found")
+    customer = (await db.execute(select(Customer).where(Customer.id == data.customer_id))).scalar_one_or_none()
+    if not customer: raise HTTPException(404, "Customer not found")
+    dup = await db.execute(
+        select(EventInvite).where(EventInvite.event_id == id, EventInvite.customer_id == data.customer_id)
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status.HTTP_409_CONFLICT, "Customer already invited")
+    invite = EventInvite(event_id=id, customer_id=data.customer_id)
+    db.add(invite); await db.commit(); await db.refresh(invite)
+    return APIResponse(data={"id": invite.id, "message": "Invited"})
+
+
+@router.delete("/{id}/invites/{customer_id}", response_model=APIResponse[dict])
+async def remove_invite(db: DBDependency, admin: CurrentAdmin, id: int, customer_id: int):
+    result = await db.execute(
+        select(EventInvite).where(EventInvite.event_id == id, EventInvite.customer_id == customer_id)
+    )
+    invite = result.scalar_one_or_none()
+    if not invite: raise HTTPException(404, "Invite not found")
+    await db.delete(invite); await db.commit()
+    return APIResponse(data={"deleted": True})

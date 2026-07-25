@@ -151,6 +151,7 @@ class EventCardBase(BaseSchema):
     position: int = Field(default=0, ge=0)
     location: str | None = Field(None, max_length=255)
     event_datetime: datetime | None = None
+    event_type: str = Field(default="public", pattern="^(public|invite_only|paid)$")
     rsvp_enabled: bool = False
     rsvp_max_capacity: int | None = None
     rsvp_count: int = 0
@@ -174,6 +175,7 @@ class EventCardUpdate(BaseSchema):
     position: int | None = Field(None, ge=0)
     location: str | None = Field(None, max_length=255)
     event_datetime: datetime | None = None
+    event_type: str | None = Field(None, pattern="^(public|invite_only|paid)$")
     rsvp_enabled: bool | None = None
     rsvp_max_capacity: int | None = None
     image_gallery_urls: list | None = None
@@ -181,6 +183,13 @@ class EventCardUpdate(BaseSchema):
 
 class EventCardOut(EventCardBase, TimestampedSchema):
     id: int
+    # Populated only on the public detail endpoint for invite_only events
+    # (True when the authenticated customer is on the invite list).
+    is_invited: bool | None = None
+
+
+class EventInviteAdd(BaseSchema):
+    customer_id: int
 
 
 # ── System Pages ──

@@ -3,7 +3,7 @@ from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -81,6 +81,10 @@ class EventCard(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     location: Mapped[str | None] = mapped_column(String(255))
     event_datetime: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How customers join: "public" (open RSVP), "invite_only" (RSVP restricted
+    # to event_invites), "paid" (informational — booking happens via the paid
+    # workshop/class flow, RSVP stays off).
+    event_type: Mapped[str] = mapped_column(String(20), nullable=False, default="public")
     rsvp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     rsvp_max_capacity: Mapped[int | None] = mapped_column(Integer)
     rsvp_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -90,6 +94,29 @@ class EventCard(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     rsvps: Mapped[List["EventRsvp"]] = relationship("EventRsvp", back_populates="event", cascade="all, delete-orphan")
+    invites: Mapped[List["EventInvite"]] = relationship("EventInvite", back_populates="event", cascade="all, delete-orphan")
+
+
+class EventInvite(Base):
+    """Invite list for invite_only events — only these customers may RSVP."""
+
+    __tablename__ = "event_invites"
+    __table_args__ = (
+        UniqueConstraint("event_id", "customer_id", name="uq_event_invites_event_customer"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("event_cards.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_id: Mapped[int] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    event: Mapped["EventCard"] = relationship("EventCard", back_populates="invites")
 
 
 class EventRsvp(Base):

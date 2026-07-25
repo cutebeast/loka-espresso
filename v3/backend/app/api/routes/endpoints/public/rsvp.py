@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.routes.deps import ActiveCustomer, DBDependency
-from app.models.info_card import EventCard, EventRsvp
+from app.models.info_card import EventCard, EventInvite, EventRsvp
 from app.schemas.base import APIResponse
 
 router = APIRouter(prefix="/events", tags=["public — events"])
@@ -35,6 +35,26 @@ async def rsvp_to_event(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This event is no longer active",
         )
+
+    if event.event_type == "paid":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This is a paid event — please book through the workshop page",
+        )
+
+    # Invite-only events require an invite for this customer
+    if event.event_type == "invite_only":
+        invite = await db.execute(
+            select(EventInvite).where(
+                EventInvite.event_id == event_id,
+                EventInvite.customer_id == customer.id,
+            )
+        )
+        if invite.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This event is invite-only",
+            )
 
     # Check capacity
     if event.rsvp_max_capacity is not None and event.rsvp_count >= event.rsvp_max_capacity:

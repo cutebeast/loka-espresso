@@ -27,6 +27,7 @@ export default function EventNewPage() {
     end_date: "",
     location: "",
     event_datetime: "",
+    event_type: "public",
     rsvp_enabled: false,
     rsvp_max_capacity: 0
   });
@@ -151,7 +152,11 @@ export default function EventNewPage() {
                 }} className="btn btn-ghost btn-sm" style={{
                   color: "var(--color-error)"
                 }}>{t("content_events_new.clear")}</button></>}</div></div>
-          <div className="df-field"><label className="df-label" style={{
+          <div className="df-field"><label className="df-label">{t("content_events_new.event_type")}</label><select value={form.event_type} onChange={e => setForm({
+              ...form,
+              event_type: e.target.value
+            })}><option value="public">{t("content_events_new.type_public")}</option><option value="invite_only">{t("content_events_new.type_invite_only")}</option><option value="paid">{t("content_events_new.type_paid")}</option></select></div>
+          {form.event_type !== "paid" && <><div className="df-field"><label className="df-label" style={{
               display: "flex",
               alignItems: "center",
               gap: 8
@@ -162,7 +167,7 @@ export default function EventNewPage() {
           {form.rsvp_enabled && <div className="df-field"><label className="df-label">{t("content_events_new.max_capacity")}</label><input type="number" value={form.rsvp_max_capacity} onChange={e => setForm({
               ...form,
               rsvp_max_capacity: Number(e.target.value)
-            })} placeholder={t("content_events_new.e_g_20")} /></div>}
+            })} placeholder={t("content_events_new.e_g_20")} /></div>}</>}
           <div className="df-field"><label className="df-label" style={{
               display: "flex",
               alignItems: "center",

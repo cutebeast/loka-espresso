@@ -328,7 +328,10 @@
     "rsvpd": "You're going!",
     "title": "Events",
     "upcoming": "Upcoming",
-    "eventImageFallback": "Event image"
+    "eventImageFallback": "Event image",
+    "paidEvent": "Paid Event",
+    "inviteOnly": "Invite Only",
+    "inviteOnlyDesc": "This event is open to invited guests only."
   },
   "helpSupport": {
     "backToHome": "Back To Home",

@@ -12,6 +12,7 @@ interface Card {
   end_date?: string;
   position: number;
   is_active: boolean;
+  event_type?: string;
 }
 export default function EventsPage() {
   const {
@@ -54,6 +55,7 @@ export default function EventsPage() {
           <thead>
             <tr>
               <th>{t("content_events.title")}</th>
+              <th>{t("content_events.type")}</th>
               <th>{t("content_events.dates")}</th>
               <th>{t("content_events.pos")}</th>
               <th style={{
@@ -65,7 +67,7 @@ export default function EventsPage() {
             </tr>
           </thead>
           <tbody>
-            {loading ? <tr><td colSpan={5} className="data-table-empty">{t("content_events.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
+            {loading ? <tr><td colSpan={6} className="data-table-empty">{t("content_events.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               router.push(`/events/${item.id}`);
@@ -76,6 +78,7 @@ export default function EventsPage() {
                 <td style={{
               fontWeight: 600
             }}>{item.title}</td>
+                <td><span className={`badge badge-sm ${item.event_type === "paid" ? "badge-amber" : item.event_type === "invite_only" ? "badge-purple" : "badge-blue"}`}>{t(`content_events.type_${item.event_type || "public"}`)}</span></td>
                 <td style={{
               fontSize: 12
             }}>

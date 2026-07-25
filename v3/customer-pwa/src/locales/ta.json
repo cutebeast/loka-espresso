@@ -328,7 +328,10 @@
     "rsvpd": "நீங்கள் வருகிறீர்கள்!",
     "title": "நிகழ்வுகள்",
     "upcoming": "வரவிருக்கும்",
-    "eventImageFallback": "Event image"
+    "eventImageFallback": "Event image",
+    "inviteOnly": "அழைப்பு மட்டும்",
+    "inviteOnlyDesc": "இந்த நிகழ்வு அழைக்கப்பட்ட விருந்தினர்களுக்கு மட்டுமே.",
+    "paidEvent": "கட்டண நிகழ்வு"
   },
   "helpSupport": {
     "backToHome": "முகப்புக்குத் திரும்பு",

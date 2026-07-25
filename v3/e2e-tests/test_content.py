@@ -112,6 +112,107 @@ async def test_public_event_cards_list(
 
 
 @pytest.mark.asyncio
+async def test_invite_only_event_rsvp_flow(
+    client: httpx.AsyncClient, base_url: str, admin_headers: dict, customer_account: dict
+):
+    """Invite-only events: RSVP is 403 until the admin invites the customer."""
+    slug = _uniq("e2e-invite-event")
+    create_r = await client.post(
+        f"{base_url}/admin/event-cards",
+        headers=admin_headers,
+        json={
+            "title": "E2E Invite-Only Event",
+            "slug": slug,
+            "short_description": "Invite-only event created by E2E",
+            "event_type": "invite_only",
+            "rsvp_enabled": True,
+            "rsvp_max_capacity": 5,
+            "is_active": True,
+        },
+    )
+    assert create_r.status_code == 201, create_r.text
+    card_id = create_r.json()["data"]["id"]
+    headers = customer_account["headers"]
+    cust_id = customer_account["id"]
+
+    try:
+        # Public list exposes the event type
+        r = await client.get(f"{base_url}/content/events")
+        card = next(i for i in r.json()["data"] if i.get("slug") == slug)
+        assert card["event_type"] == "invite_only"
+
+        # RSVP without an invite → 403
+        r = await client.post(f"{base_url}/events/{card_id}/rsvp", headers=headers)
+        assert r.status_code == 403, r.text
+
+        # Admin invites the customer; duplicate invite → 409
+        r = await client.post(
+            f"{base_url}/admin/event-cards/{card_id}/invites",
+            headers=admin_headers,
+            json={"customer_id": cust_id},
+        )
+        assert r.status_code == 201, r.text
+        r = await client.post(
+            f"{base_url}/admin/event-cards/{card_id}/invites",
+            headers=admin_headers,
+            json={"customer_id": cust_id},
+        )
+        assert r.status_code == 409
+
+        # Detail reports is_invited for the invited customer
+        r = await client.get(f"{base_url}/content/events/{slug}", headers=headers)
+        assert r.json()["data"]["is_invited"] is True
+
+        # RSVP now succeeds and the invite list reflects it
+        r = await client.post(f"{base_url}/events/{card_id}/rsvp", headers=headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["data"]["rsvp_count"] == 1
+
+        r = await client.get(f"{base_url}/admin/event-cards/{card_id}/invites", headers=admin_headers)
+        items = r.json()["data"]["items"]
+        assert len(items) == 1 and items[0]["rsvped"] is True
+
+        # Removing the invite locks RSVP again for new attempts (dup guard 409 here)
+        r = await client.delete(
+            f"{base_url}/admin/event-cards/{card_id}/invites/{cust_id}", headers=admin_headers
+        )
+        assert r.status_code == 200
+        r = await client.get(f"{base_url}/content/events/{slug}", headers=headers)
+        assert r.json()["data"]["is_invited"] is False
+    finally:
+        await client.delete(f"{base_url}/admin/event-cards/{card_id}", headers=admin_headers)
+
+
+@pytest.mark.asyncio
+async def test_paid_event_rejects_rsvp(
+    client: httpx.AsyncClient, base_url: str, admin_headers: dict, customer_headers: dict
+):
+    """Paid events route customers to the workshop booking flow, not RSVP."""
+    slug = _uniq("e2e-paid-event")
+    create_r = await client.post(
+        f"{base_url}/admin/event-cards",
+        headers=admin_headers,
+        json={
+            "title": "E2E Paid Event",
+            "slug": slug,
+            "short_description": "Paid event created by E2E",
+            "event_type": "paid",
+            "rsvp_enabled": True,  # misconfiguration on purpose — paid must still block
+            "is_active": True,
+        },
+    )
+    assert create_r.status_code == 201, create_r.text
+    card_id = create_r.json()["data"]["id"]
+
+    try:
+        r = await client.post(f"{base_url}/events/{card_id}/rsvp", headers=customer_headers)
+        assert r.status_code == 400, r.text
+        assert "paid" in r.json()["detail"].lower()
+    finally:
+        await client.delete(f"{base_url}/admin/event-cards/{card_id}", headers=admin_headers)
+
+
+@pytest.mark.asyncio
 async def test_public_legal_page(
     client: httpx.AsyncClient, base_url: str, admin_headers: dict
 ):

@@ -328,7 +328,10 @@
     "rsvpd": "您将参加！",
     "title": "活动",
     "upcoming": "即将到来",
-    "eventImageFallback": "Event image"
+    "eventImageFallback": "Event image",
+    "inviteOnly": "仅限邀请",
+    "inviteOnlyDesc": "此活动仅对受邀嘉宾开放。",
+    "paidEvent": "付费活动"
   },
   "helpSupport": {
     "backToHome": "返回首页",

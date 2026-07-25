@@ -60,6 +60,36 @@ export default function EventEditPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<Record<string, any>>({});
   const [tr, setTr] = useState<Record<string, string>>({});
+  const [invites, setInvites] = useState<any[]>([]);
+  const [inviteQuery, setInviteQuery] = useState("");
+  const [inviteResults, setInviteResults] = useState<any[]>([]);
+  const loadInvites = useCallback(async () => {
+    try {
+      const d = await api.getRaw<any>(`/admin/event-cards/${id}/invites`);
+      setInvites(d.items || []);
+    } catch (e) { logError("Failed to load invites", e); }
+  }, [id]);
+  const searchInviteCustomers = async (q: string) => {
+    setInviteQuery(q);
+    if (q.trim().length < 2) { setInviteResults([]); return; }
+    try {
+      const d = await api.getRaw<any>(`/admin/customers?search=${encodeURIComponent(q.trim())}&per_page=8`);
+      setInviteResults(d.items || []);
+    } catch (e) { logError("Customer search failed", e); }
+  };
+  const addInvite = async (customerId: number) => {
+    try {
+      await api.post(`/admin/event-cards/${id}/invites`, { customer_id: customerId });
+      setInviteQuery(""); setInviteResults([]);
+      await loadInvites();
+    } catch (e: any) { setMsg(parseApiError(e, t("admin.errors.loadFailed"))); }
+  };
+  const removeInvite = async (customerId: number) => {
+    try {
+      await api.del(`/admin/event-cards/${id}/invites/${customerId}`);
+      await loadInvites();
+    } catch (e: any) { setMsg(parseApiError(e, t("admin.errors.loadFailed"))); }
+  };
   const load = useCallback(async () => {
     try {
       const d = await api.getRaw<any>(`/admin/event-cards/${id}`);
@@ -78,9 +108,11 @@ export default function EventEditPage() {
         rsvp_enabled: !!d.rsvp_enabled,
         rsvp_max_capacity: d.rsvp_max_capacity || 0,
         rsvp_count: d.rsvp_count || 0,
+        event_type: d.event_type || "public",
         is_active: d.is_active
       });
       setImg(d.image_url || "");
+      if ((d.event_type || "public") === "invite_only") loadInvites();
       const x: Record<string, string> = {};
       for (const lc of LOCALES) {
         if (lc.code === "en") continue;
@@ -238,7 +270,7 @@ export default function EventEditPage() {
         color: loc === lc.code ? "var(--color-primary)" : "var(--color-text-muted)",
         borderRadius: "4px 4px 0 0"
       }}>{lc.flag} {lc.label}</button>)}</div>
-      {loc === "en" ? <div className="card" style={{
+      {loc === "en" ? <><div className="card" style={{
       padding: 24,
       maxWidth: 700
     }}>
@@ -268,6 +300,10 @@ export default function EventEditPage() {
             ...form,
             end_date: e.target.value
           })} /></div>
+            <div className="df-field"><label className="df-label">{t("content_events_[id].event_type")}</label><select value={form.event_type || "public"} onChange={e => setForm({
+            ...form,
+            event_type: e.target.value
+          })}><option value="public">{t("content_events_[id].type_public")}</option><option value="invite_only">{t("content_events_[id].type_invite_only")}</option><option value="paid">{t("content_events_[id].type_paid")}</option></select></div>
             <div className="df-field"><label className="df-label">{t("content_events_[id].position")}</label><input type="number" value={form.position} onChange={e => setForm({
             ...form,
             position: Number(e.target.value)
@@ -313,7 +349,7 @@ export default function EventEditPage() {
           ...form,
           gallery_video_url: url
         })} disabled={uploading} />
-            <div className="df-field"><label className="df-label" style={{
+            {form.event_type !== "paid" && <><div className="df-field"><label className="df-label" style={{
             display: "flex",
             alignItems: "center",
             gap: 8
@@ -328,7 +364,7 @@ export default function EventEditPage() {
               fontSize: 16,
               fontWeight: 700,
               padding: "8px 0"
-            }}>{form.rsvp_count || 0}</span></div></>}
+            }}>{form.rsvp_count || 0}</span></div></>}</>}
             <div className="df-field"><label className="df-label" style={{
             display: "flex",
             alignItems: "center",
@@ -341,7 +377,41 @@ export default function EventEditPage() {
           <div className="df-actions" style={{
         marginTop: 20
       }}><button type="button" onClick={() => r.push("/events")} className="btn btn-ghost">{t("content_events_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
-        </div> : <div className="card" style={{
+        </div>
+        {form.event_type === "invite_only" && <div className="card" style={{
+        padding: 24,
+        maxWidth: 700,
+        marginTop: 20
+      }}>
+          <h3 style={{ marginBottom: 4 }}>{t("content_events_[id].invites")}</h3>
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 16 }}>{t("content_events_[id].invites_hint")}</p>
+          <div style={{ position: "relative", marginBottom: 16 }}>
+            <input value={inviteQuery} onChange={e => searchInviteCustomers(e.target.value)} placeholder={t("content_events_[id].invite_search_placeholder")} style={{ width: "100%" }} />
+            {inviteResults.length > 0 && <div style={{
+            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
+            background: "var(--color-bg-white)", border: "1px solid var(--color-border-light)",
+            borderRadius: "var(--radius-sm)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", maxHeight: 240, overflowY: "auto"
+          }}>
+              {inviteResults.filter(c => !invites.some(i => i.customer_id === c.id)).map(c => <button type="button" key={c.id} onClick={() => addInvite(c.id)} style={{
+              display: "block", width: "100%", textAlign: "left", padding: "10px 12px",
+              border: "none", background: "none", cursor: "pointer", fontSize: 13, borderBottom: "1px solid var(--color-border-light)"
+            }}>
+                <strong>{c.display_name || c.phone_number || c.email_address || `#${c.id}`}</strong>
+                <span style={{ color: "var(--color-text-muted)", marginLeft: 8 }}>{c.phone_number || ""} {c.email_address || ""}</span>
+              </button>)}
+            </div>}
+          </div>
+          {invites.length === 0 ? <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>{t("content_events_[id].no_invites")}</p> : <table className="data-table">
+            <thead><tr><th>{t("content_events_[id].invitee")}</th><th>{t("content_events_[id].invitee_contact")}</th><th>{t("content_events_[id].rsvped")}</th><th></th></tr></thead>
+            <tbody>{invites.map(i => <tr key={i.invite_id}>
+              <td style={{ fontWeight: 600 }}>{i.display_name || "—"}</td>
+              <td style={{ fontSize: 12 }}>{i.phone_number || ""}{i.phone_number && i.email_address ? " · " : ""}{i.email_address || ""}</td>
+              <td>{i.rsvped ? <span className="badge badge-success">{t("content_events_[id].rsvped_yes")}</span> : <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{t("content_events_[id].rsvped_no")}</span>}</td>
+              <td style={{ textAlign: "right" }}><button type="button" onClick={() => removeInvite(i.customer_id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>{t("admin.common.delete")}</button></td>
+            </tr>)}</tbody>
+          </table>}
+        </div>}
+        </> : <div className="card" style={{
       padding: 24,
       maxWidth: 700
     }}>
