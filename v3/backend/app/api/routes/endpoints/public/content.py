@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from typing import Annotated
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -396,7 +397,41 @@ async def get_legal_page(
         raise HTTPException(status_code=404, detail="Page not found")
     item_dict = SystemPageOut.model_validate(item).model_dump()
     await translate_single(db, item_dict, "system_pages", locale)
+    item_dict["sections"] = _parse_legal_sections(item_dict.get("body_text") or "", locale)
     return APIResponse(data=item_dict)
+
+
+_SECTION_HEAD = re.compile(r"^(\d+)\.\s+(.+?)\s*$")
+
+
+_INTRO_HEADINGS = {"ms": "Pengenalan", "zh": "简介", "ta": "அறிமுகம்", "tr": "Giriş"}
+
+
+def _parse_legal_sections(body: str, locale: str | None = None) -> list[dict]:
+    """Split legal body_text into structured sections on 'N. Heading' boundaries.
+
+    Text before the first numbered heading becomes an intro section so the PWA
+    can render a proper table of contents with collapsible sections.
+    """
+    if not body:
+        return []
+    sections: list[dict] = []
+    current: dict | None = None
+    for line in body.splitlines():
+        m = _SECTION_HEAD.match(line.strip())
+        if m:
+            current = {"heading": f"{m.group(1)}. {m.group(2)}", "body": ""}
+            sections.append(current)
+        elif current is not None:
+            current["body"] += line + "\n"
+        else:
+            if not sections:
+                intro = _INTRO_HEADINGS.get(locale or "", "Introduction")
+                sections.append({"heading": intro, "body": ""})
+            sections[0]["body"] += line + "\n"
+    for s in sections:
+        s["body"] = s["body"].strip()
+    return [s for s in sections if s["body"] or s["heading"]]
 
 
 # ── Splash Screen ──

@@ -191,6 +191,12 @@ class SystemPageBase(BaseSchema):
     body_text: str | None = None
     is_active: bool = True
 
+
+class SystemPageSection(BaseSchema):
+    heading: str
+    body: str
+
+
 class SystemPageCreate(SystemPageBase):
     pass
 
@@ -202,6 +208,7 @@ class SystemPageUpdate(BaseSchema):
 
 class SystemPageOut(SystemPageBase, TimestampedSchema):
     id: int
+    sections: list[SystemPageSection] | None = None
 
 
 # ── Promo Banners ──
