@@ -485,7 +485,10 @@
     "noCampaign": "目前没有进行中的抽奖活动，请稍后再来看看！",
     "spinFailed": "抽奖失败，请重试。",
     "homeBannerTitle": "幸运抽奖",
-    "homeBannerSubtitle": "转动轮盘，赢取每日奖励"
+    "homeBannerSubtitle": "转动轮盘，赢取每日奖励",
+    "earnBySpending": "消费即可获得抽奖券！",
+    "spendToEarn": "消费 RM {amount} 获 1 张抽奖券",
+    "ticketsLeft": "剩余 {count} 张抽奖券"
   },
   "menu": {
     "addPrice": "添加价格",

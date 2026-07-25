@@ -203,6 +203,12 @@ async def process_staff_order_payment(
     if fully_paid_by_wallet:
         order.payment_status = "captured"
 
+    # Spend-based lucky draw: grant tickets whenever the order ends up captured
+    # (cash/card/QR manual capture, wallet payment — idempotent per order)
+    if order.payment_status == "captured":
+        from app.services.lucky_draw import grant_tickets_for_order
+        await grant_tickets_for_order(db, order)
+
     log = OrderStatusLog(
         order_id=order.id,
         from_status=order.status,

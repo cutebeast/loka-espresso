@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +30,13 @@ class LuckyDrawCampaign(Base, TimestampMixin):
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     spins_per_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # "free_daily" (spins_per_day per customer per day) or "ticket_spend"
+    # (tickets earned from spending; each spin consumes one).
+    draw_type: Mapped[str] = mapped_column(String(20), nullable=False, default="free_daily")
+    # ticket_spend: cents of spend per ticket (5000 = RM 50). Per-order floor.
+    spend_per_ticket_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=5000)
+    # Wheel size control — max active segments allowed on this campaign (2-12).
+    max_segments: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
 
     segments: Mapped[List["LuckyDrawSegment"]] = relationship(
         "LuckyDrawSegment",
@@ -41,9 +49,26 @@ class LuckyDrawCampaign(Base, TimestampMixin):
         back_populates="campaign",
         cascade="all, delete-orphan",
     )
+    tickets: Mapped[List["LuckyDrawTicket"]] = relationship(
+        "LuckyDrawTicket",
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         CheckConstraint("spins_per_day > 0", name="ck_lucky_draw_campaigns_spins_per_day"),
+        CheckConstraint(
+            "draw_type IN ('free_daily','ticket_spend')",
+            name="ck_lucky_draw_campaigns_draw_type",
+        ),
+        CheckConstraint(
+            "spend_per_ticket_cents > 0",
+            name="ck_lucky_draw_campaigns_spend_per_ticket",
+        ),
+        CheckConstraint(
+            "max_segments BETWEEN 2 AND 12",
+            name="ck_lucky_draw_campaigns_max_segments",
+        ),
         CheckConstraint(
             "start_date IS NULL OR end_date IS NULL OR end_date > start_date",
             name="ck_lucky_draw_campaigns_dates",
@@ -114,4 +139,48 @@ class LuckyDrawSpin(Base):
 
     __table_args__ = (
         Index("idx_lucky_draw_spins_customer_created", "customer_id", "created_at"),
+    )
+
+
+class LuckyDrawTicket(Base):
+    """Spend-earned draw ticket (ticket_spend campaigns).
+
+    One row per ticket; `order_ticket_seq` numbers tickets within an order
+    (RM 120 at RM50/ticket → seq 1..2). Grants are idempotent via the
+    (campaign_id, order_id, order_ticket_seq) unique constraint. Consumed
+    tickets link to the spin that used them. Refunds do not claw tickets back.
+    """
+
+    __tablename__ = "lucky_draw_tickets"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    campaign_id: Mapped[int] = mapped_column(
+        ForeignKey("lucky_draw_campaigns.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    customer_id: Mapped[int] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+    )
+    order_id: Mapped[int | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    order_ticket_seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    spin_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lucky_draw_spins.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    campaign: Mapped["LuckyDrawCampaign"] = relationship(
+        "LuckyDrawCampaign", back_populates="tickets"
+    )
+    customer: Mapped["Customer"] = relationship("Customer")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_id", "order_id", "order_ticket_seq",
+            name="uq_lucky_draw_tickets_campaign_order_seq",
+        ),
+        Index("idx_lucky_draw_tickets_customer_avail", "campaign_id", "customer_id", "consumed_at"),
     )

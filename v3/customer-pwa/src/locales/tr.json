@@ -485,7 +485,10 @@
     "noCampaign": "Şu anda aktif bir şans çarkı kampanyası yok. Yakında tekrar kontrol edin!",
     "spinFailed": "Çevirme başarısız. Lütfen tekrar deneyin.",
     "homeBannerTitle": "Şans Çarkı",
-    "homeBannerSubtitle": "Çarkı çevirin, günlük ödüller kazanın"
+    "homeBannerSubtitle": "Çarkı çevirin, günlük ödüller kazanın",
+    "earnBySpending": "Bizimle harcama yaparak çekiliş biletleri kazanın!",
+    "spendToEarn": "RM {amount} harcama = 1 çekiliş bileti",
+    "ticketsLeft": "{count} çekiliş bileti kaldı"
   },
   "menu": {
     "addPrice": "Fiyat Ekle",

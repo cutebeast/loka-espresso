@@ -485,7 +485,10 @@
     "noCampaign": "Tiada cabutan bertuah sedang berjalan buat masa ini. Semak semula nanti!",
     "spinFailed": "Putaran gagal. Sila cuba lagi.",
     "homeBannerTitle": "Cabutan Bertuah",
-    "homeBannerSubtitle": "Putar roda & menangi ganjaran harian"
+    "homeBannerSubtitle": "Putar roda & menangi ganjaran harian",
+    "earnBySpending": "Dapatkan tiket cabutan dengan berbelanja bersama kami!",
+    "spendToEarn": "Belanja RM {amount} = 1 tiket cabutan",
+    "ticketsLeft": "{count} tiket cabutan lagi"
   },
   "menu": {
     "addPrice": "Tambah Harga",

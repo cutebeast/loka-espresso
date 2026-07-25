@@ -1248,6 +1248,9 @@ async def staff_pos_create_order(
                 # Accrue annual spend + tier review/upgrade (loyalty program)
                 from app.services.payment import _accrue_loyalty_annual_spend
                 await _accrue_loyalty_annual_spend(db, payment)
+                # Spend-based lucky draw: grant tickets on capture (idempotent)
+                from app.services.lucky_draw import grant_tickets_for_order
+                await grant_tickets_for_order(db, order)
 
         # Update table status if dine-in
         if dining_table_id and order_type == "dine_in":

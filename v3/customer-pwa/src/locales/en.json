@@ -485,7 +485,10 @@
     "noCampaign": "No lucky draw is running right now. Check back soon!",
     "spinFailed": "Spin failed. Please try again.",
     "homeBannerTitle": "Lucky Draw",
-    "homeBannerSubtitle": "Spin the wheel & win daily rewards"
+    "homeBannerSubtitle": "Spin the wheel & win daily rewards",
+    "ticketsLeft": "{count} draw tickets left",
+    "spendToEarn": "Spend RM {amount} = 1 draw ticket",
+    "earnBySpending": "Earn draw tickets by spending with us!"
   },
   "menu": {
     "addPrice": "Add Price",

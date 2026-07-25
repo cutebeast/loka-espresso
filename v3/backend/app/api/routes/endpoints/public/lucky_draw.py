@@ -126,9 +126,14 @@ async def get_active_campaign(
     segments = result.scalars().all()
 
     spins_remaining = None
+    tickets_available = None
     if customer is not None:
-        used = await _spins_used_today(db, campaign.id, customer.id)
-        spins_remaining = max(campaign.spins_per_day - used, 0)
+        if campaign.draw_type == "ticket_spend":
+            from app.services.lucky_draw import tickets_available as _tickets_available
+            tickets_available = await _tickets_available(db, campaign.id, customer.id)
+        else:
+            used = await _spins_used_today(db, campaign.id, customer.id)
+            spins_remaining = max(campaign.spins_per_day - used, 0)
 
     data = LuckyDrawActiveCampaignOut(
         id=campaign.id,
@@ -137,8 +142,12 @@ async def get_active_campaign(
         start_date=campaign.start_date,
         end_date=campaign.end_date,
         spins_per_day=campaign.spins_per_day,
+        draw_type=campaign.draw_type,
+        spend_per_ticket_cents=campaign.spend_per_ticket_cents,
+        max_segments=campaign.max_segments,
         segments=[LuckyDrawSegmentOut.model_validate(s) for s in segments],
         spins_remaining=spins_remaining,
+        tickets_available=tickets_available,
     )
     return APIResponse(data=data)
 
@@ -172,16 +181,31 @@ async def spin_wheel(
             detail="Campaign has no active segments",
         )
 
-    used = await _spins_used_today(db, campaign.id, customer.id)
-    if used >= campaign.spins_per_day:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "message": "Daily spin limit reached",
-                "spins_remaining": 0,
-                "next_spin_at": _next_spin_at().isoformat(),
-            },
-        )
+    # Gate by draw type: daily free spins vs spend-earned tickets.
+    # The pre-check is a fast-path guard; the authoritative consumption
+    # happens after the spin row exists (race-safe, rolls back on loss).
+    if campaign.draw_type == "ticket_spend":
+        from app.services.lucky_draw import tickets_available
+        available_before = await tickets_available(db, campaign.id, customer.id)
+        if available_before <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "message": "No draw tickets — earn them by spending",
+                    "tickets_remaining": 0,
+                },
+            )
+    else:
+        used = await _spins_used_today(db, campaign.id, customer.id)
+        if used >= campaign.spins_per_day:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "message": "Daily spin limit reached",
+                    "spins_remaining": 0,
+                    "next_spin_at": _next_spin_at().isoformat(),
+                },
+            )
 
     winner = random.SystemRandom().choices(
         segments, weights=[s.probability_weight for s in segments], k=1
@@ -209,6 +233,27 @@ async def spin_wheel(
         customer_voucher_id=cv.id,
     )
     db.add(spin)
+    await db.flush()
+
+    spins_remaining = 0
+    tickets_remaining = None
+    if campaign.draw_type == "ticket_spend":
+        from app.services.lucky_draw import consume_oldest_ticket
+        ticket_row = await consume_oldest_ticket(db, campaign.id, customer.id, spin)
+        if ticket_row is None:
+            # Lost the race with a concurrent spin — treat like the daily cap
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"message": "No draw tickets — earn them by spending", "tickets_remaining": 0},
+            )
+        # autoflush=False in this app — re-querying here would see the
+        # pre-consumption count, so derive from the pre-checked value instead
+        tickets_remaining = max(available_before - 1, 0)
+        await db.flush()
+    else:
+        spins_remaining = max(campaign.spins_per_day - used - 1, 0)
+
     await db.commit()
 
     return APIResponse(
@@ -216,6 +261,7 @@ async def spin_wheel(
             segment=LuckyDrawSegmentOut.model_validate(winner),
             voucher_code=cv.voucher_code,
             voucher_title=vd.display_title,
-            spins_remaining=max(campaign.spins_per_day - used - 1, 0),
+            spins_remaining=spins_remaining,
+            tickets_remaining=tickets_remaining,
         )
     )

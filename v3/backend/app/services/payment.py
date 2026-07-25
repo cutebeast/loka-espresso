@@ -1026,6 +1026,9 @@ async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None
             order.payment_status = "partially_refunded"
     elif total_captured >= order_total:
         order.payment_status = "captured"
+        # Spend-based lucky draw: grant tickets on capture (idempotent).
+        from app.services.lucky_draw import grant_tickets_for_order
+        await grant_tickets_for_order(db, order)
     elif total_captured > 0:
         order.payment_status = "initiated"
     order.updated_at = datetime.now(timezone.utc)

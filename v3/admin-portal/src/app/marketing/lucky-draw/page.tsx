@@ -15,6 +15,9 @@ interface LuckyDrawCampaign {
   start_date: string | null;
   end_date: string | null;
   spins_per_day: number;
+  draw_type: string;
+  spend_per_ticket_cents: number;
+  max_segments: number;
 }
 
 interface LuckyDrawSegment {
@@ -49,6 +52,9 @@ const emptyCampaignForm = {
   title: "",
   description: "",
   spins_per_day: "1",
+  draw_type: "free_daily",
+  spend_per_ticket_rm: "50",
+  max_segments: "8",
   is_active: true,
   start_date: "",
   end_date: "",
@@ -87,6 +93,14 @@ export default function LuckyDrawPage() {
 
   const [spins, setSpins] = useState<LuckyDrawSpin[]>([]);
   const [spinsLoading, setSpinsLoading] = useState(false);
+  const [ticketStats, setTicketStats] = useState<{ tickets_issued: number; tickets_consumed: number; tickets_available: number; customers_holding: number } | null>(null);
+
+  const fetchTicketStats = useCallback(async (campaignId: number) => {
+    try {
+      const d = await api.getRaw<any>(`/admin/lucky-draw/campaigns/${campaignId}/ticket-stats`);
+      setTicketStats(d);
+    } catch { setTicketStats(null); }
+  }, []);
   const pagination = usePagination({ defaultPage: 1, defaultPerPage: SPINS_PAGE_SIZE });
 
   const showMsg = (text: string) => {
@@ -102,10 +116,14 @@ export default function LuckyDrawPage() {
         title: c.title,
         description: c.description || "",
         spins_per_day: String(c.spins_per_day),
+        draw_type: c.draw_type || "free_daily",
+        spend_per_ticket_rm: String((c.spend_per_ticket_cents ?? 5000) / 100),
+        max_segments: String(c.max_segments ?? 8),
         is_active: c.is_active,
         start_date: toDateTimeLocal(c.start_date),
         end_date: toDateTimeLocal(c.end_date),
       });
+      if (c.draw_type === "ticket_spend") fetchTicketStats(c.id);
     } else {
       setCampaignForm(emptyCampaignForm);
     }
@@ -170,6 +188,9 @@ export default function LuckyDrawPage() {
         title: campaignForm.title,
         description: campaignForm.description || null,
         spins_per_day: parseInt(campaignForm.spins_per_day, 10) || 1,
+        draw_type: campaignForm.draw_type,
+        spend_per_ticket_cents: Math.round((parseFloat(campaignForm.spend_per_ticket_rm) || 50) * 100),
+        max_segments: Math.min(12, Math.max(2, parseInt(campaignForm.max_segments, 10) || 8)),
         is_active: campaignForm.is_active,
         start_date: campaignForm.start_date || null,
         end_date: campaignForm.end_date || null,
@@ -184,6 +205,7 @@ export default function LuckyDrawPage() {
         pagination.setTotal(0);
         pagination.setTotalPages(1);
       }
+      if (saved.draw_type === "ticket_spend") fetchTicketStats(saved.id);
       showMsg(t("lucky_draw.saved", "Campaign saved"));
     } catch (err: any) {
       setError(parseApiError(err, t("lucky_draw.saveFailed", "Failed to save campaign")));
@@ -301,9 +323,30 @@ export default function LuckyDrawPage() {
             <textarea rows={3} value={campaignForm.description} onChange={e => setCampaignForm({ ...campaignForm, description: e.target.value })} />
           </div>
           <div className="df-field">
-            <label className="df-label">{t("lucky_draw.spinsPerDay", "Spins per day")}</label>
-            <input type="number" min={1} required value={campaignForm.spins_per_day} onChange={e => setCampaignForm({ ...campaignForm, spins_per_day: e.target.value })} />
-            <div className="df-hint">{t("lucky_draw.spinsPerDayHint", "How many times each customer can spin per day")}</div>
+            <label className="df-label">{t("lucky_draw.drawType", "Draw Type")}</label>
+            <select value={campaignForm.draw_type} onChange={e => setCampaignForm({ ...campaignForm, draw_type: e.target.value })}>
+              <option value="free_daily">{t("lucky_draw.typeFreeDaily", "Free draws per day")}</option>
+              <option value="ticket_spend">{t("lucky_draw.typeTicketSpend", "Spend-based tickets")}</option>
+            </select>
+            <div className="df-hint">{t("lucky_draw.drawTypeHint", "Free daily spins, or tickets earned from spending")}</div>
+          </div>
+          {campaignForm.draw_type === "free_daily" ? (
+            <div className="df-field">
+              <label className="df-label">{t("lucky_draw.spinsPerDay", "Spins per day")}</label>
+              <input type="number" min={1} required value={campaignForm.spins_per_day} onChange={e => setCampaignForm({ ...campaignForm, spins_per_day: e.target.value })} />
+              <div className="df-hint">{t("lucky_draw.spinsPerDayHint", "How many times each customer can spin per day")}</div>
+            </div>
+          ) : (
+            <div className="df-field">
+              <label className="df-label">{t("lucky_draw.spendPerTicket", "Spend per ticket (RM)")}</label>
+              <input type="number" min={1} step="0.01" required value={campaignForm.spend_per_ticket_rm} onChange={e => setCampaignForm({ ...campaignForm, spend_per_ticket_rm: e.target.value })} />
+              <div className="df-hint">{t("lucky_draw.spendPerTicketHint", "Every RM X spent (paid order) earns 1 draw ticket")}</div>
+            </div>
+          )}
+          <div className="df-field">
+            <label className="df-label">{t("lucky_draw.maxSegments", "Max wheel segments")}</label>
+            <input type="number" min={2} max={12} required value={campaignForm.max_segments} onChange={e => setCampaignForm({ ...campaignForm, max_segments: e.target.value })} />
+            <div className="df-hint">{t("lucky_draw.maxSegmentsHint", "How many prize segments fit on this wheel (2-12)")}</div>
           </div>
           <div className="df-field">
             <label className="df-label">{t("lucky_draw.active", "Active")}</label>
@@ -333,6 +376,15 @@ export default function LuckyDrawPage() {
       </form>
     </div>
 
+    {campaign && campaign.draw_type === "ticket_spend" && ticketStats && (
+      <div className="kpi-grid" style={{ marginBottom: 24 }}>
+        <div className="kpi-card"><div className="kpi-label">{t("lucky_draw.ticketsIssued", "Tickets issued")}</div><div className="kpi-value">{ticketStats.tickets_issued}</div></div>
+        <div className="kpi-card"><div className="kpi-label">{t("lucky_draw.ticketsConsumed", "Tickets consumed")}</div><div className="kpi-value">{ticketStats.tickets_consumed}</div></div>
+        <div className="kpi-card"><div className="kpi-label">{t("lucky_draw.ticketsAvailable", "Tickets available")}</div><div className="kpi-value">{ticketStats.tickets_available}</div></div>
+        <div className="kpi-card"><div className="kpi-label">{t("lucky_draw.customersHolding", "Customers holding")}</div><div className="kpi-value">{ticketStats.customers_holding}</div></div>
+      </div>
+    )}
+
     {campaign && <>
       {/* Segments */}
       <div className="page-header" style={{ marginTop: 8 }}>
@@ -340,9 +392,9 @@ export default function LuckyDrawPage() {
           <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{t("lucky_draw.segments", "Wheel Segments")}</h2>
           <p className="page-subtitle" style={{ marginTop: 2 }}>{t("lucky_draw.segmentsSubtitle", "Prizes on the wheel — chance is weight ÷ total active weight")}</p>
         </div>
-        <button type="button" onClick={openAddSegment} className="btn btn-primary btn-sm"><Plus size={16} />{t("lucky_draw.addSegment", "Add Segment")}</button>
+        <button type="button" onClick={openAddSegment} className="btn btn-primary btn-sm" disabled={!!campaign && segments.length >= (campaign.max_segments ?? 8)}><Plus size={16} />{t("lucky_draw.addSegment", "Add Segment")}</button>
       </div>
-      <div className="table-header-bar"><span className="text-sm font-semibold">{segments.length}{t("lucky_draw.segmentCount", " segments")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{segments.length} {t("lucky_draw.segmentCountOf", "of")} {campaign?.max_segments ?? 8} {t("lucky_draw.segmentCount", "segments")}</span></div>
       <div className="table-container" style={{ marginBottom: 16 }}>
         <table className="data-table">
           <thead><tr>

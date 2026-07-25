@@ -117,8 +117,16 @@ async def create_segment(
     db: DBDependency,
     admin: CurrentAdmin,
 ):
-    await _get_campaign_or_404(db, campaign_id)
+    campaign = await _get_campaign_or_404(db, campaign_id)
     await _validate_voucher_definition(db, payload.voucher_definition_id)
+    count = (await db.execute(
+        select(func.count(LuckyDrawSegment.id)).where(LuckyDrawSegment.campaign_id == campaign_id)
+    )).scalar() or 0
+    if count >= campaign.max_segments:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"This wheel allows at most {campaign.max_segments} segments",
+        )
     segment = LuckyDrawSegment(campaign_id=campaign_id, **payload.model_dump())
     db.add(segment)
     await db.commit()
@@ -218,3 +226,35 @@ async def list_spins(
             total_pages=(total + per_page - 1) // per_page,
         )
     )
+
+
+# ── Ticket stats (ticket_spend campaigns) ──
+
+
+@router.get("/campaigns/{campaign_id}/ticket-stats", response_model=APIResponse[dict])
+async def ticket_stats(campaign_id: int, db: DBDependency, admin: CurrentAdmin):
+    """Ticket totals for a spend-based campaign: issued / consumed / available."""
+    await _get_campaign_or_404(db, campaign_id)
+    from app.models.lucky_draw import LuckyDrawTicket
+
+    issued = (await db.execute(
+        select(func.count(LuckyDrawTicket.id)).where(LuckyDrawTicket.campaign_id == campaign_id)
+    )).scalar() or 0
+    consumed = (await db.execute(
+        select(func.count(LuckyDrawTicket.id)).where(
+            LuckyDrawTicket.campaign_id == campaign_id,
+            LuckyDrawTicket.consumed_at.isnot(None),
+        )
+    )).scalar() or 0
+    holders = (await db.execute(
+        select(func.count(func.distinct(LuckyDrawTicket.customer_id))).where(
+            LuckyDrawTicket.campaign_id == campaign_id,
+            LuckyDrawTicket.consumed_at.is_(None),
+        )
+    )).scalar() or 0
+    return APIResponse(data={
+        "tickets_issued": issued,
+        "tickets_consumed": consumed,
+        "tickets_available": issued - consumed,
+        "customers_holding": holders,
+    })

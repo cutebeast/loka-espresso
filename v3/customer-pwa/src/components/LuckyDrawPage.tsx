@@ -23,8 +23,12 @@ interface LuckyDrawCampaign {
   title: string;
   description: string | null;
   spins_per_day: number;
+  draw_type: 'free_daily' | 'ticket_spend';
+  spend_per_ticket_cents: number;
+  max_segments: number;
   segments: LuckyDrawSegment[];
   spins_remaining: number | null;
+  tickets_available: number | null;
 }
 
 interface SpinResult {
@@ -32,6 +36,7 @@ interface SpinResult {
   voucher_code: string;
   voucher_title: string;
   spins_remaining: number;
+  tickets_remaining: number | null;
 }
 
 const WHEEL_SIZE = 300;
@@ -66,6 +71,7 @@ export default function LuckyDrawPage() {
   const [loading, setLoading] = useState(true);
   const [campaign, setCampaign] = useState<LuckyDrawCampaign | null>(null);
   const [spinsRemaining, setSpinsRemaining] = useState<number | null>(null);
+  const [ticketsAvailable, setTicketsAvailable] = useState<number | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<SpinResult | null>(null);
@@ -80,10 +86,12 @@ export default function LuckyDrawPage() {
       const segments = [...(data.segments || [])].sort((a, b) => a.sort_order - b.sort_order);
       setCampaign({ ...data, segments });
       setSpinsRemaining(data.spins_remaining);
+      setTicketsAvailable(data.tickets_available ?? null);
     } catch {
       // 404 = no active campaign; anything else leaves the empty state too
       setCampaign(null);
       setSpinsRemaining(null);
+      setTicketsAvailable(null);
     } finally {
       setLoading(false);
     }
@@ -99,6 +107,8 @@ export default function LuckyDrawPage() {
 
   const segments = campaign?.segments ?? [];
   const segAngle = segments.length > 0 ? 360 / segments.length : 360;
+  const isTicketType = campaign?.draw_type === 'ticket_spend';
+  const avail = isTicketType ? ticketsAvailable : spinsRemaining;
 
   const handleSpin = async () => {
     if (spinning) return;
@@ -106,7 +116,7 @@ export default function LuckyDrawPage() {
       triggerSignIn();
       return;
     }
-    if (spinsRemaining === 0 || segments.length === 0) return;
+    if (avail === 0 || segments.length === 0) return;
     setSpinning(true);
     setLimitHit(false);
     try {
@@ -133,6 +143,7 @@ export default function LuckyDrawPage() {
       spinTimer.current = setTimeout(() => {
         setResult(spinResult);
         setSpinsRemaining(spinResult.spins_remaining);
+        if (spinResult.tickets_remaining != null) setTicketsAvailable(spinResult.tickets_remaining);
         setSpinning(false);
       }, delay);
     } catch (err: unknown) {
@@ -140,7 +151,8 @@ export default function LuckyDrawPage() {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
       if (status === 429) {
-        setSpinsRemaining(0);
+        if (isTicketType) setTicketsAvailable(0);
+        else setSpinsRemaining(0);
         setLimitHit(true);
         return;
       }
@@ -149,7 +161,7 @@ export default function LuckyDrawPage() {
     }
   };
 
-  const spinDisabled = spinning || (isAuthenticated && spinsRemaining === 0);
+  const spinDisabled = spinning || (isAuthenticated && avail === 0);
 
   return (
     <div style={{ minHeight: '100%', background: 'var(--loka-bg)' }}>
@@ -235,14 +247,26 @@ export default function LuckyDrawPage() {
             </div>
           </div>
 
-          {/* Spins remaining */}
-          {isAuthenticated && spinsRemaining !== null && (
+          {/* Spend-to-earn explainer (ticket campaigns, everyone sees it) */}
+          {isTicketType && (
+            <div style={{ fontSize: 12, color: 'var(--loka-text-muted)', marginBottom: 8, padding: '8px 12px', borderRadius: 10, background: 'var(--loka-card, #fff)', border: '1px solid var(--loka-border, #eee)' }}>
+              🎟️ {t('luckyDraw.spendToEarn', { amount: ((campaign?.spend_per_ticket_cents ?? 5000) / 100).toFixed(0) })}
+            </div>
+          )}
+
+          {/* Spins / tickets remaining */}
+          {isAuthenticated && !isTicketType && spinsRemaining !== null && (
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--loka-text-muted)', marginBottom: 12 }}>
               {t('luckyDraw.spinsLeft', { count: spinsRemaining })}
             </div>
           )}
+          {isAuthenticated && isTicketType && ticketsAvailable !== null && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--loka-text-muted)', marginBottom: 12 }}>
+              {t('luckyDraw.ticketsLeft', { count: ticketsAvailable })}
+            </div>
+          )}
 
-          {isAuthenticated && (limitHit || spinsRemaining === 0) && (
+          {isAuthenticated && !isTicketType && (limitHit || spinsRemaining === 0) && (
             <div style={{
               padding: 12,
               borderRadius: 12,
@@ -253,6 +277,20 @@ export default function LuckyDrawPage() {
               marginBottom: 12,
             }}>
               {t('luckyDraw.comeBackTomorrow')}
+            </div>
+          )}
+
+          {isAuthenticated && isTicketType && (limitHit || ticketsAvailable === 0) && (
+            <div style={{
+              padding: 12,
+              borderRadius: 12,
+              background: LOKA.warningLight,
+              color: LOKA.brown,
+              fontSize: 13,
+              fontWeight: 600,
+              marginBottom: 12,
+            }}>
+              {t('luckyDraw.earnBySpending')}
             </div>
           )}
 
