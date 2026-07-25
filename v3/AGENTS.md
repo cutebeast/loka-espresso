@@ -506,3 +506,10 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
 ### Workshops page — list view + pagination (2026-07-25)
 - `/events/workshops` classes switched from card grid (tall cards, one sessions API call each, no pagination — silently truncated past 50) to a **compact table**: thumbnail+name+code, price (single or min–max variant range), availability, next-session summary (`date time · booked/capacity`, `+N more`), actions. Sessions management (add/toggle/delete) moved into an **expandable row** per class — same controls as before, one class expanded at a time.
 - **Pagination**: classes now paginate at 12/page (`classPage`, uses `total` from `/admin/menu/items`); bookings table was already paginated at 10/page. Subtitle uses `classesTotal` (was page-size-capped `items.length`).
+
+### Workshop-aware menu item editor (2026-07-25)
+- Workshops are menu items in the `experiences` category, so the generic editor showed food-only fields and allowed category moves that would silently break the workshops page + event cards. Fixed in both `/menu/items/[id]` and `/menu/items/new`:
+  - **Category locked** when the item is in `experiences` (disabled select + hint; new page locks when opened as `/menu/items/new?cat=experiences` — the Workshops "Add Class" button now links there and preselects).
+  - **Food-only fields hidden** for experience items: allergens, dietary tags, calories, prep time, bundle eligibility, add-on deals, recipe/inventory components. Everything else stays (pricing, variants/modifiers for pax packages, minimum tier for Reserve redemption, availability, featured).
+- **Backend guard**: `PATCH /admin/menu/items/{id}` → 400 "Workshop items must stay in the Experiences category" when moving an `experiences` item elsewhere (same-category saves and normal food-item moves unaffected — verified all 3 paths live).
+- Verified: workshop editor clean + locked, new-class form preselected + locked, Espresso (food) shows every field as before. E2E menu/content/bundle sweep 73 passed.

@@ -207,7 +207,7 @@ export default function ExperiencesPage() {
             {classesTotal} {t("menu_experiences.classes", "classes")} · {bookingsTotal} {t("menu_experiences.bookings", "bookings")}
           </p>
         </div>
-        <button onClick={() => router.push("/menu/items/new")} className="btn btn-primary btn-sm">
+        <button onClick={() => router.push("/menu/items/new?cat=experiences")} className="btn btn-primary btn-sm">
           {t("menu_experiences.add_class", "Add Class")}
         </button>
       </div>

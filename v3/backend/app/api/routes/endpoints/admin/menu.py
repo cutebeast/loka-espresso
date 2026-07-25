@@ -522,6 +522,19 @@ async def update_item(
         raise HTTPException(status_code=404, detail="Menu item not found")
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # Workshops/classes live in the "experiences" category — moving them out
+    # would silently drop them from the workshops page and event-card flow.
+    if "category_id" in update_data and update_data["category_id"] != item.category_id:
+        cat = (await db.execute(
+            select(MenuCategory).where(MenuCategory.id == item.category_id)
+        )).scalar_one_or_none()
+        if cat is not None and cat.slug == "experiences":
+            raise HTTPException(
+                status_code=400,
+                detail="Workshop items must stay in the Experiences category",
+            )
+
     modifier_groups_data = update_data.pop("modifier_groups", None)
     allergen_ids_data = update_data.pop("allergen_ids", None)
     dietary_tag_ids_data = update_data.pop("dietary_tag_ids", None)

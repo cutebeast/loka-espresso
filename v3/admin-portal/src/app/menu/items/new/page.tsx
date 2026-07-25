@@ -75,6 +75,7 @@ export default function NewItemPage() {
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [recipeStoreId, setRecipeStoreId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [lockCategory, setLockCategory] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -83,7 +84,17 @@ export default function NewItemPage() {
     const safeSet = <T,>(setter: (v: T) => void) => (v: T) => {
       if (!cancelled) setter(v);
     };
-    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => safeSet(setCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => {
+      const cats = Array.isArray(d) ? d : d.items || [];
+      safeSet(setCategories)(cats);
+      // e.g. /menu/items/new?cat=experiences from the Workshops "Add Class" button
+      const wanted = new URLSearchParams(window.location.search).get("cat");
+      const match = wanted ? cats.find((c: any) => c.slug === wanted) : null;
+      if (match) {
+        setForm(prev => ({ ...prev, category_id: String(match.id) }));
+        setLockCategory(true);
+      }
+    }).catch(e => { console.error('categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/menu/allergens").then(d => safeSet(setAllergens)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('allergens:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => safeSet(setDietaryTags)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('dietary-tags:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/menu/tax-categories").then(d => safeSet(setTaxCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('tax-categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
@@ -94,6 +105,11 @@ export default function NewItemPage() {
       cancelled = true;
     };
   }, []);
+  // Workshops/classes ("experiences" category) are not food: hide food-only
+  // fields and (when opened via ?cat=experiences) lock the category.
+  const expCategory = categories.find((c: any) => (c as any).slug === "experiences");
+  const isExperience = !!expCategory && String(form.category_id) === String((expCategory as any).id);
+
   const toggleTag = (type: "allergen" | "dietary", id: number) => {
     const key = type === "allergen" ? "allergen_ids" : "dietary_tag_ids";
     const arr = form[key] as number[];
@@ -319,10 +335,11 @@ export default function NewItemPage() {
             })} /></div>
             <div className="df-field">
               <label className="form-label">{t("menu_items_new.category")}</label>
-              <select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id} onChange={e => setForm({
+              <select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id} disabled={lockCategory} onChange={e => setForm({
               ...form,
               category_id: e.target.value
             })}><option value="">{t("menu_items_new.select")}</option>{categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select>
+              {lockCategory && <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 4 }}>{t("menu_items_new.workshop_category_locked")}</p>}
             </div>
             <div className="df-field">
               <label className="form-label">{t("menu_items_new.tax_category")}</label>
@@ -364,29 +381,29 @@ export default function NewItemPage() {
               </div>
             </div>
 
-            <div className="df-field" style={{
+            {!isExperience && <div className="df-field" style={{
             gridColumn: "1/-1"
           }}><label className="form-label">{t("menu_items_new.allergens")}</label><div style={{
               display: "flex",
               flexWrap: "wrap",
               gap: 6
-            }}>{allergens.map(a => <Chip key={a.id} label={a.display_name} active={form.allergen_ids.includes(a.id)} onClick={() => toggleTag("allergen", a.id)} />)}</div></div>
-            <div className="df-field" style={{
+            }}>{allergens.map(a => <Chip key={a.id} label={a.display_name} active={form.allergen_ids.includes(a.id)} onClick={() => toggleTag("allergen", a.id)} />)}</div></div>}
+            {!isExperience && <div className="df-field" style={{
             gridColumn: "1/-1"
           }}><label className="form-label">{t("menu_items_new.dietary_tags")}</label><div style={{
               display: "flex",
               flexWrap: "wrap",
               gap: 6
-            }}>{dietaryTags.map(t => <Chip key={t.id} label={t.display_name} icon={t.icon} active={form.dietary_tag_ids.includes(t.id)} onClick={() => toggleTag("dietary", t.id)} />)}</div></div>
+            }}>{dietaryTags.map(t => <Chip key={t.id} label={t.display_name} icon={t.icon} active={form.dietary_tag_ids.includes(t.id)} onClick={() => toggleTag("dietary", t.id)} />)}</div></div>}
 
-            <div className="df-field"><label className="form-label">{t("menu_items_new.calories")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.calories} onChange={e => setForm({
+            {!isExperience && <div className="df-field"><label className="form-label">{t("menu_items_new.calories")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.calories} onChange={e => setForm({
               ...form,
               calories: e.target.value
-            })} placeholder={t("menu_items_new.e_g_250")} /></div>
-            <div className="df-field"><label className="form-label">{t("menu_items_new.prep_time_min")}</label><input type="number" min="1" className="w-full border rounded px-3 py-2 text-sm" value={form.prep_time_minutes} onChange={e => setForm({
+            })} placeholder={t("menu_items_new.e_g_250")} /></div>}
+            {!isExperience && <div className="df-field"><label className="form-label">{t("menu_items_new.prep_time_min")}</label><input type="number" min="1" className="w-full border rounded px-3 py-2 text-sm" value={form.prep_time_minutes} onChange={e => setForm({
               ...form,
               prep_time_minutes: e.target.value
-            })} /></div>
+            })} /></div>}
             <div className="df-field">
               <label className="form-label">{t("menu_items_new.minimum_tier")}</label>
               <select className="w-full border rounded px-3 py-2 text-sm" value={form.minimum_tier_id} onChange={e => setForm({
@@ -415,7 +432,7 @@ export default function NewItemPage() {
                 ...form,
                 is_featured: e.target.checked
               })} />{t("menu_items_new.featured")}</label></div>
-            <div className="df-field"><label style={{
+            {!isExperience && <div className="df-field"><label style={{
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -423,8 +440,8 @@ export default function NewItemPage() {
             }}><input type="checkbox" checked={!!form.is_bundle_eligible} onChange={e => setForm({
                 ...form,
                 is_bundle_eligible: e.target.checked
-              })} />{t("menu_items_new.bundle_eligible")}</label></div>
-            <div className="df-field" style={{
+              })} />{t("menu_items_new.bundle_eligible")}</label></div>}
+            {!isExperience && <div className="df-field" style={{
             gridColumn: "1/-1"
           }}>
               <label style={{
@@ -559,7 +576,7 @@ export default function NewItemPage() {
                       </div>
                     </div>}
                 </div>}
-            </div>
+            </div>}
 
             <div className="df-field" style={{
             gridColumn: "1/-1"
@@ -627,8 +644,8 @@ export default function NewItemPage() {
                 </div>)}
             </div>
 
-            {/* Recipe / Inventory Bridge */}
-            <div className="df-field" style={{
+            {/* Recipe / Inventory Bridge — food items only */}
+            {!isExperience && <div className="df-field" style={{
             gridColumn: "1/-1"
           }}>
               <div style={{
@@ -712,7 +729,7 @@ export default function NewItemPage() {
                 }}><Trash2 size={14} /></button>
                   </div>
                 </div>)}
-            </div>
+            </div>}
           </div>
           <div className="df-actions"><button type="button" onClick={() => router.push("/menu/items")} className="btn btn-ghost">{t("menu_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div>
         </div>

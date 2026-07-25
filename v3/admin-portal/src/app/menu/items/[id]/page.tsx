@@ -472,6 +472,11 @@ export default function ItemEditPage() {
   if (loading) return <div style={{
     padding: 32
   }}>{t("menu_items_[id].loading")}</div>;
+  // Workshops/classes live in the "experiences" category — they are not food:
+  // lock the category and hide food-only fields (allergens, dietary, calories,
+  // prep time, bundles, add-on deals, inventory recipes).
+  const expCategory = categories.find((c: any) => c.slug === "experiences");
+  const isExperience = !!expCategory && Number(form.category_id) === Number(expCategory.id);
   return <div style={{
     padding: 32
   }}>
@@ -521,10 +526,14 @@ export default function ItemEditPage() {
             ...form,
             base_price: e.target.value
           })} /></div>
-            <div className="df-field"><label className="form-label">{t("menu_items_[id].category")}</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id || ""} onChange={e => setForm({
+            <div className="df-field"><label className="form-label">{t("menu_items_[id].category")}</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id || ""} disabled={isExperience} onChange={e => setForm({
             ...form,
             category_id: e.target.value
-          })}><option value="">—</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select></div>
+          })}><option value="">—</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select>{isExperience && <p style={{
+            fontSize: 11,
+            color: "var(--color-text-muted)",
+            marginTop: 4
+          }}>{t("menu_items_[id].workshop_category_locked")}</p>}</div>
             <div className="df-field"><label className="form-label">{t("menu_items_[id].tax")}</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.tax_category_id || ""} onChange={e => setForm({
             ...form,
             tax_category_id: e.target.value
@@ -553,28 +562,28 @@ export default function ItemEditPage() {
               fontSize: 12,
               color: "var(--color-success)"
             }}>✓ {form.image_url.split("/").pop()}</span>}</div></div>
-            <div className="df-field" style={{
+            {!isExperience && <div className="df-field" style={{
           gridColumn: "1/-1"
         }}><label className="form-label">{t("menu_items_[id].allergens")}</label><div style={{
             display: "flex",
             flexWrap: "wrap",
             gap: 6
-          }}>{allergens.map((a: any) => <Chip key={a.id} label={a.display_name} active={form.allergen_ids?.includes(a.id)} onClick={() => toggleTag("allergen", a.id)} />)}</div></div>
-            <div className="df-field" style={{
+          }}>{allergens.map((a: any) => <Chip key={a.id} label={a.display_name} active={form.allergen_ids?.includes(a.id)} onClick={() => toggleTag("allergen", a.id)} />)}</div></div>}
+            {!isExperience && <div className="df-field" style={{
           gridColumn: "1/-1"
         }}><label className="form-label">{t("menu_items_[id].dietary_tags")}</label><div style={{
             display: "flex",
             flexWrap: "wrap",
             gap: 6
-          }}>{dietaryTags.map((t: any) => <Chip key={t.id} label={t.display_name} icon={t.icon} active={form.dietary_tag_ids?.includes(t.id)} onClick={() => toggleTag("dietary", t.id)} />)}</div></div>
-            <div className="df-field"><label className="form-label">{t("menu_items_[id].calories")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.calories ?? ""} onChange={e => setForm({
+          }}>{dietaryTags.map((t: any) => <Chip key={t.id} label={t.display_name} icon={t.icon} active={form.dietary_tag_ids?.includes(t.id)} onClick={() => toggleTag("dietary", t.id)} />)}</div></div>}
+            {!isExperience && <div className="df-field"><label className="form-label">{t("menu_items_[id].calories")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.calories ?? ""} onChange={e => setForm({
             ...form,
             calories: e.target.value
-          })} placeholder={t("menu_items_[id].e_g_250")} /></div>
-            <div className="df-field"><label className="form-label">{t("menu_items_[id].prep_time_min")}</label><input type="number" min="1" className="w-full border rounded px-3 py-2 text-sm" value={form.prep_time_minutes ?? ""} onChange={e => setForm({
+          })} placeholder={t("menu_items_[id].e_g_250")} /></div>}
+            {!isExperience && <div className="df-field"><label className="form-label">{t("menu_items_[id].prep_time_min")}</label><input type="number" min="1" className="w-full border rounded px-3 py-2 text-sm" value={form.prep_time_minutes ?? ""} onChange={e => setForm({
             ...form,
             prep_time_minutes: e.target.value
-          })} /></div>
+          })} /></div>}
             <div className="df-field">
               <label className="form-label">{t("menu_items_[id].minimum_tier")}</label>
               <select className="w-full border rounded px-3 py-2 text-sm" value={form.minimum_tier_id ?? ""} onChange={e => setForm({
@@ -603,7 +612,7 @@ export default function ItemEditPage() {
               ...form,
               is_featured: e.target.checked
             })} />{t("menu_items_[id].featured")}</label></div>
-            <div className="df-field"><label style={{
+            {!isExperience && <div className="df-field"><label style={{
             display: "flex",
             alignItems: "center",
             gap: 8,
@@ -611,8 +620,8 @@ export default function ItemEditPage() {
           }}><input type="checkbox" checked={!!form.is_bundle_eligible} onChange={e => setForm({
               ...form,
               is_bundle_eligible: e.target.checked
-            })} />{t("menu_items_[id].bundle_eligible")}</label></div>
-            <div className="df-field" style={{
+            })} />{t("menu_items_[id].bundle_eligible")}</label></div>}
+            {!isExperience && <div className="df-field" style={{
           gridColumn: "1/-1"
         }}>
               <label style={{
@@ -747,7 +756,7 @@ export default function ItemEditPage() {
                       </div>
                     </div>}
                 </div>}
-            </div>
+            </div>}
             <div className="df-field" style={{
           gridColumn: "1/-1"
         }}><div style={{
@@ -807,8 +816,8 @@ export default function ItemEditPage() {
               fontSize: 12,
               paddingLeft: 8
             }}>{t("menu_items_[id].add_option")}</button></div>)}</div>
-            {/* Recipe / Inventory Bridge */}
-            <div className="df-field" style={{
+            {/* Recipe / Inventory Bridge — food items only */}
+            {!isExperience && <div className="df-field" style={{
           gridColumn: "1/-1"
         }}>
               <div style={{
@@ -886,7 +895,7 @@ export default function ItemEditPage() {
               }}><Trash2 size={14} /></button>
                   </div>
                 </div>)}
-            </div>
+            </div>}
           </div>
           <div className="df-actions" style={{
         marginTop: 16
