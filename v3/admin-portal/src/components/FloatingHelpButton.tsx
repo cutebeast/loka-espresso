@@ -40,7 +40,7 @@ const ROUTE_HELP_MAP: { prefix: string; slug: string }[] = [
 
   { prefix: "/content/info-cards", slug: "admin-content" },
   { prefix: "/content/products", slug: "admin-content" },
-  { prefix: "/content/events", slug: "admin-content" },
+  { prefix: "/events", slug: "admin-content" },
   { prefix: "/content/system", slug: "admin-content" },
   { prefix: "/content/pwa-splash", slug: "admin-content" },
   { prefix: "/content", slug: "admin-content" },

@@ -215,7 +215,7 @@ export default function EventEditPage() {
       alignItems: "center",
       gap: 12,
       marginBottom: 20
-    }}><button onClick={() => r.push("/content/events")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{
+    }}><button onClick={() => r.push("/events")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{
           margin: 0
         }}>{form.title || "Event"}</h1></div></div>
       {msg && <div className="alert alert-success" style={{
@@ -340,7 +340,7 @@ export default function EventEditPage() {
           </div>
           <div className="df-actions" style={{
         marginTop: 20
-      }}><button type="button" onClick={() => r.push("/content/events")} className="btn btn-ghost">{t("content_events_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
+      }}><button type="button" onClick={() => r.push("/events")} className="btn btn-ghost">{t("content_events_[id].cancel")}</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.saving") : t("admin.common.saveChanges")}</button></div>
         </div> : <div className="card" style={{
       padding: 24,
       maxWidth: 700

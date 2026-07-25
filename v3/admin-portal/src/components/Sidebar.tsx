@@ -57,11 +57,11 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    id: "eventsClasses", labelKey: "admin.nav.eventsClasses", href: "/menu/experiences", icon: GraduationCap,
+    id: "eventsClasses", labelKey: "admin.nav.eventsClasses", href: "/events", icon: GraduationCap,
     children: [
-      { id: "eventsClassesWorkshops", labelKey: "admin.nav.eventsClasses.workshops", href: "/menu/experiences" },
-      { id: "eventsClassesCards", labelKey: "admin.nav.eventsClasses.eventCards", href: "/content/events" },
-      { id: "eventsClassesReport", labelKey: "admin.nav.eventsClasses.rsvpReport", href: "/content/events/report" },
+      { id: "eventsClassesWorkshops", labelKey: "admin.nav.eventsClasses.workshops", href: "/events/workshops" },
+      { id: "eventsClassesCards", labelKey: "admin.nav.eventsClasses.eventCards", href: "/events" },
+      { id: "eventsClassesReport", labelKey: "admin.nav.eventsClasses.rsvpReport", href: "/events/report" },
     ],
   },
   {

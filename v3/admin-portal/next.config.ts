@@ -33,6 +33,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Legacy route moves (2026-07-25): events section unified under /events
+  async redirects() {
+    return [
+      { source: "/menu/experiences", destination: "/events/workshops", permanent: true },
+      { source: "/content/events", destination: "/events", permanent: true },
+      { source: "/content/events/new", destination: "/events/new", permanent: true },
+      { source: "/content/events/report", destination: "/events/report", permanent: true },
+      { source: "/content/events/:id", destination: "/events/:id", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

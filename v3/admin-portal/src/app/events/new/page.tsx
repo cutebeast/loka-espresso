@@ -64,7 +64,7 @@ export default function EventNewPage() {
     };
     try {
       await api.post("/admin/event-cards", pl);
-      router.push("/content/events");
+      router.push("/events");
     } catch (e: any) {
       setError(parseApiError(e));
     } finally {
@@ -80,7 +80,7 @@ export default function EventNewPage() {
       alignItems: "center",
       gap: 12,
       marginBottom: 20
-    }}><button onClick={() => router.push("/content/events")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{
+    }}><button onClick={() => router.push("/events")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{
           margin: 0
         }}>{t("content_events_new.new_event")}</h1></div></div>
       {error && <div className="alert alert-error" style={{
@@ -173,7 +173,7 @@ export default function EventNewPage() {
               })} />{t("content_events_new.active")}</label></div>
         </div><div className="df-actions" style={{
           marginTop: 20
-        }}><button type="button" onClick={() => router.push("/content/events")} className="btn btn-ghost">{t("content_events_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div></form>
+        }}><button type="button" onClick={() => router.push("/events")} className="btn btn-ghost">{t("content_events_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div></form>
       </div>
     </div>;
 }

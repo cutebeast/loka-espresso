@@ -465,3 +465,10 @@ Prices are SUGGESTIONS pending owner confirmation. Verified live: Pair Set RM48�
   - `promo-56-summer.jpg` — Summer Promo (date-expired, not served)
   - Holiday Deal (Expired) — intentionally image-less; date-expired so the public API never returns it (`GET /api/promos/banners` filters `start_date`/`end_date` against now)
 - Verified: public API serves all 5 active banners with correct `image_url` over `https://app.loyaltysystem.uk`, image files return HTTP 200, and the PWA home Promotions carousel renders them (screenshot-verified in guest mode).
+
+### Events section unified under /events (2026-07-25)
+- Admin portal routes moved: `/menu/experiences` → `/events/workshops`, `/content/events` (+`/new`, `/[id]`, `/report`) → `/events` (+same children). Sidebar "Events & Classes" group now lands on `/events`. 308 redirects in `admin-portal/next.config.ts` cover the old paths (incl. `/content/events/:id`).
+- **Why two surfaces exist** (by design, keep both): `/events/workshops` = PAID classes — menu items in the `experiences` category + class_sessions (date/capacity) + paid booking orders. `/events/report` = FREE RSVP sign-ups on content event cards (`/admin/event-cards` API). Paid bookings and free RSVPs are different systems; only the admin UI routes were split, the nav already grouped them.
+- Untouched on purpose: public API `GET /api/content/events` (backend endpoint, not a UI route — e2e `test_content.py` hits it), translation keys (`content_events*` / `menu_experiences*` names are just identifiers, fetched as one `admin-ui` blob — no folder coupling).
+- Translation polish fixed live: JSX concatenations `{n}{t(...)}` rendered "3events" / "0events with RSVP ·0total sign-ups" — code now owns the separators (`{n} {t(...)} · {m} {t(...)}`), DB values stripped of padding/`·` (marked `is_auto_translated=false` so the weekly DeepSeek review skips them). `content_events.pos` was "Pos" (uppercased to "POS" by table CSS — read as point-of-sale) → "Display Order" ×5 locales.
+- **Pattern to avoid**: never rely on leading/trailing spaces inside translation values — translators (human or AI) strip them. Put separators in code.

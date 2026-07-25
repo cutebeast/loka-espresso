@@ -44,12 +44,12 @@ export default function EventRsvpReportPage() {
       gap: 12,
       marginBottom: 20
     }}>
-        <button onClick={() => router.push("/content/events")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
+        <button onClick={() => router.push("/events")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div><h1 className="page-title" style={{
           margin: 0
         }}>{t("content_events_report.event_rsvp_report")}</h1><p className="page-subtitle" style={{
           marginTop: 2
-        }}>{items.length}{t("content_events_report.events_with_rsvp")}{totalRsvp}{t("content_events_report.total_sign_ups")}</p></div>
+        }}>{items.length} {t("content_events_report.events_with_rsvp")} · {totalRsvp} {t("content_events_report.total_sign_ups")}</p></div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -60,7 +60,7 @@ export default function EventRsvpReportPage() {
         <div className="kpi-card"><div className="kpi-label">{t("content_events_report.total_sign_ups_2")}</div><div className="kpi-value">{totalRsvp}</div></div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("content_events_report.events")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {t("content_events_report.events")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("content_events_report.event")}</th><th>{t("content_events_report.location")}</th><th>{t("content_events_report.date")}</th><th>{t("content_events_report.capacity")}</th><th>{t("content_events_report.sign_ups")}</th><th>{t("content_events_report.fill")}</th><th>{t("content_events_report.status")}</th></tr></thead>
         <tbody>
@@ -68,7 +68,7 @@ export default function EventRsvpReportPage() {
             const pct = e.rsvp_max_capacity ? Math.round(e.rsvp_count / e.rsvp_max_capacity * 100) : 0;
             return <tr key={e.id} style={{
               cursor: "pointer"
-            }} onClick={() => router.push(`/content/events/${e.id}`)}>
+            }} onClick={() => router.push(`/events/${e.id}`)}>
               <td style={{
                 fontWeight: 600
               }}>{e.title}</td>

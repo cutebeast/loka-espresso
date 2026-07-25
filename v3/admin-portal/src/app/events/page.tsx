@@ -42,13 +42,13 @@ export default function EventsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("content_events.events")}</h1>
-          <p className="page-subtitle">{items.length}{t("content_events.events_2")}</p>
+          <p className="page-subtitle">{items.length} {t("content_events.events_2")}</p>
         </div>
-        <button type="button" onClick={() => router.push("/content/events/new")} className="btn btn-primary btn-sm">
+        <button type="button" onClick={() => router.push("/events/new")} className="btn btn-primary btn-sm">
           <Plus size={16} />{t("content_events.add_event")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("content_events.events_3")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {t("content_events.events_3")}</span></div>
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -68,9 +68,9 @@ export default function EventsPage() {
             {loading ? <tr><td colSpan={5} className="data-table-empty">{t("content_events.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">{t("admin.common.noResults")}</td></tr> : items.map(item => <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              router.push(`/content/events/${item.id}`);
+              router.push(`/events/${item.id}`);
             }
-          }} onClick={() => router.push(`/content/events/${item.id}`)} style={{
+          }} onClick={() => router.push(`/events/${item.id}`)} style={{
             cursor: "pointer"
           }}>
                 <td style={{
@@ -94,7 +94,7 @@ export default function EventsPage() {
                 gap: 4,
                 alignItems: "center"
               }}>
-                    <button type="button" onClick={() => router.push(`/content/events/${item.id}`)} className="btn btn-ghost btn-sm" style={{
+                    <button type="button" onClick={() => router.push(`/events/${item.id}`)} className="btn btn-ghost btn-sm" style={{
                   color: "var(--color-info)"
                 }} aria-label={t("content_events.edit_event")}>
                       <Edit2 size={14} />
