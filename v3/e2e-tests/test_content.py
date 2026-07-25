@@ -213,6 +213,85 @@ async def test_paid_event_rejects_rsvp(
 
 
 @pytest.mark.asyncio
+async def test_event_attendee_messaging(
+    client: httpx.AsyncClient, base_url: str, admin_headers: dict, customer_account: dict
+):
+    """Admin can list event attendees and message them via audience_segment event:<id>."""
+    slug = _uniq("e2e-msg-event")
+    create_r = await client.post(
+        f"{base_url}/admin/event-cards",
+        headers=admin_headers,
+        json={
+            "title": "E2E Messaging Event",
+            "slug": slug,
+            "short_description": "Event for attendee-messaging E2E",
+            "event_type": "public",
+            "rsvp_enabled": True,
+            "is_active": True,
+        },
+    )
+    assert create_r.status_code == 201, create_r.text
+    card_id = create_r.json()["data"]["id"]
+    headers = customer_account["headers"]
+    notif_id = None
+
+    try:
+        r = await client.post(f"{base_url}/events/{card_id}/rsvp", headers=headers)
+        assert r.status_code == 200, r.text
+
+        # Attendee list shows the customer
+        r = await client.get(f"{base_url}/admin/event-cards/{card_id}/attendees", headers=admin_headers)
+        assert r.status_code == 200, r.text
+        items = r.json()["data"]["items"]
+        assert len(items) == 1 and items[0]["customer_id"] == customer_account["id"]
+
+        # Compose + send a notification to event attendees
+        r = await client.post(
+            f"{base_url}/admin/notifications",
+            headers=admin_headers,
+            json={
+                "title": "E2E Event Reminder",
+                "body": "See you there!",
+                "notification_type": "event",
+                "audience_segment": f"event:{card_id}",
+            },
+        )
+        assert r.status_code == 201, r.text
+        notif_id = r.json()["data"]["id"]
+
+        r = await client.post(f"{base_url}/admin/notifications/{notif_id}/send", headers=admin_headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["data"]["delivered_count"] == 1
+
+        # The attendee received the message in their inbox
+        r = await client.get(f"{base_url}/notifications/me?per_page=10", headers=headers)
+        assert r.status_code == 200, r.text
+        titles = [m["title"] for m in r.json()["data"]["items"]]
+        assert "E2E Event Reminder" in titles
+
+        # Unknown event id is rejected with 400
+        r = await client.post(
+            f"{base_url}/admin/notifications",
+            headers=admin_headers,
+            json={
+                "title": "E2E Bad Event",
+                "notification_type": "event",
+                "audience_segment": "event:999999",
+            },
+        )
+        assert r.status_code == 201  # create is fine…
+        bad_id = r.json()["data"]["id"]
+        r = await client.post(f"{base_url}/admin/notifications/{bad_id}/send", headers=admin_headers)
+        assert r.status_code == 400  # …but send validates the event exists
+        await client.delete(f"{base_url}/admin/notifications/{bad_id}", headers=admin_headers)
+    finally:
+        if notif_id:
+            await client.delete(f"{base_url}/admin/notifications/{notif_id}", headers=admin_headers)
+        await client.delete(f"{base_url}/admin/event-cards/{card_id}", headers=admin_headers)
+        # the delivered inbox message cascades away with the fixture customer's teardown
+
+
+@pytest.mark.asyncio
 async def test_public_legal_page(
     client: httpx.AsyncClient, base_url: str, admin_headers: dict
 ):

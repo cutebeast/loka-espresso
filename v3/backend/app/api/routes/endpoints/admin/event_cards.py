@@ -78,6 +78,32 @@ async def delete_item(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data={"id": id, "deleted": True})
 
 
+# ── RSVP attendees ──
+
+@router.get("/{id}/attendees", response_model=APIResponse[dict])
+async def list_attendees(db: DBDependency, admin: CurrentAdmin, id: int):
+    """List customers who RSVP'd to an event (all event types)."""
+    result = await db.execute(
+        select(EventRsvp, Customer)
+        .join(Customer, EventRsvp.customer_id == Customer.id)
+        .where(EventRsvp.event_id == id)
+        .order_by(EventRsvp.created_at.desc())
+    )
+    items = [
+        {
+            "rsvp_id": rsvp.id,
+            "customer_id": cust.id,
+            "display_name": cust.display_name or " ".join(filter(None, [cust.given_name, cust.family_name])) or None,
+            "phone_number": cust.phone_number,
+            "email_address": cust.email_address,
+            "customer_segment": cust.customer_segment,
+            "rsvped_at": rsvp.created_at.isoformat() if rsvp.created_at else None,
+        }
+        for rsvp, cust in result.all()
+    ]
+    return APIResponse(data={"items": items, "total": len(items)})
+
+
 # ── Invite list (invite_only events) ──
 
 @router.get("/{id}/invites", response_model=APIResponse[dict])

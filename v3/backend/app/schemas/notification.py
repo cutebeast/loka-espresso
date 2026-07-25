@@ -71,21 +71,23 @@ class NotificationPreferenceUpdate(BaseSchema):
 ADMIN_NOTIFICATION_TYPES = Literal[
     "general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"
 ]
-# Static audience segments. In addition, dynamic per-tier segments of the form
-# "tier:<tier_key>" (resolved against loyalty_tiers.tier_key) are accepted.
+# Static audience segments. In addition, dynamic segments are accepted:
+# "tier:<tier_key>" (resolved against loyalty_tiers.tier_key) and
+# "event:<event_card_id>" (customers who RSVP'd to that event).
 STATIC_AUDIENCE_SEGMENTS = frozenset({
     "all_users", "new_users", "loyal_customers", "inactive_users", "platinum_members"
 })
 _TIER_SEGMENT_RE = re.compile(r"^tier:[A-Za-z0-9_\-]{1,45}$")
+_EVENT_SEGMENT_RE = re.compile(r"^event:[0-9]{1,10}$")
 NOTIFICATION_STATUS = Literal["draft", "scheduled", "sent", "failed"]
 
 
 def _validate_audience_segment(value: str) -> str:
-    if value in STATIC_AUDIENCE_SEGMENTS or _TIER_SEGMENT_RE.match(value):
+    if value in STATIC_AUDIENCE_SEGMENTS or _TIER_SEGMENT_RE.match(value) or _EVENT_SEGMENT_RE.match(value):
         return value
     raise ValueError(
         "audience_segment must be one of "
-        f"{sorted(STATIC_AUDIENCE_SEGMENTS)} or 'tier:<tier_key>'"
+        f"{sorted(STATIC_AUDIENCE_SEGMENTS)}, 'tier:<tier_key>' or 'event:<event_card_id>'"
     )
 
 

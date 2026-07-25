@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
 from app.services.translation import merge_translations, translate_single
 from app.models.customer import Customer
+from app.models.info_card import EventCard, EventRsvp
 from app.models.loyalty import LoyaltyAccount, LoyaltyTier
 from app.models.notification import (
     AdminNotification,
@@ -298,6 +299,21 @@ async def send_notification(
         customer_stmt = customer_stmt.join(
             LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id
         ).where(LoyaltyAccount.current_tier_id == tier_id)
+
+    elif notif.audience_segment.startswith("event:"):
+        # Dynamic per-event segment — customers who RSVP'd to the event card
+        try:
+            event_id = int(notif.audience_segment[len("event:"):])
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid event segment: {notif.audience_segment}")
+        event_exists = await db.execute(
+            select(EventCard.id).where(EventCard.id == event_id)
+        )
+        if event_exists.scalar_one_or_none() is None:
+            raise HTTPException(status_code=400, detail=f"Unknown event card: {event_id}")
+        customer_stmt = customer_stmt.join(
+            EventRsvp, EventRsvp.customer_id == Customer.id
+        ).where(EventRsvp.event_id == event_id)
 
     # Fetch matching customer IDs
     cust_result = await db.execute(customer_stmt)
