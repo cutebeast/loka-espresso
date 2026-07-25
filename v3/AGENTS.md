@@ -90,6 +90,19 @@ pytest -q
 - Force-change default staff PINs (all seeded PINs are 123456; `must_change_pin` enforcement is active)
 - Regenerate `infra/db/09_schema_sync.sql` (`v3/scripts/dump_schema_sql.py`) if models changed after 2026-07-20
 
+### Pre-go-live open items (noted 2026-07-25)
+
+Pending decisions / tasks before switching to `*.lokaespresso.com` (see checklist above for the mechanical steps):
+
+1. **Deploy strategy — OWNER DECISION PENDING**: (A) fresh v3 deploy on `84.247.148.238` with old app data archived, or (B) migrate old app data (customers/wallets/loyalty balances) into v3. Old app at `/opt/fnb-super-app` (docker, 54 tables) is 3 months stale. SSH access confirmed working (key auth + root password reset by owner — password NOT recorded here intentionally).
+2. **OTP bypass**: `otp.bypass_enabled=true` is INTENTIONAL on dev. Set to `false` at go-live — and before that, confirm the live SMS provider (Twilio) credentials actually deliver, since real OTP depends on it.
+3. **Rsync `backend/uploads/` to live** — the directory is gitignored and contains all menu images, 7 AI-generated promo banner images, and the 25 images migrated from the live server. Git clone alone will NOT carry them.
+4. **3 product cards missing prices** (owner to supply): Cocinare Essence Duo grinder, Cocinare Essence Go grinder, Loveramics cups — cards render price-less until then.
+5. **Reinstall translation crons on live** (currently on dev only): menu review Sun 03:17, content fill daily 04:23, admin-ui review 1st-of-month 04:47.
+6. **DeepSeek API key** must be set in live DB `platform_config.integration.deepseek_api_key` (DB-seeded, not in env/repo).
+7. **Live payment keys** (Stripe/Hitpay) into `v3/backend/.env` — dev keys must not go live.
+8. **pm2 process set + `pm2 save`** on live (v3-backend, admin/staff/customer frontends) and Caddy sites for `admin./staff./app.lokaespresso.com`.
+
 ## Known quirks
 
 - Backend `ENVIRONMENT=production` on the dev server disables OpenAPI docs
