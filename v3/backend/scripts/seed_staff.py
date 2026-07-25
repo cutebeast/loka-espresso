@@ -48,6 +48,28 @@ STAFF = [
         "role_key": "server",
         "store_code": "KLIA1-001",
     },
+    {
+        # Kitchen display / wastage / inventory / hygiene pages test account
+        "display_name": "Kitchen Staff",
+        "email": "kitchen@loyaltysystem.uk",
+        "employee_id": "EMP004",
+        "role": "kitchen_staff",
+        "password": os.getenv("SEED_KITCHEN_PASS", "kitchen123"),
+        "pin": os.getenv("SEED_STAFF_PIN", "123456"),
+        "role_key": "kitchen_staff",
+        "store_code": "PKL-001",
+    },
+    {
+        # Manager-level pages test account (ops + staff management)
+        "display_name": "Store Manager",
+        "email": "manager@loyaltysystem.uk",
+        "employee_id": "EMP005",
+        "role": "store_manager",
+        "password": os.getenv("SEED_MANAGER_PASS", "manager123"),
+        "pin": os.getenv("SEED_STAFF_PIN", "123456"),
+        "role_key": "store_manager",
+        "store_code": "PKL-001",
+    },
 ]
 
 ph = PasswordHasher()

@@ -64,8 +64,12 @@ pytest -q
 | store@loyaltysystem.uk | store123 | Admin (limited) + Staff (Store 1 + 2) |
 | staff1@loyaltysystem.uk | staff123 | Staff (Store 1 only) |
 | staff2@loyaltysystem.uk | staff123 | Staff (Store 2 only) |
+| Kitchen Staff (kitchen@loyaltysystem.uk) | kitchen123, PIN 654321 | Staff — kitchen display, wastage, inventory, hygiene (Store 1) |
+| Store Manager (manager@loyaltysystem.uk) | manager123, PIN 654321 | Staff — all ops pages incl. staff mgmt (Store 1) |
 | demo@lokaespresso.my | +60123456001 | Customer PWA (RM50 wallet) |
 | vip@lokaespresso.my | +60123456002 | Customer PWA (RM200 wallet) |
+
+(Kitchen Staff + Store Manager seeded 2026-07-25 via `seed_staff.py` EMP004/EMP005 for role-gated page testing; PINs pre-rotated through the change-pin flow so no first-login PIN wall. Other seeded staff still get the `must_change_pin` flow on first login.)
 
 ## Help center
 
