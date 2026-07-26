@@ -287,6 +287,13 @@ def _purge_customers(cur: Any, dry_run: bool) -> CleanupResult:
         stmt = stmt_template.format(ids_sql)
         cur.execute(stmt)
 
+    # Anonymous feedback submitted by e2e runs has no customer_id — clean by
+    # known test bodies so it doesn't accumulate on the admin feedback page.
+    cur.execute(
+        "DELETE FROM feedback_entries WHERE customer_id IS NULL"
+        " AND (body ILIKE '%E2E%' OR body = 'Great coffee and friendly staff!')"
+    )
+
     return result
 
 

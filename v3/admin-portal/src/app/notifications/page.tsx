@@ -138,7 +138,7 @@ export default function NotificationsPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("notifications.notifications")}</h1><p className="page-subtitle">{t("notifications.push_notifications_sent_to_pwa_users")}{total}{t("notifications.total")}</p></div>
+        <div><h1 className="page-title">{t("notifications.notifications")}</h1><p className="page-subtitle">{t("notifications.push_notifications_sent_to_pwa_users")} · {t("notifications.total_count", { count: total })}</p></div>
         <div style={{
         display: "flex",
         gap: 8
@@ -168,7 +168,7 @@ export default function NotificationsPage() {
         </select>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("notifications.of")}{total}{t("notifications.notifications_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{t("notifications.showing_of_total", { shown: items.length, total })}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("notifications.title")}</th><th>{t("notifications.type")}</th><th>{t("notifications.audience")}</th><th>{t("notifications.status")}</th><th>{t("notifications.date")}</th><th style={{
               width: 120
@@ -232,7 +232,7 @@ export default function NotificationsPage() {
           <span style={{
         fontSize: 13,
         color: "var(--color-text-muted)"
-      }}>{t("notifications.page")}{page}{t("notifications.of_2")}{totalPages}</span>
+      }}>{t("notifications.page_of", { page, total: totalPages })}</span>
           <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => {
         applyData(await fetchData(page + 1), page + 1);
       }}>{t("notifications.next")}<ChevronRight size={14} /></button>

@@ -270,8 +270,8 @@ export default function FeedbackPage() {
       fontSize: 13,
       color: "var(--color-text-muted)"
     }}>
-        <span>{t("feedback.showing")}<strong>{items.length}</strong>{t("feedback.of")}<strong>{total}</strong>{t("feedback.feedback_items")}</span>
-        <span>{t("feedback.page")}{page}{t("feedback.of_2")}{totalPages || 1}</span>
+        <span>{t("feedback.showing_of_total", { shown: items.length, total })}</span>
+        <span>{t("feedback.page_of", { page, total: totalPages || 1 })}</span>
       </div>
 
       {/* Feedback cards */}
@@ -303,7 +303,7 @@ export default function FeedbackPage() {
             }}>
                     <strong style={{
                 fontSize: 14
-              }}>{item.customer_name || `Customer #${item.customer_id}`}</strong>
+              }}>{item.customer_name || (item.customer_id ? `Customer #${item.customer_id}` : t("feedback.guest"))}</strong>
                     {renderStars(item.rating)}
                   </div>
                   <div style={{
@@ -373,7 +373,7 @@ export default function FeedbackPage() {
           <span style={{
         fontSize: 13,
         color: "var(--color-text-muted)"
-      }}>{t("feedback.page_2")}{page}{t("feedback.of_3")}{totalPages}</span>
+      }}>{t("feedback.page_of", { page, total: totalPages })}</span>
           <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchData(page + 1)}>{t("feedback.next")}<ChevronRight size={14} /></button>
         </div>}
 
@@ -402,7 +402,7 @@ export default function FeedbackPage() {
               <div style={{
             fontWeight: 600,
             fontSize: 13
-          }}>{replyModal.customer_name || `Customer #${replyModal.customer_id}`}</div>
+          }}>{replyModal.customer_name || (replyModal.customer_id ? `Customer #${replyModal.customer_id}` : t("feedback.guest"))}</div>
               <div style={{
             display: "flex",
             gap: 4,

@@ -57,11 +57,11 @@ export default function TemplatesPage() {
         flex: 1
       }}><h1 className="page-title" style={{
           margin: 0
-        }}>{t("notifications_templates.notification_templates")}</h1><p className="page-subtitle">{items.length}{t("notifications_templates.templates_reusable_notification_blueprints")}</p></div>
+        }}>{t("notifications_templates.notification_templates")}</h1><p className="page-subtitle">{t("notifications_templates.subtitle_count", { count: items.length })}</p></div>
         <button onClick={() => router.push("/notifications/templates/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("notifications_templates.add_template")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("notifications_templates.templates")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{t("notifications_templates.total_count", { count: items.length })}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("notifications_templates.name")}</th><th>{t("notifications_templates.title")}</th><th>{t("notifications_templates.type")}</th><th>{t("notifications_templates.audience")}</th><th style={{
               width: 80
