@@ -23,6 +23,7 @@ interface LuckyDrawCampaign {
   title: string;
   description: string | null;
   spins_per_day: number;
+  spin_interval_days?: number;
   draw_type: 'free_daily' | 'ticket_spend';
   spend_per_ticket_cents: number;
   max_segments: number;
