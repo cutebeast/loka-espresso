@@ -66,7 +66,7 @@ export default function CustomersPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("customers.customers")}</h1><p className="page-subtitle">{pagination.total}{t("customers.customers_2")}</p></div>
+        <div><h1 className="page-title">{t("customers.customers")}</h1><p className="page-subtitle">{t("customers.total_count", { count: pagination.total })}</p></div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -104,7 +104,7 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("customers.of")}{pagination.total}{t("customers.customers_3")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{t("customers.showing_of_total", { shown: items.length, total: pagination.total })}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("customers.customer")}</th><th>{t("customers.phone")}</th><th>{t("customers.email")}</th><th style={{
               textAlign: "center"

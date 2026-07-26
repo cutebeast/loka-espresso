@@ -27,7 +27,7 @@ export default function CustomerDevicesPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("customers_devices.customer_devices")}</h1><p className="page-subtitle">{items.length}{t("customers_devices.devices")}</p></div></div>
+      <div className="page-header"><div><h1 className="page-title">{t("customers_devices.customer_devices")}</h1><p className="page-subtitle">{t("customers_devices.total_devices", { count: items.length })}</p></div></div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{
@@ -54,7 +54,7 @@ export default function CustomerDevicesPage() {
         </select>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("customers_devices.devices_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{t("customers_devices.total_devices", { count: items.length })}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("customers_devices.customer")}</th><th>{t("customers_devices.platform")}</th><th>{t("customers_devices.model")}</th><th style={{
               width: 80
