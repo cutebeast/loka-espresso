@@ -110,7 +110,14 @@ const navItems: NavItem[] = [
       { id: "adminProfile", labelKey: "admin.nav.adminUser.profile", href: "/profile" },
     ],
   },
-  { id: "translations", labelKey: "admin.nav.translations", href: "/translations", icon: Languages },
+  {
+    id: "translations", labelKey: "admin.nav.translations", href: "/translations", icon: Languages,
+    children: [
+      { id: "translationsPwa", labelKey: "admin.translations.tab.pwa", href: "/translations/pwa" },
+      { id: "translationsAdmin", labelKey: "admin.translations.tab.admin", href: "/translations/admin" },
+      { id: "translationsStaff", labelKey: "admin.translations.tab.staff", href: "/translations/staff" },
+    ],
+  },
 
   { type: "section", id: "support", labelKey: "admin.nav.section.support" },
   { id: "customers", labelKey: "admin.nav.customers", href: "/customers", icon: UserCircle },
@@ -185,6 +192,7 @@ export default function Sidebar() {
     notifications: pathname.startsWith("/notifications"),
     adminUser: pathname.startsWith("/admins"),
     settings: pathname.startsWith("/settings"),
+    translations: pathname.startsWith("/translations"),
   }), [pathname]);
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(computeOpenMenus);
