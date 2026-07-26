@@ -84,6 +84,21 @@ def _compute_hash(source_locale: str, target_locale: str, text: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
+
+# Shared F&B/brand context — injected into every DeepSeek prompt so menu
+# translations are domain-accurate (root cause of e.g. "Beyond Coffee" →
+# 咖啡之外 instead of 非咖啡饮品).
+FNB_CONTEXT = """CONTEXT: Loka Espresso is a halal Turkish coffee house in Pavilion Kuala Lumpur. The text is F&B menu content (item names, categories, modifiers, descriptions).
+RULES:
+- Translate as FOOD & BEVERAGE menu text, not generic prose — natural menu wording for the target language as used in Malaysia.
+- Keep untranslated: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve), Turkish dish names (Gozleme, Pide, Baklava, Kahve, Meze, Shakshuka, Simit), and technical terms (SKU, QR, RM, URL).
+- "Beyond Coffee" is a menu category for NON-COFFEE beverages (teas, juices, frappes, other drinks) — translate with the meaning "non-coffee drinks", never literally as "outside/beyond coffee".
+- Coffee "beans" are coffee beans (never nuts/legumes); "shot" means an espresso shot; "single origin" refers to single-origin coffee.
+
+"""
+
+
 async def _call_deepseek(text: str, target_locale: str, model: str | None = None, db: AsyncSession | None = None) -> str | None:
     """Call DeepSeek LLM API. Returns translated text or None."""
     creds = await _get_translation_creds(db)
@@ -92,10 +107,10 @@ async def _call_deepseek(text: str, target_locale: str, model: str | None = None
         model = creds.get("deepseek_model", "deepseek-v4-flash")
     if not api_key:
         return None
-    locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
     lang = locale_names.get(target_locale, target_locale)
     prompt = (
-        f"Translate the following text to {lang}. "
+        FNB_CONTEXT
+        + f"Translate the following text to {lang}. "
         f"Return ONLY the translated text, nothing else:\n\n{text}"
     )
     try:

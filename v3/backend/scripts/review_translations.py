@@ -56,9 +56,14 @@ SOURCE_QUERIES = {
     "menu_modifier_options": "SELECT option_name AS item_name, NULL AS description FROM menu_modifier_options WHERE id = :id",
 }
 
-PROMPT_TEMPLATE = """You are reviewing {lang} translations for the menu of Loka Espresso, a halal Malaysian café serving specialty coffee, Turkish food and pastries.
+PROMPT_TEMPLATE = """You are reviewing {lang} translations for the menu of Loka Espresso, a halal Turkish coffee house in Pavilion Kuala Lumpur (specialty coffee, Turkish food, pastries).
 
-For EACH numbered item, decide whether the {lang} translation is correct and natural for a café menu (proper F&B vocabulary, local usage, no wrong-word traps like translating coffee "beans" as nuts/legumes, brand names kept intact).
+For EACH numbered item, decide whether the {lang} translation is correct and natural for an F&B café menu (proper food/beverage vocabulary, local Malaysian usage).
+
+Domain rules:
+- NO wrong-word traps: coffee "beans" are coffee beans (never nuts/legumes); "shot" = espresso shot; "single origin" = single-origin coffee.
+- "Beyond Coffee" is a menu category for NON-COFFEE beverages (teas, juices, frappes) — it must read as "non-coffee drinks", never literally "outside/beyond coffee".
+- Keep untranslated: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve) and Turkish dish names (Gozleme, Pide, Baklava, Kahve, Meze, Shakshuka, Simit).
 
 Items (JSON):
 {items}

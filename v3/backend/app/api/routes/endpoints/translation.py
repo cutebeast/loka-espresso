@@ -123,6 +123,8 @@ async def upsert_translation(
     existing = result.scalar_one_or_none()
     if existing:
         existing.translated_text = data.translated_text
+        # Admin upsert = human-curated — protect from the scheduled AI review
+        existing.is_auto_translated = False
         existing.updated_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(existing)
@@ -213,12 +215,17 @@ async def update_translation(
     translation_id: int,
     data: TranslationUpdate,
 ):
-    """Update a translation."""
+    """Update a translation.
+
+    Admin edits mark the row as manual (is_auto_translated=false) so the
+    scheduled DeepSeek review never overwrites human-curated text."""
     translation = await _get_translation_or_404(db, translation_id)
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(translation, field, value)
+    if "translated_text" in update_data:
+        translation.is_auto_translated = False
 
     translation.updated_at = datetime.now(timezone.utc)
     await db.commit()
