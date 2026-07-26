@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import DBDependency, OptionalLocale
-from app.services.translation import translate_menu_response, translate_single
+from app.services.translation import SOURCE_LOCALE, merge_translations, translate_menu_response, translate_single
 from app.models.menu import (
     Allergen,
     DietaryTag,
@@ -284,7 +284,7 @@ async def list_menu_items(
     category_id: int | None = Query(None),
     search: str | None = Query(None, max_length=100),
     available_only: bool = Query(False),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
 ):
     """List global menu items (no store_id required — menu is global)."""
     item_stmt = select(MenuItem).where(
@@ -365,6 +365,14 @@ async def list_menu_items(
         d["modifier_groups"] = modifier_map.get(i.id, [])
         result_items.append(d)
 
+    # Localize content (items + modifier groups + options) for the requested locale
+    await merge_translations(db, result_items, "menu_items", locale)
+    if locale != SOURCE_LOCALE:
+        groups_flat = [g for groups in modifier_map.values() for g in groups]
+        options_flat = [o for g in groups_flat for o in g["options"]]
+        await merge_translations(db, groups_flat, "menu_modifier_groups", locale)
+        await merge_translations(db, options_flat, "menu_modifier_options", locale)
+
     return APIResponse(data={"items": result_items})
 
 
@@ -390,6 +398,7 @@ async def list_menu_categories(db: DBDependency, locale: OptionalLocale):
             continue
         d = {col.name: getattr(c, col.name) for col in c.__table__.columns}
         result.append(d)
+    await merge_translations(db, result, "menu_categories", locale)
     return APIResponse(data={"categories": result})
 
 

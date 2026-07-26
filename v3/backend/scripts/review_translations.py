@@ -87,6 +87,24 @@ Reply with ONLY a JSON array, one object per item, no markdown fences:
 Include every item number. Keep "fix" concise (dashboard label, not a sentence)."""
 
 
+CONTENT_PROMPT_TEMPLATE = """You are reviewing {lang} translations of customer-facing CONTENT for Loka Espresso, a halal Turkish coffee house in Pavilion Kuala Lumpur — promo banners, event cards, info/product cards, vouchers, rewards, help articles and campaign copy.
+
+For EACH numbered item, decide whether the {lang} translation is correct, natural and appealing for a café's customer-facing marketing/content text.
+
+Domain rules:
+- Natural F&B/hospitality marketing language, not stiff literal translation.
+- Keep untranslated: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve), Turkish dish names (Gozleme, Pide, Baklava, Kahve, Meze, Shakshuka, Simit), and technical terms (SKU, QR, RM, OTP, PWA, BYOT).
+- Coffee "beans" are coffee beans (never nuts/legumes); "shot" = espresso shot; "single origin" = single-origin coffee.
+- "Beyond Coffee" (menu category) means non-coffee beverages — never "outside/beyond coffee" literally.
+
+Items (JSON):
+{items}
+
+Reply with ONLY a JSON array, one object per item, no markdown fences:
+[{{"n": 1, "ok": true}}, {{"n": 2, "ok": false, "fix": "corrected {lang} text"}}]
+Include every item number. Keep "fix" natural marketing prose (not explanations)."""
+
+
 async def _resolve_source(db, row: Translation) -> str | None:
     """English source for a translation row: source_text column, else the live record."""
     if row.source_text:
@@ -108,7 +126,14 @@ async def _review_batch(rows: list[dict], locale: str, model: str, namespace: st
         [{"n": i + 1, "en": r["source"], "lang": r["current"]} for i, r in enumerate(rows)],
         ensure_ascii=False,
     )
-    template = PROMPT_TEMPLATE if namespace == "menu" else ADMIN_UI_PROMPT_TEMPLATE
+    # menu → F&B menu prompt; customer-facing content namespaces → content
+    # prompt; UI namespaces (admin-ui/staff-ui/pwa-ui) → dashboard prompt
+    if namespace == "menu":
+        template = PROMPT_TEMPLATE
+    elif namespace in ("admin-ui", "staff-ui", "pwa-ui"):
+        template = ADMIN_UI_PROMPT_TEMPLATE
+    else:
+        template = CONTENT_PROMPT_TEMPLATE
     prompt = template.format(lang=lang, items=items_json)
     raw = await _call_raw(prompt, model)
     if not raw:

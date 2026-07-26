@@ -63,7 +63,8 @@ export default function MenuPage() {
       const [catRes, itemRes, bpRes] = await Promise.all([api.get(`/menu/categories`, {
         signal
       }), api.get(`/menu/items`, {
-        signal
+        signal,
+        params: { limit: 500 }
       }), api.get(`/menu/bundle-products`, {
         signal,
         params: storeId ? {
