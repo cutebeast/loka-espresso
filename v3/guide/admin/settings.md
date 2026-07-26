@@ -7,90 +7,147 @@
 - `/settings/version-control` — Version Control
 
 ## Purpose
-Configure platform-wide and store-level application settings.
+Platform-wide configuration. All values are stored in the platform configuration table and read by the backend at request time — changes take effect immediately, with no restart or redeploy.
 
 ## App Settings (`/settings`)
 
 ### What it shows
-General platform configuration.
+Configuration keys grouped into sections. A section only appears when it has keys to show:
 
-### Common settings
+| Section | Key prefix | Covers |
+|---------|-----------|--------|
+| App | `app.` | Platform name, public URLs, general behavior. |
+| OTP | `otp.` | Login-code behavior (see below). |
+| Orders | `order.` | Order flow rules. |
+| Notifications | `notifications.` | Push/notification behavior. |
+| Uploads | `upload.` | Image upload limits. |
+| Reservation | `reservation.` | Table reservation rules. |
+| Payments | `stripe.` | Core Stripe options (full setup on the Payment Gateway page). |
 
-| Setting | Purpose |
-|---------|---------|
-| Platform name | Brand name displayed in portals. |
-| Default currency | Fallback currency code. |
-| Default language | Fallback locale. |
-| OTP enforcement | Require OTP for admin/staff login. |
-| Marketing opt-out default | Default value for new customer marketing consent. |
-| Order polling interval | How often the PWA polls for order updates. |
-| Idle timeout minutes | Auto-logout timeout for admin/staff portals. |
+Each row shows the key (without its prefix), the current value, its value type, and a Save button where applicable.
 
-### How to change
-1. Update the desired field.
-2. Click **Save**.
-3. Some settings require a portal refresh to take effect.
+### Typical keys
+
+| Section | Example keys |
+|---------|--------------|
+| App | `name` (LOKA Espresso), `currency` (MYR), `currency_symbol` (RM), `support_phone`, `support_email`. |
+| OTP | See the OTP table below. |
+| Orders | `auto_confirm` (accept new orders automatically), `preparation_time_minutes`. |
+| Notifications | `retention_days` — how long notifications are kept. |
+| Uploads | `max_size_mb` — maximum image upload size. |
+| Reservation | Reservation rules (appears when keys are configured). |
+| Payments | Core `stripe.*` options mirrored from the Payment Gateway page. |
+
+Exact keys vary as features ship — the page renders whatever is configured.
+
+### How editing works
+- **Boolean values** render as a checkbox with an **Enabled / Disabled** label and save the moment you toggle them.
+- **Text and numeric values** save on blur, on Enter, or via the row's **Save** button.
+- **Sensitive values** (secrets, tokens) arrive masked — the input starts empty with a `••••••••` placeholder. The stored secret is only replaced when you type a new value; leaving it empty keeps the current one. An untouched sensitive row is never submitted.
+- **Non-editable keys** are shown read-only.
+- A confirmation appears after each save; if a save fails, the original value is restored on screen.
+
+### OTP section — read before go-live
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `otp.bypass_enabled` | `true` in development | When ON, logins succeed without an SMS code (or with the bypass code) — no SMS is sent. |
+| `otp.bypass_code` | `000000` | The fixed login code accepted while bypass is ON. Stored as a sensitive value. |
+| `otp.expiry_minutes` | 5 | How long a sent code stays valid. |
+| `otp.max_send_per_hour` | 5 | Send rate limit per phone number. |
+
+**Go-live checklist:**
+1. Configure live Twilio Verify credentials (see the Twilio Verify page).
+2. Test a real login — an actual SMS arrives and the code works.
+3. Set `otp.bypass_enabled` to `false`. The change takes effect immediately.
+
+> Order matters: with bypass OFF, logins require a working Twilio Verify service. If the credentials are missing or wrong, logins fail with a 503 "OTP service is temporarily unavailable" error — for every user, including you.
+
+### How sign-in OTP works
+- Customer registration and login are passwordless: the app sends an SMS code through Twilio Verify, and the code must be verified within `otp.expiry_minutes`.
+- The send rate limit (`otp.max_send_per_hour`) protects against SMS abuse.
+- With bypass ON, the app skips the SMS step — logins succeed with no code at all, or with the fixed bypass code. This exists for development and end-to-end testing only.
 
 ## Payment Gateway (`/settings/payment-gateway`)
 
-### Supported providers
-- **Stripe** — card, FPX, GrabPay, QR payments.
-- **HitPay** — QR and payment links.
+Two providers are supported: **Stripe** (cards and local payment methods) and **HitPay**. Keys are validated when you enable a provider, so fill in the credentials first, then toggle it on.
 
-### Stripe configuration
-1. Enable Stripe.
-2. Enter publishable key and secret key.
-3. Enter webhook secret.
-4. Set test mode or live mode.
-5. Save.
+### Stripe
+- **Enabled** toggle — requires the fields below plus at least one payment method type.
+- **Secret key**, **Publishable key**, **Webhook secret** — sensitive; shown as `***` once saved.
+- **Automatic tax** toggle.
+- **Checkout success / cancel URLs** — where customers return after paying.
+- **Payment method types** — at least one must be selected.
 
-### HitPay configuration
-1. Enable HitPay.
-2. Enter API key and webhook secret.
-3. Set test mode or live mode.
-4. Save.
+### HitPay
+- **Enabled** toggle — requires API key, salt, base URL, and at least one payment method.
+- **API key**, **Salt** (sensitive), **API base URL**.
+- **Payment methods**.
 
-### Public URL
-Set the public-facing URL used for payment redirects and webhooks (e.g., `https://app.loyaltysystem.uk`).
-
-### Customer PWA domain
-The Customer PWA reads its canonical domain from the `NEXT_PUBLIC_APP_URL` environment variable at build time. The fallback is `https://app.loyaltysystem.uk`. For production:
-
-1. Set `NEXT_PUBLIC_APP_URL=https://app.loyaltysystem.uk` before building the PWA.
-2. Ensure DNS points `app.loyaltysystem.uk` to the PWA hosting origin.
-3. If the PWA is rebuilt without the variable, metadata, payment return URLs, and staff POS deep-links still default to the correct production domain.
+### Public URLs
+- **App public URL** — the customer-facing site used in payment redirects and webhooks.
+- **Admin public URL** and **Staff public URL**.
 
 ### Important
-- Webhook endpoints must be publicly reachable.
-- Use test keys for development and staging.
-- Rotate live keys securely.
+- Webhook endpoints must be publicly reachable or payment-capture callbacks never arrive and orders stay unpaid.
+- Enabling a provider without its required fields fails validation — nothing is half-saved.
+- Rotate live keys by typing the new value over the masked field and saving.
 
 ## Twilio Verify (`/settings/twilio-verify`)
 
-### Purpose
-Send OTP codes via SMS for passwordless login and phone verification.
+Credentials for the OTP SMS service used by customer and staff login. Twilio Verify generates and checks the codes; you get the credentials from the Twilio Console.
 
-### Configuration
-1. Enable Twilio Verify.
-2. Enter Account SID, Auth Token, and Verify Service SID.
-3. Set test mode or live mode.
-4. Save.
+| Setting | Purpose |
+|---------|---------|
+| Account SID | Twilio account identifier. |
+| Auth Token | Sensitive — masked after saving. |
+| Verify Service SID | The Twilio Verify service that generates and checks codes. |
+| Use Test Credentials | Boolean toggle — route OTP through the test credential set instead of the live one. |
+| Test Account SID / Test Auth Token | Separate credential set for development and staging. |
 
-### OTP bypass
-For development and E2E testing, OTP can be bypassed via platform config. Disable this in production.
+### Usage
+1. Enter the live Account SID, Auth Token, and Verify Service SID from the Twilio console.
+2. During development, fill the test set and enable **Use Test Credentials**; switch it off for production.
+3. Save each row. Auth tokens are stored masked and are only used server-side.
+4. Verify with a real login before disabling OTP bypass (see the go-live checklist above).
+
+## Tips
+
+- Configuration keys are environment-scoped; the values you see here apply to all environments unless a key was deliberately set for a specific one.
+- Rotate secrets regularly: type the new value over the masked field, save, then verify the affected flow (a test payment, a test login).
+- After changing payment or OTP settings, run one real end-to-end flow before announcing anything — these pages save successfully even when the external credentials themselves are wrong.
+- Masked values cannot be read back in the UI — keep your own secure record of live keys.
+
+## New-environment setup order
+
+When bringing up a fresh deployment, configure in this order — each step depends on the previous one:
+
+1. **App Settings** — platform name, currency, support contacts, public URLs.
+2. **Twilio Verify** — live credentials, verified with a real SMS login.
+3. **Payment Gateway** — provider keys and webhooks, verified with a real test order.
+4. **App Settings → OTP** — disable the OTP bypass only now.
+5. **Version Control** — confirm every component reports the expected build.
 
 ## Version Control (`/settings/version-control`)
 
 ### What it shows
-Current versions of:
-- Backend API
-- Admin Portal
-- Staff Portal
-- Customer PWA
+One card per deployed component:
+
+| Card | Source | Fields shown |
+|------|--------|--------------|
+| Backend API | Read live from the server | Version, git commit (short hash), branch, commit date, build time. |
+| Admin Portal | Its build metadata file | Version, build time. |
+| Staff Portal | Its build metadata (when configured) | Version, build time. |
+| Customer PWA | Its build metadata (when configured) | Version, build time. |
+
+Commit dates are also shown as relative time (`3h ago`, `2d ago`). A card that cannot reach its component shows "unable to fetch" instead of a version — treat that as a signal the component is down or unreachable, not just a display glitch.
 
 ### Usage
-Use this page to verify all components are on expected versions after a deployment.
+- After every deployment, confirm each component shows the expected commit — a stale card means that component did not actually update.
+- After a translation sync or PWA rebuild, check the Customer PWA card: its build timestamp is bumped on every sync, which is what forces customer devices to refresh their cached translations.
+- When reporting a bug, include the version and commit from the affected component's card.
 
 ## Related
-- [Stores — Settings](stores.md)
-- [Orders — Refunds](orders-and-refunds.md)
+- [Marketing — Campaign Settings](marketing.md)
+- [Loyalty — Settings](loyalty.md)
+- [Stores](stores.md)

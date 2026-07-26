@@ -1,77 +1,108 @@
 # Customer PWA: Promotions & Rewards
 
 ## Pages
-- `promotions` — Promotions
-- `my-rewards` — My Rewards
-- `rewards` — Rewards Catalog
+- `promotions` — Promotions (offer banners, surveys, voucher claims)
+- `lucky-draw` — Lucky Draw (spin-the-wheel)
+- `rewards` — Rewards Marketplace (spend your points)
+- `my-rewards` — My Rewards & Vouchers (everything you've collected)
+- `checkin` — Daily Check-in (free points every day)
 
 ## Promotions page
 
 ### What you see
-Active promotions, offers, and banners.
+All current offers from LOKA Espresso as banner cards. Banners tagged **Survey** ask a few questions first; other banners can be claimed straight away. You can browse without signing in, but claiming requires an account.
 
-### Types of promotions
-- Percentage off
-- Fixed amount off
-- Buy X Get Y
-- Happy hour
-- Bundle deals
+### Claim an offer
+1. Open **Promotions** and tap a banner.
+2. Read the "How to redeem" details and any terms (minimum spend, expiry, remaining quantity).
+3. Tap **Claim Offer**.
+4. Your voucher code appears ("Voucher Unlocked!") and the voucher is added to **My Rewards → My Vouchers**.
 
-### Use a promotion
-1. Open **Promotions**.
-2. Tap a promotion.
-3. Tap **Order Now** to go to the menu with eligible items.
-4. Add items and checkout.
+The button changes with your status: **View in wallet** once claimed, or **Already used** after redemption.
+
+### Survey offers
+1. Tap a banner tagged **Survey**.
+2. Answer the short survey (ratings, multiple choice, or a short text answer) and submit.
+3. Once the survey is done, the **Claim Offer** button unlocks — tap it to get your voucher.
+
+You can't claim a survey reward before completing the survey, and each survey can normally only be answered once.
+
+### Where else promos appear
+- The **home page** has a Promotions carousel — tap a banner to jump straight to it.
+- A **Lucky Draw banner** appears on the home page whenever a draw is running.
+- After signing in, a full-screen **popup banner** may show a featured announcement; dismiss it to continue.
+
+## Lucky Draw page
+
+### What it is
+A spin-the-wheel game. Every spin wins a voucher, which lands in **My Rewards → My Vouchers**.
+
+### How to spin
+1. Open **Lucky Draw** from the home-page banner (or go to `#lucky-draw`).
+2. Tap **SPIN**. Sign in if prompted.
+3. The wheel spins and lands on your prize. Tap **View in Wallet** to see the voucher.
+
+### How you get spins
+The café runs one of two campaign types — the page shows which one is active:
+
+| Campaign type | How it works |
+|---------------|--------------|
+| Free daily spins | Everyone gets a set number of free spins per period (usually 1 per day; some campaigns run weekly). Used up? You'll see "No spins left — come back tomorrow!" |
+| Spend-based tickets | Every paid purchase earns draw tickets automatically (e.g. RM 50 spent = 1 ticket). Tickets add up in your account until you use them. The page shows how many tickets you have left. |
+
+Each spin uses one free spin or one ticket. Spins and tickets are only valid while the campaign is running.
+
+## Rewards Marketplace
+
+### What you see
+Your points balance at the top, your progress to the next loyalty tier, and a catalog of rewards you can redeem with points — drinks add-ons, food, merchandise, and experiences. Some rewards need a higher tier or have limited stock.
+
+### Redeem a reward
+1. Open **Rewards** and tap a reward.
+2. Tap **Redeem for … pts**. You need enough points; some items also require the Origin or Reserve tier.
+3. Points are deducted and you get a redemption code.
+4. Show the code to the cashier to collect your item. The reward is also saved in **My Rewards**.
 
 ## My Rewards page
 
 ### What you see
-Your active vouchers and redeemed rewards.
+Two tabs:
 
-### Reward status
+| Tab | Contents |
+|-----|----------|
+| My Rewards | Items you redeemed with points (redemption codes). |
+| My Vouchers | Vouchers from promos, surveys, and the Lucky Draw. |
 
-| Status | Meaning |
-|--------|---------|
-| active / available | Can be used. |
-| used | Already redeemed. |
-| expired | No longer valid. |
+Cards show the expiry date — "Expires today" or "Expires in N days" — so use them soon.
 
-### Redeem a reward
-1. Open **My Rewards**.
-2. Tap a reward.
-3. View the redemption code.
-4. Tap **Copy Code** or show the QR to staff.
-5. At checkout or POS, the reward is applied.
+### Use a reward or voucher
+- **In store:** tap the card, then show the code to the cashier at the counter.
+- **In the app:** select the voucher at checkout before paying.
 
-### Voucher codes
-Vouchers have a unique code. Enter the code at checkout or show it to staff at the POS.
+## Daily Check-in
 
-## Rewards Catalog page
+### How it works
+1. Open **Check-in** (from the wallet card on the home page).
+2. Tap **Check In** once per day to earn points.
+3. Consecutive days build a streak: each streak day adds a small bonus, and a full 7-day streak pays an extra bonus. Miss a day and the streak starts over.
 
-### What you see
-All available rewards in the loyalty program.
-
-### Redeem from catalog
-1. Open **Rewards**.
-2. Browse rewards.
-3. Tap a reward.
-4. If you have enough points, tap **Redeem**.
-5. Points are deducted and the reward appears in **My Rewards**.
+The exact point values are set by the café and shown on the page (e.g. +10 base, +2 per streak day, +20 on day 7).
 
 ## How points are earned
 
-- Place orders while logged in.
-- Earn base points based on order subtotal.
-- Tier multiplier increases points earned.
-- Bonus points from check-ins and campaigns.
+- Order while signed in — points are based on what you spend, multiplied by your tier (Bloom 1x, Origin 1.2x, Reserve 1.5x).
+- Bring your own tumbler (BYOT) for bonus points on the order.
+- Double points during your birthday month.
+- Daily check-ins, surveys, and special campaigns.
 
 ## Tips
 
-- Rewards expire; check the expiry date.
-- Some rewards have minimum spend requirements.
-- Vouchers may be single-use or limited per customer.
+- Vouchers and rewards expire — check the date on the card.
+- Some vouchers have a minimum spend.
+- Most vouchers and rewards are single-use.
+- Lucky draw prizes are vouchers too — they all collect in **My Rewards → My Vouchers**.
 
 ## Related
 - [Wallet & Loyalty](wallet-and-loyalty.md)
-- [Admin — Loyalty](../admin/loyalty.md)
-- [Admin — Marketing](../admin/marketing.md)
+- [Check-in & Referral](checkin-and-referral.md)
+- [Reservations & Events](reservations-and-events.md)

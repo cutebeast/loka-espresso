@@ -21,8 +21,11 @@ const ACTION_TYPES = [{
   value: "url_claim",
   label: "Visit Link & Claim"
 }, {
-  value: "survey_claim",
+  value: "survey",
   label: "Survey & Claim"
+}, {
+  value: "detail",
+  label: "Display Only"
 }];
 export default function PromotionNewPage() {
   const {
@@ -198,7 +201,7 @@ export default function PromotionNewPage() {
               ...form,
               action_url: e.target.value
             })} placeholder={t("promotions_new.https")} /></div>}
-            {form.action_type === "survey_claim" && <div className="df-field"><label className="df-label">{t("promotions_new.survey")}</label><select value={form.survey_id} onChange={e => setForm({
+            {form.action_type === "survey" && <div className="df-field"><label className="df-label">{t("promotions_new.survey")}</label><select value={form.survey_id} onChange={e => setForm({
               ...form,
               survey_id: e.target.value
             })}><option value="">{t("promotions_new.select_2")}</option>{surveys.map(s => <option key={s.id} value={s.id}>{s.survey_name}</option>)}</select></div>}

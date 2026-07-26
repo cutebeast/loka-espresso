@@ -42,8 +42,11 @@ const ACTION_TYPES = [{
   value: "url_claim",
   label: "Visit Link & Claim"
 }, {
-  value: "survey_claim",
+  value: "survey",
   label: "Survey & Claim"
+}, {
+  value: "detail",
+  label: "Display Only"
 }];
 export default function PromotionEditPage() {
   const {
@@ -357,7 +360,7 @@ export default function PromotionEditPage() {
             ...form,
             action_url: e.target.value
           })} /></div>}
-          {form.action_type === "survey_claim" && <div className="df-field"><label className="df-label">{t("promotions_[id].survey")}</label><select value={form.survey_id} onChange={e => setForm({
+          {form.action_type === "survey" && <div className="df-field"><label className="df-label">{t("promotions_[id].survey")}</label><select value={form.survey_id} onChange={e => setForm({
             ...form,
             survey_id: e.target.value
           })}><option value="">{t("promotions_[id].select_2")}</option>{surveys.map(s => <option key={s.id} value={s.id}>{s.survey_name}</option>)}</select></div>}

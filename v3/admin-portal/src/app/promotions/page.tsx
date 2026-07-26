@@ -23,8 +23,11 @@ const ACTION_TYPES = [{
   value: "url_claim",
   label: "Visit Link & Claim"
 }, {
-  value: "survey_claim",
+  value: "survey",
   label: "Survey & Claim"
+}, {
+  value: "detail",
+  label: "Display Only"
 }];
 export default function PromotionsPage() {
   const {
@@ -53,7 +56,7 @@ export default function PromotionsPage() {
   const actionBadge = (t: string) => {
     const m: Record<string, string> = {
       read_claim: "badge-green",
-      survey_claim: "badge-blue",
+      survey: "badge-blue",
       url_claim: "badge-yellow"
     };
     return <span className={`badge badge-sm ${m[t] || "badge-gray"}`}>{ACTION_TYPES.find(a => a.value === t)?.label || t || "—"}</span>;
@@ -76,7 +79,7 @@ export default function PromotionsPage() {
     }}>
         <strong>{t("promotions.3_action_types")}</strong> <em>{t("promotions.read_claim")}</em> · <em>{t("promotions.visit_link_claim")}</em> · <em>{t("promotions.survey_claim")}</em>
       </div>
-      <div className="table-header-bar"><span className="text-sm font-semibold">{banners.length}{t("promotions.promotions_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{t("promotions.total_count", { count: banners.length })}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("promotions.title")}</th><th>{t("promotions.action")}</th><th>{t("promotions.voucher")}</th><th>{t("promotions.dates")}</th><th style={{
               width: 80
