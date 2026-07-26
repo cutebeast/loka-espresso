@@ -488,7 +488,8 @@
     "homeBannerSubtitle": "Çarkı çevirin, günlük ödüller kazanın",
     "earnBySpending": "Bizimle harcama yaparak çekiliş biletleri kazanın!",
     "spendToEarn": "RM {amount} harcama = 1 çekiliş bileti",
-    "ticketsLeft": "{count} çekiliş bileti kaldı"
+    "ticketsLeft": "{count} çekiliş bileti kaldı",
+    "comeBackLater": "Hiç ücretsiz dönüş kalmadı — sonra tekrar gelin!"
   },
   "menu": {
     "addPrice": "Fiyat Ekle",

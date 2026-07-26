@@ -21,6 +21,7 @@ async def test_lucky_draw_free_daily_regression(
     assert data["draw_type"] == "free_daily"
     assert data["max_segments"] >= 2
     assert data["spins_per_day"] >= 1
+    assert data["spin_interval_days"] >= 1
     assert len(data["segments"]) >= 1
     assert data["tickets_available"] is None  # guest
 

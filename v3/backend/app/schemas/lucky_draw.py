@@ -14,6 +14,7 @@ class LuckyDrawCampaignBase(BaseSchema):
     start_date: datetime | None = None
     end_date: datetime | None = None
     spins_per_day: int = Field(1, gt=0)
+    spin_interval_days: int = Field(1, ge=1)
     draw_type: str = Field("free_daily", pattern="^(free_daily|ticket_spend)$")
     spend_per_ticket_cents: int = Field(5000, gt=0)
     max_segments: int = Field(8, ge=2, le=12)
@@ -30,6 +31,7 @@ class LuckyDrawCampaignUpdate(BaseSchema):
     start_date: datetime | None = None
     end_date: datetime | None = None
     spins_per_day: int | None = Field(None, gt=0)
+    spin_interval_days: int | None = Field(None, ge=1)
     draw_type: str | None = Field(None, pattern="^(free_daily|ticket_spend)$")
     spend_per_ticket_cents: int | None = Field(None, gt=0)
     max_segments: int | None = Field(None, ge=2, le=12)
@@ -75,6 +77,7 @@ class LuckyDrawActiveCampaignOut(BaseSchema):
     start_date: datetime | None = None
     end_date: datetime | None = None
     spins_per_day: int
+    spin_interval_days: int = 1
     draw_type: str = "free_daily"
     spend_per_ticket_cents: int = 5000
     max_segments: int = 8

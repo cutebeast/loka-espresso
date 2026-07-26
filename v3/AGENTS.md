@@ -620,3 +620,11 @@ Full counter-flow audit (owner rules: phone OPTIONAL for F&B, REQUIRED for works
 - **Backend bug**: `POST /admin/surveys/{id}/questions` 500'd on EVERY create — the schema's `options` convenience field isn't a model column but got dumped into `SurveyQuestion(**dump)`. Now excluded + folded into answer_options.
 - **Seeder consistency**: `seed_content.py` PROMO_BANNERS now carry survey_key+voucher_code and resolve both; SURVEYS includes all 3; `_upsert_survey` auto-translates questions after its delete+reinsert (was orphaning translation rows to deleted question ids on every re-seed). seed_loyalty.py seeds the 3 survey vouchers. All idempotent (verified re-run).
 - E2E survey+promo sweep 7 passed.
+
+### Lucky draw spin interval — free grant cadence (2026-07-26)
+- Owner request: the free grant shouldn't be fixed at 1/day — make it per-interval (1 ticket per day / per week).
+- `lucky_draw_campaigns.spin_interval_days` (alembic `e5f6a7b8c9d0`, default 1, >= 1): the free_daily type now grants `spins_per_day` free spins per ROLLING window of N days (1 = daily, 7 = weekly, 30 = monthly). Counting is a rolling window (`created_at >= now - interval`), not calendar-day — `next_spin_at` on 429 = last spin + interval.
+- Admin form: "Free spins per interval" + "Days per interval" (1 = daily, 7 = weekly, 30 = monthly) — shown only for free_daily. PWA empty state is interval-aware ("come back tomorrow" vs "come back later" when interval > 1).
+- NOTE: spins_per_interval can't be 0 (grant must be ≥1 — 0 would be ambiguous: unlimited vs none; to stop free spins use is_active=false or ticket_spend type).
+- Verified live: set 1/week → fresh customer 1 remaining → spin ok → 429 with next_spin_at exactly +7d → restored to daily. E2E 3 passed.
+- ticket_spend recap (user asked "linked to purchase $$ = how many tickets"): every RM X of PAID purchase = floor(total/X) tickets, X = campaign spend_per_ticket (default RM 50). RM 120 order → 2 tickets.

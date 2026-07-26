@@ -488,7 +488,8 @@
     "homeBannerSubtitle": "Putar roda & menangi ganjaran harian",
     "earnBySpending": "Dapatkan tiket cabutan dengan berbelanja bersama kami!",
     "spendToEarn": "Belanja RM {amount} = 1 tiket cabutan",
-    "ticketsLeft": "{count} tiket cabutan lagi"
+    "ticketsLeft": "{count} tiket cabutan lagi",
+    "comeBackLater": "Tiada pusingan percuma lagi — kembali kemudian!"
   },
   "menu": {
     "addPrice": "Tambah Harga",

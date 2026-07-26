@@ -276,7 +276,7 @@ export default function LuckyDrawPage() {
               fontWeight: 600,
               marginBottom: 12,
             }}>
-              {t('luckyDraw.comeBackTomorrow')}
+              {(campaign?.spin_interval_days ?? 1) > 1 ? t('luckyDraw.comeBackLater') : t('luckyDraw.comeBackTomorrow')}
             </div>
           )}
 

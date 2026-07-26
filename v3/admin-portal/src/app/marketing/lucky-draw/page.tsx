@@ -15,6 +15,7 @@ interface LuckyDrawCampaign {
   start_date: string | null;
   end_date: string | null;
   spins_per_day: number;
+  spin_interval_days: number;
   draw_type: string;
   spend_per_ticket_cents: number;
   max_segments: number;
@@ -52,6 +53,7 @@ const emptyCampaignForm = {
   title: "",
   description: "",
   spins_per_day: "1",
+  spin_interval_days: "1",
   draw_type: "free_daily",
   spend_per_ticket_rm: "50",
   max_segments: "8",
@@ -116,6 +118,7 @@ export default function LuckyDrawPage() {
         title: c.title,
         description: c.description || "",
         spins_per_day: String(c.spins_per_day),
+        spin_interval_days: String(c.spin_interval_days ?? 1),
         draw_type: c.draw_type || "free_daily",
         spend_per_ticket_rm: String((c.spend_per_ticket_cents ?? 5000) / 100),
         max_segments: String(c.max_segments ?? 8),
@@ -188,6 +191,7 @@ export default function LuckyDrawPage() {
         title: campaignForm.title,
         description: campaignForm.description || null,
         spins_per_day: parseInt(campaignForm.spins_per_day, 10) || 1,
+        spin_interval_days: Math.max(1, parseInt(campaignForm.spin_interval_days, 10) || 1),
         draw_type: campaignForm.draw_type,
         spend_per_ticket_cents: Math.round((parseFloat(campaignForm.spend_per_ticket_rm) || 50) * 100),
         max_segments: Math.min(12, Math.max(2, parseInt(campaignForm.max_segments, 10) || 8)),
@@ -331,11 +335,18 @@ export default function LuckyDrawPage() {
             <div className="df-hint">{t("lucky_draw.drawTypeHint", "Free daily spins, or tickets earned from spending")}</div>
           </div>
           {campaignForm.draw_type === "free_daily" ? (
+            <>
             <div className="df-field">
-              <label className="df-label">{t("lucky_draw.spinsPerDay", "Spins per day")}</label>
+              <label className="df-label">{t("lucky_draw.spinsPerDay", "Free spins per interval")}</label>
               <input type="number" min={1} required value={campaignForm.spins_per_day} onChange={e => setCampaignForm({ ...campaignForm, spins_per_day: e.target.value })} />
-              <div className="df-hint">{t("lucky_draw.spinsPerDayHint", "How many times each customer can spin per day")}</div>
+              <div className="df-hint">{t("lucky_draw.spinsPerDayHint", "Free spins each customer gets per interval")}</div>
             </div>
+            <div className="df-field">
+              <label className="df-label">{t("lucky_draw.spinIntervalDays", "Days per interval")}</label>
+              <input type="number" min={1} required value={campaignForm.spin_interval_days} onChange={e => setCampaignForm({ ...campaignForm, spin_interval_days: e.target.value })} />
+              <div className="df-hint">{t("lucky_draw.spinIntervalDaysHint", "1 = daily, 7 = weekly, 30 = monthly")}</div>
+            </div>
+            </>
           ) : (
             <div className="df-field">
               <label className="df-label">{t("lucky_draw.spendPerTicket", "Spend per ticket (RM)")}</label>

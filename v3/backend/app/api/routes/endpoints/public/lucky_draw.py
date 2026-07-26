@@ -78,23 +78,25 @@ async def _get_current_campaign(db) -> LuckyDrawCampaign | None:
     return result.scalar_one_or_none()
 
 
-async def _spins_used_today(db, campaign_id: int, customer_id: int) -> int:
-    """Count the customer's spins for the campaign since UTC midnight."""
-    today_start = datetime.combine(
-        datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc
-    )
+async def _spins_used_in_interval(db, campaign_id: int, customer_id: int, interval_days: int) -> int:
+    """Count the customer's spins for the campaign in the last `interval_days`
+    (rolling window — drives the free_daily grant cadence: 1 = daily, 7 = weekly)."""
+    since = datetime.now(timezone.utc) - timedelta(days=interval_days)
     result = await db.execute(
         select(func.count(LuckyDrawSpin.id)).where(
             LuckyDrawSpin.campaign_id == campaign_id,
             LuckyDrawSpin.customer_id == customer_id,
-            LuckyDrawSpin.created_at >= today_start,
+            LuckyDrawSpin.created_at >= since,
         )
     )
     return result.scalar() or 0
 
 
-def _next_spin_at() -> datetime:
-    """Next UTC midnight — when the daily spin allowance resets."""
+def _next_spin_at(last_spin: datetime | None = None, interval_days: int = 1) -> datetime:
+    """When the next free spin becomes available (last spin + interval,
+    or UTC midnight for the default 1-day interval)."""
+    if last_spin is not None:
+        return last_spin + timedelta(days=interval_days)
     tomorrow = datetime.now(timezone.utc).date() + timedelta(days=1)
     return datetime.combine(tomorrow, time.min, tzinfo=timezone.utc)
 
@@ -132,7 +134,7 @@ async def get_active_campaign(
             from app.services.lucky_draw import tickets_available as _tickets_available
             tickets_available = await _tickets_available(db, campaign.id, customer.id)
         else:
-            used = await _spins_used_today(db, campaign.id, customer.id)
+            used = await _spins_used_in_interval(db, campaign.id, customer.id, campaign.spin_interval_days)
             spins_remaining = max(campaign.spins_per_day - used, 0)
 
     data = LuckyDrawActiveCampaignOut(
@@ -142,6 +144,7 @@ async def get_active_campaign(
         start_date=campaign.start_date,
         end_date=campaign.end_date,
         spins_per_day=campaign.spins_per_day,
+        spin_interval_days=campaign.spin_interval_days,
         draw_type=campaign.draw_type,
         spend_per_ticket_cents=campaign.spend_per_ticket_cents,
         max_segments=campaign.max_segments,
@@ -196,14 +199,24 @@ async def spin_wheel(
                 },
             )
     else:
-        used = await _spins_used_today(db, campaign.id, customer.id)
+        used = await _spins_used_in_interval(db, campaign.id, customer.id, campaign.spin_interval_days)
         if used >= campaign.spins_per_day:
+            last_spin_result = await db.execute(
+                select(LuckyDrawSpin.created_at)
+                .where(
+                    LuckyDrawSpin.campaign_id == campaign.id,
+                    LuckyDrawSpin.customer_id == customer.id,
+                )
+                .order_by(LuckyDrawSpin.created_at.desc())
+                .limit(1)
+            )
+            last_spin_at = last_spin_result.scalar_one_or_none()
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail={
-                    "message": "Daily spin limit reached",
+                    "message": "Free spin limit reached for this period",
                     "spins_remaining": 0,
-                    "next_spin_at": _next_spin_at().isoformat(),
+                    "next_spin_at": _next_spin_at(last_spin_at, campaign.spin_interval_days).isoformat(),
                 },
             )
 

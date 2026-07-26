@@ -488,7 +488,8 @@
     "homeBannerSubtitle": "转动轮盘，赢取每日奖励",
     "earnBySpending": "消费即可获得抽奖券！",
     "spendToEarn": "消费 RM {amount} 获 1 张抽奖券",
-    "ticketsLeft": "剩余 {count} 张抽奖券"
+    "ticketsLeft": "剩余 {count} 张抽奖券",
+    "comeBackLater": "没有免费旋转了——稍后再来！"
   },
   "menu": {
     "addPrice": "添加价格",

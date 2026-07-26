@@ -488,7 +488,8 @@
     "homeBannerSubtitle": "Spin the wheel & win daily rewards",
     "ticketsLeft": "{count} draw tickets left",
     "spendToEarn": "Spend RM {amount} = 1 draw ticket",
-    "earnBySpending": "Earn draw tickets by spending with us!"
+    "earnBySpending": "Earn draw tickets by spending with us!",
+    "comeBackLater": "No free spins left — come back later!"
   },
   "menu": {
     "addPrice": "Add Price",

@@ -30,6 +30,9 @@ class LuckyDrawCampaign(Base, TimestampMixin):
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     spins_per_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # free_daily: free spins per rolling interval of this many days
+    # (1 = daily, 7 = weekly, 30 = monthly). spins_per_day is the per-interval cap.
+    spin_interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # "free_daily" (spins_per_day per customer per day) or "ticket_spend"
     # (tickets earned from spending; each spin consumes one).
     draw_type: Mapped[str] = mapped_column(String(20), nullable=False, default="free_daily")
@@ -57,6 +60,10 @@ class LuckyDrawCampaign(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint("spins_per_day > 0", name="ck_lucky_draw_campaigns_spins_per_day"),
+        CheckConstraint(
+            "spin_interval_days >= 1",
+            name="ck_lucky_draw_campaigns_spin_interval_days",
+        ),
         CheckConstraint(
             "draw_type IN ('free_daily','ticket_spend')",
             name="ck_lucky_draw_campaigns_draw_type",
