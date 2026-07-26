@@ -40,7 +40,7 @@ STORES = [
     },
     {
         "store_code": "KLIA1-001",
-        "store_name": "Loka Loka Cafe (KLIA1)",
+        "store_name": "Loka Cafe (KLIA1)",
         "slug": "klia",
         "brand_name": "LOKA Espresso",
         "address_line_1": "Terminal 1, Domestic Arrival Hall, KLIA",
@@ -71,7 +71,7 @@ OPERATING_HOURS = {
         (5, "10:00", "22:00", "21:30", False),
         (6, "10:00", "22:00", "21:30", False),
     ],
-    2: [  # Loka Loka Cafe KLIA — 24 hours
+    2: [  # Loka Cafe KLIA — 24 hours
         (0, "00:00", "23:59", "23:30", True),
         (1, "00:00", "23:59", "23:30", True),
         (2, "00:00", "23:59", "23:30", True),

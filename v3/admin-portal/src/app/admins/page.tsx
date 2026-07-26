@@ -116,7 +116,7 @@ export default function AdminUsersPage() {
   return <div style={{
     padding: 24
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("admins.admin_users")}</h1><p className="page-subtitle">{items.length}{t("admins.accounts")}{roles.length}{t("admins.roles")}</p></div><button type="button" onClick={() => setShowForm(true)} className="btn btn-primary btn-sm"><Plus size={14} />{t("admins.add_admin")}</button></div>
+      <div className="page-header"><div><h1 className="page-title">{t("admins.admin_users")}</h1><p className="page-subtitle">{items.length} {t("admins.accounts")} · {roles.length} {t("admins.roles")}</p></div><button type="button" onClick={() => setShowForm(true)} className="btn btn-primary btn-sm"><Plus size={14} />{t("admins.add_admin")}</button></div>
       {msg && <div className={`alert ${msg.includes("Failed") || validationError ? "alert-error" : "alert-success"}`} style={{
       marginBottom: 12
     }}>{msg}</div>}

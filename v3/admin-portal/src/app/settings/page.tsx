@@ -45,6 +45,18 @@ const SECTIONS: {
   descriptionKey: "settings.section_payments_desc",
   prefix: "stripe."
 }];
+// API returns JSONB-typed values (boolean true, number 5, objects) — normalize
+// to strings so checkbox/input comparisons and rendering work consistently.
+const normalizeConfigs = (d: ConfigItem[]): ConfigItem[] =>
+  (Array.isArray(d) ? d : []).map(c => ({
+    ...c,
+    config_value: c.config_value == null
+      ? null
+      : typeof c.config_value === "object"
+        ? JSON.stringify(c.config_value)
+        : String(c.config_value),
+  }));
+
 function ConfigRow({
   item,
   onSave,
@@ -126,7 +138,7 @@ export default function SettingsPage() {
   const [updateMsg, setUpdateMsg] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
   useEffect(() => {
-    api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch(e => setError(e.message)).finally(() => setLoading(false));
+    api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(normalizeConfigs(d))).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, []);
   const handleSave = async (item: ConfigItem, newValue: string) => {
     setSaving(item.config_key);
@@ -144,7 +156,7 @@ export default function SettingsPage() {
       setTimeout(() => setUpdateMsg(""), 3000);
     } catch (err: any) {
       setError(err.message);
-      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch(e => { console.error('reload configs:', e); setError(e.message || t("admin.errors.loadFailed")); });
+      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(normalizeConfigs(d))).catch(e => { console.error('reload configs:', e); setError(e.message || t("admin.errors.loadFailed")); });
     } finally {
       setSaving(null);
     }

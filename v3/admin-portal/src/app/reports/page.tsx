@@ -54,13 +54,16 @@ export default function ReportsPage() {
     try {
       const qs = new URLSearchParams();
       if (selectedStore) qs.set("store_id", selectedStore);
-      if (dateFrom) qs.set("date_from", dateFrom);
-      if (dateTo) qs.set("date_to", dateTo);
+      if (dateFrom) qs.set("from_date", dateFrom);
+      if (dateTo) qs.set("to_date", dateTo);
       const metrics = await api.get<any>(`/admin/dashboard/metrics${qs.toString() ? "?" + qs.toString() : ""}`);
+      const ranged = !!(dateFrom || dateTo);
+      const revenue = ranged ? (metrics.total_revenue ?? 0) : (metrics.revenue_today ?? 0);
+      const orders = ranged ? (metrics.total_orders ?? 0) : (metrics.orders_today ?? 0);
       setData({
-        revenue: metrics.revenue_today ?? metrics.total_revenue ?? 0,
-        orders: metrics.orders_today ?? metrics.total_orders ?? 0,
-        avgOrder: Number(metrics.revenue_today) > 0 && Number(metrics.orders_today) > 0 ? metrics.revenue_today / metrics.orders_today : 0,
+        revenue,
+        orders,
+        avgOrder: Number(revenue) > 0 && Number(orders) > 0 ? revenue / orders : 0,
         customers: metrics.new_customers || 0,
         stores: metrics.active_stores || stores.length
       });

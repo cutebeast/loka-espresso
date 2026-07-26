@@ -69,11 +69,13 @@ async def dashboard_metrics(
 
     # Today
     orders_today = (await db.execute(order_filter(select(func.count()).select_from(Order).where(Order.created_at >= today_start)))).scalar() or 0
-    revenue_today = (await db.execute(order_filter(select(func.coalesce(func.sum(Order.total_amount), 0.0)).select_from(Order).where(Order.created_at >= today_start)))).scalar() or 0
+    # Revenue = money actually received (captured payments only — pending PWA
+    # online orders and unpaid walkaways are not revenue)
+    revenue_today = (await db.execute(order_filter(select(func.coalesce(func.sum(Order.total_amount), 0.0)).select_from(Order).where(Order.created_at >= today_start, Order.payment_status == "captured")))).scalar() or 0
 
     # Total in range
     total_orders = (await db.execute(order_filter(select(func.count()).select_from(Order).where(Order.created_at >= dfrom, Order.created_at <= dto)))).scalar() or 0
-    total_revenue = (await db.execute(order_filter(select(func.coalesce(func.sum(Order.total_amount), 0.0)).select_from(Order).where(Order.created_at >= dfrom, Order.created_at <= dto)))).scalar() or 0
+    total_revenue = (await db.execute(order_filter(select(func.coalesce(func.sum(Order.total_amount), 0.0)).select_from(Order).where(Order.created_at >= dfrom, Order.created_at <= dto, Order.payment_status == "captured")))).scalar() or 0
     active_orders = (await db.execute(order_filter(select(func.count()).select_from(Order).where(Order.status.in_(("pending", "confirmed", "preparing")))))).scalar() or 0
 
     # Orders by type

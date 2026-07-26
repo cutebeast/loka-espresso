@@ -118,19 +118,20 @@ async def seed():
                 },
             )
 
-            # Staff roles are stored on staff_profiles.role; role_assignments is for admin accounts.
+            print(f"  Created staff '{staff['display_name']}' for store {store_id}")
 
-            # Link admin principal (id=1) to first store if not already assigned
+        # Link admin principal (id=1) to every store — once each, outside the
+        # staff loop (the table has no unique constraint, so ON CONFLICT alone
+        # cannot prevent duplicates across repeated runs).
+        for sid in store_ids.values():
             await db.execute(
                 text("""
                     INSERT INTO store_assignments (assignee_id, store_id, is_primary, can_approve_refunds, can_adjust_inventory, can_manage_staff)
-                    VALUES (1, :store_id, true, true, true, true)
-                    ON CONFLICT DO NOTHING
+                    SELECT 1, :store_id, true, true, true, true
+                    WHERE NOT EXISTS (SELECT 1 FROM store_assignments WHERE assignee_id = 1 AND store_id = :store_id)
                 """),
-                {"store_id": store_id},
+                {"store_id": sid},
             )
-
-            print(f"  Created staff '{staff['display_name']}' for store {store_id}")
 
 
 async def main():
