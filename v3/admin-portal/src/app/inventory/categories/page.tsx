@@ -36,7 +36,7 @@ export default function InventoryCategoriesPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("inventory_categories.inventory_categories")}</h1><p className="page-subtitle">{items.length}{t("inventory_categories.categories")}</p></div>
+        <div><h1 className="page-title">{t("inventory_categories.inventory_categories")}</h1><p className="page-subtitle">{items.length} {" "}{t("inventory_categories.categories")}</p></div>
         <button onClick={() => router.push("/inventory/categories/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("inventory_categories.add_category")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}

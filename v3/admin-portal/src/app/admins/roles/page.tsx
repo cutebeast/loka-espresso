@@ -164,7 +164,7 @@ export default function RolesPage() {
   return <div style={{
     padding: 24
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("admins_roles.roles_permissions")}</h1><p className="page-subtitle">{roles.length}{t("admins_roles.roles")}{permissions.length}{t("admins_roles.permissions")}</p></div><button onClick={() => {
+      <div className="page-header"><div><h1 className="page-title">{t("admins_roles.roles_permissions")}</h1><p className="page-subtitle">{t("admins_roles.roles_permissions_count", { roles: roles.length, permissions: permissions.length })}</p></div><button onClick={() => {
         setShowForm(true);
         setForm({
           display_name: "",

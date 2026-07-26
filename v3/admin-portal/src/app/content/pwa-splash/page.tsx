@@ -45,9 +45,9 @@ export default function SplashScreensPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("content_pwa-splash.pwa_splash")}</h1><p className="page-subtitle">{items.length}{t("content_pwa-splash.splash_screens")}</p></div><button onClick={() => router.push("/content/pwa-splash/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("content_pwa-splash.add_pwa_splash")}</button></div>
+      <div className="page-header"><div><h1 className="page-title">{t("content_pwa-splash.pwa_splash")}</h1><p className="page-subtitle">{items.length} {" "}{t("content_pwa-splash.splash_screens")}</p></div><button onClick={() => router.push("/content/pwa-splash/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("content_pwa-splash.add_pwa_splash")}</button></div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("content_pwa-splash.screens")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("content_pwa-splash.screens")}</span></div>
       <div className="table-container"><table className="data-table"><thead><tr><th>{t("content_pwa-splash.title")}</th><th>{t("content_pwa-splash.key")}</th><th>{t("content_pwa-splash.period")}</th><th style={{
               width: 80
             }}>{t("content_pwa-splash.status")}</th><th style={{

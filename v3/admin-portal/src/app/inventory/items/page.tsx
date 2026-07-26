@@ -47,7 +47,7 @@ export default function InventoryItemsPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("inventory_items.inventory_items")}</h1><p className="page-subtitle">{items.length}{t("inventory_items.items")}</p></div>
+        <div><h1 className="page-title">{t("inventory_items.inventory_items")}</h1><p className="page-subtitle">{items.length} {" "}{t("inventory_items.items")}</p></div>
         <button onClick={() => router.push("/inventory/items/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("inventory_items.add_item")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}

@@ -82,7 +82,7 @@ export default function MarketingCampaignsPage() {
         <button type="button" onClick={() => router.push("/marketing/campaigns/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("marketing_campaigns.add_campaign")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("marketing_campaigns.campaigns")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("marketing_campaigns.campaigns")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("marketing_campaigns.name")}</th><th>{t("marketing_campaigns.channel")}</th><th>{t("marketing_campaigns.status")}</th><th>{t("marketing_campaigns.scheduled")}</th><th>{t("marketing_campaigns.budget")}</th><th style={{
               width: 100

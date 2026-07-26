@@ -194,7 +194,7 @@ export default function SurveyReportPage() {
             <div><strong>{t("surveys_report.avg_nps")}{avgNps}</strong></div>
             <div style={{
           color: "var(--color-text-muted)"
-        }}>{t("surveys_report.showing")}{responses.length}{t("surveys_report.on_page")}{page}{t("surveys_report.of")}{totalPages || 1}
+        }}>{t("surveys_report.showing_page_of", { count: responses.length, page, total: totalPages || 1 })}
             </div>
           </div>
         </div>}
@@ -292,7 +292,7 @@ export default function SurveyReportPage() {
               <span style={{
           fontSize: 13,
           color: "var(--color-text-muted)"
-        }}>{t("surveys_report.page")}{page}{t("surveys_report.of_2")}{totalPages}
+        }}>{t("common.page_of", { page, total: totalPages })}
               </span>
               <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => {
           const d = await fetchResponses(page + 1);

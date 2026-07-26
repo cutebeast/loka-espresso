@@ -843,7 +843,7 @@ export default function ItemEditPage() {
                 <span style={{
               fontSize: 11,
               color: "var(--color-text-muted)"
-            }}>{inventoryItems.length}{t("menu_items_[id].items_loaded_recipe_formula_is_global")}</span>
+            }}>{inventoryItems.length} {" "}{t("menu_items_[id].items_loaded_recipe_formula_is_global")}</span>
               </div>
               {(form.recipes || []).map((rc: any, ri: number) => <div key={ri} style={{
             background: "var(--color-bg-muted)",

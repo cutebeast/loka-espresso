@@ -49,7 +49,7 @@ export default function LoyaltyAccountsPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="table-header-bar">
-        <span className="text-sm font-semibold">{items.length}{t("loyalty_accounts.accounts")}</span>
+        <span className="text-sm font-semibold">{items.length} {" "}{t("loyalty_accounts.accounts")}</span>
       </div>
       <div className="table-container">
         <table className="data-table">

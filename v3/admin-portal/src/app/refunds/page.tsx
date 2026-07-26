@@ -71,7 +71,7 @@ export default function RefundsPage() {
         gap: 8
       }}><ArrowLeft size={18} style={{
           cursor: "pointer"
-        }} /><h1 className="page-title">{t("refunds.refunds")}</h1></div><p className="page-subtitle">{items.length}{t("refunds.refunds_2")}</p></div>
+        }} /><h1 className="page-title">{t("refunds.refunds")}</h1></div><p className="page-subtitle">{items.length} {" "}{t("refunds.refunds_2")}</p></div>
       {error && <div className="alert alert-error">{error}</div>}
       <div style={{
       marginBottom: 12,
@@ -90,7 +90,7 @@ export default function RefundsPage() {
         <span style={{
         fontSize: 12,
         opacity: 0.5
-      }}>{items.length}{t("refunds.refunds_3")}</span>
+      }}>{items.length} {" "}{t("refunds.refunds_3")}</span>
       </div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("refunds.order")}</th><th>{t("refunds.amount")}</th><th>{t("refunds.reason")}</th><th>{t("refunds.status")}</th><th>{t("refunds.date")}</th></tr></thead>

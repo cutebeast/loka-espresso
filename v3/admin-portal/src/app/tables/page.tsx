@@ -191,7 +191,7 @@ export default function TablesPage() {
       <div className="page-header" style={{
       marginBottom: 12
     }}>
-        <div><h1 className="page-title">{t("tables.tables")}</h1><p className="page-subtitle">{tables.length}{t("tables.tables_2")}</p></div>
+        <div><h1 className="page-title">{t("tables.tables")}</h1><p className="page-subtitle">{tables.length} {" "}{t("tables.tables_2")}</p></div>
         {selectedStore > 0 && <button onClick={() => {
         resetForm();
         setShowForm(true);

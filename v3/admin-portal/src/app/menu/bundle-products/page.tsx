@@ -76,7 +76,7 @@ export default function BundleProductsPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("menu_bundle-products.bundle_products")}</h1><p className="page-subtitle">{items.length}{t("menu_bundle-products.combo_deals")}</p></div>
+        <div><h1 className="page-title">{t("menu_bundle-products.bundle_products")}</h1><p className="page-subtitle">{items.length} {" "}{t("menu_bundle-products.combo_deals")}</p></div>
         <button type="button" onClick={() => router.push("/menu/bundle-products/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("menu_bundle-products.add_bundle")}</button>
       </div>
       {successMsg && <div className="alert alert-success">{successMsg}</div>}
@@ -118,7 +118,7 @@ export default function BundleProductsPage() {
         </select>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{filtered.length}{t("menu_bundle-products.bundles")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{filtered.length} {" "}{t("menu_bundle-products.bundles")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th style={{
               width: 50
@@ -197,7 +197,7 @@ export default function BundleProductsPage() {
           <span style={{
         fontSize: 13,
         color: "var(--color-text-muted)"
-      }}>{t("menu_bundle-products.page")}{currentPage}{t("menu_bundle-products.of")}{totalPages}</span>
+      }}>{t("common.page_of", { page: currentPage, total: totalPages })}</span>
           <button className="btn btn-ghost btn-sm" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>{t("menu_bundle-products.next")}</button>
         </div>}
     </div>;

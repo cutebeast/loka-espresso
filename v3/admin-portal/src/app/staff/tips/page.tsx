@@ -45,7 +45,7 @@ export default function StaffTipsPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("staff_tips.tip_allocations")}</h1><p className="page-subtitle">{items.length}{t("staff_tips.tips")}</p></div></div>
+      <div className="page-header"><div><h1 className="page-title">{t("staff_tips.tip_allocations")}</h1><p className="page-subtitle">{items.length} {" "}{t("staff_tips.tips")}</p></div></div>
       {error && <div className="alert alert-error">{error}</div>}
       <div style={{
       marginBottom: 12
@@ -59,7 +59,7 @@ export default function StaffTipsPage() {
           <option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
       </div>
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("staff_tips.allocations")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("staff_tips.allocations")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("staff_tips.order")}</th><th>{t("staff_tips.store")}</th><th style={{
               textAlign: "right"

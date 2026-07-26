@@ -75,7 +75,7 @@ export default function LoyaltyLedgerPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="table-header-bar">
-        <span className="text-sm font-semibold">{items.length}{t("loyalty_ledger.entries")}</span>
+        <span className="text-sm font-semibold">{items.length} {" "}{t("loyalty_ledger.entries")}</span>
       </div>
       <div className="table-container">
         <table className="data-table">

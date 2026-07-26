@@ -116,7 +116,7 @@ export default function OrdersPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("orders.orders")}</h1><p className="page-subtitle">{pagination.total}{t("orders.orders_2")}</p></div></div>
+      <div className="page-header"><div><h1 className="page-title">{t("orders.orders")}</h1><p className="page-subtitle">{pagination.total} {" "}{t("orders.orders_2")}</p></div></div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{
@@ -194,7 +194,7 @@ export default function OrdersPage() {
         }} /></div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("orders.of")}{pagination.total}{t("orders.orders_3")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{t("orders.showing_of_total", { shown: items.length, total: pagination.total })}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("orders.order_2")}</th><th>{t("orders.customer")}</th><th>{t("orders.type_2")}</th><th>{t("orders.status_2")}</th><th style={{
               textAlign: "right"
@@ -249,7 +249,7 @@ export default function OrdersPage() {
           <span style={{
         fontSize: 13,
         color: "var(--color-text-muted)"
-      }}>{t("orders.page")}{pagination.page}{t("orders.of_2")}{pagination.totalPages}</span>
+      }}>{t("common.page_of", { page: pagination.page, total: pagination.totalPages })}</span>
           <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasNext} onClick={() => {
         pagination.nextPage();
         fetchOrders(pagination.page + 1);

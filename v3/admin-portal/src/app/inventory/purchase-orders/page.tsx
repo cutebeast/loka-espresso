@@ -182,7 +182,7 @@ export default function PurchaseOrdersPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("inventory_purchase-orders.purchase_orders")}</h1><p className="page-subtitle">{items.length}{t("inventory_purchase-orders.pos")}</p></div>
+        <div><h1 className="page-title">{t("inventory_purchase-orders.purchase_orders")}</h1><p className="page-subtitle">{items.length} {" "}{t("inventory_purchase-orders.pos")}</p></div>
         <button onClick={() => {
         setShowForm(true);
         loadItems(storeId);
@@ -309,7 +309,7 @@ export default function PurchaseOrdersPage() {
         </form>
       </div></>}
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("inventory_purchase-orders.pos_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("inventory_purchase-orders.pos_2")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("inventory_purchase-orders.id")}</th><th>{t("inventory_purchase-orders.supplier_2")}</th><th>{t("inventory_purchase-orders.status_2")}</th><th>{t("inventory_purchase-orders.items")}</th><th style={{
               textAlign: "right"

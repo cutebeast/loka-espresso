@@ -68,7 +68,7 @@ export default function InventoryMovementsPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("inventory_movements.inventory_movements")}</h1><p className="page-subtitle">{items.length}{t("inventory_movements.movements")}</p></div></div>
+      <div className="page-header"><div><h1 className="page-title">{t("inventory_movements.inventory_movements")}</h1><p className="page-subtitle">{items.length} {" "}{t("inventory_movements.movements")}</p></div></div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{
@@ -126,7 +126,7 @@ export default function InventoryMovementsPage() {
         }} /></div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("inventory_movements.movements_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("inventory_movements.movements_2")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("inventory_movements.item")}</th><th>{t("inventory_movements.type_2")}</th><th style={{
               textAlign: "center"

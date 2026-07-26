@@ -41,9 +41,9 @@ export default function SystemPagesPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("content_system.system_pages")}</h1><p className="page-subtitle">{items.length}{t("content_system.pages")}</p></div><button onClick={() => router.push("/content/system/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("content_system.add_page")}</button></div>
+      <div className="page-header"><div><h1 className="page-title">{t("content_system.system_pages")}</h1><p className="page-subtitle">{items.length} {" "}{t("content_system.pages")}</p></div><button onClick={() => router.push("/content/system/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("content_system.add_page")}</button></div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("content_system.pages_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("content_system.pages_2")}</span></div>
       <div className="table-container"><table className="data-table"><thead><tr><th>{t("content_system.key")}</th><th>{t("content_system.title")}</th><th style={{
               width: 80
             }}>{t("content_system.status")}</th><th style={{

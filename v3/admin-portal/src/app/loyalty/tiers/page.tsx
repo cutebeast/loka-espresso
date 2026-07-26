@@ -31,7 +31,7 @@ export default function LoyaltyTiersPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("loyalty_tiers.loyalty_tiers")}</h1><p className="page-subtitle">{items.length}{t("loyalty_tiers.tiers")}</p></div>
+        <div><h1 className="page-title">{t("loyalty_tiers.loyalty_tiers")}</h1><p className="page-subtitle">{items.length} {" "}{t("loyalty_tiers.tiers")}</p></div>
         <button onClick={() => router.push("/loyalty/tiers/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("loyalty_tiers.add_tier")}</button>
       </div>
       <div className="table-container" style={{

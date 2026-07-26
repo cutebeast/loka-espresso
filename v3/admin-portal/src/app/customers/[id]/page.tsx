@@ -772,7 +772,7 @@ function PaginatedTable<T>({
   } = useTranslation();
   const items = data.items || [];
   return <div>
-    <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("customers_[id].of")}{data.total || 0}</span></div>
+    <div className="table-header-bar"><span className="text-sm font-semibold">{t("common.showing_of_total", { shown: items.length, total: data.total || 0 })}</span></div>
     <div className="table-container"><table className="data-table">
       <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
       <tbody>{items.length === 0 ? <tr><td colSpan={cols.length} className="data-table-empty">{t("customers_[id].no_data")}</td></tr> : items.map((item: T) => <tr key={(item as {

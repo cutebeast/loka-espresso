@@ -57,6 +57,7 @@ HARD_DELETE_TABLES: list[tuple[str, str, str | None]] = [
     ("event_cards", "title", "slug"),
     ("promo_banners", "title", None),
     ("content_sections", "section_title", None),
+    ("suppliers", "supplier_name", None),
     ("campaign_analytics", None, None),  # cleaned by campaign_id
 ]
 
@@ -84,6 +85,9 @@ REFERENCE_CHECKS: dict[str, list[tuple[str, str]]] = {
     ],
     "marketing_campaigns": [
         ("campaign_analytics", "campaign_id"),
+    ],
+    "suppliers": [
+        ("purchase_orders", "supplier_id"),
     ],
 }
 

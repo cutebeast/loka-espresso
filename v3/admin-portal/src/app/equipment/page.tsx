@@ -85,7 +85,7 @@ export default function EquipmentPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("equipment.equipment")}</h1>
-          <p className="page-subtitle">{items.length}{t("equipment.records")}</p>
+          <p className="page-subtitle">{items.length} {" "}{t("equipment.records")}</p>
         </div>
         <button type="button" onClick={() => router.push("/equipment/new")} className="btn btn-primary btn-sm">
           <Plus size={16} />{t("equipment.add_equipment")}</button>
@@ -97,14 +97,24 @@ export default function EquipmentPage() {
       marginBottom: 16,
       flexWrap: "wrap"
     }}>
-        <select className="border rounded px-3 py-2 text-sm" value={storeFilter} onChange={e => {
+        <select style={{
+        padding: "6px 12px",
+        fontSize: 13,
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--color-border-light)"
+      }} value={storeFilter} onChange={e => {
         setStoreFilter(e.target.value);
         setPage(1);
       }}>
           <option value="">{t("admin.common.allStores")}</option>
           {stores.map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
-        <select className="border rounded px-3 py-2 text-sm" value={statusFilter} onChange={e => {
+        <select style={{
+        padding: "6px 12px",
+        fontSize: 13,
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--color-border-light)"
+      }} value={statusFilter} onChange={e => {
         setStatusFilter(e.target.value);
         setPage(1);
       }}>
@@ -123,6 +133,7 @@ export default function EquipmentPage() {
             <thead>
               <tr>
                 <th>{t("equipment.name")}</th>
+                <th>{t("equipment.store")}</th>
                 <th>{t("equipment.type")}</th>
                 <th>{t("equipment.serial")}</th>
                 <th>{t("equipment.location")}</th>
@@ -137,6 +148,7 @@ export default function EquipmentPage() {
             <tbody>
               {items.map(item => <tr key={item.id}>
                   <td><strong>{item.name}</strong></td>
+                  <td>{stores.find((s: any) => String(s.id) === String(item.store_id))?.store_name || `Store #${item.store_id}`}</td>
                   <td>{item.equipment_type}</td>
                   <td>{item.serial_number || "—"}</td>
                   <td>{item.location || "—"}</td>
@@ -160,7 +172,7 @@ export default function EquipmentPage() {
                     </div>
                   </td>
                 </tr>)}
-              {items.length === 0 && <tr><td colSpan={8} style={{
+              {items.length === 0 && <tr><td colSpan={9} style={{
               textAlign: "center",
               padding: 24,
               color: "var(--color-text-muted)"
@@ -181,7 +193,7 @@ export default function EquipmentPage() {
       }}>{t("equipment.prev")}</button>
           <span style={{
         fontSize: 13
-      }}>{t("equipment.page")}{page}{t("equipment.of")}{totalPages} ({total}{t("equipment.total")}</span>
+      }}>{t("common.page_of_total", { page, totalPages, total })}</span>
           <button type="button" onClick={() => changePage(1)} disabled={page >= totalPages} className="btn btn-ghost btn-sm" style={{
         opacity: page >= totalPages ? 0.4 : 1
       }}>{t("equipment.next")}</button>

@@ -68,7 +68,7 @@ export default function StoresPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("stores.store_locations")}</h1>
-          <p className="page-subtitle">{items.length}{t("stores.stores")}</p>
+          <p className="page-subtitle">{items.length} {" "}{t("stores.stores")}</p>
         </div>
         <button type="button" onClick={() => router.push("/stores/new")} className="btn btn-primary btn-sm">
           <Plus size={16} />{t("stores.add_store")}</button>

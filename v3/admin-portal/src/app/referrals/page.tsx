@@ -42,9 +42,9 @@ export default function ReferralsPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><h1 className="page-title">{t("referrals.referrals")}</h1><p className="page-subtitle">{items.length}{t("referrals.referrals_points_auto_credited_when_invitee")}</p></div>
+      <div className="page-header"><h1 className="page-title">{t("referrals.referrals")}</h1><p className="page-subtitle">{items.length} {" "}{t("referrals.referrals_points_auto_credited_when_invitee")}</p></div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("referrals.referrals_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("referrals.referrals_2")}</span></div>
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>{t("referrals.referrer")}</th><th>{t("referrals.code")}</th><th>{t("referrals.invitee")}</th><th>{t("referrals.reward_pts")}</th><th>{t("referrals.status")}</th><th>{t("referrals.date")}</th></tr></thead>

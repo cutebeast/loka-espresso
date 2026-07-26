@@ -84,7 +84,7 @@ export default function StaffPage() {
   return <div style={{
     padding: 24
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("staff.staff")}</h1><p className="page-subtitle">{items.length}{t("staff.members")}</p></div><button type="button" onClick={() => router.push("/staff/new")} className="btn btn-primary btn-sm"><Plus size={14} />{t("staff.add_staff")}</button></div>
+      <div className="page-header"><div><h1 className="page-title">{t("staff.staff")}</h1><p className="page-subtitle">{items.length} {" "}{t("staff.members")}</p></div><button type="button" onClick={() => router.push("/staff/new")} className="btn btn-primary btn-sm"><Plus size={14} />{t("staff.add_staff")}</button></div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{

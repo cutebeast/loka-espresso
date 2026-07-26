@@ -56,7 +56,7 @@ export default function CheckinsPage() {
         <div className="kpi-card"><div className="kpi-label">{t("checkins.total_check_ins")}</div><div className="kpi-value">{stats.total_checkins || 0}</div></div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("checkins.check_ins")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("checkins.check_ins")}</span></div>
       <div className="table-container"><table className="data-table"><thead><tr><th>{t("checkins.customer")}</th><th>{t("checkins.date")}</th><th>{t("checkins.streak_day")}</th><th>{t("checkins.points")}</th></tr></thead><tbody>
         {loading ? <tr><td colSpan={4} className="data-table-empty">{t("checkins.loading")}</td></tr> : items.map((c: CheckinItem) => <tr key={c.id}><td>{c.customer_name || `#${c.customer_id}`}</td><td>{c.checkin_date}</td><td>{t("checkins.day")}{c.streak_day ?? 0}</td><td style={{
               fontWeight: 600,

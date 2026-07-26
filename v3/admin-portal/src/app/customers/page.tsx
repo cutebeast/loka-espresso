@@ -163,7 +163,7 @@ export default function CustomersPage() {
           <span style={{
         fontSize: 13,
         color: "var(--color-text-muted)"
-      }}>{t("customers.page")}{pagination.page}{t("customers.of_2")}{pagination.totalPages}</span>
+      }}>{t("common.page_of", { page: pagination.page, total: pagination.totalPages })}</span>
           <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasNext} onClick={() => pagination.nextPage()}>{t("customers.next")}<ChevronRight size={14} /></button>
         </div>}
     </div>;

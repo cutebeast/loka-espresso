@@ -99,7 +99,7 @@ export default function InventoryStocksPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("inventory_stocks.inventory_stock_levels")}</h1>
-          <p className="page-subtitle">{mergedStocks.length}{t("inventory_stocks.stock_records")}</p>
+          <p className="page-subtitle">{mergedStocks.length} {" "}{t("inventory_stocks.stock_records")}</p>
         </div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}

@@ -50,7 +50,7 @@ export default function AuditLogPage() {
   return <div style={{
     padding: 32
   }}>
-      <div className="page-header"><h1 className="page-title">{t("audit-log.audit_log")}</h1><p className="page-subtitle">{items.length}{t("audit-log.entries")}</p></div>
+      <div className="page-header"><h1 className="page-title">{t("audit-log.audit_log")}</h1><p className="page-subtitle">{items.length} {" "}{t("audit-log.entries")}</p></div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{
@@ -92,7 +92,7 @@ export default function AuditLogPage() {
       }} />
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("audit-log.entries_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("audit-log.entries_2")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("audit-log.timestamp")}</th><th>{t("audit-log.action_2")}</th><th>{t("audit-log.resource")}</th><th>{t("audit-log.id")}</th><th>{t("audit-log.user")}</th><th style={{
               width: 90

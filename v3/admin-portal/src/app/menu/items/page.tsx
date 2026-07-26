@@ -33,7 +33,7 @@ export default function MenuItemsPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("menu_items.menu_items")}</h1><p className="page-subtitle">{items.length}{t("menu_items.items")}</p></div>
+        <div><h1 className="page-title">{t("menu_items.menu_items")}</h1><p className="page-subtitle">{items.length} {" "}{t("menu_items.items")}</p></div>
         <button onClick={() => router.push("/menu/items/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("menu_items.add_item")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
@@ -111,7 +111,7 @@ export default function MenuItemsPage() {
                 marginBottom: 4
               }}>
                       {item.addon_discount_type === "percentage" ? `-${Number(item.addon_discount_value || 0)}%` : `-${symbol}${Number(item.addon_discount_value || 0).toFixed(2)}`}{t("menu_items.add_on")}</span>}
-                  {(item.modifier_groups || []).length ? <div>{item.modifier_groups.length}{t("menu_items.groups")}</div> : "—"}
+                  {(item.modifier_groups || []).length ? <div>{item.modifier_groups.length} {" "}{t("menu_items.groups")}</div> : "—"}
                 </td>
                 <td style={{
               fontSize: 12

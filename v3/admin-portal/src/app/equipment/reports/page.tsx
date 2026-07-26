@@ -70,7 +70,7 @@ export default function EquipmentReportsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("equipment_reports.equipment_reports")}</h1>
-          <p className="page-subtitle">{total}{t("equipment_reports.report_entries")}</p>
+          <p className="page-subtitle">{total} {" "}{t("equipment_reports.report_entries")}</p>
         </div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
@@ -204,7 +204,7 @@ export default function EquipmentReportsPage() {
       }}><ChevronLeft size={14} />{t("equipment_reports.prev")}</button>
           <span style={{
         fontSize: 13
-      }}>{t("equipment_reports.page")}{page}{t("equipment_reports.of")}{totalPages} ({total}{t("equipment_reports.total")}</span>
+      }}>{t("equipment_reports.page_of_total", { page, totalPages, total })}</span>
           <button type="button" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages} className="btn btn-ghost btn-sm" style={{
         opacity: page >= totalPages ? 0.4 : 1
       }}>{t("equipment_reports.next")}<ChevronRight size={14} /></button>

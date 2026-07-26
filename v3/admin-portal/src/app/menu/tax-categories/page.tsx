@@ -28,7 +28,7 @@ export default function TaxCategoriesPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("menu_tax-categories.tax_categories")}</h1><p className="page-subtitle">{items.length}{t("menu_tax-categories.tax_categories_2")}</p></div>
+        <div><h1 className="page-title">{t("menu_tax-categories.tax_categories")}</h1><p className="page-subtitle">{items.length} {" "}{t("menu_tax-categories.tax_categories_2")}</p></div>
         <button onClick={() => router.push("/menu/tax-categories/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("menu_tax-categories.add_tax")}</button>
       </div>
       <div className="table-container" style={{

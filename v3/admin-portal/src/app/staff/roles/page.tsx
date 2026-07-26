@@ -157,7 +157,7 @@ export default function StaffRolesPage() {
   return <div style={{
     padding: 24
   }}>
-      <div className="page-header"><div><h1 className="page-title">{t("staff_roles.staff_roles")}</h1><p className="page-subtitle">{roles.length}{t("staff_roles.roles_controls_staff_portal_access")}</p></div><button type="button" onClick={() => {
+      <div className="page-header"><div><h1 className="page-title">{t("staff_roles.staff_roles")}</h1><p className="page-subtitle">{roles.length} {" "}{t("staff_roles.roles_controls_staff_portal_access")}</p></div><button type="button" onClick={() => {
         setShowForm(true);
         setForm({
           display_name: "",

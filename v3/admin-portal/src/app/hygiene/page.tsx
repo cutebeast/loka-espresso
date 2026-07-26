@@ -113,7 +113,7 @@ export default function HygienePage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("hygiene.hygiene_reports")}</h1><p className="page-subtitle">{total}{t("hygiene.reports_grease_trap_garbage_disposal")}</p></div>
+        <div><h1 className="page-title">{t("hygiene.hygiene_reports")}</h1><p className="page-subtitle">{total} {" "}{t("hygiene.reports_grease_trap_garbage_disposal")}</p></div>
       </div>
       {error && <div className="alert alert-error" style={{
       marginBottom: 16
@@ -292,7 +292,7 @@ export default function HygienePage() {
         padding: "4px 8px",
         display: "flex",
         alignItems: "center"
-      }}>{t("hygiene.page")}{page}{t("hygiene.of")}{totalPages}</span>
+      }}>{t("common.page_of", { page, total: totalPages })}</span>
           <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn btn-outline btn-sm">{t("hygiene.next")}</button>
         </div>}
 

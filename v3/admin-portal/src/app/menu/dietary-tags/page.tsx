@@ -23,7 +23,7 @@ export default function DietaryTagsPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("menu_dietary-tags.dietary_tags")}</h1><p className="page-subtitle">{items.length}{t("menu_dietary-tags.tags")}</p></div>
+        <div><h1 className="page-title">{t("menu_dietary-tags.dietary_tags")}</h1><p className="page-subtitle">{items.length} {" "}{t("menu_dietary-tags.tags")}</p></div>
         <button onClick={() => router.push("/menu/dietary-tags/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("menu_dietary-tags.add_tag")}</button>
       </div>
       <div className="table-container" style={{

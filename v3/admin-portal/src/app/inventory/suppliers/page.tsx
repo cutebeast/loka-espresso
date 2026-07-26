@@ -49,13 +49,13 @@ export default function InventorySuppliersPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t("inventory_suppliers.suppliers")}</h1>
-          <p className="page-subtitle">{items.length}{t("inventory_suppliers.suppliers_2")}</p>
+          <p className="page-subtitle">{items.length} {" "}{t("inventory_suppliers.suppliers_2")}</p>
         </div>
         <button onClick={() => r.push("/inventory/suppliers/new")} className="btn btn-primary btn-sm">
           <Plus size={16} />{t("inventory_suppliers.add_supplier")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("inventory_suppliers.suppliers_3")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("inventory_suppliers.suppliers_3")}</span></div>
       <div className="table-container">
         <table className="data-table">
           <thead>

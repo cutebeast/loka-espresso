@@ -94,7 +94,7 @@ export default function VouchersPage() {
         <button type="button" onClick={() => router.push("/vouchers/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("vouchers.add_voucher")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("vouchers.vouchers_2")}</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} {" "}{t("vouchers.vouchers_2")}</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>{t("vouchers.code")}</th><th>{t("vouchers.title")}</th><th>{t("vouchers.type")}</th><th>{t("vouchers.discount")}</th><th>{t("vouchers.valid")}</th><th>{t("vouchers.uses")}</th><th style={{
               width: 80
@@ -162,7 +162,7 @@ export default function VouchersPage() {
           <span style={{
         fontSize: 13,
         color: "var(--color-text-muted)"
-      }}>{t("vouchers.page")}{pagination.page}{t("vouchers.of")}{pagination.totalPages}</span>
+      }}>{t("common.page_of", { page: pagination.page, total: pagination.totalPages })}</span>
           <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasNext} onClick={async () => {
         const d = await fetchData(pagination.page + 1);
         setItems(d.items || []);

@@ -27,7 +27,7 @@ export default function VoucherReportPage() {
       <h1 className="page-title">{t("vouchers_report.voucher_report")}</h1>
       <p className="page-subtitle" style={{
       marginBottom: 24
-    }}>{vouchers.length}{t("vouchers_report.vouchers")}{totalUsed}{t("vouchers_report.total_redemptions")}</p>
+    }}>{t("vouchers_report.summary", { count: vouchers.length, used: totalUsed })}</p>
       {loading ? <p>{t("vouchers_report.loading")}</p> : <div className="table-container"><table className="data-table"><thead><tr><th>{t("vouchers_report.voucher")}</th><th>{t("vouchers_report.type")}</th><th>{t("vouchers_report.discount")}</th><th>{t("vouchers_report.used")}</th><th>{t("vouchers_report.max")}</th><th>{t("vouchers_report.usage")}</th><th>{t("vouchers_report.status")}</th></tr></thead><tbody>
           {vouchers.map((v: any) => <tr key={v.id}>
               <td><div style={{

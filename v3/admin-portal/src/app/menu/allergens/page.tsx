@@ -28,7 +28,7 @@ export default function AllergensPage() {
     padding: 32
   }}>
       <div className="page-header">
-        <div><h1 className="page-title">{t("menu_allergens.allergens")}</h1><p className="page-subtitle">{items.length}{t("menu_allergens.allergens_2")}</p></div>
+        <div><h1 className="page-title">{t("menu_allergens.allergens")}</h1><p className="page-subtitle">{items.length} {" "}{t("menu_allergens.allergens_2")}</p></div>
         <button onClick={() => router.push("/menu/allergens/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("menu_allergens.add_allergen")}</button>
       </div>
       <div className="table-container" style={{
