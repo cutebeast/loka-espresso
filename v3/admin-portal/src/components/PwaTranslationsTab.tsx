@@ -22,14 +22,12 @@ const LOCALES = ["ms", "zh", "ta", "tr"] as const;
 const FLAGS: Record<string, string> = { ms: "🇲🇾", zh: "🇨🇳", ta: "🇮🇳", tr: "🇹🇷" };
 const NAMES: Record<string, string> = { ms: "BM", zh: "中文", ta: "தமிழ்", tr: "TR" };
 
-const SECTIONS = [
-  "accountDetails", "auth", "cart", "checkout", "common", "errorBoundary",
-  "events", "helpSupport", "history", "home", "information", "legal", "menu",
-  "myCard", "myRewards", "nav", "notifications", "orderDetail", "orders",
-  "paymentMethods", "profile", "promotions", "qr", "referral", "reservations",
-  "rewards", "savedAddresses", "settings", "store", "storePicker", "surveys",
-  "toast", "voucher", "wallet",
-];
+function humanizeSection(section: string): string {
+  return section
+    .replace(/_/g, " ")
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase());
+}
 
 function sectionFor(key: string): string {
   return key.split(".")[0] || "other";
@@ -69,8 +67,9 @@ export default function PwaTranslationsTab() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Group by section
-  const sections = SECTIONS.filter((s) => items.some((t) => sectionFor(t.translation_key) === s));
+  // Group by section — derived from the fetched keys so new key groups
+  // (luckyDraw, workshops, …) appear automatically instead of going stale.
+  const sections = Array.from(new Set(items.map((t) => sectionFor(t.translation_key)))).sort();
   const activeItems = items.filter(
     (t) => sectionFor(t.translation_key) === activeSection &&
     (!search || t.translation_key.includes(search))
@@ -296,7 +295,7 @@ export default function PwaTranslationsTab() {
             }}
             aria-label={`PWA section: ${s}`}
           >
-            {s.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())}
+            {humanizeSection(s)}
           </button>
         ))}
       </div>
@@ -307,7 +306,7 @@ export default function PwaTranslationsTab() {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>
-                {activeSection.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())}
+                {humanizeSection(activeSection)}
               </h3>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {msg && <span style={{ fontSize: 12, color: "var(--color-success, #16a34a)" }}>{msg}</span>}

@@ -85,7 +85,8 @@
     "termsPrefix": "By continuing, you agree to our",
     "termsPrefixShort": "By continuing you agree to our",
     "verify": "Verify & Continue",
-    "yourAccount": "Your account"
+    "yourAccount": "Your account",
+    "signInRequired": "Please sign in to continue"
   },
   "cart": {
     "addonShelfTitle": "Add-on deals for your combo",
@@ -118,7 +119,12 @@
     "subtotal": "Subtotal",
     "tableInfo": "Table {tableNumber} · {storeName}",
     "title": "Your Cart",
-    "total": "Total"
+    "total": "Total",
+    "empty": {
+      "title": "Your cart is empty"
+    },
+    "itemCount": "{count} items",
+    "removeConfirm": "Remove all {count} items from your cart?"
   },
   "checkin": {
     "checkInNow": "Check In Now",
@@ -308,7 +314,8 @@
     "yourCode": "Your code",
     "menuItem": "Menu item",
     "reward": "Reward",
-    "welcome": "Welcome"
+    "welcome": "Welcome",
+    "codeCopyFailed": "Failed to copy code"
   },
   "errorBoundary": {
     "message": "An unexpected error occurred. Please try again.",
@@ -331,7 +338,8 @@
     "eventImageFallback": "Event image",
     "paidEvent": "Paid Event",
     "inviteOnly": "Invite Only",
-    "inviteOnlyDesc": "This event is open to invited guests only."
+    "inviteOnlyDesc": "This event is open to invited guests only.",
+    "loadFailed": "Failed to load events"
   },
   "helpSupport": {
     "backToHome": "Back To Home",
@@ -489,7 +497,8 @@
     "ticketsLeft": "{count} draw tickets left",
     "spendToEarn": "Spend RM {amount} = 1 draw ticket",
     "earnBySpending": "Earn draw tickets by spending with us!",
-    "comeBackLater": "No free spins left — come back later!"
+    "comeBackLater": "No free spins left — come back later!",
+    "spinsLeft": "{count} spins left"
   },
   "menu": {
     "addPrice": "Add Price",
@@ -597,7 +606,8 @@
     "tapToView": "Tap to view details",
     "title": "My Rewards & Vouchers",
     "usedThisMonth": "Rewards & vouchers used this month",
-    "voucherInfo": "Your voucher is linked to your account. It will be automatically applied at checkout or scanned by our staff. No code sharing needed."
+    "voucherInfo": "Your voucher is linked to your account. It will be automatically applied at checkout or scanned by our staff. No code sharing needed.",
+    "expiresIn": "Expires in {count} days"
   },
   "my_rewards_page": {
     "of": "of"
@@ -637,7 +647,8 @@
       "justNow": "Just now",
       "minutes": "{minutes} minutes ago"
     },
-    "title": "Notifications"
+    "title": "Notifications",
+    "newCount": "{count} new notifications"
   },
   "orderDetail": {
     "addingToCart": "Adding to cart…",
@@ -729,7 +740,10 @@
     "title": "Payment Methods",
     "topUpWallet": "Top Up Wallet",
     "walletBalance": "Wallet Balance",
-    "cardFallback": "Card"
+    "cardFallback": "Card",
+    "addCard": "Add Card",
+    "setDefault": "Set as Default",
+    "topUp": "Top Up"
   },
   "profile": {
     "editProfile": "Edit Profile",
@@ -861,7 +875,10 @@
     "toNextTier_one": "{count} more to next tier",
     "toNextTier_other": "{count} more to next tier",
     "unknown": "Unknown",
-    "yourCode": "Your Code"
+    "yourCode": "Your Code",
+    "countReferrals": "{count} referrals",
+    "invitedUsers": "Invited Users",
+    "toNextTier": "{count} more to the next tier"
   },
   "reservations": {
     "bookNow": "Book Now",
@@ -973,7 +990,8 @@
     "results_one": "{count} result",
     "results_other": "{count} results",
     "searchPlaceholder": "Search by name or area",
-    "title": "Select your Loka"
+    "title": "Select your Loka",
+    "results": "{count} stores found"
   },
   "surveys": {
     "backToSurveys": "Back to Surveys",
@@ -1159,5 +1177,8 @@
     "full": "Full",
     "seatsLeft": "{count} seats left",
     "addedToCart": "Added to cart"
+  },
+  "pos": {
+    "table": "Table"
   }
 }
