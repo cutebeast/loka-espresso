@@ -20,7 +20,10 @@ const NAMES: Record<string, string> = { en: "EN", ms: "BM", zh: "中文", ta: "�
 const NAMESPACE = "admin-ui";
 
 function humanizeSection(section: string): string {
-  return section.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+  return section
+    .replace(/[_-]/g, " ")
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase());
 }
 
 export default function AdminTranslationsTab() {
@@ -39,7 +42,7 @@ export default function AdminTranslationsTab() {
       const results = await Promise.all(
         LOCALES.map((loc) =>
           api
-            .getRaw<{ items: Translation[] }>(`/admin/translations?namespace=${NAMESPACE}&locale=${loc}&per_page=2000`)
+            .getRaw<{ items: Translation[] }>(`/admin/translations?namespace=${NAMESPACE}&locale=${loc}&per_page=5000`)
             .catch((e) => { console.error(`Failed to fetch ${loc}:`, e); return null; })
         )
       );

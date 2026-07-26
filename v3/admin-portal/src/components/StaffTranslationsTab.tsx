@@ -30,7 +30,7 @@ export default function StaffTranslationsTab() {
     try {
       const results = await Promise.all(
         ["en", ...LOCALES].map((loc) =>
-          api.getRaw<{ items: Translation[] }>(`/admin/translations?namespace=staff-ui&locale=${loc}&per_page=200`)
+          api.getRaw<{ items: Translation[] }>(`/admin/translations?namespace=staff-ui&locale=${loc}&per_page=5000`)
             .catch((e) => { console.error(`Failed to fetch ${loc}:`, e); return null; })
         )
       );

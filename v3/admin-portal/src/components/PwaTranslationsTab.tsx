@@ -52,7 +52,7 @@ export default function PwaTranslationsTab() {
       const results = await Promise.all(
         LOCALES.map((loc) =>
           api
-            .getRaw<{ items: Translation[] }>(`/admin/translations?namespace=pwa-ui&locale=${loc}&per_page=2000`)
+            .getRaw<{ items: Translation[] }>(`/admin/translations?namespace=pwa-ui&locale=${loc}&per_page=5000`)
             .catch((e) => { console.error(`Failed to fetch ${loc}:`, e); return null; })
         )
       );
