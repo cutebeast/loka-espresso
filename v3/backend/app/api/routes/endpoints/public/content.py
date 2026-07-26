@@ -185,6 +185,21 @@ async def claim_promo_banner(
     if not voucher_id:
         raise HTTPException(status_code=400, detail="No voucher linked to this banner")
 
+    # Survey-type banners gate the claim on a completed survey from this customer
+    if banner.action_type == "survey" and banner.survey_id:
+        from app.models.survey import SurveyResponse
+        resp_result = await db.execute(
+            select(SurveyResponse).where(
+                SurveyResponse.survey_id == banner.survey_id,
+                SurveyResponse.customer_id == customer.id,
+            )
+        )
+        if resp_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Please complete the survey first to claim this reward",
+            )
+
     vd = await db.get(VoucherDefinition, voucher_id)
     if not vd or not vd.is_active:
         raise HTTPException(status_code=400, detail="Linked voucher is no longer active")

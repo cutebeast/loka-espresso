@@ -58,8 +58,12 @@ CAMPAIGNS = [
 ]
 
 PROMO_BANNERS = [
-    ("Welcome Reward — RM5 Off", "New member? Enjoy RM5 off your first purchase with your welcome voucher!", "read_claim", None),
-    ("Eco-Campaign: BYOT & Earn", "Bring your own tumbler — earn 2x points (3x for Reserve members) on every order.", "read_claim", None),
+    # (title, description, action_type, survey_key or None, voucher_code or None)
+    ("Welcome Reward — RM5 Off", "New member? Enjoy RM5 off your first purchase with your welcome voucher!", "read_claim", None, "WELCOME-RM5"),
+    ("Eco-Campaign: BYOT & Earn", "Bring your own tumbler — earn 2x points (3x for Reserve members) on every order.", "read_claim", None, "WELCOME-RM5"),
+    ("Take Our Survey & Get RM5 Off", "Complete a short survey and get RM5 off your next order.", "survey", "post-order-feedback", "SURVEY-RM5"),
+    ("New Menu — Vote & Save 10%", "Share your feedback on new menu items and get 10% off.", "survey", "new-menu-vote", "NEWMENU-10"),
+    ("Store Review — Free Coffee!", "Review your store experience and get a free coffee.", "survey", "store-review", "REVIEW-FREEDRINK"),
 ]
 
 SURVEYS = [
@@ -70,6 +74,22 @@ SURVEYS = [
         "How satisfied were you with your order?",
         "single_choice",
         ["Very satisfied", "Satisfied", "Neutral", "Dissatisfied"],
+    ),
+    (
+        "new-menu-vote",
+        "New Menu Vote",
+        "Tell us which new item you are most excited about.",
+        "Which new item are you most excited to try?",
+        "single_choice",
+        ["Kahve-i Türk (Sand-Brewed Turkish Coffee)", "Pistachio Baklava", "Hand-Rolled Gozleme", "Spanish Latte"],
+    ),
+    (
+        "store-review",
+        "Store Review",
+        "Rate your recent visit to Loka Espresso.",
+        "How would you rate your recent visit?",
+        "single_choice",
+        ["5 — Excellent", "4 — Good", "3 — Okay", "2 — Poor", "1 — Bad"],
     ),
 ]
 
@@ -194,11 +214,12 @@ async def _upsert_survey(db, data, questions):
         survey_id = result.scalar_one()
 
     for idx, question in enumerate(questions):
-        await db.execute(
+        result = await db.execute(
             text("""
                 INSERT INTO survey_questions
                     (survey_id, question_text, question_type, answer_options, is_required, display_order)
                 VALUES (:survey_id, :question_text, :question_type, CAST(:answer_options AS jsonb), true, :display_order)
+                RETURNING id
             """),
             {
                 "survey_id": survey_id,
@@ -208,6 +229,11 @@ async def _upsert_survey(db, data, questions):
                 "display_order": idx,
             },
         )
+        question_id = result.scalar_one()
+        # Fresh ids after the delete+reinsert — translate right away (the old
+        # ids' translations are now orphaned refs to deleted questions)
+        from app.services.translation import auto_translate_record
+        await auto_translate_record(db, "survey_questions", question_id, {"question_text": question["question_text"]})
 
 
 async def seed():
@@ -348,13 +374,28 @@ async def seed():
             )
         print(f"  Upserted {len(CAMPAIGNS)} campaign(s)")
 
-        # Promo banners
-        voucher_row = await db.execute(
-            text("SELECT id FROM voucher_definitions WHERE voucher_code = 'WELCOME-RM5' LIMIT 1")
-        )
-        welcome_voucher_id = voucher_row.scalar_one_or_none()
+        # Promo banners — survey banners link their survey + voucher
+        async def _voucher_id_for(code: str | None):
+            if not code:
+                return None
+            row = await db.execute(
+                text("SELECT id FROM voucher_definitions WHERE voucher_code = :code LIMIT 1"),
+                {"code": code},
+            )
+            return row.scalar_one_or_none()
 
-        for title, desc, action_type, _ in PROMO_BANNERS:
+        async def _survey_id_for(key: str | None):
+            if not key:
+                return None
+            row = await db.execute(
+                text("SELECT id FROM survey_definitions WHERE survey_key = :key LIMIT 1"),
+                {"key": key},
+            )
+            return row.scalar_one_or_none()
+
+        for title, desc, action_type, survey_key, voucher_code in PROMO_BANNERS:
+            voucher_id = await _voucher_id_for(voucher_code) or await _voucher_id_for("WELCOME-RM5")
+            survey_id = await _survey_id_for(survey_key)
             existing = await db.execute(
                 text("SELECT id FROM promo_banners WHERE title = :title"),
                 {"title": title},
@@ -366,18 +407,19 @@ async def seed():
                         SET short_description = :description,
                             action_type = :action_type,
                             voucher_id = :voucher_id,
+                            survey_id = :survey_id,
                             is_active = true
                         WHERE title = :title
                     """),
-                    {"title": title, "description": desc, "action_type": action_type, "voucher_id": welcome_voucher_id},
+                    {"title": title, "description": desc, "action_type": action_type, "voucher_id": voucher_id, "survey_id": survey_id},
                 )
             else:
                 await db.execute(
                     text("""
-                        INSERT INTO promo_banners (title, short_description, action_type, voucher_id, is_active)
-                        VALUES (:title, :description, :action_type, :voucher_id, true)
+                        INSERT INTO promo_banners (title, short_description, action_type, voucher_id, survey_id, is_active)
+                        VALUES (:title, :description, :action_type, :voucher_id, :survey_id, true)
                     """),
-                    {"title": title, "description": desc, "action_type": action_type, "voucher_id": welcome_voucher_id},
+                    {"title": title, "description": desc, "action_type": action_type, "voucher_id": voucher_id, "survey_id": survey_id},
                 )
         print(f"  Upserted {len(PROMO_BANNERS)} promo banner(s)")
 

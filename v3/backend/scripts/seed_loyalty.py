@@ -53,6 +53,13 @@ VOUCHERS = [
      "Happy birthday! Enjoy a complimentary drink upgrade on us, valid all birthday month. (Origin member perk)", False, "origin", 31),
     ("BDAY-GIFT", "fixed_amount_off", 30, None, 0, "Reserve Birthday Gift",
      "Happy birthday! An exclusive gift for our Reserve members — RM30 off specialty beans, merchandise or a dessert box.", False, "reserve", 31),
+    # Survey promo vouchers (linked from the survey-type promo banners)
+    ("SURVEY-RM5", "fixed_amount_off", 5, None, 0, "Survey Reward — RM5 Off",
+     "Thanks for completing our survey — RM5 off your next order.", False, None, 30),
+    ("NEWMENU-10", "percentage_off", 10, None, 0, "New Menu Vote — 10% Off",
+     "Thanks for voting on our new menu — 10% off your next order.", False, None, 30),
+    ("REVIEW-FREEDRINK", "fixed_amount_off", 18, None, 0, "Store Review — Free Drink",
+     "Thanks for reviewing your store experience — a free drink on us.", False, None, 30),
 ]
 
 

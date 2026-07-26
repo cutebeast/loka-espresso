@@ -339,7 +339,13 @@ async def add_question(
             detail=f"Maximum {MAX_QUESTIONS_PER_SURVEY} questions allowed per survey",
         )
 
-    question = SurveyQuestion(**data.model_dump(), survey_id=survey.id)
+    # `options` is a convenience list in the payload, not a model column —
+    # fold it into answer_options and exclude it from the model kwargs
+    # (model_dump() includes options=None by default → TypeError otherwise).
+    dump = data.model_dump(exclude={"options"})
+    if data.options:
+        dump["answer_options"] = {**(dump.get("answer_options") or {}), "options": data.options}
+    question = SurveyQuestion(**dump, survey_id=survey.id)
     db.add(question)
     await db.commit()
     await db.refresh(question)
