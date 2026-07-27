@@ -157,7 +157,7 @@ function KitchenDetailPageContent() {
   const loadMergeCandidates = async () => {
     try {
       const items = await getOrders();
-      const paid = (ps?: string) => ps === "paid" || ps === "captured" || ps === "settled" || ps === "authorized";
+      const paid = (ps?: string) => ps === "paid" || ps === "captured" || ps === "settled" || ps === "authorized" || ps === "partially_refunded";
       const terminal = ["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed"];
       setMergeCandidates((Array.isArray(items) ? items : []).filter(o => String(o.id) !== String(id) && !paid(o.payment_status) && !terminal.includes(o.status)));
       setShowMerge(true);
@@ -294,7 +294,7 @@ function KitchenDetailPageContent() {
         </div>}
 
       {/* Merge into another unpaid order */}
-      {!["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed"].includes(order.status) && !["paid", "captured", "settled", "authorized"].includes(order.payment_status || "") && <div className="card" style={{
+      {!["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed"].includes(order.status) && !["paid", "captured", "settled", "authorized", "partially_refunded"].includes(order.payment_status || "") && <div className="card" style={{
       marginBottom: 20
     }}>
           <div style={{
@@ -321,8 +321,8 @@ function KitchenDetailPageContent() {
           gap: 8,
           flexWrap: "wrap"
         }}>
-                  {mergeCandidates.map(o => <button key={o.id} className="btn btn-sm btn-outline" onClick={() => handleMerge(o.id)} disabled={merging}>
-                      {o.order_number}{o.table_number ? ` · ${o.table_number}` : ""} · {fmt(o.total_amount)}
+                  {mergeCandidates.map(o => <button key={o.id} className="btn btn-sm btn-outline" onClick={() => handleMerge(Number(o.id))} disabled={merging}>
+                      {o.order_number}{o.table_number ? ` · ${o.table_number}` : ""} · {fmt(Number(o.total_amount))}
                     </button>)}
                 </div>}
               <p style={{
@@ -396,7 +396,7 @@ function KitchenDetailPageContent() {
               </tr>
             </thead>
             <tbody>
-              {(order.line_items || []).map(li => <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}`}>
+              {(order.line_items || order.items || []).map(li => <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}`}>
                   <td style={{
                 fontWeight: 600
               }}>
