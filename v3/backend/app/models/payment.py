@@ -16,6 +16,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -214,5 +215,6 @@ class PaymentLineAllocation(Base):
     payment: Mapped["Payment"] = relationship("Payment")
 
     __table_args__ = (
+        UniqueConstraint("payment_id", "order_line_item_id", name="uq_payment_line_allocations_payment_line"),
         CheckConstraint("quantity > 0", name="ck_payment_line_allocations_quantity"),
     )

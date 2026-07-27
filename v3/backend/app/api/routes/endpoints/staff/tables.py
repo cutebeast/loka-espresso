@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.routes.deps import CurrentStaff, DBDependency
@@ -51,3 +51,71 @@ async def generate_staff_table_qr(
     out = DiningTableOut.model_validate(table)
     out.current_status = await _enrich_table_status(db, table)
     return APIResponse(data=out)
+
+
+@router.get("")
+async def staff_list_tables(staff: CurrentStaff, db: DBDependency):
+    """List dining tables for the staff member's store."""
+    result = await db.execute(
+        select(DiningTable)
+        .where(
+            DiningTable.store_id == staff.store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+        .order_by(DiningTable.section, DiningTable.table_number)
+    )
+    tables = result.scalars().all()
+    # Enrich with current status from TableStatusSnapshot (one batched query)
+    snap_result = await db.execute(
+        select(TableStatusSnapshot).where(TableStatusSnapshot.table_id.in_([t.id for t in tables] or [0]))
+    )
+    snap_map = {s.table_id: s for s in snap_result.scalars().all()}
+    out = []
+    for t in tables:
+        snap = snap_map.get(t.id)
+        out.append({
+            "id": t.id,
+            "store_id": t.store_id,
+            "section": t.section,
+            "table_number": t.table_number,
+            "display_name": t.display_name,
+            "capacity": t.capacity,
+            "current_status": (snap.status if snap else "available"),
+            "occupied_since": (snap.updated_at.isoformat() if snap and snap.status == "occupied" else None),
+            "current_order_id": (snap.current_order_id if snap and snap.status == "occupied" else None),
+            "is_active": t.is_active,
+        })
+    return APIResponse(data=out)
+
+
+@router.patch("/{table_id}/status")
+async def staff_update_table_status(
+    staff: CurrentStaff,
+    db: DBDependency,
+    table_id: int,
+    current_status: str = Query(..., alias="current_status"),
+):
+    """Update a table's status (staff endpoint)."""
+    result = await db.execute(
+        select(DiningTable).where(
+            DiningTable.id == table_id,
+            DiningTable.store_id == staff.store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+    )
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    # Update or create table status snapshot
+    snap_result = await db.execute(
+        select(TableStatusSnapshot).where(TableStatusSnapshot.table_id == table_id)
+    )
+    snap = snap_result.scalar_one_or_none()
+    if snap:
+        snap.status = current_status
+        snap.updated_at = datetime.now(timezone.utc)
+    else:
+        snap = TableStatusSnapshot(table_id=table_id, status=current_status)
+        db.add(snap)
+    await db.commit()
+    return APIResponse(data={"id": table.id, "current_status": current_status})

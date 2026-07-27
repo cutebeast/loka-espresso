@@ -5,18 +5,20 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import Field
 from sqlalchemy import select, func, case
 
 from app.api.routes.deps import CurrentStaff, DBDependency, RequireStaffRole
 from app.core.money import money_round, to_decimal
+from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderLineItem, OrderStatusLog
-from app.models.menu import MenuItem
+from app.models.menu import MenuCategory, MenuItem
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import StaffProfile
+from app.models.store import DiningTable
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, BaseSchema
@@ -1120,3 +1122,229 @@ async def merge_staff_order(
         "total_amount": str(target.total_amount),
         "cancelled_payment_ids": cancelled_payment_ids,
     })
+
+
+@router.get("")
+async def staff_list_orders(
+    staff: CurrentStaff,
+    db: DBDependency,
+    status_filter: str | None = Query(None, alias="status"),
+    order_type: str | None = Query(None),
+    payment_status: str | None = Query(None),
+    station: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(100, ge=1, le=500),
+):
+    """List orders for the staff member's store.
+
+    `station` enables KDS station routing (bar vs kitchen tabs): only orders
+    containing at least one line item routed to that station are returned, and
+    each order carries an `items` list limited to that station's items. Routing
+    comes from the `kds.station_map` platform config (category slugs per
+    station; "*" matches any category not explicitly claimed by another
+    station, including uncategorized items).
+    """
+    stmt = (
+        select(Order, Customer, DiningTable)
+        .outerjoin(Customer, Customer.id == Order.customer_id)
+        .outerjoin(DiningTable, DiningTable.id == Order.dining_table_id)
+        .where(Order.store_id == staff.store_id)
+    )
+    if status_filter:
+        stmt = stmt.where(Order.status == status_filter)
+    if order_type:
+        stmt = stmt.where(Order.order_type == order_type)
+    if payment_status:
+        stmt = stmt.where(Order.payment_status == payment_status)
+    stmt = stmt.order_by(Order.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    station_items: dict[int, list[dict]] = {}
+    if station:
+        station_map = await PlatformConfigService(db).get("kds.station_map", default={})
+        if not isinstance(station_map, dict) or station not in station_map:
+            raise HTTPException(status_code=400, detail=f"Unknown KDS station: {station}")
+        wanted = set(station_map.get(station) or [])
+        star = "*" in wanted
+        claimed_elsewhere = {
+            slug
+            for other, slugs in station_map.items()
+            if other != station
+            for slug in (slugs or [])
+            if slug != "*"
+        }
+        order_ids = [o.id for o, _, _ in rows]
+        if order_ids:
+            li_result = await db.execute(
+                select(
+                    OrderLineItem.order_id,
+                    OrderLineItem.menu_item_id,
+                    OrderLineItem.item_snapshot,
+                    OrderLineItem.quantity,
+                    MenuCategory.slug,
+                )
+                .outerjoin(MenuItem, MenuItem.id == OrderLineItem.menu_item_id)
+                .outerjoin(MenuCategory, MenuCategory.id == MenuItem.category_id)
+                .where(OrderLineItem.order_id.in_(order_ids))
+            )
+            for line_order_id, menu_item_id, snapshot, qty, slug in li_result.all():
+                matched = (slug not in claimed_elsewhere) if star else (slug in wanted)
+                if matched:
+                    station_items.setdefault(line_order_id, []).append({
+                        "menu_item_id": menu_item_id,
+                        "name": (snapshot or {}).get("item_name") or "Item",
+                        "quantity": float(qty or 0),
+                        "category_slug": slug,
+                    })
+        rows = [row for row in rows if row[0].id in station_items]
+
+    return APIResponse(data=[
+        {
+            "id": o.id,
+            "order_number": o.order_number,
+            "status": o.status,
+            "order_type": o.order_type,
+            "payment_status": o.payment_status,
+            "customer_id": o.customer_id,
+            "customer_name": c.display_name if c else None,
+            "customer_phone": c.phone_number if c else None,
+            "dining_table_id": o.dining_table_id,
+            "table_number": t.table_number if t else None,
+            "item_count": o.item_count,
+            "items_subtotal": float(o.items_subtotal) if o.items_subtotal else 0,
+            "tax_amount": float(o.tax_amount) if o.tax_amount else 0,
+            "service_charge": float(o.service_charge) if o.service_charge else 0,
+            "discount_amount": float(o.discount_amount) if o.discount_amount else 0,
+            "total_amount": float(o.total_amount) if o.total_amount else 0,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+            "updated_at": o.updated_at.isoformat() if o.updated_at else None,
+            **({"items": station_items.get(o.id, [])} if station else {}),
+        }
+        for o, c, t in rows
+    ])
+
+
+# ── Staff order operations ──
+
+@router.get("/{order_id}")
+async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
+    """Get a single order with line items (staff endpoint)."""
+    result = await db.execute(
+        select(Order, Customer, DiningTable)
+        .outerjoin(Customer, Customer.id == Order.customer_id)
+        .outerjoin(DiningTable, DiningTable.id == Order.dining_table_id)
+        .where(
+            Order.id == order_id,
+            Order.store_id == staff.store_id,
+        )
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order, customer, table = row
+
+    # Get line items
+    items_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.order_id == order_id)
+    )
+    line_items = items_result.scalars().all()
+
+    return APIResponse(data={
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": order.status,
+        "order_type": order.order_type,
+        "payment_status": order.payment_status,
+        "customer_id": order.customer_id,
+        "customer_name": customer.display_name if customer else None,
+        "customer_phone": customer.phone_number if customer else None,
+        "dining_table_id": order.dining_table_id,
+        "table_number": table.table_number if table else None,
+        "items_subtotal": float(order.items_subtotal) if order.items_subtotal else 0,
+        "tax_amount": float(order.tax_amount) if order.tax_amount else 0,
+        "service_charge": float(order.service_charge) if order.service_charge else 0,
+        "discount_amount": float(order.discount_amount) if order.discount_amount else 0,
+        "total_amount": float(order.total_amount) if order.total_amount else 0,
+        "customer_notes": order.customer_notes,
+        "staff_notes": order.staff_notes,
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+        "updated_at": order.updated_at.isoformat() if order.updated_at else None,
+        "items": [
+            {
+                "id": li.id,
+                "menu_item_id": li.menu_item_id,
+                "item_name": (li.item_snapshot or {}).get("item_name") if li.item_snapshot else None,
+                "quantity": li.quantity,
+                "unit_price": float(li.unit_price) if li.unit_price else 0,
+                "total": float(li.line_total) if li.line_total else 0,
+                "notes": li.special_instructions,
+                "status": li.fulfillment_status,
+                "selected_modifiers": li.selected_modifiers,
+            }
+            for li in line_items
+        ],
+    })
+
+
+@router.patch("/{order_id}/status")
+async def staff_update_order_status(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    status: str = Query(...),
+    reason: str | None = Query(None),
+):
+    """Update order status (staff endpoint)."""
+    # Valid staff transitions (must match the order_status enum — an invalid
+    # value would otherwise blow up as a 500 at commit time).
+    VALID = {
+        "confirmed", "preparing", "ready_for_pickup", "out_for_delivery",
+        "delivered", "cancelled_by_customer", "cancelled_by_merchant",
+    }
+    if status not in VALID:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid order status '{status}'. Valid: {', '.join(sorted(VALID))}",
+        )
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.store_id == staff.store_id,
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order.status = status
+    if status.startswith("cancelled") and reason:
+        order.cancellation_reason = reason
+        order.cancelled_at = datetime.now(timezone.utc)
+    elif status == "delivered":
+        order.completed_at = datetime.now(timezone.utc)
+    elif status == "preparing":
+        order.prepared_at = datetime.now(timezone.utc)
+    await db.commit()
+    return APIResponse(data={"id": order.id, "status": order.status})
+
+
+@router.patch("/{order_id}/transfer-table")
+async def staff_transfer_table(
+    staff: CurrentStaff,
+    db: DBDependency,
+    order_id: int,
+    new_table_id: int = Query(..., alias="new_table_id"),
+):
+    """Transfer order to a different table (staff endpoint)."""
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.store_id == staff.store_id,
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order.dining_table_id = new_table_id
+    await db.commit()
+    return APIResponse(data={"id": order.id, "table_id": new_table_id})

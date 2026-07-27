@@ -60,7 +60,14 @@ from app.api.routes.endpoints.public import store as public_store
 from app.api.routes.endpoints.public import ui_translations as public_ui_translations
 from app.api.routes.endpoints.public import marketing as public_marketing
 from app.api.routes.endpoints.public import kiosk as public_kiosk
-from app.api.routes.endpoints.staff import staff_ops as staff_operations
+from app.api.routes.endpoints.staff import auth as staff_auth
+from app.api.routes.endpoints.staff import dashboard as staff_dashboard
+from app.api.routes.endpoints.staff import pos as staff_pos
+from app.api.routes.endpoints.staff import equipment as staff_equipment
+from app.api.routes.endpoints.staff import inventory as staff_inventory
+from app.api.routes.endpoints.staff import shifts as staff_shifts
+from app.api.routes.endpoints.staff import menu as staff_menu
+from app.api.routes.endpoints.staff import reservations as staff_reservations
 from app.api.routes.endpoints.staff import orders as staff_orders
 from app.api.routes.endpoints.staff import customer_ops as staff_customer_ops
 from app.api.routes.endpoints.staff import tables as staff_tables
@@ -127,7 +134,14 @@ api_router.include_router(public_help.router, prefix="/public", tags=["public �
 api_router.include_router(public_ui_translations.router, prefix="/public/translations", tags=["public — translations"])
 api_router.include_router(public_marketing.router, tags=["public — marketing"])
 api_router.include_router(public_kiosk.public_router, tags=["public — kiosk"])
-api_router.include_router(staff_operations.router, tags=["staff — operations"])
+api_router.include_router(staff_auth.router, tags=["staff — auth"])
+api_router.include_router(staff_dashboard.router, tags=["staff — dashboard"])
+api_router.include_router(staff_pos.router, tags=["staff — pos"])
+api_router.include_router(staff_equipment.router, tags=["staff — equipment"])
+api_router.include_router(staff_inventory.router, tags=["staff — inventory"])
+api_router.include_router(staff_shifts.router, tags=["staff — shifts"])
+api_router.include_router(staff_menu.router, tags=["staff — menu"])
+api_router.include_router(staff_reservations.router, tags=["staff — reservations"])
 
 # Staff-scoped order / customer / table operations
 api_router.include_router(staff_orders.router, tags=["staff — orders"])

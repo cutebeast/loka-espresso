@@ -1,10 +1,12 @@
 """Staff-scoped customer, wallet, reward, voucher, and scan operations."""
 
+import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import selectinload
 
@@ -69,6 +71,94 @@ async def _get_default_currency(db) -> str:
 async def _get_customer_wallet(db, customer_id: int) -> Wallet | None:
     result = await db.execute(select(Wallet).where(Wallet.customer_id == customer_id))
     return result.scalar_one_or_none()
+
+
+# ── Customer Search ──
+
+@router.get("/staff/customers/search")
+async def staff_customer_search(staff: CurrentStaff, db: DBDependency, request: Request, q: str = Query(..., min_length=1)):
+    q_clean = q.strip()
+    result = await db.execute(
+        select(Customer).where(
+            Customer.deleted_at.is_(None),
+            (Customer.phone_number.ilike(f"%{q_clean}%")) |
+            (Customer.display_name.ilike(f"%{q_clean}%")) |
+            (Customer.id == int(q_clean) if q_clean.isdigit() else False)
+        ).limit(20)
+    )
+    items = []
+    for c in result.scalars().all():
+        items.append({
+            "id": c.id, "display_name": c.display_name or f"Customer #{c.id}",
+            "phone_number": c.phone_number or "",
+            "email_address": c.email_address or "",
+            "loyalty_tier": "Standard",
+        })
+    return APIResponse(data={"items": items})
+
+
+class FindOrCreateCustomerRequest(BaseModel):
+    phone_number: str = Field(..., min_length=5, max_length=25)
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+
+@router.post("/staff/customers/find-or-create", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def staff_find_or_create_customer(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    data: FindOrCreateCustomerRequest,
+):
+    """POS walk-in lookup: find a customer by phone or create a minimal profile.
+
+    Phone is the identity anchor (passwordless login). No OTP here — staff are
+    facing the customer in person; if the customer later signs up with the
+    same phone via OTP, they take over this very profile, so workshop bookings
+    and loyalty history stay attached to the phone.
+
+    Accepts Malaysian formats (012…, 012-345 6001, 6012…, +6012…).
+    """
+    digits = re.sub(r"\D", "", data.phone_number or "")
+    if digits.startswith("60"):
+        phone = f"+{digits}"
+    elif digits.startswith("0"):
+        phone = f"+6{digits}"
+    elif digits:
+        phone = f"+{digits}"
+    else:
+        phone = ""
+    if not re.fullmatch(r"^\+[0-9]{7,20}$", phone):
+        raise HTTPException(status_code=400, detail="Invalid phone number — use a Malaysian mobile (e.g. 0123456789)")
+
+    result = await db.execute(
+        select(Customer).where(Customer.phone_number == phone)
+    )
+    cust = result.scalar_one_or_none()
+    created = False
+    revived = False
+    name = data.display_name.strip()
+    if cust is None:
+        cust = Customer(phone_number=phone, display_name=name, is_active=True)
+        db.add(cust)
+        await db.flush()
+        created = True
+    elif cust.deleted_at is not None:
+        # Previously archived profile — customer is physically here, restore it
+        cust.deleted_at = None
+        cust.is_active = True
+        cust.display_name = name
+        revived = True
+    elif name and (not cust.display_name or cust.display_name in ("Walk-in", cust.phone_number)):
+        # Upgrade placeholder names with the one staff collected
+        cust.display_name = name
+    await db.commit()
+    return APIResponse(data={
+        "id": cust.id,
+        "display_name": cust.display_name or name,
+        "phone_number": cust.phone_number,
+        "loyalty_tier": "Standard",
+        "created": created,
+        "revived": revived,
+    })
 
 
 @router.get("/staff/customers/{customer_id}", response_model=APIResponse[dict])

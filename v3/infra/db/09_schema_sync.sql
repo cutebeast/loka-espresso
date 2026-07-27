@@ -46,10 +46,18 @@ CREATE TABLE IF NOT EXISTS lucky_draw_campaigns (
 	start_date TIMESTAMP WITH TIME ZONE, 
 	end_date TIMESTAMP WITH TIME ZONE, 
 	spins_per_day INTEGER NOT NULL, 
+	spin_interval_days INTEGER NOT NULL, 
+	draw_type VARCHAR(20) NOT NULL, 
+	spend_per_ticket_cents INTEGER NOT NULL, 
+	max_segments INTEGER NOT NULL, 
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT ck_lucky_draw_campaigns_spins_per_day CHECK (spins_per_day > 0), 
+	CONSTRAINT ck_lucky_draw_campaigns_spin_interval_days CHECK (spin_interval_days >= 1), 
+	CONSTRAINT ck_lucky_draw_campaigns_draw_type CHECK (draw_type IN ('free_daily','ticket_spend')), 
+	CONSTRAINT ck_lucky_draw_campaigns_spend_per_ticket CHECK (spend_per_ticket_cents > 0), 
+	CONSTRAINT ck_lucky_draw_campaigns_max_segments CHECK (max_segments BETWEEN 2 AND 12), 
 	CONSTRAINT ck_lucky_draw_campaigns_dates CHECK (start_date IS NULL OR end_date IS NULL OR end_date > start_date)
 );
 
@@ -65,7 +73,7 @@ CREATE TABLE IF NOT EXISTS notification_templates (
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT ck_notification_templates_type CHECK (notification_type IN ('general','order','reward','wallet','loyalty','promo','info','event')), 
-	CONSTRAINT ck_notification_templates_audience CHECK (audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members') OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$')
+	CONSTRAINT ck_notification_templates_audience CHECK (audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members') OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$' OR audience_segment ~ '^event:[0-9]{1,10}$')
 );
 
 CREATE TABLE IF NOT EXISTS tax_categories (
@@ -150,6 +158,19 @@ CREATE TABLE IF NOT EXISTS customer_daily_checkins (
 
 CREATE INDEX IF NOT EXISTS ix_customer_daily_checkins_customer_id ON customer_daily_checkins (customer_id);
 
+CREATE TABLE IF NOT EXISTS event_invites (
+	id SERIAL NOT NULL, 
+	event_id INTEGER NOT NULL, 
+	customer_id BIGINT NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_event_invites_event_customer UNIQUE (event_id, customer_id), 
+	FOREIGN KEY(event_id) REFERENCES event_cards (id) ON DELETE CASCADE, 
+	FOREIGN KEY(customer_id) REFERENCES customers (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_event_invites_customer_id ON event_invites (customer_id);
+
 CREATE TABLE IF NOT EXISTS hygiene_reports (
 	id BIGSERIAL NOT NULL, 
 	store_id INTEGER NOT NULL, 
@@ -222,6 +243,7 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
 	body TEXT, 
 	notification_type VARCHAR(50) NOT NULL, 
 	audience_segment VARCHAR(50) NOT NULL, 
+	channels JSONB NOT NULL, 
 	status VARCHAR(50) NOT NULL, 
 	scheduled_at TIMESTAMP WITH TIME ZONE, 
 	sent_at TIMESTAMP WITH TIME ZONE, 
@@ -233,7 +255,7 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT ck_admin_notifications_type CHECK (notification_type IN ('general','order','reward','wallet','loyalty','promo','info','event')), 
-	CONSTRAINT ck_admin_notifications_audience CHECK (audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members') OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$'), 
+	CONSTRAINT ck_admin_notifications_audience CHECK (audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members') OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$' OR audience_segment ~ '^event:[0-9]{1,10}$'), 
 	CONSTRAINT ck_admin_notifications_status CHECK (status IN ('draft','scheduled','sent','failed')), 
 	FOREIGN KEY(created_by) REFERENCES admin_accounts (id) ON DELETE SET NULL
 );
@@ -257,6 +279,27 @@ CREATE TABLE IF NOT EXISTS bundle_groups (
 );
 
 CREATE INDEX IF NOT EXISTS ix_bundle_groups_bundle_product_id ON bundle_groups (bundle_product_id);
+
+CREATE TABLE IF NOT EXISTS class_sessions (
+	id SERIAL NOT NULL, 
+	menu_item_id INTEGER NOT NULL, 
+	session_date DATE NOT NULL, 
+	start_time TIME WITHOUT TIME ZONE NOT NULL, 
+	capacity INTEGER NOT NULL, 
+	booked_pax INTEGER NOT NULL, 
+	location VARCHAR(255), 
+	notes VARCHAR(500), 
+	is_active BOOLEAN NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_class_sessions_capacity CHECK (capacity > 0), 
+	CONSTRAINT ck_class_sessions_booked_pax CHECK (booked_pax >= 0), 
+	CONSTRAINT ck_class_sessions_within_capacity CHECK (booked_pax <= capacity), 
+	FOREIGN KEY(menu_item_id) REFERENCES menu_items (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_class_sessions_menu_item_id ON class_sessions (menu_item_id);
 
 CREATE TABLE IF NOT EXISTS feedback_entries (
 	id SERIAL NOT NULL, 
@@ -326,6 +369,7 @@ CREATE TABLE IF NOT EXISTS staff_tasks (
 	status VARCHAR(20) NOT NULL, 
 	priority VARCHAR(20) NOT NULL, 
 	due_date DATE, 
+	recur_interval_days INTEGER, 
 	completed_at TIMESTAMP WITH TIME ZONE, 
 	completed_by BIGINT, 
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
@@ -430,6 +474,26 @@ CREATE TABLE IF NOT EXISTS lucky_draw_spins (
 CREATE INDEX IF NOT EXISTS idx_lucky_draw_spins_customer_created ON lucky_draw_spins (customer_id, created_at);
 CREATE INDEX IF NOT EXISTS ix_lucky_draw_spins_campaign_id ON lucky_draw_spins (campaign_id);
 
+CREATE TABLE IF NOT EXISTS lucky_draw_tickets (
+	id BIGSERIAL NOT NULL, 
+	campaign_id INTEGER NOT NULL, 
+	customer_id BIGINT NOT NULL, 
+	order_id BIGINT, 
+	order_ticket_seq INTEGER NOT NULL, 
+	spin_id BIGINT, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	consumed_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_lucky_draw_tickets_campaign_order_seq UNIQUE (campaign_id, order_id, order_ticket_seq), 
+	FOREIGN KEY(campaign_id) REFERENCES lucky_draw_campaigns (id) ON DELETE CASCADE, 
+	FOREIGN KEY(customer_id) REFERENCES customers (id) ON DELETE CASCADE, 
+	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE SET NULL, 
+	FOREIGN KEY(spin_id) REFERENCES lucky_draw_spins (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lucky_draw_tickets_customer_avail ON lucky_draw_tickets (campaign_id, customer_id, consumed_at);
+CREATE INDEX IF NOT EXISTS ix_lucky_draw_tickets_campaign_id ON lucky_draw_tickets (campaign_id);
+
 CREATE TABLE IF NOT EXISTS order_modification_logs (
 	id BIGSERIAL NOT NULL, 
 	order_id BIGINT NOT NULL, 
@@ -452,6 +516,21 @@ CREATE INDEX IF NOT EXISTS ix_order_modification_logs_line_item_id ON order_modi
 CREATE INDEX IF NOT EXISTS ix_order_modification_logs_order_id ON order_modification_logs (order_id);
 CREATE INDEX IF NOT EXISTS ix_order_modification_logs_staff_id ON order_modification_logs (staff_id);
 
+CREATE TABLE IF NOT EXISTS payment_line_allocations (
+	id BIGSERIAL NOT NULL, 
+	payment_id BIGINT NOT NULL, 
+	order_line_item_id BIGINT NOT NULL, 
+	quantity NUMERIC(10, 3) NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_payment_line_allocations_payment_line UNIQUE (payment_id, order_line_item_id), 
+	CONSTRAINT ck_payment_line_allocations_quantity CHECK (quantity > 0), 
+	FOREIGN KEY(payment_id) REFERENCES payments (id) ON DELETE CASCADE, 
+	FOREIGN KEY(order_line_item_id) REFERENCES order_line_items (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_payment_line_allocations_payment_id ON payment_line_allocations (payment_id);
+
 -- ============================================================
 -- Columns added to models after 03_tables.sql was written
 -- ============================================================
@@ -465,6 +544,7 @@ ALTER TABLE api_credentials ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH T
 
 ALTER TABLE cart_line_items ADD COLUMN IF NOT EXISTS bundle_product_id INTEGER REFERENCES bundle_products (id);
 ALTER TABLE cart_line_items ADD COLUMN IF NOT EXISTS bundle_component_id INTEGER REFERENCES bundle_product_components (id);
+ALTER TABLE cart_line_items ADD COLUMN IF NOT EXISTS class_session_id INTEGER REFERENCES class_sessions (id);
 
 ALTER TABLE customer_devices ADD COLUMN IF NOT EXISTS web_push_subscription JSONB;
 ALTER TABLE customer_devices ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
@@ -474,6 +554,8 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS marketing_opt_out_at TIMESTAMP WI
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255);
 
 ALTER TABLE equipment_maintenance_logs ADD COLUMN IF NOT EXISTS image_urls JSONB;
+
+ALTER TABLE event_cards ADD COLUMN IF NOT EXISTS event_type VARCHAR(20) DEFAULT 'public' NOT NULL;
 
 ALTER TABLE inventory_categories ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE inventory_categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
@@ -502,6 +584,7 @@ ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS eligible_bundle_ids JSONB;
 
 ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS bundle_product_id INTEGER REFERENCES bundle_products (id);
 ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS bundle_component_id INTEGER REFERENCES bundle_product_components (id);
+ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS class_session_id INTEGER REFERENCES class_sessions (id);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS addon_discount NUMERIC(12, 4) DEFAULT 0 NOT NULL;
@@ -555,4 +638,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT '9e63748a26c8' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'h8c9d0e1f2a3' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

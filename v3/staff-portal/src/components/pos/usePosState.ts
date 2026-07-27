@@ -193,7 +193,7 @@ export function usePosState() {
     ? cartHook.subtotal * (discountAmount / 100)
     : discountAmount;
 
-  // Bundle + add-on discount preview (mirrors backend staff_ops.py logic)
+  // Bundle + add-on discount preview (mirrors backend staff/pos.py logic)
   const bundleDiscountPreview = (() => {
     const cartBundleIds = new Set<number>();
     for (const c of cartHook.cart) {
