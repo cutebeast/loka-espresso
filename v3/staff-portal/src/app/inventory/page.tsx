@@ -183,7 +183,7 @@ function InventoryPageContent() {
                 <div>
                   <span style={{
               color: "var(--color-text-muted)"
-            }}>{t("inventory.stock")}</span>
+            }}>{t("inventory.stock")}</span>{" "}
                   <span style={{
               fontWeight: 700,
               color: item.current_stock <= (item.reorder_level || 0) ? "var(--color-error)" : "var(--color-success)"
@@ -193,10 +193,10 @@ function InventoryPageContent() {
                 </div>
                 <div><span style={{
               color: "var(--color-text-muted)"
-            }}>{t("inventory.unit")}</span>{item.unit_of_measure}</div>
+            }}>{t("inventory.unit")}</span> {item.unit_of_measure}</div>
                 <div><span style={{
               color: "var(--color-text-muted)"
-            }}>{t("inventory.par")}</span>{item.par_level ?? item.reorder_level ?? "—"}</div>
+            }}>{t("inventory.par")}</span> {item.par_level ?? item.reorder_level ?? "—"}</div>
               </div>
 
               {editingId === item.id ? <div style={{

@@ -170,6 +170,9 @@ async def process_staff_order_payment(
             amount=net_amount,
             currency_code=order.total_amount_currency,
             status="pending_authorization" if is_stripe_qr else "captured",
+            # Refunds compute the refundable balance from captured_amount —
+            # it must mirror the captured total for cash/manual payments.
+            captured_amount=Decimal(0) if is_stripe_qr else net_amount,
             net_amount=Decimal(0) if is_stripe_qr else net_amount,
             idempotency_key=idempotency_key,
         )

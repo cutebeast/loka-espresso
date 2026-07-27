@@ -26,6 +26,9 @@ export default function OrdersPage() {
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Separate state so the message can be translated at render time — calling
+  // t() during the mount effect runs before i18n hydration (raw key frozen).
+  const [storeMissing, setStoreMissing] = useState(false);
   const [tab, setTab] = useState<Tab>("queue");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -33,7 +36,7 @@ export default function OrdersPage() {
     try {
       if (!storeId) {
         setLoading(false);
-        setError(t("orders.err_store_not_selected"));
+        setStoreMissing(true);
         return;
       }
       const data = await getOrders(storeId, undefined);
@@ -104,6 +107,7 @@ export default function OrdersPage() {
       <PageHeader title={t("orders.order_queue")} subtitle={`${orders.filter(o => !o.status.includes("delivered") && !o.status.includes("cancelled")).length} ${t("orders.active")}`} action={<button onClick={fetchOrders} className="btn btn-ghost btn-sm">
             <RefreshCw size={14} />{t("orders.refresh")}</button>} />
 
+      {storeMissing && <Alert variant="error" onDismiss={() => setStoreMissing(false)}>{t("orders.err_store_not_selected")}</Alert>}
       {error && <Alert variant="error" onDismiss={() => setError("")} autoDismiss={5000}>{error}</Alert>}
 
       {/* Tabs */}

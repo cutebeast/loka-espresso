@@ -724,3 +724,15 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - **Full e2e: 207 passed, 17 skipped, 0 failed** (~6.5 min) after all of today's fixes — no regressions. (Baseline note for future runs: suite was 199 E2E before the 2026-07 feature round.)
 - Backend log clean (0× 5xx in last 500 requests). All 6 pm2 services online; all 3 sites + API 200; disk 78%.
 - Last adjacency fixes: customer detail lines, bundle form labels, and the `customers_[id].pts_3` junk value ("Pts 3" baked number → "pts" ×5 locales).
+
+### Staff portal section-by-section audit (2026-07-27)
+- **15 pages verified**: dashboard (live badges), POS (menu/categories/bundles/customer attach/table scan), Order Queue (payment-state cards), Kitchen KDS (role-gated), Tables, Reservations (Confirm/Seat/No Show), My Shifts, My Tasks, Customer Service (wallet), Inventory (role-gated), Equipment checks, Wastage, Garbage/Grease-trap (role-gated), Help, Profile.
+- **captured_amount missing in TWO more payment paths** (same refund-blocking bug as the POS create-order path): `PATCH /staff/orders/{id}/payment` and admin `POST /admin/orders…payment` created captured payments with captured_amount=0. Both fixed identically; all 3 paths now mirror it; zero captured_amount=0 rows remain.
+- **PATCH /staff/orders/{id}/status blindly assigned any string → 500 on invalid** ("completed" isn't a status). Now validates against the real order_status set (confirmed/preparing/ready_for_pickup/out_for_delivery/delivered/cancelled_by_*) and sets completed_at on `delivered` (was checking nonexistent "completed"/"cancelled").
+- **Role gating is coherent**: OPS pages (inventory/wastage/garbage/grease-trap) = kitchen_staff/shift_supervisor/store_manager; KDS = same; server/cashier denied correctly. NOTE: the garbage/grease API accepts any authenticated staff (UI gates harder) — decide if API should match.
+- **Admin staff list "No roles"**: page expected a `roles[]` array but `staff_profiles.role` is a plain string (RoleAssignment is admin-accounts only). Page now falls back to the role string badge.
+- **47 junk staff purged** ("Audit Staff"/"Clock Staff" e2e leftovers, patterns added to cleanup script: audit-staff-/clock-staff-/Audit Staff/Clock Staff).
+- **i18n pre-hydration trap**: kitchen + orders pages called `t()` in a synchronous mount effect (storeId=0 path) → raw key frozen into the error state. Fixed with a `storeMissing` state translated at render time. RULE: never call t() during mount; translate at render.
+- Kitchen/manager accounts can't log in with untouched default PIN (`_pin_allowed` rejects defaults) — for tests, clone a working pin_hash (staff1's PIN is 123456 after a change-cycle).
+- Tasks feature is a read-only shell: staff can view/complete, but NOTHING creates tasks (no admin UI, no auto-generation). Seeded 2 demo tasks for staff1. Priority enum: low/normal/high/urgent.
+- E2E: 32 passed on staff/kitchen/pos suites after all changes.

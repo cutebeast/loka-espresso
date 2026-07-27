@@ -15,6 +15,7 @@ interface Staff {
   store_name?: string;
   has_pin: boolean;
   is_active: boolean;
+  role?: string;  // canonical staff role key (cashier/server/kitchen_staff/…)
   roles: {
     id: number;
     name: string;
@@ -132,7 +133,10 @@ export default function StaffPage() {
                     {s.roles.map(r => <span key={r.id} className="badge badge-sm badge-primary" style={{
                   fontSize: 10
                 }}>{r.name}</span>)}
-                  </div> : <span className="badge badge-sm badge-gray">{t("staff.no_roles")}</span>}
+                  </div> : s.role ? <span className="badge badge-sm badge-primary" style={{
+                  fontSize: 10,
+                  textTransform: "capitalize"
+                }}>{s.role.replace(/_/g, " ")}</span> : <span className="badge badge-sm badge-gray">{t("staff.no_roles")}</span>}
               </td>
               <td><span className={`badge badge-sm ${s.is_active ? "badge-green" : "badge-gray"}`}>{s.is_active ? "Active" : "Inactive"}</span></td>
               <td>

@@ -2252,6 +2252,17 @@ async def staff_update_order_status(
     reason: str | None = Query(None),
 ):
     """Update order status (staff endpoint)."""
+    # Valid staff transitions (must match the order_status enum — an invalid
+    # value would otherwise blow up as a 500 at commit time).
+    VALID = {
+        "confirmed", "preparing", "ready_for_pickup", "out_for_delivery",
+        "delivered", "cancelled_by_customer", "cancelled_by_merchant",
+    }
+    if status not in VALID:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid order status '{status}'. Valid: {', '.join(sorted(VALID))}",
+        )
     result = await db.execute(
         select(Order).where(
             Order.id == order_id,
@@ -2262,10 +2273,10 @@ async def staff_update_order_status(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     order.status = status
-    if status == "cancelled" and reason:
+    if status.startswith("cancelled") and reason:
         order.cancellation_reason = reason
         order.cancelled_at = datetime.now(timezone.utc)
-    elif status == "completed":
+    elif status == "delivered":
         order.completed_at = datetime.now(timezone.utc)
     elif status == "preparing":
         order.prepared_at = datetime.now(timezone.utc)

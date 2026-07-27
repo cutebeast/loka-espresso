@@ -68,6 +68,10 @@ function KitchenPageContent() {
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Store-missing is a separate state so the message can be translated at
+  // RENDER time — calling t() during the mount effect runs before i18n
+  // hydration and would freeze the raw key into the error string.
+  const [storeMissing, setStoreMissing] = useState(false);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -85,7 +89,7 @@ function KitchenPageContent() {
     try {
       if (!storeId) {
         setLoading(false);
-        setError(t("kitchen.err_store_not_selected"));
+        setStoreMissing(true);
         return;
       }
       const data = await getOrders(storeId, undefined);
@@ -215,6 +219,7 @@ function KitchenPageContent() {
               <RefreshCw size={14} />{t("kitchen.refresh")}</button>
           </div>} />
 
+      {storeMissing && <Alert variant="error" onDismiss={() => setStoreMissing(false)}>{t("kitchen.err_store_not_selected")}</Alert>}
       {error && <Alert variant="error" onDismiss={() => setError("")} autoDismiss={5000}>{error}</Alert>}
 
       {/* Connection & Controls */}

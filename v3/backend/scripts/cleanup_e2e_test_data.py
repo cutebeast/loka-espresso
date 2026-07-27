@@ -98,7 +98,7 @@ CASCADE_CHILDREN: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
-E2E_PATTERNS = ["%e2e%", "%E2E%"]
+E2E_PATTERNS = ["%e2e%", "%E2E%", "%audit-staff-%", "%clock-staff-%", "%Audit Staff%", "%Clock Staff%"]
 TEST_EMAIL_DOMAINS = ("%@example.com", "%@test.com")
 
 
