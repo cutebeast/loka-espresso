@@ -98,6 +98,7 @@ from app.models.order import (
 from app.models.payment import (
     Payment,
     PaymentEvent,
+    PaymentLineAllocation,
     PaymentMethod,
     Refund,
 )

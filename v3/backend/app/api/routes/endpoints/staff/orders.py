@@ -122,6 +122,78 @@ async def process_staff_order_payment(
     net_amount = max(Decimal(0), remaining_due)
     fully_paid_by_wallet = net_amount <= 0
 
+    # ── Split bill: this payment covers specific line items ──
+    allocation_rows: list[tuple[OrderLineItem, Decimal]] = []
+    if data.allocations:
+        from app.models.payment import PaymentLineAllocation
+        li_ids = {a.line_item_id for a in data.allocations}
+        li_result = await db.execute(
+            select(OrderLineItem).where(
+                OrderLineItem.order_id == order.id,
+                OrderLineItem.id.in_(li_ids),
+            )
+        )
+        li_map = {li.id: li for li in li_result.scalars().all()}
+        missing = li_ids - set(li_map)
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Line items not on this order: {sorted(missing)}")
+
+        # Quantity already allocated to earlier payments, per line item
+        prior_q = await db.execute(
+            select(
+                PaymentLineAllocation.order_line_item_id,
+                func.coalesce(func.sum(PaymentLineAllocation.quantity), 0),
+            )
+            .join(Payment, Payment.id == PaymentLineAllocation.payment_id)
+            .where(
+                PaymentLineAllocation.order_line_item_id.in_(li_ids),
+                Payment.status.in_(("captured", "partially_refunded")),
+            )
+            .group_by(PaymentLineAllocation.order_line_item_id)
+        )
+        prior_map = {r[0]: to_decimal(r[1]) for r in prior_q.all()}
+
+        allocated_total = Decimal(0)
+        for alloc in data.allocations:
+            li = li_map[alloc.line_item_id]
+            alloc_qty = to_decimal(alloc.quantity)
+            remaining_qty = to_decimal(li.quantity) - prior_map.get(li.id, Decimal(0))
+            if alloc_qty > remaining_qty:
+                li_name = (li.item_snapshot or {}).get("name") or (li.item_snapshot or {}).get("item_name") or str(li.menu_item_id)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot allocate {alloc_qty}× \"{li_name}\" — only {remaining_qty} left to pay for",
+                )
+            # Effective unit price incl. modifiers = line_total / quantity
+            effective_unit = li.line_total / li.quantity if li.quantity else li.unit_price
+            allocated_total += alloc_qty * effective_unit
+            allocation_rows.append((li, alloc_qty))
+
+        allocated_total = money_round(allocated_total, precision, rounding_mode)
+        if allocated_total <= 0:
+            raise HTTPException(status_code=400, detail="Allocation total must be greater than 0")
+        if allocated_total > remaining_due:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Allocation total RM {allocated_total:.2f} exceeds the remaining balance RM {remaining_due:.2f}",
+            )
+        # The payment charge is the allocated share, not the full remaining due
+        net_amount = allocated_total
+        fully_paid_by_wallet = False
+        if tip_amount > 0:
+            raise HTTPException(status_code=400, detail="Add tip on the final (full-balance) payment of a split bill")
+    elif data.charge_amount is not None:
+        # Split bill by amount (e.g. even N ways): explicit partial charge
+        charge = money_round(to_decimal(data.charge_amount), precision, rounding_mode)
+        if charge > remaining_due:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Charge RM {charge:.2f} exceeds the remaining balance RM {remaining_due:.2f}",
+            )
+        net_amount = charge
+        fully_paid_by_wallet = False
+
+
     change = Decimal(0)
     if payment_method == "cash":
         if amount_tendered < net_amount:
@@ -153,7 +225,10 @@ async def process_staff_order_payment(
     provider = provider_map.get(payment_method, "cash")
     is_stripe_qr = payment_method == "stripe_qr"
 
-    idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}"
+    # Include the running paid total so sequential split shares of the SAME
+    # amount (e.g. 3× RM 12) are distinct keys — while an exact double-tap of
+    # the same share (same amount, same already_paid) is still rejected.
+    idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}-{already_paid:.2f}"
     dup_check = await db.execute(
         select(Payment).where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
     )
@@ -179,6 +254,16 @@ async def process_staff_order_payment(
         db.add(payment)
         await db.flush()
         await db.refresh(payment)
+
+        # Split bill: persist which line items this payment covers
+        if allocation_rows:
+            from app.models.payment import PaymentLineAllocation
+            for li, alloc_qty in allocation_rows:
+                db.add(PaymentLineAllocation(
+                    payment_id=payment.id,
+                    order_line_item_id=li.id,
+                    quantity=alloc_qty,
+                ))
 
         if is_stripe_qr:
             order.payment_status = "pending_authorization"
@@ -236,8 +321,84 @@ async def process_staff_order_payment(
     }
     if payment_url:
         response_data["payment_url"] = payment_url
+    if allocation_rows:
+        response_data["allocations"] = [
+            {"line_item_id": li.id, "item_name": (li.item_snapshot or {}).get("name") or (li.item_snapshot or {}).get("item_name"), "quantity": float(qty)}
+            for li, qty in allocation_rows
+        ]
 
     return APIResponse(data=response_data)
+
+
+@router.get("/{order_id}/split-state", response_model=APIResponse[dict])
+async def get_staff_order_split_state(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+):
+    """Per-item paid/remaining quantities + order totals — drives the split-bill UI."""
+    from app.models.payment import Payment, PaymentLineAllocation
+
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    li_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.order_id == order.id).order_by(OrderLineItem.id)
+    )
+    line_items = li_result.scalars().all()
+
+    paid_q = await db.execute(
+        select(
+            PaymentLineAllocation.order_line_item_id,
+            func.coalesce(func.sum(PaymentLineAllocation.quantity), 0),
+        )
+        .join(Payment, Payment.id == PaymentLineAllocation.payment_id)
+        .where(
+            PaymentLineAllocation.order_line_item_id.in_([li.id for li in line_items] or [0]),
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
+        .group_by(PaymentLineAllocation.order_line_item_id)
+    )
+    paid_map = {r[0]: float(r[1]) for r in paid_q.all()}
+
+    pay_result = await db.execute(
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
+    )
+    payments = pay_result.scalars().all()
+    total_paid = sum(float(p.captured_amount or 0) for p in payments)
+
+    lines = []
+    for li in line_items:
+        paid_qty = paid_map.get(li.id, 0.0)
+        remaining_qty = max(0, li.quantity - paid_qty)
+        effective_unit = float(li.line_total / li.quantity) if li.quantity else float(li.unit_price)
+        lines.append({
+            "line_item_id": li.id,
+            "item_name": (li.item_snapshot or {}).get("name") or (li.item_snapshot or {}).get("item_name"),
+            "unit_price": effective_unit,
+            "ordered_qty": li.quantity,
+            "paid_qty": paid_qty,
+            "remaining_qty": remaining_qty,
+            "remaining_amount": round(remaining_qty * effective_unit, 2),
+        })
+
+    return APIResponse(data={
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "total_amount": float(order.total_amount),
+        "total_paid": round(total_paid, 2),
+        "remaining_due": round(max(0.0, float(order.total_amount) - total_paid), 2),
+        "fully_paid": total_paid >= float(order.total_amount),
+        "lines": lines,
+    })
 
 
 @router.post("/{order_id}/apply-voucher", response_model=APIResponse[dict])

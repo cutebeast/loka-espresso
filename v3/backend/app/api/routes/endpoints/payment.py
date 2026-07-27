@@ -855,7 +855,34 @@ async def list_payments(
 
     stmt = base_stmt.order_by(Payment.id.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    items = [_build_payment_out(p) for p in result.scalars().all()]
+    payments = result.scalars().all()
+    items = [_build_payment_out(p) for p in payments]
+
+    # Attach split-bill allocations (line-item coverage) per payment, batched.
+    payment_ids = [p.id for p in payments]
+    if payment_ids:
+        from app.models.order import OrderLineItem
+        from app.models.payment import PaymentLineAllocation
+        from app.schemas.payment import PaymentLineAllocationOut
+
+        alloc_rows = await db.execute(
+            select(PaymentLineAllocation, OrderLineItem.item_snapshot)
+            .join(OrderLineItem, OrderLineItem.id == PaymentLineAllocation.order_line_item_id)
+            .where(PaymentLineAllocation.payment_id.in_(payment_ids))
+        )
+        by_payment: dict[int, list[PaymentLineAllocationOut]] = {}
+        for alloc, snapshot in alloc_rows.all():
+            snap = snapshot or {}
+            name = snap.get("name") or snap.get("item_name")
+            by_payment.setdefault(alloc.payment_id, []).append(
+                PaymentLineAllocationOut(
+                    order_line_item_id=alloc.order_line_item_id,
+                    item_name=name,
+                    quantity=str(alloc.quantity),
+                )
+            )
+        for out in items:
+            out.allocations = by_payment.get(out.id) or []
 
     return APIResponse(
         data=PaginatedResponse(

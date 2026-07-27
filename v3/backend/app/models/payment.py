@@ -186,3 +186,33 @@ class Refund(Base, TimestampMixin):
             name="ck_refunds_status",
         ),
     )
+
+
+class PaymentLineAllocation(Base):
+    """Split-bill: which order line items (and how much of each) a payment covers.
+
+    Lets one order be settled by N payers without splitting the order itself —
+    the kitchen works a single ticket while each payment records its share.
+    """
+
+    __tablename__ = "payment_line_allocations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    payment_id: Mapped[int] = mapped_column(
+        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_line_item_id: Mapped[int] = mapped_column(
+        ForeignKey("order_line_items.id", ondelete="CASCADE"), nullable=False
+    )
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    payment: Mapped["Payment"] = relationship("Payment")
+
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_payment_line_allocations_quantity"),
+    )

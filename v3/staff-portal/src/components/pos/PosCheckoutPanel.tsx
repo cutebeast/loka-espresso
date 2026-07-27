@@ -1,11 +1,12 @@
 "use client";
 
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Drawer from "@/components/Drawer";
 import NumericKeypad from "@/components/NumericKeypad";
+import PosSplitBillSection from "./PosSplitBillSection";
 import { X, QrCode, User, Gift, CreditCard, Banknote, Smartphone } from "lucide-react";
 import { type Customer, type CustomerWallet } from "@/lib/api";
 import { PaymentMethod } from "./usePosState";
@@ -64,11 +65,12 @@ interface PosCheckoutPanelProps {
   onApplyVoucher: (code: string) => void;
   onApplyReward: (id: number) => void;
   onWalletPayment: (amount: number) => void;
-  onCheckout: () => void;
+  onCheckout: (split?: import("./PosSplitBillSection").SplitSelection) => void;
   stripeEnabled?: boolean | null;
 }
 export default function PosCheckoutPanel({
   order,
+  orderId,
   customer,
   walletData,
   paymentMethod,
@@ -113,6 +115,10 @@ export default function PosCheckoutPanel({
   const preTipDue = Math.max(0, orderBase - manualDisc - walletPaid);
   const checkoutTotal = Math.max(0, preTipDue + tipAmount);
   const discountPresets = discountType === "percentage" ? [5, 10, 15, 20] : [5, 10, 20, 50];
+  // Split bill — when active, the payment covers only the selected share
+  const [split, setSplit] = useState<import("./PosSplitBillSection").SplitSelection>({ mode: "full", allocations: [], chargeAmount: null, shareTotal: checkoutTotal });
+  const splitActive = split.mode !== "full";
+  const activeTotal = splitActive ? split.shareTotal : checkoutTotal;
   return <div style={{
     padding: 24,
     maxWidth: 600,
@@ -260,6 +266,13 @@ export default function PosCheckoutPanel({
         </div>
       </div>
 
+      {orderId && <PosSplitBillSection
+        orderId={orderId}
+        currencySymbol={t("pos.currency_symbol")}
+        refreshKey={String((order as any).updated_at ?? "")}
+        onSplitChange={setSplit}
+      />}
+
       {customer && walletData && <button className="btn btn-outline w-full" style={{
       marginBottom: 16
     }} onClick={() => onSetShowDiscounts(true)} aria-expanded={showDiscounts} aria-haspopup="true">
@@ -364,22 +377,22 @@ export default function PosCheckoutPanel({
           fontWeight: 700,
           textAlign: "center",
           marginBottom: 12
-        }}>{t("pos.currency_symbol")}{checkoutTotal.toFixed(2)}</div>
+        }}>{t("pos.currency_symbol")}{activeTotal.toFixed(2)}{splitActive && <span style={{ fontSize: 14, fontWeight: 400, color: "var(--color-text-muted)" }}> {t("pos.split_share_of_total", { total: `${t("pos.currency_symbol")}${checkoutTotal.toFixed(2)}` })}</span>}</div>
             <NumericKeypad value={amountTendered} onPress={key => onSetAmountTendered((prev: string) => prev + key)} onBackspace={() => onSetAmountTendered((prev: string) => prev.slice(0, -1))} onClear={() => onSetAmountTendered("")} />
             <div style={{
           display: "flex",
           gap: 6,
           marginTop: 12
         }}>
-              {[checkoutTotal, Math.ceil(checkoutTotal / 5) * 5, Math.ceil(checkoutTotal / 10) * 10].filter((v, i, a) => a.indexOf(v) === i).map(v => <button key={v} className="btn btn-sm btn-ghost flex-1" onClick={() => onSetAmountTendered(String(v))}>{t("pos.currency_symbol")}{v.toFixed(0)}</button>)}
+              {[activeTotal, Math.ceil(activeTotal / 5) * 5, Math.ceil(activeTotal / 10) * 10].filter((v, i, a) => a.indexOf(v) === i).map(v => <button key={v} className="btn btn-sm btn-ghost flex-1" onClick={() => onSetAmountTendered(String(v))}>{t("pos.currency_symbol")}{v.toFixed(0)}</button>)}
             </div>
-            {amountTendered && !isNaN(parseFloat(amountTendered)) && parseFloat(amountTendered) >= checkoutTotal && <div style={{
+            {amountTendered && !isNaN(parseFloat(amountTendered)) && parseFloat(amountTendered) >= activeTotal && <div style={{
           marginTop: 12,
           fontSize: 16,
           color: "var(--color-success)",
           fontWeight: 700,
           textAlign: "center"
-        }}>{t("pos.change_rm")}{Math.max(0, parseFloat(amountTendered) - checkoutTotal).toFixed(2)}
+        }}>{t("pos.change_rm")}{Math.max(0, parseFloat(amountTendered) - activeTotal).toFixed(2)}
               </div>}
           </div>}
 
@@ -420,8 +433,8 @@ export default function PosCheckoutPanel({
           </div>}
       </div>
 
-      <button className="btn btn-primary btn-lg w-full" onClick={onCheckout} disabled={saving || paymentMethod === "cash" && checkoutTotal > 0 && (!amountTendered || isNaN(parseFloat(amountTendered)) || parseFloat(amountTendered) < checkoutTotal)}>
-        {saving ? t("pos.processing") : checkoutTotal <= 0 ? t("pos.complete_checkout") : `${t("pos.confirm_payment_rm")}${checkoutTotal.toFixed(2)}`}
+      <button className="btn btn-primary btn-lg w-full" onClick={() => onCheckout(split)} disabled={saving || (splitActive && split.shareTotal <= 0) || paymentMethod === "cash" && activeTotal > 0 && (!amountTendered || isNaN(parseFloat(amountTendered)) || parseFloat(amountTendered) < activeTotal)}>
+        {saving ? t("pos.processing") : activeTotal <= 0 ? t("pos.complete_checkout") : splitActive ? `${t("pos.pay_share_rm")}${activeTotal.toFixed(2)}` : `${t("pos.confirm_payment_rm")}${activeTotal.toFixed(2)}`}
       </button>
 
       {/* Checkout Discounts Drawer */}

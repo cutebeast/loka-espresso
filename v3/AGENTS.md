@@ -756,3 +756,14 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - **Delivery tab removed from POS** — in-store ordering is dine-in/takeaway only (delivery is a PWA customer-app flow). Was just a tab in the order-type selector; no dependent UI.
 - **Customer phone at POS**: the search field already handles it — staff type the phone; existing customers appear; if none, "+ Add new customer by phone" quick-adds (name + phone via /staff/customers/find-or-create). Placeholder changed to "Search or add customer by phone…" (×5 locales) so staff know. Workshops REQUIRE an attached customer (phone = identity anchor); menu orders are optional.
 - **89 junk unpaid orders purged** (Unpaid drawer 93→5): auto-created phone-only e2e profiles with no captured payments. Purge added to cleanup_e2e_test_data.py (scoped: name=phone, empty email, unpaid only — never touches captured orders or named customers).
+
+## POS Split Bill (Phase 1 of POS gap-closure plan)
+
+- `payment_line_allocations` table (alembic `g7b8c9d0e1f2`): which line items/qty each payment covers. `PaymentLineAllocation` model in `backend/app/models/payment.py`.
+- Staff `PATCH /staff/orders/{id}/payment` accepts `allocations` (per-item split — charge = pro-rated line totals incl. modifiers) XOR `charge_amount` (even/custom amount split). Guards: item must be on order, per-item allocated qty ≤ ordered qty (prior shares counted from captured/partially_refunded payments), charge ≤ remaining_due. Idempotency key includes running paid total so sequential identical shares pass but exact double-taps 409.
+- `GET /staff/orders/{id}/split-state` returns `lines` (NOT `items` — the staff-portal api wrapper auto-unwraps any payload key named `items` into a bare array).
+- Full refund of a split payment (status → refunded) re-opens its line items for payment in split-state; partial refunds keep them paid.
+- Admin: `GET /api/payments?order_id=` includes `allocations` per payment (batched join, names from `OrderLineItem.item_snapshot`); order detail page shows a "Covers" column ("Full bill" when no allocations).
+- Staff POS: `PosSplitBillSection.tsx` (Full Bill / By Item / Evenly), checkout stays open after a partial share with "X of Y paid" header.
+- e2e: `e2e-tests/test_pos_split_bill.py` (3 tests: by-item, even shares, refund re-opens share).
+- FIXED pre-existing bug: staff-portal `request`/`requestRaw` in `src/lib/api.ts` unwrapped any `data` containing an `items` array into a bare array — `getOrderById` returned line items instead of the order (checkout always RM 0). Now only unwraps when `!("id" in data)`. The admin-portal wrapper has the same unwrap but was left as-is (its list callers rely on it).

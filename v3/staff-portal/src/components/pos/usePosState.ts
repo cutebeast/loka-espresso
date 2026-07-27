@@ -445,7 +445,7 @@ export function usePosState() {
     } catch (e: unknown) { setError((e as Error).message); } finally { isKitchenProcessingRef.current = false; setSaving(false); }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (split?: import("./PosSplitBillSection").SplitSelection) => {
     if (isCheckoutProcessingRef.current) return;
     if (!checkoutOrderId) return;
     isCheckoutProcessingRef.current = true;
@@ -485,8 +485,15 @@ export function usePosState() {
         return;
       }
       const res = await checkoutHook.handleCheckoutPayment(
-        checkoutOrderId, paymentMethod, discountAmount, discountType, amountTendered, tipAmount
+        checkoutOrderId, paymentMethod, discountAmount, discountType, amountTendered, tipAmount, split
       );
+      // Split bill: a share was paid but the bill isn't settled — reload the
+      // order and stay in checkout for the remaining share(s).
+      if (split && split.mode !== "full" && (res as Record<string, unknown>).payment_status !== "captured") {
+        await checkoutHook.loadCheckoutOrder(checkoutOrderId);
+        setMsg(t("pos.split_share_paid_continue"));
+        return;
+      }
       const resRecord = res as Record<string, unknown>;
       if (resRecord.payment_url && typeof resRecord.payment_url === "string") {
         // Build the PWA deep-link so the staff-facing QR opens the PWA guest-pay

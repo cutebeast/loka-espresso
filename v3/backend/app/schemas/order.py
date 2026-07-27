@@ -167,6 +167,13 @@ class UpdateOrderStatusRequest(BaseSchema):
     status: str
 
 
+class PaymentLineAllocationIn(BaseSchema):
+    """One line-item share covered by a payment (split bill)."""
+
+    line_item_id: int = Field(..., gt=0)
+    quantity: Money = Field(..., gt=0)
+
+
 class ProcessOrderPaymentRequest(BaseSchema):
     payment_method: str = "cash"
     amount_tendered: Money = Field(0, ge=0)
@@ -174,6 +181,13 @@ class ProcessOrderPaymentRequest(BaseSchema):
     discount_amount: Money = Field(0, ge=0)
     discount_type: str | None = None
     tip_amount: Money = Field(0, ge=0)
+    # Split bill: which line items this payment covers. Empty = whole remaining
+    # balance (current behaviour). When set, the pro-rated total of the
+    # allocations must equal the payment amount.
+    allocations: list[PaymentLineAllocationIn] = []
+    # Split bill by amount: explicit partial charge (<= remaining balance),
+    # e.g. even split N ways. Mutually exclusive with `allocations`.
+    charge_amount: Money | None = Field(None, gt=0)
 
 
 class ApplyOrderVoucherRequest(BaseSchema):

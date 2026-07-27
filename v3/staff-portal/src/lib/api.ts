@@ -134,7 +134,9 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
-      if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).items)) {
+      // Only list responses unwrap to bare arrays — a single-entity payload
+      // (has `id`) must be returned whole, or order detail comes back as items.
+      if (data && typeof data === "object" && !("id" in data) && Array.isArray((data as Record<string, unknown>).items)) {
         return (data.items ?? []) as unknown as T;
       }
       return data as T;
@@ -251,7 +253,9 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, signa
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
-      if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).items)) return (data.items ?? []) as T;
+      // Only list responses unwrap to bare arrays — a single-entity payload
+      // (has `id`) must be returned whole, or order detail comes back as items.
+      if (data && typeof data === "object" && !("id" in data) && Array.isArray((data as Record<string, unknown>).items)) return (data.items ?? []) as T;
       return data as T;
     }
     return json as T;
@@ -646,6 +650,8 @@ export function updateOrderPayment(id: string | number, payload: {
   discount_amount?: number;
   discount_type?: "percentage" | "fixed";
   tip_amount?: number;
+  allocations?: { line_item_id: number; quantity: number }[];
+  charge_amount?: number;
 }) {
   return api.patch(`/staff/orders/${id}/payment`, payload);
 }

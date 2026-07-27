@@ -8,6 +8,11 @@ import NotFoundState from "@/components/NotFoundState";
 import { parseApiError, isNotFoundError } from "@/lib/errors";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
+interface PaymentAllocation {
+  order_line_item_id: number;
+  item_name: string | null;
+  quantity: string;
+}
 interface Payment {
   id: number;
   provider: string;
@@ -16,6 +21,7 @@ interface Payment {
   captured_amount: number;
   refunded_amount: number;
   currency_code: string;
+  allocations?: PaymentAllocation[];
 }
 const STATUS_FLOW: Record<string, string[]> = {
   pending: ["confirmed", "cancelled_by_merchant"],
@@ -290,7 +296,7 @@ export default function OrderDetailPage() {
         marginBottom: 20
       }}>
             <table className="data-table">
-              <thead><tr><th>{t("orders_[id].provider")}</th><th>{t("orders_[id].status")}</th><th style={{
+              <thead><tr><th>{t("orders_[id].provider")}</th><th>{t("orders_[id].status")}</th><th>{t("orders_[id].covers")}</th><th style={{
                 textAlign: "right"
               }}>{t("orders_[id].amount_2")}</th><th style={{
                 textAlign: "right"
@@ -309,6 +315,12 @@ export default function OrderDetailPage() {
                   fontSize: 12
                 }}>{p.provider}</td>
                       <td>{sb(p.status)}</td>
+                      <td style={{
+                  fontSize: 12,
+                  color: "var(--color-text-muted)"
+                }}>{p.allocations && p.allocations.length > 0
+                  ? p.allocations.map(a => `${parseFloat(a.quantity)}× ${a.item_name || `#${a.order_line_item_id}`}`).join(", ")
+                  : t("orders_[id].covers_full_bill")}</td>
                       <td style={{
                   textAlign: "right"
                 }}>{format(p.amount)}</td>

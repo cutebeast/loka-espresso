@@ -98,6 +98,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     discountType: "percentage" | "fixed",
     amountTendered: string,
     tipAmount: number = 0,
+    split?: import("./PosSplitBillSection").SplitSelection,
   ) => {
     if (isPaymentProcessingRef.current) throw new Error("Payment is already being processed — please wait");
     if (!checkoutOrder) throw new Error("Order details not loaded");
@@ -118,6 +119,14 @@ export function usePosCheckout(checkoutOrderId: string | null) {
       discount_amount: computedDisc,
       discount_type: discountType,
       tip_amount: tipAmount,
+      // Split bill: allocations for by-item, charge_amount for even/custom —
+      // the backend charges only the share; `amount` stays the full-bill check.
+      ...(split && split.mode === "items" && split.allocations.length > 0
+        ? { allocations: split.allocations }
+        : {}),
+      ...(split && split.mode === "even" && split.chargeAmount != null
+        ? { charge_amount: split.chargeAmount }
+        : {}),
     });
     return {
       order_id: orderId,

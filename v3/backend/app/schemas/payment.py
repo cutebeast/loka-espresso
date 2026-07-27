@@ -30,6 +30,12 @@ class PaymentMethodOut(PaymentMethodBase):
     updated_at: datetime
 
 
+class PaymentLineAllocationOut(BaseSchema):
+    order_line_item_id: int
+    item_name: str | None
+    quantity: str
+
+
 class PaymentOut(BaseSchema):
     id: int
     order_id: int
@@ -55,6 +61,9 @@ class PaymentOut(BaseSchema):
     metadata: dict | None
     created_at: datetime
     updated_at: datetime
+    # Split-bill coverage: which line items this payment paid for (empty when
+    # the payment covers the whole bill / an even-share amount).
+    allocations: list[PaymentLineAllocationOut] | None = None
 
 
 class RefundOut(BaseSchema):
