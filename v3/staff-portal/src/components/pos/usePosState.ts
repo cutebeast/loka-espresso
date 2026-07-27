@@ -25,6 +25,8 @@ import { usePosCart, type HeldOrder } from "./usePosCart";
 import { usePosCustomer } from "./usePosCustomer";
 import { usePosCheckout } from "./usePosCheckout";
 import { usePosScanner } from "./usePosScanner";
+import { usePosOffline } from "./usePosOffline";
+import { isNetworkError, loadMenuSnapshot, saveMenuSnapshot } from "@/lib/offlineQueue";
 import { parseApiError } from "@/lib/errors";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -107,6 +109,14 @@ export function usePosState() {
   const cartHook = usePosCart(crewName);
   const customerHook = usePosCustomer();
   const checkoutHook = usePosCheckout(checkoutOrderId);
+  const offline = usePosOffline();
+  // True when the menu on screen came from the IndexedDB snapshot (stale prices possible)
+  const [offlineMenuData, setOfflineMenuData] = useState(false);
+
+  // Offline = cash only (QR / card terminals need connectivity)
+  useEffect(() => {
+    if (!offline.online) setPaymentMethod("cash");
+  }, [offline.online]);
 
   // Scanner callbacks
   const handleCustomerScannerCb = useCallback((customer: Customer) => {
@@ -146,12 +156,19 @@ export function usePosState() {
           }),
         ]);
         if (!mounted) return;
-        setItems((Array.isArray(itemsData) ? itemsData : []).filter((i: { is_available?: boolean }) => i.is_available));
+        const availableItems = (Array.isArray(itemsData) ? itemsData : []).filter((i: { is_available?: boolean }) => i.is_available);
+        setItems(availableItems);
         const cats = Array.isArray(catsData) ? catsData : [];
         setCategories(cats);
         // Default to "All" (null) — don't force-select the first category
         setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => t.is_active !== false) : []);
-        setBundleProducts((Array.isArray(bpData) ? bpData : []).filter((bp: BundleProduct) => bp.is_active !== false));
+        const activeBundles = (Array.isArray(bpData) ? bpData : []).filter((bp: BundleProduct) => bp.is_active !== false);
+        setBundleProducts(activeBundles);
+        // Menu loaded fine → we're online; keep the offline snapshot fresh.
+        offline.reportSuccess();
+        setOfflineMenuData(false);
+        saveMenuSnapshot(storeId, { items: availableItems, categories: cats, bundleProducts: activeBundles })
+          .catch((snapErr) => console.error("Failed to save menu snapshot:", snapErr));
 
         if (checkoutOrderId) {
           await checkoutHook.loadCheckoutOrder(checkoutOrderId);
@@ -168,7 +185,26 @@ export function usePosState() {
           setStripeEnabled(false);
         }
       } catch (e: unknown) {
-        if (mounted) setError((e as Error).message);
+        if (!mounted) return;
+        // Network (non-HTTP) failure → flip to offline and fall back to the
+        // last good menu snapshot so the POS keeps selling.
+        if (isNetworkError(e)) {
+          offline.reportNetworkFailure();
+          try {
+            const snap = await loadMenuSnapshot(storeId);
+            if (snap && mounted) {
+              const snapItems = (snap.data.items as MenuItem[]) || [];
+              setItems(snapItems.filter((i) => i.is_available));
+              setCategories((snap.data.categories as Category[]) || []);
+              setBundleProducts(((snap.data.bundleProducts as BundleProduct[]) || []).filter((bp) => bp.is_active !== false));
+              setOfflineMenuData(true);
+              return;
+            }
+          } catch (snapErr) {
+            console.error("Failed to load menu snapshot:", snapErr);
+          }
+        }
+        setError((e as Error).message);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -348,6 +384,31 @@ export function usePosState() {
   const isKitchenProcessingRef = useRef(false);
   const isCheckoutProcessingRef = useRef(false);
 
+  // Queue the order in IndexedDB; the sync engine replays it when back online.
+  const enqueueOfflineOrder = async (payload: Record<string, unknown>, clientRef: string) => {
+    const itemCount = cartHook.cart.reduce((s, c) => s + c.qty, 0);
+    const names = cartHook.cart.slice(0, 3).map((c) => c.name).join(", ");
+    const totalDue = Math.round(total * 100) / 100;
+    try {
+      await offline.enqueue({
+        client_ref: clientRef,
+        order_payload: payload,
+        // Offline = cash only (QR / card need connectivity); tendered is
+        // re-read from the server total at sync time.
+        payment: { payment_method: "cash", amount_tendered: totalDue },
+        total: totalDue,
+        summary: `${names}${cartHook.cart.length > 3 ? "…" : ""} (${itemCount})`,
+        created_at: Date.now(),
+        status: "pending",
+      });
+      cartHook.newOrder();
+      setPaymentMethod("cash");
+      setAmountTendered("");
+      setDiscountAmount(0);
+      setMsg(t("pos.offline_queued_confirm"));
+    } catch (e: unknown) { setError((e as Error).message); }
+  };
+
   const handleSendToKitchen = async () => {
     if (isKitchenProcessingRef.current) return;
     if (cartHook.cart.length === 0) { setError(t("pos.err_cart_empty")); return; }
@@ -422,7 +483,10 @@ export function usePosState() {
       const idempotencyKey = typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `pos-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const res = await createPosOrder({
+      const clientRef = typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `posref-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const orderPayload = {
         store_id: storeId || undefined,
         customer_id: cartHook.selectedCustomer?.id || null,
         dining_table_id: cartHook.tableId || undefined,
@@ -439,10 +503,27 @@ export function usePosState() {
         order_notes: cartHook.orderNotes,
         is_byot: cartHook.isByot ?? false,
         idempotency_key: idempotencyKey,
-      });
-      setResult(res);
-      setState("done");
-    } catch (e: unknown) { setError((e as Error).message); } finally { isKitchenProcessingRef.current = false; setSaving(false); }
+        client_ref: clientRef,
+      };
+      // Already offline → skip the doomed request and queue immediately.
+      if (!offline.online) {
+        await enqueueOfflineOrder(orderPayload, clientRef);
+        return;
+      }
+      try {
+        const res = await createPosOrder(orderPayload);
+        setResult(res);
+        setState("done");
+      } catch (e: unknown) {
+        // Network (non-HTTP) failure mid-checkout → queue for auto-sync.
+        if (isNetworkError(e)) {
+          offline.reportNetworkFailure();
+          await enqueueOfflineOrder(orderPayload, clientRef);
+          return;
+        }
+        setError((e as Error).message);
+      }
+    } finally { isKitchenProcessingRef.current = false; setSaving(false); }
   };
 
   const handleCheckout = async (split?: import("./PosSplitBillSection").SplitSelection) => {
@@ -719,6 +800,13 @@ export function usePosState() {
     storeId,
     crewName,
     checkoutOrderId,
+
+    // Offline mode
+    online: offline.online,
+    offlineMenuData,
+    offlineQueue: offline.queueItems,
+    retryQueuedOrder: offline.retryItem,
+    syncQueuedOrders: offline.syncNow,
 
     // Actions
     handleSendToKitchen,

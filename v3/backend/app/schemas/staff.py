@@ -133,6 +133,9 @@ class POSOrderCreateRequest(BaseSchema):
     payment: POSPayment | None = None
     is_byot: bool = False  # eco-campaign: customer brought their own tumbler
     idempotency_key: str | None = None
+    # POS offline mode: client-generated ref — replay of the same ref returns
+    # the existing order (HTTP 200) instead of creating a duplicate.
+    client_ref: str | None = Field(default=None, max_length=64)
 
 
 class StaffCreateRequest(BaseSchema):

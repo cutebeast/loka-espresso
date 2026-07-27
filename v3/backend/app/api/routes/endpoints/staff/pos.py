@@ -1,12 +1,13 @@
 """Staff POS endpoints (order creation, customer display state)."""
 
 import json as _json
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -25,6 +26,8 @@ from app.services.payment import PaymentError, _add_payment_event, create_stripe
 from app.services.platform_config import PlatformConfigService
 
 router = APIRouter(tags=["staff — pos"])
+
+logger = logging.getLogger(__name__)
 
 
 # ── POS Order Create ──
@@ -121,6 +124,7 @@ async def staff_pos_create_order(
     db: DBDependency,
     staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
     data: POSOrderCreateRequest,
+    response: Response,
 ):
     store_id = data.store_id or staff.store_id
 
@@ -325,6 +329,38 @@ async def staff_pos_create_order(
                 "created_at": existing_order.created_at.isoformat(),
             })
 
+    # POS offline-mode replay: the staff portal queues orders with a
+    # client-generated client_ref while offline and retries them on sync.
+    # A replay must return the existing order (HTTP 200) rather than
+    # duplicate the sale.
+    if data.client_ref:
+        client_ref_r = await db.execute(
+            select(Order).where(
+                Order.store_id == store_id,
+                Order.client_ref == data.client_ref,
+                Order.deleted_at.is_(None),
+            )
+        )
+        client_ref_order = client_ref_r.scalar_one_or_none()
+        if client_ref_order:
+            logger.info(
+                "POS client_ref replay: store_id=%s client_ref=%s -> existing order %s",
+                store_id, data.client_ref, client_ref_order.id,
+            )
+            response.status_code = status.HTTP_200_OK
+            replay_change = Decimal(0)
+            if payment_data and client_ref_order.total_amount > 0 and payment_data.method == "cash":
+                tendered = to_decimal(payment_data.amount_tendered or 0)
+                replay_change = money_round(max(Decimal(0), tendered - to_decimal(client_ref_order.total_amount)), precision, rounding_mode)
+            return APIResponse(data={
+                "order_id": client_ref_order.id,
+                "order_number": client_ref_order.order_number,
+                "status": client_ref_order.status,
+                "total": client_ref_order.total_amount,
+                "change": replay_change,
+                "created_at": client_ref_order.created_at.isoformat(),
+            })
+
     # Generate order number
     from uuid import uuid4
     order_number = f"POS-{datetime.now(timezone.utc).strftime('%m%d')}-{uuid4().hex[:4].upper()}"
@@ -335,6 +371,7 @@ async def staff_pos_create_order(
         dining_table_id=dining_table_id,
         order_number=order_number,
         idempotency_key=data.idempotency_key,
+        client_ref=data.client_ref,
         order_type=order_type,
         order_channel="pos",
         fulfillment_type={"dine_in":"dine_in_service","takeaway":"counter_pickup","delivery":"standard_delivery","drive_thru":"counter_pickup"}.get(order_type,"dine_in_service"),
@@ -490,6 +527,35 @@ async def staff_pos_create_order(
                     "total": existing_order.total_amount,
                     "change": replay_change,
                     "created_at": existing_order.created_at.isoformat(),
+                })
+        # Concurrent offline-sync race on (store_id, client_ref): another
+        # request won the unique index — return the winner (HTTP 200).
+        if data.client_ref:
+            client_ref_r = await db.execute(
+                select(Order).where(
+                    Order.store_id == store_id,
+                    Order.client_ref == data.client_ref,
+                    Order.deleted_at.is_(None),
+                )
+            )
+            client_ref_order = client_ref_r.scalar_one_or_none()
+            if client_ref_order:
+                logger.info(
+                    "POS client_ref replay after integrity race: store_id=%s client_ref=%s -> existing order %s",
+                    store_id, data.client_ref, client_ref_order.id,
+                )
+                response.status_code = status.HTTP_200_OK
+                replay_change = Decimal(0)
+                if payment_data and client_ref_order.total_amount > 0 and payment_data.method == "cash":
+                    tendered = to_decimal(payment_data.amount_tendered or 0)
+                    replay_change = money_round(max(Decimal(0), tendered - to_decimal(client_ref_order.total_amount)), precision, rounding_mode)
+                return APIResponse(data={
+                    "order_id": client_ref_order.id,
+                    "order_number": client_ref_order.order_number,
+                    "status": client_ref_order.status,
+                    "total": client_ref_order.total_amount,
+                    "change": replay_change,
+                    "created_at": client_ref_order.created_at.isoformat(),
                 })
         raise
     except HTTPException:

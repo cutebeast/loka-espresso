@@ -16,6 +16,7 @@ import PosQrScannerModal from "@/components/pos/PosQrScannerModal";
 import PosHeldOrdersDrawer from "@/components/pos/PosHeldOrdersDrawer";
 import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
 import PosDrawerChip from "@/components/pos/PosDrawerChip";
+import PosOfflineQueueChip from "@/components/pos/PosOfflineQueueChip";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
@@ -183,7 +184,7 @@ function PosPageContent() {
     return <PosCheckoutPanel order={pos.checkoutOrder} orderId={pos.checkoutOrderId} customer={pos.checkoutCustomer} walletData={pos.checkoutWalletData} paymentMethod={pos.paymentMethod} amountTendered={pos.amountTendered} discountAmount={pos.discountAmount} discountType={pos.discountType} tipAmount={pos.tipAmount} saving={pos.saving} applyingDiscount={pos.applyingDiscount} discountsApplied={pos.checkoutDiscountsApplied} error={pos.error} msg={pos.msg} showDiscounts={pos.showCheckoutDiscounts} onSetPaymentMethod={pos.setPaymentMethod} onSetAmountTendered={pos.setAmountTendered} onSetDiscountAmount={pos.setDiscountAmount} onSetDiscountType={pos.setDiscountType} onSetTipAmount={pos.setTipAmount} onSetShowDiscounts={pos.setShowCheckoutDiscounts} onSetCustomer={pos.setCheckoutCustomer} onSetWalletData={pos.setCheckoutWalletData} onSetError={pos.setError} onSetMsg={pos.setMsg} onScanCustomer={() => {
       pos.setQrScanMode("customer");
       pos.startScanner();
-    }} onApplyVoucher={pos.handleApplyCheckoutVoucher} onApplyReward={pos.handleApplyCheckoutReward} onWalletPayment={pos.handleCheckoutWalletPayment} onCheckout={pos.handleCheckout} stripeEnabled={pos.stripeEnabled} />;
+    }} onApplyVoucher={pos.handleApplyCheckoutVoucher} onApplyReward={pos.handleApplyCheckoutReward} onWalletPayment={pos.handleCheckoutWalletPayment} onCheckout={pos.handleCheckout} stripeEnabled={pos.stripeEnabled} offline={!pos.online} />;
   }
 
   // ── New Order Mode ──
@@ -223,6 +224,7 @@ function PosPageContent() {
         }}>{t("pos.table")}{pos.tables.find(t => t.id === pos.tableId)?.table_number || pos.tableId}
             </span>}
           <PosDrawerChip />
+          <PosOfflineQueueChip items={pos.offlineQueue} onRetry={pos.retryQueuedOrder} />
           <div style={{
           flex: 1
         }} />
@@ -454,6 +456,20 @@ function PosPageContent() {
 
       {pos.error && <Alert variant="error" onDismiss={() => pos.setError("")}>{pos.error}</Alert>}
       {pos.msg && <Alert variant="success" onDismiss={() => pos.setMsg("")} autoDismiss={3000}>{pos.msg}</Alert>}
+
+      {/* Offline banner — sales queue locally and sync when back online */}
+      {(!pos.online || pos.offlineMenuData) && <div style={{
+      background: "var(--color-warning-light, #FEF3C7)",
+      color: "var(--color-warning, #8A7030)",
+      borderBottom: "1px solid var(--color-warning, #D97706)",
+      padding: "8px 16px",
+      fontSize: 13,
+      fontWeight: 600,
+      flexShrink: 0
+    }}>
+        {!pos.online && <div>{t("pos.offline_banner")}</div>}
+        {pos.offlineMenuData && <div style={{ fontWeight: 400, fontSize: 12, marginTop: pos.online ? 0 : 2 }}>{t("pos.offline_data_note")}</div>}
+      </div>}
 
       {/* Menu Items */}
       <div style={{

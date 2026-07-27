@@ -50,6 +50,9 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     idempotency_key: Mapped[str | None] = mapped_column(
         String(255), nullable=True, unique=True, index=True
     )
+    # POS offline mode: client-generated ref for replay-safe order creation.
+    # Unique per store when set (see partial index below).
+    client_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     order_type: Mapped[str] = mapped_column(OrderType, nullable=False)
     order_channel: Mapped[str] = mapped_column(OrderChannel, nullable=False, default="mobile_app")
     status: Mapped[str] = mapped_column(OrderStatus, nullable=False, default="pending")
@@ -163,6 +166,13 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
         ),
         Index("idx_orders_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NULL")),
         Index("idx_orders_device_fingerprint", "device_fingerprint", postgresql_where=text("device_fingerprint IS NOT NULL")),
+        Index(
+            "uq_orders_store_client_ref",
+            "store_id",
+            "client_ref",
+            unique=True,
+            postgresql_where=text("client_ref IS NOT NULL"),
+        ),
     )
 
 

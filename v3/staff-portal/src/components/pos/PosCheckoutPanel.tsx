@@ -67,6 +67,8 @@ interface PosCheckoutPanelProps {
   onWalletPayment: (amount: number) => void;
   onCheckout: (split?: import("./PosSplitBillSection").SplitSelection) => void;
   stripeEnabled?: boolean | null;
+  /** Offline mode: cash only — QR / card terminals need connectivity. */
+  offline?: boolean;
 }
 export default function PosCheckoutPanel({
   order,
@@ -99,7 +101,8 @@ export default function PosCheckoutPanel({
   onApplyReward,
   onWalletPayment,
   onCheckout,
-  stripeEnabled
+  stripeEnabled,
+  offline = false
 }: PosCheckoutPanelProps) {
   const {
     t
@@ -362,7 +365,7 @@ export default function PosCheckoutPanel({
         gap: 8,
         marginBottom: 16
       }}>
-          {(["cash", "card", "stripe_qr"] as PaymentMethod[]).map(m => {
+          {(["cash", "card", "stripe_qr"] as PaymentMethod[]).filter(m => !offline || m === "cash").map(m => {
           const disabled = m === "stripe_qr" && stripeEnabled === false;
           return <button key={m} className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"} ${disabled ? "btn-disabled" : ""}`} onClick={() => !disabled && onSetPaymentMethod(m)} disabled={disabled} title={disabled ? t("pos.stripe_not_configured") : undefined}>
                 {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
@@ -370,6 +373,12 @@ export default function PosCheckoutPanel({
               </button>;
         })}
         </div>
+        {offline && <p style={{
+        fontSize: 12,
+        color: "var(--color-warning, #8A7030)",
+        marginTop: -8,
+        marginBottom: 12
+      }}>{t("pos.offline_cash_only")}</p>}
 
         {paymentMethod === "cash" && <div>
             <div style={{
