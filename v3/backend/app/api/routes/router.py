@@ -74,6 +74,7 @@ from app.api.routes.endpoints.staff import tables as staff_tables
 from app.api.routes.endpoints.staff import pos_sessions as staff_pos_sessions
 from app.api.routes.endpoints.admin import scan as admin_scan
 from app.api.routes.endpoints.admin import pos as admin_pos
+from app.api.routes.endpoints.admin import einvoice as admin_einvoice
 from app.api.routes.endpoints.admin import equipment as admin_equipment
 from app.api.routes.endpoints.admin import bundle_products as admin_bundle_products
 from app.api.routes.endpoints.admin import lucky_draw as admin_lucky_draw
@@ -187,6 +188,9 @@ api_router.include_router(admin_scan.router, tags=["admin — scan"])
 
 # POS (admin)
 api_router.include_router(admin_pos.router, tags=["admin — pos"])
+
+# E-Invoice (admin)
+api_router.include_router(admin_einvoice.router, tags=["admin — einvoice"])
 
 # Customers (admin)
 api_router.include_router(admin_customers.router, tags=["admin — customers"])

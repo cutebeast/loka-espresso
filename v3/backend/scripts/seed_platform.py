@@ -72,6 +72,20 @@ CONFIGS = [
     ("hitpay.enabled", "false", "boolean", "all", False, True),
     ("hitpay.salt", '""', "string", "all", True, True),
     ("grabpay.webhook_secret", '""', "string", "all", True, True),
+    # LHDN MyInvois e-invoicing — disabled by default; while `einvoice.enabled`
+    # is false submissions are SIMULATED (see app/services/einvoice.py), the
+    # same config-gated pattern as stripe/hitpay.
+    ("einvoice.enabled", "false", "boolean", "all", False, True),
+    ("einvoice.auto_issue", "false", "boolean", "all", False, True),
+    ("einvoice.base_url", '"https://preprod-api.myinvois.hasil.gov.my"', "string", "all", False, True),
+    ("einvoice.client_id", '""', "string", "all", False, True),
+    ("einvoice.client_secret", '""', "string", "all", True, True),
+    ("einvoice.tin", '"C00000000000"', "string", "all", False, True),
+    ("einvoice.brn", '"200001000001"', "string", "all", False, True),
+    ("einvoice.msic", '"56101"', "string", "all", False, True),
+    ("einvoice.supplier_name", '"Loka Espresso"', "string", "all", False, True),
+    ("einvoice.sst_number", '"SST-123456789"', "string", "all", False, True),
+    ("einvoice.default_classification", '"999"', "string", "all", False, True),
     ("loyalty.points_per_currency", "1", "integer", "all", False, True),
     ("loyalty.welcome_bonus", "50", "integer", "all", False, True),
     ("loyalty.welcome_reward_type", '"voucher"', "string", "all", False, True),

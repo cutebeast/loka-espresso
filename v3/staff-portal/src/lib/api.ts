@@ -642,6 +642,19 @@ export function getOrderById(id: string | number) {
   return api.get<OrderDetail>(`/staff/orders/${id}`);
 }
 
+export interface OrderEinvoice {
+  document_type: string;
+  code_number: string;
+  status: string;
+  myinvois_uuid: string | null;
+  validation_link: string | null;
+  submitted_at: string | null;
+}
+
+export function getOrderEinvoice(id: string | number) {
+  return api.get<OrderEinvoice | null>(`/staff/orders/${id}/einvoice`);
+}
+
 export function updateOrderStatus(id: string | number, status: OrderStatus, reason?: string) {
   return api.patch(`/staff/orders/${id}/status`, { status, ...(reason ? { reason } : {}) });
 }
@@ -886,6 +899,8 @@ export function createPosOrder(payload: {
   order_notes?: string;
   is_byot?: boolean;
   idempotency_key?: string;
+  // Offline-mode replay key — replays return the existing order (HTTP 200)
+  client_ref?: string;
   payment?: { amount_tendered?: number; method?: string };
 }) {
   return api.post<{ order_id: number; order_number: string; total: number; change?: number }>("/staff/pos/orders", payload);

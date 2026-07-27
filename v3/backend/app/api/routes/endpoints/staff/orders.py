@@ -1,5 +1,6 @@
 """Staff-scoped order management endpoints (POS operations)."""
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -34,6 +35,8 @@ from app.services.payment import PaymentError, cancel_pending_order_payments, cr
 from app.services.platform_config import PlatformConfigService
 
 router = APIRouter(prefix="/staff/orders", tags=["staff — orders"])
+
+logger = logging.getLogger(__name__)
 
 
 def _audit_principal_id(staff) -> int | None:
@@ -312,6 +315,15 @@ async def process_staff_order_payment(
     await db.commit()
     await db.refresh(order)
 
+    # LHDN e-invoice: auto-issue on captured payments when einvoice.auto_issue
+    # is on. Fully guarded — e-invoicing must never break the payment flow.
+    if payment is not None:
+        try:
+            from app.services.einvoice import auto_issue_on_payment
+            await auto_issue_on_payment(db, order, payment)
+        except Exception:
+            logger.exception("e-invoice auto-issue failed for order %s", order.id)
+
     response_data: dict = {
         "id": order.id,
         "order_number": order.order_number,
@@ -401,6 +413,42 @@ async def get_staff_order_split_state(
         "remaining_due": round(max(0.0, float(order.total_amount) - total_paid), 2),
         "fully_paid": total_paid >= float(order.total_amount),
         "lines": lines,
+    })
+
+
+@router.get("/{order_id}/einvoice", response_model=APIResponse[dict])
+async def get_staff_order_einvoice(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+):
+    """Latest e-invoice document for an order in staff's store (null if none)."""
+    from app.models.einvoice import EinvoiceDocument
+
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    doc_result = await db.execute(
+        select(EinvoiceDocument)
+        .where(EinvoiceDocument.order_id == order.id)
+        .order_by(EinvoiceDocument.id.desc())
+        .limit(1)
+    )
+    doc = doc_result.scalar_one_or_none()
+    if doc is None:
+        return APIResponse(data=None)
+    return APIResponse(data={
+        "document_type": doc.document_type,
+        "code_number": doc.code_number,
+        "status": doc.status,
+        "myinvois_uuid": doc.myinvois_uuid,
+        "validation_link": doc.validation_link,
+        "submitted_at": doc.submitted_at.isoformat() if doc.submitted_at else None,
     })
 
 

@@ -145,6 +145,7 @@ const navItems: NavItem[] = [
   },
   { id: "tables", labelKey: "admin.nav.tables", href: "/tables", icon: Grid3X3 },
   { id: "cashSessions", labelKey: "admin.nav.cashSessions", href: "/cash-sessions", icon: Vault },
+  { id: "einvoice", labelKey: "admin.nav.einvoice", href: "/einvoice", icon: FileText },
   {
     id: "inventory", labelKey: "admin.nav.inventory", href: "/inventory", icon: Package,
     children: [

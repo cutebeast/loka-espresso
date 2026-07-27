@@ -2,16 +2,16 @@
 
 import { RoleGuard, canUseKitchen } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getOrderById, getOrders, getTables, updateOrderStatus, transferTable, mergeOrder, OrderDetail, OrderStatus, type Order, type Table } from "@/lib/api";
+import { getOrderById, getOrderEinvoice, getOrders, getTables, updateOrderStatus, transferTable, mergeOrder, OrderDetail, OrderEinvoice, OrderStatus, type Order, type Table } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Badge, { type BadgeVariant } from "@/components/Badge";
 import SkeletonCard from "@/components/SkeletonCard";
-import { ArrowLeft, CheckCircle, Clock, Printer, XCircle, MoveRight } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, Printer, XCircle, MoveRight, Copy, Receipt } from "lucide-react";
 const STATUS_FLOW: Record<string, {
   next: OrderStatus[];
   labelKey: string;
@@ -97,6 +97,9 @@ function KitchenDetailPageContent() {
   const [showMerge, setShowMerge] = useState(false);
   const [mergeCandidates, setMergeCandidates] = useState<Order[]>([]);
   const [merging, setMerging] = useState(false);
+  const [einvoice, setEinvoice] = useState<OrderEinvoice | null>(null);
+  const [einvoiceQr, setEinvoiceQr] = useState("");
+  const [einvoiceCopied, setEinvoiceCopied] = useState(false);
   const load = useCallback(async () => {
     try {
       const data = await getOrderById(id);
@@ -108,10 +111,35 @@ function KitchenDetailPageContent() {
     } finally {
       setLoading(false);
     }
+    // E-invoice chip is supplementary — never let it break the order view.
+    try {
+      setEinvoice(await getOrderEinvoice(id));
+    } catch {
+      setEinvoice(null);
+    }
   }, [id]);
   usePolling(load, [id], {
     interval: 10000
   });
+  // Render the MyInvois validation link as a QR (same `qrcode` package the POS
+  // payment screens use) so customers can scan it straight off the screen.
+  useEffect(() => {
+    const link = einvoice?.validation_link;
+    if (!link) { setEinvoiceQr(""); return; }
+    let cancelled = false;
+    import("qrcode").then(QRCode => QRCode.toDataURL(link, { width: 160, margin: 1 })).then(url => {
+      if (!cancelled) setEinvoiceQr(url);
+    }).catch(() => { if (!cancelled) setEinvoiceQr(""); });
+    return () => { cancelled = true; };
+  }, [einvoice?.validation_link]);
+  const copyEinvoiceLink = async () => {
+    if (!einvoice?.validation_link) return;
+    try {
+      await navigator.clipboard.writeText(einvoice.validation_link);
+      setEinvoiceCopied(true);
+      setTimeout(() => setEinvoiceCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  };
   const handleUpdate = async (status: OrderStatus) => {
     setUpdating(true);
     try {
@@ -366,6 +394,75 @@ function KitchenDetailPageContent() {
             </div>)}
         </div>
       </div>
+
+      {/* E-Invoice (LHDN MyInvois) — shown when a document exists for this order */}
+      {einvoice && <div className="card" style={{
+      marginBottom: 20
+    }}>
+          <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        flexWrap: "wrap"
+      }}>
+            <Receipt size={16} style={{
+          color: "var(--color-primary)"
+        }} />
+            <h4 style={{
+          fontSize: 14,
+          fontWeight: 700,
+          margin: 0
+        }}>{t("kitchen.einvoice_title")}</h4>
+            <Badge variant={einvoice.status === "validated" ? "green" : einvoice.status === "rejected" || einvoice.status === "failed" ? "red" : "yellow"} size="sm">
+              {t(`kitchen.einvoice_status_${einvoice.status}`)}
+            </Badge>
+            <span style={{
+          fontSize: 12,
+          fontFamily: "monospace",
+          color: "var(--color-text-secondary)"
+        }}>{einvoice.code_number}</span>
+            <span style={{
+          fontSize: 12,
+          color: "var(--color-text-muted)"
+        }}>{einvoice.document_type === "04" ? t("kitchen.einvoice_type_refund") : t("kitchen.einvoice_type_invoice")}</span>
+          </div>
+          {einvoice.validation_link && <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        marginTop: 12,
+        flexWrap: "wrap"
+      }}>
+              {einvoiceQr && <img src={einvoiceQr} alt={t("kitchen.einvoice_scan_hint")} width={80} height={80} style={{
+          borderRadius: "var(--radius-md)",
+          border: "1px solid var(--color-border-light)"
+        }} />}
+              <div style={{
+          flex: 1,
+          minWidth: 200
+        }}>
+                <div style={{
+            fontSize: 11,
+            color: "var(--color-text-muted)",
+            marginBottom: 4
+          }}>{t("kitchen.einvoice_scan_hint")}</div>
+                <div style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center"
+          }}>
+                  <a href={einvoice.validation_link} target="_blank" rel="noopener noreferrer" style={{
+              fontSize: 12,
+              color: "var(--color-primary)",
+              wordBreak: "break-all",
+              flex: 1
+            }}>{einvoice.validation_link}</a>
+                  <button className="btn btn-sm btn-outline" onClick={copyEinvoiceLink}>
+                    <Copy size={12} />{einvoiceCopied ? t("kitchen.einvoice_copied") : t("kitchen.einvoice_copy_link")}</button>
+                </div>
+              </div>
+            </div>}
+        </div>}
 
       {/* Line Items */}
       <div className="card" style={{

@@ -102,6 +102,7 @@ from app.models.payment import (
     PaymentMethod,
     Refund,
 )
+from app.models.einvoice import EinvoiceDocument
 from app.models.loyalty import (
     LoyaltyTier,
     LoyaltyAccount,
