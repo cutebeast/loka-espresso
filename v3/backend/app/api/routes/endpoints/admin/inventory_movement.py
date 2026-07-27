@@ -1,6 +1,7 @@
 """Inventory movement log endpoints."""
 
 from datetime import date, datetime, time, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -167,8 +168,10 @@ async def create_movement(
         db.add(stock)
         await db.flush()
 
-    # Calculate new stock after movement
-    new_stock = stock.current_stock + data.quantity_delta
+    # Calculate new stock after movement (DB stock is Decimal; schema gives
+    # float — convert explicitly or `Decimal + float` raises TypeError)
+    delta = Decimal(str(data.quantity_delta))
+    new_stock = stock.current_stock + delta
     if new_stock < 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -177,13 +180,13 @@ async def create_movement(
 
     movement_cost = None
     if data.unit_cost_at_movement is not None:
-        movement_cost = abs(data.quantity_delta) * data.unit_cost_at_movement
+        movement_cost = abs(delta) * Decimal(str(data.unit_cost_at_movement))
 
     movement = InventoryMovementLog(
         store_id=data.store_id,
         inventory_item_id=data.inventory_item_id,
         movement_type=data.movement_type,
-        quantity_delta=data.quantity_delta,
+        quantity_delta=delta,
         stock_after=new_stock,
         reserved_delta=0,
         reserved_after=str(stock.reserved_stock),

@@ -1,13 +1,14 @@
 """Purchase order endpoints."""
 
 from datetime import date, datetime, time, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
-from app.models.inventory import InventoryItem, PurchaseOrder, PurchaseOrderLine, Supplier
+from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, PurchaseOrder, PurchaseOrderLine, Supplier
 from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
@@ -349,10 +350,58 @@ async def receive_purchase_order(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"PO line {recv.line_id} not found",
             )
+        # Stock + movements are booked only for the newly-received delta, so
+        # partial → follow-up receives never double-count. DB quantities are
+        # Decimal, schema floats — convert explicitly.
+        prev_received = Decimal(str(line.quantity_received or 0))
+        delta_qty = Decimal(str(recv.quantity_received)) - prev_received
+        if delta_qty < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Received quantity for line {recv.line_id} is below the previously received amount",
+            )
         line.quantity_received = recv.quantity_received
         total_received += recv.quantity_received
         if recv.quantity_received < line.quantity_ordered:
             all_fully_received = False
+
+        if delta_qty > 0:
+            stock_result = await db.execute(
+                select(InventoryStock).where(
+                    InventoryStock.inventory_item_id == line.inventory_item_id,
+                    InventoryStock.store_id == po.store_id,
+                ).with_for_update()
+            )
+            stock = stock_result.scalar_one_or_none()
+            if stock is None:
+                stock = InventoryStock(
+                    inventory_item_id=line.inventory_item_id,
+                    store_id=po.store_id,
+                    current_stock=0,
+                    reserved_stock=0,
+                    reorder_level=0,
+                    reorder_quantity=0,
+                    par_level=0,
+                )
+                db.add(stock)
+                await db.flush()
+            new_stock = stock.current_stock + delta_qty
+            db.add(InventoryMovementLog(
+                store_id=po.store_id,
+                inventory_item_id=line.inventory_item_id,
+                movement_type="in",
+                quantity_delta=delta_qty,
+                stock_after=new_stock,
+                reserved_delta=0,
+                reserved_after=stock.reserved_stock,
+                reason=f"PO {po.po_number} received",
+                reference_type="purchase_order",
+                reference_id=po.id,
+                unit_cost_at_movement=line.unit_cost,
+                movement_cost=abs(delta_qty) * (line.unit_cost or 0),
+                performed_by=admin.id,
+            ))
+            stock.current_stock = new_stock
 
     # Update PO status based on receipt
     if total_received == 0:

@@ -222,7 +222,7 @@ export default function PurchaseOrdersPage() {
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border-light)"
-        }}><option value="">{t("inventory_purchase-orders.all_status")}</option><option value="draft">{t("inventory_purchase-orders.draft")}</option><option value="submitted">{t("inventory_purchase-orders.submitted")}</option><option value="ordered">{t("inventory_purchase-orders.ordered")}</option><option value="partially_received">{t("inventory_purchase-orders.partially_received")}</option><option value="received">{t("inventory_purchase-orders.received")}</option><option value="cancelled">{t("inventory_purchase-orders.cancelled")}</option></select></div>
+        }}><option value="">{t("inventory_purchase-orders.all_status")}</option><option value="draft">{t("inventory_purchase-orders.draft")}</option><option value="sent">{t("inventory_purchase-orders.sent")}</option><option value="partial">{t("inventory_purchase-orders.partial")}</option><option value="received">{t("inventory_purchase-orders.received")}</option><option value="cancelled">{t("inventory_purchase-orders.cancelled")}</option></select></div>
       </div>
 
       {showForm && <><div className="drawer-overlay" onClick={resetForm} /><div className="drawer" style={{
