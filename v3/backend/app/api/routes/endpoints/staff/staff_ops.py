@@ -1705,9 +1705,10 @@ async def staff_report_waste(
             db.add(stock)
             await db.flush()
 
-        delta = round(-data.quantity, 4)
-        new_stock = round(stock.current_stock + delta, 4)
-        stock.current_stock = max(0, new_stock)
+        from decimal import Decimal
+        delta = Decimal(str(round(-data.quantity, 4)))
+        new_stock = stock.current_stock + delta
+        stock.current_stock = max(Decimal(0), new_stock)
         stock.updated_at = now
 
         movement = InventoryMovementLog(
@@ -1732,8 +1733,11 @@ async def staff_report_waste(
         })
 
     if data.menu_item_id:
+        from sqlalchemy.orm import selectinload
         menu_result = await db.execute(
-            select(MenuItem).where(
+            select(MenuItem)
+            .options(selectinload(MenuItem.recipes))
+            .where(
                 MenuItem.id == data.menu_item_id,
                 MenuItem.is_available.is_(True),
                 MenuItem.deleted_at.is_(None),
@@ -1743,16 +1747,16 @@ async def staff_report_waste(
         if not menu_item:
             raise HTTPException(status_code=404, detail="Menu item not found")
 
-        # Deduct recipe components from inventory stock
+        # Deduct recipe components from inventory stock (ORM attributes, not dicts)
         recipes = menu_item.recipes or []
         deducted_items = []
         for recipe in recipes:
-            inv_id = recipe.get("inventory_item_id")
-            qty_per_unit = recipe.get("quantity_required", 0)
-            waste_factor = recipe.get("waste_factor", 0)
+            inv_id = recipe.inventory_item_id
+            qty_per_unit = recipe.quantity_required or Decimal(0)
+            waste_factor = recipe.waste_factor or Decimal(0)
             if not inv_id or qty_per_unit <= 0:
                 continue
-            total_qty = round(qty_per_unit * data.quantity * (1 + waste_factor), 4)
+            total_qty = qty_per_unit * Decimal(str(data.quantity)) * (Decimal(1) + waste_factor)
 
             stock_result = await db.execute(
                 select(InventoryStock).where(
@@ -1762,14 +1766,14 @@ async def staff_report_waste(
             )
             stock_row = stock_result.scalar_one_or_none()
             if stock_row:
-                new_stock = max(0, round(stock_row.current_stock - total_qty, 4))
+                new_stock = max(Decimal(0), stock_row.current_stock - total_qty)
                 stock_row.current_stock = new_stock
                 stock_row.updated_at = now
                 movement = InventoryMovementLog(
                     inventory_item_id=inv_id,
                     store_id=store_id,
                     movement_type="waste",
-                    quantity_delta=round(-total_qty, 4),
+                    quantity_delta=-total_qty,
                     stock_after=new_stock,
                     reason=f"[Menu item waste: {menu_item.item_name}] {data.reason}",
                 )
