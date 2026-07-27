@@ -1249,7 +1249,10 @@ async def refund_payment(
         hitpay_refund = await create_hitpay_refund(db, payment, refund_amount)
         provider_refund_id = hitpay_refund["id"]
         refund_status = "completed" if hitpay_refund.get("status") == "completed" else "pending"
-    elif payment.provider == "internal_wallet":
+    elif payment.provider in ("internal_wallet", "cash", "store_credit"):
+        # Wallet/store-credit/cash refunds are settled the moment they're
+        # recorded — there is no external provider to confirm later (cash is
+        # handed back at the counter), so complete them immediately.
         refund_status = "completed"
         completed_at = datetime.now(timezone.utc)
 

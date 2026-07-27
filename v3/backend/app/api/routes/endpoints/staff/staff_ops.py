@@ -1220,6 +1220,10 @@ async def staff_pos_create_order(
                 amount=total,
                 currency_code=store.currency_code,
                 status=payment_status,
+                # captured_amount must mirror the captured total for cash/manual
+                # payments — refunds compute the refundable balance from it
+                # (stripe_qr is set at real capture time instead).
+                captured_amount=Decimal(0) if is_stripe_qr else total,
                 net_amount=total if not is_stripe_qr else Decimal(0),
             )
             db.add(payment)
