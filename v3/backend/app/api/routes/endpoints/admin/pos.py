@@ -1,12 +1,15 @@
 """Admin POS management endpoints."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.models.order import Order
+from app.models.payment import Payment
 from app.models.pos import OrderModificationLog, PosSession, PosTerminal
 from app.schemas.base import APIResponse
 from app.schemas.pos import (
@@ -115,6 +118,62 @@ async def list_sessions(
     result = await db.execute(q)
     items = result.scalars().all()
     return APIResponse(data=[PosSessionOut.model_validate(s) for s in items])
+
+
+@router.get("/sessions/{session_id}", response_model=APIResponse)
+async def get_session_detail(
+    session_id: int,
+    db: DBDependency,
+    admin: CurrentAdmin,
+):
+    """Session detail for the Z-report drill-down: live report figures for an
+    open session (closed sessions carry their snapshot on the row) plus the
+    individual payments in the session window that the figures are built from."""
+    session = await db.get(PosSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    terminal = await db.get(PosTerminal, session.terminal_id)
+    store_id = terminal.store_id if terminal else None
+
+    data = PosSessionOut.model_validate(session).model_dump(mode="json")
+    if session.status == "open" and store_id is not None:
+        from app.services.pos_session import compute_session_report
+        report = await compute_session_report(db, session, store_id)
+        data["report"] = {
+            k: float(v) if isinstance(v, Decimal) else v.isoformat() if isinstance(v, datetime) else v
+            for k, v in report.items()
+        }
+    else:
+        data["report"] = None
+
+    until = session.closed_at or datetime.now(timezone.utc)
+    pay_rows = await db.execute(
+        select(Payment, Order.order_number)
+        .join(Order, Order.id == Payment.order_id)
+        .where(
+            Order.store_id == store_id,
+            Order.deleted_at.is_(None),
+            Payment.status.in_(("captured", "partially_refunded", "refunded")),
+            Payment.created_at >= session.opened_at,
+            Payment.created_at < until,
+        )
+        .order_by(Payment.created_at)
+    )
+    data["payments"] = [
+        {
+            "id": p.id,
+            "order_id": p.order_id,
+            "order_number": order_number,
+            "provider": p.provider,
+            "status": p.status,
+            "amount": float(p.amount or 0),
+            "captured_amount": float(p.captured_amount or 0),
+            "refunded_amount": float(p.refunded_amount or 0),
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
+        for p, order_number in pay_rows.all()
+    ]
+    return APIResponse(data=data)
 
 
 @router.post("/sessions", response_model=APIResponse, status_code=status.HTTP_201_CREATED)

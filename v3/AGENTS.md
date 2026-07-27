@@ -800,3 +800,11 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 ## POS gap-closure plan — COMPLETE (2026-07-27)
 
 All 4 phases shipped: split bill (`d490dbe`), cash drawer/Z-report (`2595a67`), merge + occupancy timer (`2595a67` + `9b73dc0`), KDS station routing (this section). Recorded non-builds: MY e-invoice (needs accountant turnover-band decision first), offline mode (deferred post-go-live).
+
+## Admin portal follow-ups to the POS phases (2026-07-27)
+
+Post-phase review found 3 plan items that never landed on the admin side + 1 display gap. All fixed:
+- **Cash session drill-down**: `GET /admin/pos/sessions/{id}` — session row + `report` (LIVE Z-report via `compute_session_report` for open sessions; `null` for closed, where the row already carries the close-time snapshot) + `payments` (every captured/partially_refunded/refunded payment on the store's orders in [opened_at, closed_at|now], with order_number). Admin `/cash-sessions` rows gained a View/Hide toggle that expands an inline drawer: figures row (float/cash/card/QR/refunds/expected, "live" badge for open sessions) + the payments table. e2e: `test_pos_sessions_merge.py::test_admin_session_detail_breakdown`.
+- **Merge/cancellation reason was invisible in admin**: `OrderOut` always returned `cancellation_reason` but the order detail page never rendered it — merged sources showed only "cancelled by merchant". Now shown as an alert line under the header (key `orders_[id].cancellation_reason` ×5). Target-side merge info was already visible via status_log.
+- **Settings page has a FIXED SECTIONS prefix list** — any new platform_config prefix is invisible until a section is added (happened to `kds.`). Added the KDS section; `PUT /admin/config` already parses `value_type="json"` correctly, so `kds.station_map` edits round-trip. NOTE: admin-ui translations are DB-only (the local `en.json` is just a ~40-key bootstrap; DB rows merge over it).
+- Verified live (browser): cash drawer opens with payment rows, order 834 shows "Merged into order POS-…", order 823 Covers column lists split items, Settings renders the station map.

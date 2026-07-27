@@ -200,3 +200,56 @@ async def test_merge_preserves_workshop_seats(client: httpx.AsyncClient, base_ur
         assert _booked(r.json()["data"]) == 0
     finally:
         await client.delete(f"{base_url}/admin/customers/{customer_id}", headers=admin_headers)
+
+
+@pytest.mark.asyncio
+async def test_admin_session_detail_breakdown(client: httpx.AsyncClient, base_url: str, staff_headers: dict, admin_headers: dict):
+    """Admin session detail: live report + payment breakdown while open,
+    snapshot (report=None) + same payments after close."""
+    # Ensure no session is open from a previous run
+    r = await client.get(f"{base_url}/staff/pos/session/current", headers=staff_headers)
+    if r.json()["data"]["session"]:
+        await client.post(f"{base_url}/staff/pos/session/close", headers=staff_headers, json={"closing_cash": 0, "discrepancy_notes": "e2e cleanup"})
+
+    r = await client.post(f"{base_url}/staff/pos/session/open", headers=staff_headers, json={"opening_cash": 50})
+    assert r.status_code == 201, r.text
+    session_id = r.json()["data"]["session"]["id"]
+
+    item = await _pick_item(client, base_url)
+    order_id = await _create_order(client, base_url, staff_headers, item["id"], 1)
+    r = await client.get(f"{base_url}/staff/orders/{order_id}/split-state", headers=staff_headers)
+    total = _money(r.json()["data"]["total_amount"])
+    r = await client.patch(
+        f"{base_url}/staff/orders/{order_id}/payment",
+        headers=staff_headers,
+        json={"payment_method": "cash", "amount_tendered": total},
+    )
+    assert r.status_code == 200, r.text
+
+    # Open session: live report + the cash payment in the breakdown
+    r = await client.get(f"{base_url}/admin/pos/sessions/{session_id}", headers=admin_headers)
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["report"] is not None
+    assert _money(d["report"]["opening_cash"]) == 50.0
+    assert _money(d["report"]["sales_cash"]) == total
+    assert _money(d["report"]["expected_cash"]) == _money(50 + total)
+    pay = next(p for p in d["payments"] if p["order_id"] == order_id)
+    assert pay["provider"] == "cash"
+    assert _money(pay["captured_amount"]) == total
+    assert pay["order_number"]
+
+    # Close: report is None (snapshot on the row), payments still listed
+    r = await client.post(f"{base_url}/staff/pos/session/close", headers=staff_headers, json={"closing_cash": 50 + total, "discrepancy_notes": "e2e"})
+    assert r.status_code == 200, r.text
+    r = await client.get(f"{base_url}/admin/pos/sessions/{session_id}", headers=admin_headers)
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["report"] is None
+    assert d["status"] == "closed"
+    assert _money(d["total_sales_cash"]) == total
+    assert any(p["order_id"] == order_id for p in d["payments"])
+
+    # Unknown session → 404
+    r = await client.get(f"{base_url}/admin/pos/sessions/999999999", headers=admin_headers)
+    assert r.status_code == 404

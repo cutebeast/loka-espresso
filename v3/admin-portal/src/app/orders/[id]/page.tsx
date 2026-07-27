@@ -176,6 +176,9 @@ export default function OrderDetailPage() {
       {error && <div className="alert alert-error" style={{
       marginBottom: 12
     }}>{error}</div>}
+      {order.cancellation_reason && <div className="alert alert-error" style={{
+      marginBottom: 12
+    }}>{t("orders_[id].cancellation_reason")}: {order.cancellation_reason}</div>}
       {msg && <div className="alert alert-success" style={{
       marginBottom: 12
     }}>{msg}</div>}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
@@ -23,6 +23,32 @@ interface PosSession {
   total_sales_qr: number;
   order_count: number;
 }
+interface SessionPayment {
+  id: number;
+  order_id: number;
+  order_number: string;
+  provider: string;
+  status: string;
+  amount: number;
+  captured_amount: number;
+  refunded_amount: number;
+  created_at: string;
+}
+interface SessionReport {
+  window_start: string;
+  window_end: string;
+  order_count: number;
+  sales_cash: number;
+  sales_card: number;
+  sales_qr: number;
+  cash_refunds: number;
+  opening_cash: number;
+  expected_cash: number;
+}
+interface SessionDetail extends PosSession {
+  report: SessionReport | null;
+  payments: SessionPayment[];
+}
 interface Store { id: number; store_name: string; }
 interface Terminal { id: number; store_id: number; name: string; }
 interface StaffRow { id: number; display_name: string; }
@@ -42,6 +68,9 @@ export default function CashSessionsPage() {
   const [closeCash, setCloseCash] = useState("");
   const [closeNotes, setCloseNotes] = useState("");
   const [closing, setClosing] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [detail, setDetail] = useState<SessionDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -77,6 +106,14 @@ export default function CashSessionsPage() {
       fetch();
     } catch (e: any) { setError(e.message); }
     finally { setClosing(false); }
+  };
+
+  const toggleDetail = async (id: number) => {
+    if (detailId === id) { setDetailId(null); setDetail(null); return; }
+    setDetailId(id); setDetail(null); setDetailLoading(true);
+    try { setDetail(await api.get<SessionDetail>(`/admin/pos/sessions/${id}`)); }
+    catch (e: any) { setError(e.message); setDetailId(null); }
+    finally { setDetailLoading(false); }
   };
 
   const sb = (s: string) => {
@@ -126,7 +163,8 @@ export default function CashSessionsPage() {
       <tbody>
         {loading ? <tr><td colSpan={12} className="data-table-empty">{t("cash_sessions.loading")}</td></tr>
           : items.length === 0 ? <tr><td colSpan={12} className="data-table-empty">{t("admin.common.noResults")}</td></tr>
-          : items.map(s => <tr key={s.id}>
+          : items.map(s => <Fragment key={s.id}>
+            <tr>
               <td style={{ fontWeight: 600 }}>#{s.id}</td>
               <td style={{ fontSize: 12 }}>{storeFor(s.terminal_id)?.store_name || "—"}<br /><span style={{ opacity: 0.5 }}>{terminalFor(s.terminal_id)?.name || `#${s.terminal_id}`}</span></td>
               <td style={{ fontSize: 12 }}>{s.staff_id ? staffMap[s.staff_id] || `#${s.staff_id}` : "—"}</td>
@@ -139,6 +177,7 @@ export default function CashSessionsPage() {
               <td style={{ textAlign: "right" }}>{varianceCell(s)}</td>
               <td style={{ textAlign: "right" }}>{s.order_count}</td>
               <td style={{ textAlign: "right" }}>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggleDetail(s.id)}>{detailId === s.id ? t("cash_sessions.hide") : t("cash_sessions.view")}</button>
                 {s.status === "open" && (closeId === s.id ? (
                   <span style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                     <input type="number" min={0} step="0.01" placeholder="0.00" value={closeCash} onChange={e => setCloseCash(e.target.value)} style={{ width: 80, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
@@ -151,7 +190,44 @@ export default function CashSessionsPage() {
                 ))}
                 {s.discrepancy_notes && <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>{s.discrepancy_notes}</div>}
               </td>
-            </tr>)}
+            </tr>
+            {detailId === s.id && <tr>
+              <td colSpan={12} style={{ background: "var(--color-bg-muted)", padding: 16 }}>
+                {detailLoading ? "…" : detail && <>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12, fontSize: 12 }}>
+                    <span>{t("cash_sessions.float")}: <b>{format(detail.report ? detail.report.opening_cash : detail.opening_cash)}</b></span>
+                    <span>{t("cash_sessions.cash_sales")}: <b>{format(detail.report ? detail.report.sales_cash : detail.total_sales_cash)}</b></span>
+                    <span>{t("cash_sessions.sales_card")}: <b>{format(detail.report ? detail.report.sales_card : detail.total_sales_card)}</b></span>
+                    <span>{t("cash_sessions.sales_qr")}: <b>{format(detail.report ? detail.report.sales_qr : detail.total_sales_qr)}</b></span>
+                    {detail.report && <span>{t("cash_sessions.cash_refunds")}: <b>{format(detail.report.cash_refunds)}</b></span>}
+                    <span>{t("cash_sessions.expected")}: <b>{format(detail.report ? detail.report.expected_cash : (detail.expected_cash ?? 0))}</b></span>
+                    {detail.report && <span className="badge badge-sm badge-yellow">{t("cash_sessions.live_report")}</span>}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{t("cash_sessions.payments_title")} ({detail.payments.length})</div>
+                  {detail.payments.length === 0
+                    ? <div style={{ fontSize: 12, opacity: 0.6 }}>{t("cash_sessions.no_payments")}</div>
+                    : <table className="data-table" style={{ background: "var(--color-bg-surface, #fff)" }}>
+                        <thead><tr>
+                          <th>{t("cash_sessions.col_time")}</th>
+                          <th>{t("cash_sessions.col_order")}</th>
+                          <th>{t("cash_sessions.col_provider")}</th>
+                          <th>{t("cash_sessions.status")}</th>
+                          <th style={{ textAlign: "right" }}>{t("cash_sessions.col_captured")}</th>
+                          <th style={{ textAlign: "right" }}>{t("cash_sessions.col_refunded")}</th>
+                        </tr></thead>
+                        <tbody>{detail.payments.map(p => <tr key={p.id}>
+                          <td style={{ fontSize: 12 }}>{p.created_at?.slice(0, 16).replace("T", " ")}</td>
+                          <td style={{ fontSize: 12 }}>{p.order_number}</td>
+                          <td style={{ fontSize: 12 }}>{p.provider}</td>
+                          <td>{sb(p.status)}</td>
+                          <td style={{ textAlign: "right" }}>{format(p.captured_amount)}</td>
+                          <td style={{ textAlign: "right" }}>{p.refunded_amount > 0 ? format(p.refunded_amount) : "—"}</td>
+                        </tr>)}</tbody>
+                      </table>}
+                </>}
+              </td>
+            </tr>}
+          </Fragment>)}
       </tbody>
     </table></div>
   </div>;
