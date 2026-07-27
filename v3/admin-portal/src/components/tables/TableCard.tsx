@@ -26,10 +26,6 @@ export interface TableItem {
 interface TableCardProps {
   table: TableItem;
   qrImageUrl?: string;
-  expiry: {
-    remaining: number;
-    expired: boolean;
-  };
   onGenerateQr: (table: TableItem) => void;
   onDownloadQr: (table: TableItem) => void;
   onRegenerateQr: (table: TableItem) => void;
@@ -53,7 +49,6 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
 export default function TableCard({
   table,
   qrImageUrl,
-  expiry,
   onGenerateQr,
   onDownloadQr,
   onRegenerateQr,
@@ -70,7 +65,7 @@ export default function TableCard({
   const {
     format
   } = useCurrency();
-  const hasQr = !!(table.qr_code_url || table.qr_code_token) && !expiry.expired;
+  const hasQr = !!(table.qr_code_url || table.qr_code_token);
   const getStatusBadge = () => {
     if (table.is_occupied) return {
       text: t("tables.status_in_use"),
@@ -79,10 +74,6 @@ export default function TableCard({
     if (!table.qr_code_token) return {
       text: t("tables.status_pending"),
       cls: "tp-badge-yellow"
-    };
-    if (expiry.expired) return {
-      text: t("tables.status_expired"),
-      cls: "tp-badge-red"
     };
     if (table.is_active) return {
       text: t("tables.status_active"),
@@ -130,7 +121,7 @@ export default function TableCard({
 
       {/* QR Code */}
       <div className="tp-46">
-        <QRCodeDisplay table={table} tableNumber={table.table_number} qrImageUrl={qrImageUrl} expiry={expiry} />
+        <QRCodeDisplay table={table} tableNumber={table.table_number} qrImageUrl={qrImageUrl} />
       </div>
 
       {/* Actions */}

@@ -47,12 +47,12 @@ export function useQrImages(tables: TableQrInfo[], storeId: number | string) {
   const [qrUrls, setQrUrls] = useState<Record<number, string>>({});
   const prevKey = useRef("");
   const blobUrlsRef = useRef<string[]>([]);
-  const generateAll = useCallback(async (tableList: TableQrInfo[], now: number, signal: AbortSignal | null): Promise<Record<number, string>> => {
+  const generateAll = useCallback(async (tableList: TableQrInfo[], signal: AbortSignal | null): Promise<Record<number, string>> => {
     const newUrls: Record<number, string> = {};
     const valid = tableList.filter(t => {
-      const hasPayload = !!(t.qr_code_url || t.qr_code_token);
-      if (!hasPayload || !t.qr_generated_at) return false;
-      return (now - new Date(t.qr_generated_at).getTime()) / 1000 <= QR_EXPIRY_SECONDS;
+      // QR payloads are permanent until the admin regenerates the token —
+      // the backend validates only the token, no expiry — so always render.
+      return !!(t.qr_code_url || t.qr_code_token);
     });
     await Promise.all(valid.map(async t => {
       if (signal?.aborted) return;
@@ -86,7 +86,7 @@ export function useQrImages(tables: TableQrInfo[], storeId: number | string) {
     blobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
     blobUrlsRef.current = [];
     const abortCtrl = new AbortController();
-    generateAll(tables, Date.now(), abortCtrl.signal).then(urls => {
+    generateAll(tables, abortCtrl.signal).then(urls => {
       blobUrlsRef.current = Object.values(urls).filter(u => u.startsWith("blob:"));
       setQrUrls(urls);
     });
@@ -101,22 +101,17 @@ interface QRCodeDisplayProps {
   table: TableQrInfo;
   tableNumber: string;
   qrImageUrl: string | undefined;
-  expiry: {
-    remaining: number;
-    expired: boolean;
-  } | undefined;
 }
 export function QRCodeDisplay({
   table,
   tableNumber,
-  qrImageUrl,
-  expiry
+  qrImageUrl
 }: QRCodeDisplayProps) {
   const {
     t
   } = useTranslation();
   const hasPayload = !!(table.qr_code_url || table.qr_code_token);
-  if (!hasPayload || expiry?.expired) {
+  if (!hasPayload) {
     return <div className="tp-qr-placeholder">
         <div className="tp-qr-placeholder-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -139,10 +134,5 @@ export function QRCodeDisplay({
   }
   return <div className="tp-44">
       <img src={qrImageUrl} alt={`QR code for table ${tableNumber}`} className="tp-45" />
-      <div className={`tp-timer ${(expiry?.remaining ?? 0) < 300 ? "tp-timer-urgent" : "tp-timer-warn"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-        </svg>{t("common.tables_qrcode_generator.expires_in")}{formatDuration(expiry?.remaining || 0)}
-      </div>
     </div>;
 }

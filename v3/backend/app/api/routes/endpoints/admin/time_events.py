@@ -52,6 +52,7 @@ class TimeEventOut(BaseModel):
     notes: str | None
     approved_by: int | None
     created_at: datetime
+    staff_name: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +105,20 @@ async def list_time_events(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [TimeEventOut.model_validate(r) for r in result.scalars().all()]
+    rows = result.scalars().all()
+    items = [TimeEventOut.model_validate(r) for r in rows]
+
+    # Enrich with staff display names (list view has no join)
+    if rows:
+        from app.models.staff import StaffProfile
+        name_rows = await db.execute(
+            select(StaffProfile.id, StaffProfile.display_name).where(
+                StaffProfile.id.in_({r.staff_id for r in rows})
+            )
+        )
+        name_map = {r[0]: r[1] for r in name_rows.all()}
+        for item, ev in zip(items, rows):
+            item.staff_name = name_map.get(ev.staff_id)
 
     return APIResponse(
         data=PaginatedResponse(
@@ -268,7 +282,20 @@ async def staff_list_my_time_events(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [TimeEventOut.model_validate(r) for r in result.scalars().all()]
+    rows = result.scalars().all()
+    items = [TimeEventOut.model_validate(r) for r in rows]
+
+    # Enrich with staff display names (list view has no join)
+    if rows:
+        from app.models.staff import StaffProfile
+        name_rows = await db.execute(
+            select(StaffProfile.id, StaffProfile.display_name).where(
+                StaffProfile.id.in_({r.staff_id for r in rows})
+            )
+        )
+        name_map = {r[0]: r[1] for r in name_rows.all()}
+        for item, ev in zip(items, rows):
+            item.staff_name = name_map.get(ev.staff_id)
 
     return APIResponse(
         data=PaginatedResponse(

@@ -116,7 +116,7 @@ class SupplierBase(BaseSchema):
     phone_number: str | None = Field(default=None, validation_alias="phone")
     email_address: str | None = Field(default=None, validation_alias="email")
     address: str | None = None
-    lead_time_days: int = 1
+    lead_time_days: int | None = 1
     is_active: bool = True
 
 

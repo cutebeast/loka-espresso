@@ -46,6 +46,7 @@ class MovementLogOut(BaseModel):
     movement_cost: float | None
     performed_by: int | None
     created_at: datetime
+    item_name: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +96,20 @@ async def list_movements(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [MovementLogOut.model_validate(r) for r in result.scalars().all()]
+    rows = result.scalars().all()
+    items = [MovementLogOut.model_validate(r) for r in rows]
+
+    # Enrich with item names (list view has no join)
+    if rows:
+        from app.models.inventory import InventoryItem
+        name_rows = await db.execute(
+            select(InventoryItem.id, InventoryItem.item_name).where(
+                InventoryItem.id.in_({r.inventory_item_id for r in rows})
+            )
+        )
+        name_map = {r[0]: r[1] for r in name_rows.all()}
+        for item, mv in zip(items, rows):
+            item.item_name = name_map.get(mv.inventory_item_id)
 
     return APIResponse(
         data=PaginatedResponse(

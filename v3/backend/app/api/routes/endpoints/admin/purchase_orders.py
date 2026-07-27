@@ -70,6 +70,8 @@ class PurchaseOrderOut(BaseModel):
     created_by: int
     created_at: datetime
     updated_at: datetime
+    supplier_name: str | None = None
+    items_count: int = 0
 
 
 class PurchaseOrderDetailOut(PurchaseOrderOut):
@@ -138,7 +140,26 @@ async def list_purchase_orders(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [PurchaseOrderOut.model_validate(r) for r in result.scalars().all()]
+    rows = result.scalars().all()
+    items = [PurchaseOrderOut.model_validate(r) for r in rows]
+
+    # Enrich with supplier names and line counts (list view has no joins)
+    if rows:
+        sup_rows = await db.execute(
+            select(Supplier.id, Supplier.supplier_name).where(
+                Supplier.id.in_({r.supplier_id for r in rows})
+            )
+        )
+        sup_map = {r[0]: r[1] for r in sup_rows.all()}
+        cnt_rows = await db.execute(
+            select(PurchaseOrderLine.purchase_order_id, func.count())
+            .where(PurchaseOrderLine.purchase_order_id.in_([r.id for r in rows]))
+            .group_by(PurchaseOrderLine.purchase_order_id)
+        )
+        cnt_map = dict(cnt_rows.all())
+        for item, po in zip(items, rows):
+            item.supplier_name = sup_map.get(po.supplier_id)
+            item.items_count = cnt_map.get(po.id, 0)
 
     return APIResponse(
         data=PaginatedResponse(

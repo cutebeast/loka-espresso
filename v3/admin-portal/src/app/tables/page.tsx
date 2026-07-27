@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Info, ChevronDown } from "lucide-react";
 import TableCard, { type TableItem } from "@/components/tables/TableCard";
-import { useQrImages, useQrExpiry, type TableQrInfo } from "@/components/tables/QRCodeGenerator";
+import { useQrImages, type TableQrInfo } from "@/components/tables/QRCodeGenerator";
 interface Store {
   id: number;
   store_name: string;
@@ -41,7 +41,6 @@ export default function TablesPage() {
     qr_generated_at: t.qr_generated_at
   })), [tables]);
   const qrImages = useQrImages(qrInfo, selectedStore);
-  const qrExpiry = useQrExpiry(qrInfo);
   const physicalStores = stores.filter(s => s.id > 0);
   const fetchStores = useCallback(async () => {
     return api.get<{
@@ -327,10 +326,7 @@ export default function TablesPage() {
         gap: 16,
         marginTop: 16
       }}>
-          {tables.map(t => <TableCard key={t.id} table={t} qrImageUrl={qrImages[t.id]} expiry={qrExpiry[t.id] || {
-          remaining: 0,
-          expired: true
-        }} onGenerateQr={handleGenerateQr} onDownloadQr={handleDownloadQr} onRegenerateQr={handleRegenerateQr} onToggle={handleToggle} onEdit={openEdit} onDelete={handleDelete} onViewOrder={(id: number) => router.push(`/orders/${id}`)} confirmDelete={confirmDelete} onConfirmDelete={setConfirmDelete} />)}
+          {tables.map(t => <TableCard key={t.id} table={t} qrImageUrl={qrImages[t.id]} onGenerateQr={handleGenerateQr} onDownloadQr={handleDownloadQr} onRegenerateQr={handleRegenerateQr} onToggle={handleToggle} onEdit={openEdit} onDelete={handleDelete} onViewOrder={(id: number) => router.push(`/orders/${id}`)} confirmDelete={confirmDelete} onConfirmDelete={setConfirmDelete} />)}
         </div>}
       </>}
     </div>;

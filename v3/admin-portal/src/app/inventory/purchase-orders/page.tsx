@@ -327,7 +327,7 @@ export default function PurchaseOrdersPage() {
               <td>{sb(po.status)}</td>
               <td style={{
               fontSize: 12
-            }}>{po.items_count || (po.items || []).length}{t("inventory_purchase-orders.lines")}</td>
+            }}>{po.items_count || (po.items || []).length} {" "}{t("inventory_purchase-orders.lines")}</td>
               <td style={{
               textAlign: "right",
               fontWeight: 600
