@@ -22,6 +22,11 @@ CONFIGS = [
     ("currency.default", '"MYR"', "string", "all", False, True),
     ("app.support_phone", '"+60127889314"', "string", "all", False, True),
     ("app.support_email", '"support@lokaespresso.my"', "string", "all", False, True),
+    # Public portal URLs — used for payment provider redirect/return URLs.
+    # Update for *.lokaespresso.com at domain migration (see AGENTS.md).
+    ("app.public_url", '"https://app.loyaltysystem.uk"', "string", "all", False, True),
+    ("admin.public_url", '"https://admin.loyaltysystem.uk"', "string", "all", False, True),
+    ("staff.public_url", '"https://staff.loyaltysystem.uk"', "string", "all", False, True),
     ("otp.bypass_enabled", "true", "boolean", "all", False, True),
     ("otp.bypass_code", '"000000"', "string", "all", True, True),
     ("otp.expiry_minutes", "5", "integer", "all", False, True),

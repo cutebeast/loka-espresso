@@ -42,7 +42,7 @@ export default function CustomerDisplayPage() {
   const [state, setState] = useState<DisplayState>(DEFAULT_STATE);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [topUpQrUrl, setTopUpQrUrl] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [storeId, setStoreId] = useState<number>(1);
   const [displayKey, setDisplayKey] = useState("");
@@ -210,7 +210,7 @@ export default function CustomerDisplayPage() {
           <div style={styles.logo}>{state.storeName}</div>
           <div style={styles.welcomeText}>{t("pos.display_welcome")}</div>
           <div style={styles.clock}>
-            {new Date(now).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
+            {now != null ? new Date(now).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : ""}
           </div>
 
           {/* Wallet Top-Up QR */}
