@@ -27,6 +27,7 @@ from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.order import Order
 from app.models.payment import Payment, PaymentEvent, Refund
+from app.models.platform import AuditLog
 from app.models.wallet import Wallet, WalletLedgerEntry, WalletTopupSession
 
 logger = logging.getLogger(__name__)
@@ -1228,6 +1229,22 @@ async def refund_payment(
     rounding_mode = await config_service.get_accounting_rounding()
 
     refund_amount = to_decimal(amount)
+
+    # Idempotency: reject an identical refund (same payment, amount, reason)
+    # created within the last 60s — catches admin double-clicks and retries,
+    # which would otherwise create duplicate refunds.
+    dup_cutoff = datetime.now(timezone.utc) - timedelta(seconds=60)
+    dup_result = await db.execute(
+        select(Refund).where(
+            Refund.payment_id == payment_id,
+            Refund.amount == refund_amount,
+            Refund.reason == reason,
+            Refund.created_at >= dup_cutoff,
+        )
+    )
+    if dup_result.scalar_one_or_none() is not None:
+        raise PaymentError("Duplicate refund request — an identical refund was just created", 409)
+
     max_refund = money_round(payment.captured_amount - payment.refunded_amount, precision, rounding_mode)
     if refund_amount > max_refund:
         raise PaymentError(f"Refund amount exceeds available balance ({max_refund})", 400)
@@ -1270,6 +1287,23 @@ async def refund_payment(
     db.add(refund)
     await db.flush()
     await db.refresh(refund)
+
+    # Audit trail — refunds are money movement and must be attributable.
+    db.add(AuditLog(
+        principal_id=approved_by,
+        action="create",
+        resource_type="refund",
+        resource_id=refund.id,
+        changes_summary={
+            "payment_id": payment_id,
+            "order_id": payment.order_id,
+            "amount": str(refund_amount),
+            "reason": reason,
+            "reason_category": reason_category,
+            "provider": payment.provider,
+            "status": refund_status,
+        },
+    ))
 
     payment.refunded_amount = money_round(payment.refunded_amount + refund_amount, precision, rounding_mode)
     payment.refund_count += 1
