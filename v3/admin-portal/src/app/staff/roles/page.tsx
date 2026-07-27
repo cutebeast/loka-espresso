@@ -311,9 +311,13 @@ export default function StaffRolesPage() {
                 }} className="btn btn-ghost btn-sm" style={{
                   fontSize: 11
                 }}>{t("staff_roles.edit")}</button>
-                  <button type="button" onClick={() => loadRolePerms(r.id)} className="btn btn-outline btn-sm" style={{
+                  {/* Perms hidden: staff-portal permissions (kitchen/tables/pos/wallet/time_clock)
+                      were never seeded in iam_permissions, and staff access is enforced by
+                      role KEY (useStaffRole), not role_permission — the modal would be empty.
+                      Re-enable when staff RBAC is built. */}
+                  {false && <button type="button" onClick={() => loadRolePerms(r.id)} className="btn btn-outline btn-sm" style={{
                   fontSize: 11
-                }}>{t("staff_roles.perms")}</button>
+                }}>{t("staff_roles.perms")}</button>}
                   <button type="button" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} className="btn btn-ghost btn-sm" style={{
                   color: deletingId === r.id ? "var(--color-text-muted)" : "var(--color-error)",
                   fontSize: 11

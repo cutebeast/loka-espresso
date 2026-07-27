@@ -161,7 +161,7 @@ export default function NewStaffPage() {
             <div style={{
               fontSize: 11,
               opacity: 0.5
-            }}>{t("staff_new.default_pin")}<strong>{tempPin}</strong>{t("staff_new.staff_can_change_after_login")}</div>
+            }}>{t("staff_new.default_pin")} <strong>{tempPin}</strong> {t("staff_new.staff_can_change_after_login")}</div>
           </div>
         </div><div className="df-actions" style={{
           marginTop: 20

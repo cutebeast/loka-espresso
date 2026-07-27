@@ -32,13 +32,15 @@ class TipAllocationOut(BaseModel):
 
     id: int
     order_id: int
-    staff_id: int
+    staff_id: int | None  # None = pooled tip, not yet distributed
     tip_amount: Money
     tip_percentage: float | None
     allocation_type: str
     created_at: datetime
     store_id: int | None = None
     store_name: str | None = None
+    staff_name: str | None = None
+    payment_method: str | None = None
     total_tip: float = 0
 
 
@@ -58,8 +60,8 @@ async def list_tip_allocations(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List tip allocations with filters."""
-    base_stmt = select(TipAllocation).join(StaffProfile)
-    count_stmt = select(func.count(TipAllocation.id)).join(StaffProfile)
+    base_stmt = select(TipAllocation).outerjoin(StaffProfile)
+    count_stmt = select(func.count(TipAllocation.id)).outerjoin(StaffProfile)
 
     if store_id is not None:
         base_stmt = base_stmt.where(StaffProfile.store_id == store_id)
@@ -90,12 +92,52 @@ async def list_tip_allocations(
     allocations = result.unique().scalars().all()
 
     # Enrich with store info and order payment details
+    staff_ids = {a.staff_id for a in allocations if a.staff_id is not None}
+    name_map: dict = {}
+    if staff_ids:
+        name_rows = await db.execute(
+            select(StaffProfile.id, StaffProfile.display_name).where(StaffProfile.id.in_(staff_ids))
+        )
+        name_map = {r[0]: r[1] for r in name_rows.all()}
+    from app.models.payment import Payment
+    from app.models.order import Order
+    from app.models.store import Store
+    order_ids = {a.order_id for a in allocations}
+    pay_map: dict = {}
+    order_store_map: dict = {}
+    if order_ids:
+        pay_rows = await db.execute(
+            select(Payment.order_id, Payment.payment_method_type)
+            .where(Payment.order_id.in_(order_ids), Payment.status.in_(("captured", "partially_refunded", "refunded")))
+            .order_by(Payment.id.desc())
+        )
+        for oid, pmt in pay_rows.all():
+            pay_map.setdefault(oid, pmt)
+        os_rows = await db.execute(
+            select(Order.id, Order.store_id).where(Order.id.in_(order_ids))
+        )
+        order_store_map = {r[0]: r[1] for r in os_rows.all()}
+    store_ids = {sid for sid in order_store_map.values() if sid}
+    store_name_map: dict = {}
+    if store_ids:
+        sn_rows = await db.execute(
+            select(Store.id, Store.store_name).where(Store.id.in_(store_ids))
+        )
+        store_name_map = {r[0]: r[1] for r in sn_rows.all()}
+
     items_out = []
     for a in allocations:
         out = TipAllocationOut.model_validate(a)
         if a.staff and a.staff.store:
             out.store_id = a.staff.store.id
             out.store_name = a.staff.store.store_name
+        else:
+            # Pooled tips have no staff — derive the store from the order
+            oid_store = order_store_map.get(a.order_id)
+            out.store_id = oid_store
+            out.store_name = store_name_map.get(oid_store)
+        out.staff_name = name_map.get(a.staff_id)
+        out.payment_method = pay_map.get(a.order_id)
         out.total_tip = a.tip_amount
         items_out.append(out)
 

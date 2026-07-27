@@ -712,3 +712,10 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - **Missing staff-ui status keys**: `staff.status.clock_in/clock_out/break_start/break_end/overtime_start` added ×5 locales — the Today list on the staff time-clock page showed raw keys. `staff.status.${event_type}` is a dynamic key family — new event types need matching keys.
 - Shift templates + assignments verified (create/assign; overnight 22:00→06:00 handled correctly). Roles Perms editor uses the admin-auth permission endpoints (22 permissions).
 - Test artifacts cleaned (double clock-in, break/overtime probes); staff1 PIN changed and restored to 123456 during hygiene testing earlier.
+
+### Staff section second pass (2026-07-27)
+- **Staff login UI verified working** (store picker is a CUSTOM button dropdown — native-select automation fails; drive the `.login-select-option` click instead). Dashboard shows live badges (Tables, Bookings, Not Clocked In).
+- **Tips page rebuilt properly**: `TipAllocationOut.staff_id` was `int` — pooled tips (staff_id=NULL from PWA customer tips) would 500 the list; the list also INNER JOINed StaffProfile, silently excluding pooled tips. Now nullable + outer join. Enriched with `staff_name`, `payment_method` (from the order's captured payment), and store derived from the ORDER for pooled tips (was "Store #null"). Page shows Method (Cash) + Distributed By (staff name or "Pooled").
+- **Perms button hidden on Staff Roles**: the modal expects staff-portal permissions (kitchen/tables/pos/wallet/time_clock) that were never seeded in `iam_permissions` — and staff access is enforced by role KEY (`useStaffRole` resolves staff_role), NOT `role_permission`. The modal would be permanently empty → hidden with a code comment until staff RBAC is built. Admin-side RBAC (22 permissions) is separate and works.
+- New Staff form renders (default PIN shown); shift Template form opens; Assign form gates on store selection (by design). "Default PIN:x(staff…" label spacing fixed.
+- Clock-in double-post note: backend accepts duplicate clock-ins (UI prevents them via state machine); overtime_end doesn't exist as an event type.

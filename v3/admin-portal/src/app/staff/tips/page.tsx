@@ -21,6 +21,8 @@ export default function StaffTipsPage() {
   const [error, setError] = useState("");
   const [storeId, setStoreId] = useState("");
   const [stores, setStores] = useState<Store[]>([]);
+  // rows map over the variable `t`, which shadows the translation fn there
+  const pooledLabel = t("staff_tips.pooled");
   useEffect(() => {
     api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
@@ -78,7 +80,7 @@ export default function StaffTipsPage() {
               textTransform: "capitalize",
               fontSize: 12
             }}>{t.payment_method || "—"}</td>
-            <td>{t.distributed_by_name || "—"}</td>
+            <td>{t.staff_name || pooledLabel}</td>
             <td style={{
               fontSize: 12
             }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
