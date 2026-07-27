@@ -112,7 +112,7 @@ export default function StoreHeader() {
         <span className="store-header-name">
           {staffName}
         </span>
-        <LanguageSelector />
+        <LanguageSelector dark />
         <button
           type="button"
           className="store-header-logout"

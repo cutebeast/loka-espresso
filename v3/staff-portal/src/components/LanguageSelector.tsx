@@ -1,6 +1,7 @@
 "use client";
 
 import { Globe } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const LOCALES: Record<string, string> = {
   en: "English",
@@ -23,23 +24,38 @@ export function useLocale() {
   return getStoredLocale();
 }
 
-export default function LanguageSelector() {
-  const locale = getStoredLocale();
+export default function LanguageSelector({ dark = false }: { dark?: boolean }) {
+  // Controlled select synced AFTER mount — an uncontrolled `defaultValue`
+  // select keeps the SSR value (en) after a locale-switch reload, so the
+  // previous locale can't be re-selected (no change event fires).
+  const [locale, setLocale] = useState("en");
+
+  useEffect(() => {
+    setLocale(getStoredLocale());
+  }, []);
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <Globe size={14} style={{ opacity: 0.5 }} />
+      <Globe size={14} style={{ opacity: 0.5, color: dark ? "#fff" : undefined }} />
       <select
         className="form-input"
-        defaultValue={locale}
+        value={locale}
         onChange={(e) => {
           storeLocale(e.target.value);
           window.location.reload();
         }}
-        style={{ padding: "4px 8px", fontSize: 12, width: "auto", background: "transparent", border: "1px solid var(--color-border-light)", borderRadius: 6 }}
+        style={{
+          padding: "4px 8px",
+          fontSize: 12,
+          width: "auto",
+          background: dark ? "rgba(255,255,255,0.12)" : "transparent",
+          color: dark ? "#fff" : undefined,
+          border: dark ? "1px solid rgba(255,255,255,0.35)" : "1px solid var(--color-border-light)",
+          borderRadius: 6,
+        }}
       >
         {Object.entries(LOCALES).map(([code, label]) => (
-          <option key={code} value={code}>{label}</option>
+          <option key={code} value={code} style={{ color: "#1a1a1a" }}>{label}</option>
         ))}
       </select>
     </div>
