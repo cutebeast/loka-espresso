@@ -122,6 +122,7 @@ class StaffTask(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    recur_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_by: Mapped[int | None] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True

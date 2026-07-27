@@ -743,3 +743,11 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - **Wastage endpoint was fully broken** (500 on every call): Decimal+float in both paths — inventory-item path (`stock.current_stock + delta`) and menu-item path. Menu path also lazy-loaded `menu_item.recipes` outside async context (MissingGreenlet) AND treated ORM recipe objects as dicts (`recipe.get`). All fixed: eager `selectinload`, ORM attribute access, Decimal math. Verified: inventory waste deducts stock + logs movement; menu waste works (empty recipes → no deductions, per the recipe-independence design).
 - Equipment daily-check submit works (form fields: status_field + description, optional photos). Customer search (wallet page) works.
 - Backend log: no 5xx except the test-caused ones fixed above. E2E 53 passed (waste/equipment/customer suites).
+
+### Staff Tasks feature + recurring (2026-07-27)
+- **Admin Tasks page** (`/staff/tasks`): create/assign tasks (title, description, staff, priority low/normal/high/urgent, due date), start/complete/delete actions, store+status filters. Sidebar Staff section now has 6 children. 37 translation keys ×5 locales.
+- **Recurring tasks**: new `staff_tasks.recur_interval_days` (alembic `f6a7b8c9d0e1`, NULL=one-off, N=repeat every N days). Completing a recurring task auto-creates the next occurrence (due_date + interval) — verified: daily grease-trap task completed → next day's copy appeared pending. Recurrence shown as "Every day/week" badges.
+- **Route-ordering trap**: `GET /admin/staff/{staff_id}` was registered BEFORE `/admin/staff/tasks` → "tasks" parsed as int staff_id (422). Tasks routes moved above all `/{staff_id}` routes. RULE: literal path segments must be registered before path params in the same router.
+- StaffTaskOut enriched with staff_name/store_name for the page.
+- Help guide (admin/staff.md) documents the Tasks page + recurring behavior; help re-seeded.
+- Seeded: daily "Clean grease trap", weekly "Deep clean espresso machine (weekly)" duty tasks.

@@ -175,6 +175,11 @@ class StaffTaskBase(BaseSchema):
     status: str = "pending"
     priority: str = "normal"
     due_date: date | None = None
+    recur_interval_days: int | None = Field(
+        None,
+        ge=1,
+        description="Repeat every N days (1=daily, 7=weekly). NULL = one-off task",
+    )
 
 
 class StaffTaskCreate(StaffTaskBase):
@@ -187,9 +192,12 @@ class StaffTaskUpdate(BaseSchema):
     status: str | None = None
     priority: str | None = None
     due_date: date | None = None
+    recur_interval_days: int | None = Field(None, ge=1)
 
 
 class StaffTaskOut(StaffTaskBase, TimestampedSchema):
     id: int
     completed_at: datetime | None = None
     completed_by: int | None = None
+    staff_name: str | None = None
+    store_name: str | None = None

@@ -5,10 +5,11 @@
 - `/staff/attendance` — Attendance
 - `/staff/shifts` — Shifts
 - `/staff/tips` — Tips
+- `/staff/tasks` — Tasks
 - `/admins/roles` — Admin Roles
 
 ## Purpose
-Create and manage staff profiles, assign roles, set schedules, track attendance, and allocate tips.
+Create and manage staff profiles, assign roles, set schedules, track attendance, allocate tips, and assign tasks.
 
 ## Staff Profiles (`/staff`)
 
@@ -44,6 +45,26 @@ Create and manage staff profiles, assign roles, set schedules, track attendance,
 2. Click **Reset PIN**.
 3. Enter a new PIN.
 4. Save. The staff member must use the new PIN on next login.
+
+## Tasks (`/staff/tasks`)
+
+Assign work items to any staff member — one-off duties or repeating checklists (daily grease-trap cleaning, weekly machine deep-clean, restock runs).
+
+### Create a task
+1. Click **New Task**.
+2. Choose the staff member, a title, optional description, priority (Low / Normal / High / Urgent), and an optional due date.
+3. Set **Repeat**: One-off, Every day, Every week, or Every 30 days.
+4. Save. The task appears on the staff member's **My Tasks** page in the Staff Portal.
+
+### How repeating tasks work
+- Completing a repeating task **automatically creates the next occurrence** (due date + the repeat interval), so daily/weekly checklists never need re-creating.
+- The repeat interval is shown as a badge (e.g. "Every day") in the list.
+- To stop a repeating series, delete the pending occurrence — no further tasks are created.
+- Staff complete tasks themselves from the Staff Portal; managers can also start or complete tasks from this page.
+
+### Tips
+- Use daily repeats for hygiene duties (grease trap, garbage) and weekly repeats for maintenance (machine deep-clean).
+- The grease-trap and garbage tasks pair with the photo reports staff submit (see Hygiene Reports) — the task is the reminder, the report is the proof.
 
 ## Attendance (`/staff/attendance`)
 

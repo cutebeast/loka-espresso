@@ -436,38 +436,6 @@ async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: Shi
 
 # ── Staff Role Management ── 
 
-@router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
-async def get_staff(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    staff_id: int,
-):
-    """Get a single staff profile with shifts."""
-    result = await db.execute(
-        select(StaffProfile).where(
-            StaffProfile.id == staff_id,
-            StaffProfile.deleted_at.is_(None),
-        )
-    )
-    profile = result.scalar_one_or_none()
-    if profile is None:
-        raise HTTPException(status_code=404, detail="Staff not found")
-
-    shifts_result = await db.execute(
-        select(StaffShift).where(StaffShift.staff_id == staff_id)
-    )
-    shifts = shifts_result.scalars().all()
-
-    profile_dict = {
-        c: getattr(profile, c) for c in profile.__table__.columns.keys()
-    }
-    profile_dict["shifts"] = [StaffShiftOut.model_validate(s) for s in shifts]
-
-    return APIResponse(data=StaffProfileDetailOut.model_validate(profile_dict))
-
-
-# ── Staff Tasks (admin management) ──
-
 @router.get("/tasks", response_model=APIResponse[PaginatedResponse[StaffTaskOut]])
 async def list_staff_tasks(
     db: DBDependency,
@@ -498,7 +466,24 @@ async def list_staff_tasks(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [StaffTaskOut.model_validate(r) for r in result.scalars().all()]
+    rows = result.scalars().all()
+    items = [StaffTaskOut.model_validate(r) for r in rows]
+
+    # Enrich with staff + store names for display
+    if rows:
+        from app.models.staff import StaffProfile as _SP
+        from app.models.store import Store as _Store
+        sp_rows = await db.execute(
+            select(_SP.id, _SP.display_name).where(_SP.id.in_({r.staff_id for r in rows}))
+        )
+        sp_map = {r[0]: r[1] for r in sp_rows.all()}
+        st_rows = await db.execute(
+            select(_Store.id, _Store.store_name).where(_Store.id.in_({r.store_id for r in rows}))
+        )
+        st_map = {r[0]: r[1] for r in st_rows.all()}
+        for item, task in zip(items, rows):
+            item.staff_name = sp_map.get(task.staff_id)
+            item.store_name = st_map.get(task.store_id)
     return APIResponse(
         data=PaginatedResponse(
             items=items,
@@ -569,6 +554,38 @@ async def delete_staff_task(
     await db.commit()
     return APIResponse(data={"id": task_id, "deleted": True})
 
+
+@router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
+async def get_staff(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    staff_id: int,
+):
+    """Get a single staff profile with shifts."""
+    result = await db.execute(
+        select(StaffProfile).where(
+            StaffProfile.id == staff_id,
+            StaffProfile.deleted_at.is_(None),
+        )
+    )
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    shifts_result = await db.execute(
+        select(StaffShift).where(StaffShift.staff_id == staff_id)
+    )
+    shifts = shifts_result.scalars().all()
+
+    profile_dict = {
+        c: getattr(profile, c) for c in profile.__table__.columns.keys()
+    }
+    profile_dict["shifts"] = [StaffShiftOut.model_validate(s) for s in shifts]
+
+    return APIResponse(data=StaffProfileDetailOut.model_validate(profile_dict))
+
+
+# ── Staff Tasks (admin management) ──
 
 @router.patch("/{staff_id}", response_model=APIResponse[StaffProfileOut])
 async def update_staff(

@@ -1891,6 +1891,23 @@ async def complete_my_task(
     task.status = "completed"
     task.completed_at = datetime.now(timezone.utc)
     task.completed_by = staff_id
+
+    # Recurring task → auto-create the next occurrence
+    if task.recur_interval_days:
+        from datetime import timedelta
+        base_due = task.due_date or task.completed_at.date()
+        next_task = StaffTask(
+            store_id=task.store_id,
+            staff_id=task.staff_id,
+            title=task.title,
+            description=task.description,
+            status="pending",
+            priority=task.priority,
+            due_date=base_due + timedelta(days=task.recur_interval_days),
+            recur_interval_days=task.recur_interval_days,
+        )
+        db.add(next_task)
+
     await db.commit()
     await db.refresh(task)
     return APIResponse(data=StaffTaskOut.model_validate(task))

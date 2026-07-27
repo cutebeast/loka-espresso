@@ -168,6 +168,7 @@ const navItems: NavItem[] = [
       { id: "staffShifts", labelKey: "admin.nav.staff.shifts", href: "/staff/shifts" },
       { id: "staffAttendance", labelKey: "admin.nav.staff.attendance", href: "/staff/attendance" },
       { id: "staffTips", labelKey: "admin.nav.staff.tips", href: "/staff/tips" },
+      { id: "staffTasks", labelKey: "admin.nav.staff.tasks", href: "/staff/tasks" },
     ],
   },
 ];
