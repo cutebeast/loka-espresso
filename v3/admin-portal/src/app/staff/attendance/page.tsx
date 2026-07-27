@@ -54,8 +54,8 @@ export default function StaffTimeEventsPage() {
     const m: Record<string, string> = {
       clock_in: "badge-green",
       clock_out: "badge-red",
-      start_break: "badge-yellow",
-      end_break: "badge-blue"
+      break_start: "badge-yellow",
+      break_end: "badge-blue"
     };
     return <span className={`badge badge-sm ${m[t] || "badge-gray"}`}>{t?.replace(/_/g, " ")}</span>;
   };
@@ -119,8 +119,8 @@ export default function StaffTimeEventsPage() {
               <td style={{
                 fontSize: 12
               }}>{e.event_timestamp ? new Date(e.event_timestamp).toLocaleString() : "—"}</td>
-              <td><span className={`badge badge-sm ${e.verified_at ? "badge-green" : "badge-yellow"}`}>{e.verified_at ? "Verified" : "Pending"}</span></td>
-              <td>{!e.verified_at && <button onClick={() => handleVerify(e.id)} className="btn btn-sm btn-primary" style={{
+              <td><span className={`badge badge-sm ${e.approved_by ? "badge-green" : "badge-yellow"}`}>{e.approved_by ? t("staff_attendance.verified") : t("staff_attendance.pending")}</span></td>
+              <td>{!e.approved_by && <button onClick={() => handleVerify(e.id)} className="btn btn-sm btn-primary" style={{
                   fontSize: 11
                 }}>{t("staff_attendance.verify")}</button>}</td>
             </tr>)}
