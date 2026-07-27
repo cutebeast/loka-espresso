@@ -87,6 +87,13 @@ export function canUseOps(role: StaffRole | null, isAdmin: boolean): boolean {
   return isAdmin || (role ? OPS_ROLES.includes(role as StaffRole) : false);
 }
 
+// Hygiene duty reports (garbage disposal / grease-trap cleaning) are an
+// OUTLET-WIDE duty — any staff member who does the task must be able to
+// submit photo proof. The admin verifies submissions on the admin portal.
+export function canReportHygiene(role: StaffRole | null, isAdmin: boolean): boolean {
+  return isAdmin || role !== null;
+}
+
 export function canManageStore(role: StaffRole | null, isAdmin: boolean): boolean {
   return isAdmin || role === "store_manager" || role === "shift_supervisor";
 }

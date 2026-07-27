@@ -736,3 +736,4 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - Kitchen/manager accounts can't log in with untouched default PIN (`_pin_allowed` rejects defaults) — for tests, clone a working pin_hash (staff1's PIN is 123456 after a change-cycle).
 - Tasks feature is a read-only shell: staff can view/complete, but NOTHING creates tasks (no admin UI, no auto-generation). Seeded 2 demo tasks for staff1. Priority enum: low/normal/high/urgent.
 - E2E: 32 passed on staff/kitchen/pos suites after all changes.
+- **Hygiene report gating fixed to match intent**: garbage disposal + grease-trap are OUTLET-WIDE duty reports (any staff who takes out garbage or cleans the trap submits photo proof; admin verifies). Pages were RoleGuard'd to kitchen/manager only while the API accepted everyone — now both pages use `canReportHygiene` (any authenticated staff). Grease-trap form takes BEFORE + AFTER photos (max 5 each); garbage takes up to 8 task photos.

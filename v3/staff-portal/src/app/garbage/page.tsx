@@ -1,5 +1,5 @@
 "use client";
-import { RoleGuard, canUseOps } from "@/hooks/useStaffRole";
+import { RoleGuard, canReportHygiene } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useRef, useState, useCallback } from "react";
@@ -9,7 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import { CheckCircle, Camera, X } from "lucide-react";
 export default function GarbagePage() {
-  return <RoleGuard allowed={canUseOps}>
+  return <RoleGuard allowed={canReportHygiene}>
     <GarbagePageContent />
   </RoleGuard>;
 }
