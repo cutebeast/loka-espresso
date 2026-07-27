@@ -719,3 +719,8 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - **Perms button hidden on Staff Roles**: the modal expects staff-portal permissions (kitchen/tables/pos/wallet/time_clock) that were never seeded in `iam_permissions` — and staff access is enforced by role KEY (`useStaffRole` resolves staff_role), NOT `role_permission`. The modal would be permanently empty → hidden with a code comment until staff RBAC is built. Admin-side RBAC (22 permissions) is separate and works.
 - New Staff form renders (default PIN shown); shift Template form opens; Assign form gates on store selection (by design). "Default PIN:x(staff…" label spacing fixed.
 - Clock-in double-post note: backend accepts duplicate clock-ins (UI prevents them via state machine); overtime_end doesn't exist as an event type.
+
+### Full regression + quick sweep (2026-07-27)
+- **Full e2e: 207 passed, 17 skipped, 0 failed** (~6.5 min) after all of today's fixes — no regressions. (Baseline note for future runs: suite was 199 E2E before the 2026-07 feature round.)
+- Backend log clean (0× 5xx in last 500 requests). All 6 pm2 services online; all 3 sites + API 200; disk 78%.
+- Last adjacency fixes: customer detail lines, bundle form labels, and the `customers_[id].pts_3` junk value ("Pts 3" baked number → "pts" ×5 locales).
