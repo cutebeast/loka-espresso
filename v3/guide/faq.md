@@ -95,6 +95,9 @@ You can browse the menu, promotions, events, and workshops as a guest. Ordering,
 ### What does "ready_for_pickup" mean?
 Your order is prepared and waiting at the counter or designated pickup area.
 
+### How do refunds work? Do I keep my points?
+Refunds are handled by the store manager. Cash refunds are returned immediately at the counter; wallet refunds go straight back to your wallet balance; card/online refunds go back through the payment provider. **Yes — you keep your loyalty points and lucky-draw tickets** from the original order; they are not deducted when an order is refunded.
+
 ### How do I scan a table QR code?
 Open the PWA camera or tap the dine-in option in the cart, then point the camera at the table QR code. This links your order to the table.
 

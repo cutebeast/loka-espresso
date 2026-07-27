@@ -106,7 +106,10 @@ The display reads service charge and tax from the store configuration keys `orde
 
 - Before sending: remove items from the cart or start over.
 - After sending but before payment: a manager can adjust or cancel the order from the orders list.
-- After payment: refunds are handled by a manager in the Admin Portal. See [Admin — Orders & Refunds](../admin/orders-and-refunds.md).
+- After payment: refunds are handled by a manager in the Admin Portal (see [Admin — Orders & Refunds](../admin/orders-and-refunds.md)). What staff should know:
+  - **Cash refunds settle immediately** — the manager hands the cash back and the system marks the refund completed.
+  - **Wallet refunds** return the amount to the customer's wallet balance right away.
+  - **Customers keep their loyalty points and lucky-draw tickets** on refunds — points are not deducted. Do not promise a points deduction; if a customer asks, it is café policy that points and tickets stay.
 
 ## Related
 - [Orders & Tables](orders-and-tables.md)

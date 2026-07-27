@@ -85,25 +85,32 @@ Full order information:
 
 ## Refunds (`/refunds`)
 
-### Process a refund from order detail
-1. Open the order.
-2. Click **Refund**.
-3. Choose full or partial refund.
-4. Enter amount and reason.
-5. Select refund method (original payment method where supported).
-6. Confirm.
+The Refunds page lists every refund with order number, amount, reason, status, and date. New refunds are created from the **order detail** page, not here.
 
-### Refund via Refunds page
-1. Go to **Refunds**.
-2. Click **New Refund**.
-3. Select the original order.
-4. Enter refund details.
-5. Save.
+### Process a refund
+1. Open the order from **Orders**.
+2. In the payments section, enter the refund **amount** and **reason** on the relevant payment, then confirm.
+3. The refund is validated against the remaining refundable balance — over-refunding is rejected with the exact amount left.
+
+### Refund rules
+- Only **captured** payments can be refunded (full or partial). Multiple partial refunds are allowed up to the captured total.
+- **Duplicate protection**: an identical refund (same payment, amount, and reason) within 60 seconds is rejected as a duplicate — it is safe if you click twice by accident.
+- **Every refund is audit-logged** with the approving admin, amount, reason, and payment details.
+- The order shows `partially_refunded` or `refunded` once a refund is recorded.
+
+### When the money settles
+| Payment method | Refund settlement |
+|---|---|
+| Cash / wallet / store credit | **Completed immediately** — cash is handed back at the counter; wallet refunds credit the customer's wallet balance straight away (visible with a ledger entry). |
+| Stripe / HitPay | Sent to the payment provider; the refund completes when the provider confirms it. |
+
+### Policy: loyalty and lucky draw on refunds
+**Points and lucky-draw tickets are NOT clawed back on refunds.** The customer keeps the loyalty points, annual tier spend, and any draw tickets earned from the original order. This is intentional — do not manually deduct points for a refund unless the owner asks for a one-off adjustment (done from the customer's Loyalty account page).
 
 ### Limitations
-- Refunds depend on the original payment gateway's capabilities.
+- Refunds depend on the original payment method — gateway methods refund through the gateway; other methods are handled by the manager directly.
 - Store-scoped admins can only refund orders from assigned stores.
-- Some payment methods may require manual processing outside the system.
+- No customer notification is sent automatically on refund — let the customer know in person or by message if needed.
 
 ## Reservations (`/reservations`)
 
