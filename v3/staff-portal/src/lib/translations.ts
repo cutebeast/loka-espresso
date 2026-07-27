@@ -148,6 +148,8 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "kitchen.refresh": "Refresh",
   "kitchen.search_order_customer_table": "Search order #, customer, table...",
   "kitchen.sort_order": "Sort order",
+  "kitchen.station_bar": "Bar",
+  "kitchen.station_kitchen": "Kitchen",
   "kitchen.status_cancelled_customer": "Cancelled (Customer)",
   "kitchen.status_cancelled_merchant": "Cancelled (Merchant)",
   "kitchen.status_confirmed": "Confirmed",

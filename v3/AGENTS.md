@@ -785,3 +785,18 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - `GET /staff/tables` returns `occupied_since` + `current_order_id` for occupied tables (batched snapshot query). Staff tables page shows a duration badge on occupied tables (outline <60m, amber >60m, red >120m).
 - Staff kitchen order detail: "Merge into…" card (unpaid, non-terminal orders only) lists other unpaid orders as merge targets.
 - e2e: `test_pos_sessions_merge.py::test_merge_orders`, `::test_merge_preserves_workshop_seats`.
+
+## POS KDS Station Routing (Phase 4 — final phase of POS gap-closure plan)
+
+- `platform_config` key `kds.station_map` (value_type `json`, seeded by `seed_platform.py`, `ON CONFLICT DO NOTHING` so admin edits survive reseeds): `{"bar": ["cafe-specialty-coffee","beyond-coffee","frappes","fresh-juices","mixed-juices","beverage","loka-specialty"], "kitchen": ["*"]}`. NOTE: the plan's `beverage-bottled-canned` slug doesn't exist — the real slug is `beverage`; `loka-specialty` (signature drinks) was added to bar beyond the plan. `"*"` = every category NOT explicitly claimed by another station, including uncategorized items (slug NULL matches `*`).
+- `GET /staff/orders?station=<name>` (staff_ops.py `staff_list_orders`): only orders with ≥1 line item routed to that station are returned, each with an `items` array limited to that station's lines (`{menu_item_id, name, quantity, category_slug}` — name from `item_snapshot.item_name`). Without `station` the response keeps its legacy shape (no `items` key — asserted by e2e). Unknown station → 400. Filtering happens within the returned page (latest N orders), which is fine for the KDS window.
+- Routing is resolved in Python, not SQL: batch-fetch line items LEFT JOIN menu_items→menu_categories for the page's orders, then `slug in wanted` (explicit) or `slug not in claimed_elsewhere` (`*`).
+- Staff kitchen page: All / Bar / Kitchen tabs above the status filters; tab switch refetches with the station param (5s polling keeps the active station). Bar/Kitchen cards show the station's items via the existing OrderCard item rendering (All tab unchanged, no items). Mixed orders appear in both tabs with different item subsets — verified live (Espresso+workshop order shows Espresso under Bar, workshop under Kitchen).
+- i18n: `kitchen.station_bar` / `kitchen.station_kitchen` ×5 locales in DB (hand-set, `is_auto_translated=false`) + EN fallback keys in `staff-portal/src/lib/translations.ts` (the local pre-hydration bundle — new staff-ui EN keys must be added there too, same trap as PWA en.json).
+- e2e: `test_kds_station_routing.py` (bar/kitchen split of mixed orders, 400 on unknown station, legacy shape without station).
+- No admin/PWA change (station map editable in Settings if needed).
+- Drive-by fix: `tests/test_payment_service.py::test_refund_payment_credits_wallet_for_internal_wallet` was red since the refund idempotency commit (`85ee706`) — the mocked DB returned the payment for the new dedupe select; now uses `side_effect` with an explicit no-duplicate result.
+
+## POS gap-closure plan — COMPLETE (2026-07-27)
+
+All 4 phases shipped: split bill (`d490dbe`), cash drawer/Z-report (`2595a67`), merge + occupancy timer (`2595a67` + `9b73dc0`), KDS station routing (this section). Recorded non-builds: MY e-invoice (needs accountant turnover-band decision first), offline mode (deferred post-go-live).

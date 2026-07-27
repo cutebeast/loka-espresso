@@ -230,7 +230,10 @@ async def test_refund_payment_credits_wallet_for_internal_wallet(monkeypatch, fa
     )
 
     db = _async_db()
-    db.execute.return_value = _fake_result(payment)
+    db.execute.side_effect = [
+        _fake_result(payment),  # payment fetch
+        _fake_result(None),     # refund idempotency dedupe (no duplicate)
+    ]
     credit_mock = AsyncMock()
     monkeypatch.setattr("app.services.payment._credit_wallet_for_refund", credit_mock)
     monkeypatch.setattr("app.services.payment._sync_order_payment_status", AsyncMock())

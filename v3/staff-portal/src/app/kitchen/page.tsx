@@ -73,6 +73,7 @@ function KitchenPageContent() {
   // hydration and would freeze the raw key into the error string.
   const [storeMissing, setStoreMissing] = useState(false);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
+  const [station, setStation] = useState<"all" | "bar" | "kitchen">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"oldest" | "newest" | "value">("oldest");
@@ -92,7 +93,7 @@ function KitchenPageContent() {
         setStoreMissing(true);
         return;
       }
-      const data = await getOrders(storeId, undefined);
+      const data = await getOrders(storeId, undefined, undefined, station === "all" ? undefined : station);
       list = Array.isArray(data) ? data : [];
       setOrders(list);
       setConnected(true);
@@ -128,8 +129,8 @@ function KitchenPageContent() {
       isFirstFetchRef.current = false;
       setLoading(false);
     }
-  }, [storeId, soundOn, t]);
-  usePolling(fetchOrders, [storeId, soundOn], {
+  }, [storeId, soundOn, station, t]);
+  usePolling(fetchOrders, [storeId, soundOn, station], {
     interval: 5000
   });
   useEffect(() => {
@@ -271,6 +272,29 @@ function KitchenPageContent() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Station Tabs (KDS routing — bar vs kitchen) */}
+      <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 16,
+      overflowX: "auto",
+      paddingBottom: 4
+    }}>
+        {([{
+        value: "all",
+        label: t("kitchen.filter_all")
+      }, {
+        value: "bar",
+        label: t("kitchen.station_bar")
+      }, {
+        value: "kitchen",
+        label: t("kitchen.station_kitchen")
+      }] as const).map(s => <button key={s.value} onClick={() => setStation(s.value)} className={`btn btn-sm ${station === s.value ? "btn-primary" : "btn-ghost"}`}>
+            {s.label}
+          </button>)}
       </div>
 
       {/* Status Filters */}

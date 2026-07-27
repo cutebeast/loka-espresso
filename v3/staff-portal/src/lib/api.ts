@@ -628,10 +628,11 @@ export function getTables(_storeId: number) {
   return api.get<Table[]>(`/staff/tables`);
 }
 
-export function getOrders(_storeId?: number, status?: OrderStatus, paymentStatus?: string) {
+export function getOrders(_storeId?: number, status?: OrderStatus, paymentStatus?: string, station?: string) {
   const params = new URLSearchParams();
   if (status) params.append("status", status);
   if (paymentStatus) params.append("payment_status", paymentStatus);
+  if (station) params.append("station", station);
   params.append("per_page", "100");
   const qs = params.toString();
   return api.get<Order[]>(`/staff/orders?${qs}`);

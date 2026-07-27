@@ -80,6 +80,16 @@ CONFIGS = [
     ("upload.max_size_mb", "10", "integer", "all", False, True),
     ("accounting.decimal_places", "2", "integer", "all", False, True),
     ("accounting.rounding_mode", '"ROUND_HALF_UP"', "string", "all", False, True),
+    # KDS station routing — category slugs per station; "*" = every category
+    # not explicitly claimed by another station (catches uncategorized items).
+    (
+        "kds.station_map",
+        '{"bar": ["cafe-specialty-coffee", "beyond-coffee", "frappes", "fresh-juices", "mixed-juices", "beverage", "loka-specialty"], "kitchen": ["*"]}',
+        "json",
+        "all",
+        False,
+        True,
+    ),
 ]
 
 RETENTION_POLICIES = [

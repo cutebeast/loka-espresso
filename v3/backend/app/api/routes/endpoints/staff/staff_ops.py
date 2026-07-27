@@ -2081,10 +2081,19 @@ async def staff_list_orders(
     status_filter: str | None = Query(None, alias="status"),
     order_type: str | None = Query(None),
     payment_status: str | None = Query(None),
+    station: str | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(100, ge=1, le=500),
 ):
-    """List orders for the staff member's store."""
+    """List orders for the staff member's store.
+
+    `station` enables KDS station routing (bar vs kitchen tabs): only orders
+    containing at least one line item routed to that station are returned, and
+    each order carries an `items` list limited to that station's items. Routing
+    comes from the `kds.station_map` platform config (category slugs per
+    station; "*" matches any category not explicitly claimed by another
+    station, including uncategorized items).
+    """
     stmt = (
         select(Order, Customer, DiningTable)
         .outerjoin(Customer, Customer.id == Order.customer_id)
@@ -2100,6 +2109,46 @@ async def staff_list_orders(
     stmt = stmt.order_by(Order.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
     rows = result.all()
+
+    station_items: dict[int, list[dict]] = {}
+    if station:
+        station_map = await PlatformConfigService(db).get("kds.station_map", default={})
+        if not isinstance(station_map, dict) or station not in station_map:
+            raise HTTPException(status_code=400, detail=f"Unknown KDS station: {station}")
+        wanted = set(station_map.get(station) or [])
+        star = "*" in wanted
+        claimed_elsewhere = {
+            slug
+            for other, slugs in station_map.items()
+            if other != station
+            for slug in (slugs or [])
+            if slug != "*"
+        }
+        order_ids = [o.id for o, _, _ in rows]
+        if order_ids:
+            li_result = await db.execute(
+                select(
+                    OrderLineItem.order_id,
+                    OrderLineItem.menu_item_id,
+                    OrderLineItem.item_snapshot,
+                    OrderLineItem.quantity,
+                    MenuCategory.slug,
+                )
+                .outerjoin(MenuItem, MenuItem.id == OrderLineItem.menu_item_id)
+                .outerjoin(MenuCategory, MenuCategory.id == MenuItem.category_id)
+                .where(OrderLineItem.order_id.in_(order_ids))
+            )
+            for line_order_id, menu_item_id, snapshot, qty, slug in li_result.all():
+                matched = (slug not in claimed_elsewhere) if star else (slug in wanted)
+                if matched:
+                    station_items.setdefault(line_order_id, []).append({
+                        "menu_item_id": menu_item_id,
+                        "name": (snapshot or {}).get("item_name") or "Item",
+                        "quantity": float(qty or 0),
+                        "category_slug": slug,
+                    })
+        rows = [row for row in rows if row[0].id in station_items]
+
     return APIResponse(data=[
         {
             "id": o.id,
@@ -2120,6 +2169,7 @@ async def staff_list_orders(
             "total_amount": float(o.total_amount) if o.total_amount else 0,
             "created_at": o.created_at.isoformat() if o.created_at else None,
             "updated_at": o.updated_at.isoformat() if o.updated_at else None,
+            **({"items": station_items.get(o.id, [])} if station else {}),
         }
         for o, c, t in rows
     ])
