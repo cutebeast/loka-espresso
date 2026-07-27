@@ -340,7 +340,7 @@ export default function CustomerDetailPage() {
         }}>{c.display_name || "Unknown"}</h1>
           <p className="page-subtitle" style={{
           marginTop: 2
-        }}>{c.phone_number || "—"}{t("customers_[id].joined")}{dt(c.created_at)} · {c.loyalty?.points_balance || 0}{t("customers_[id].pts")}{format(c.lifetime_value)}{t("customers_[id].ltv")}</p>
+        }}>{c.phone_number || "—"} {t("customers_[id].joined")} {dt(c.created_at)} · {c.loyalty?.points_balance || 0} {t("customers_[id].pts")} · {format(c.lifetime_value)} {t("customers_[id].ltv")}</p>
         </div>
         <span className={`badge badge-sm ${c.is_active ? "badge-green" : "badge-gray"}`}>{c.is_active ? t("customers.status_active") : t("customers.status_inactive")}</span>
       </div>
@@ -489,7 +489,7 @@ export default function CustomerDetailPage() {
             fontSize: 22,
             fontWeight: 700,
             color: "var(--color-primary)"
-          }}>{(c.loyalty?.points_balance || 0).toLocaleString(locale)}{t("customers_[id].pts_2")}</span></div>
+          }}>{(c.loyalty?.points_balance || 0).toLocaleString(locale)} {t("customers_[id].pts_2")}</span></div>
             <div style={{
           display: "flex",
           gap: 8,
@@ -636,7 +636,7 @@ export default function CustomerDetailPage() {
           }}>{t("customers_[id].set_tier_override")}</h4><span style={{
             fontSize: 15,
             color: "var(--color-text-muted)"
-          }}>{t("customers_[id].current")}{c.loyalty?.current_tier_id || "None"}</span></div>
+          }}>{t("customers_[id].current")} {c.loyalty?.current_tier_id || "None"}</span></div>
             <div style={{
           display: "flex",
           gap: 8,
@@ -713,7 +713,7 @@ export default function CustomerDetailPage() {
       {tab === "vouchers" && <>
         <h4 style={{
         marginTop: 0
-      }}>{t("customers_[id].active_rewards")}{rewardsVouchers.rewards?.length || 0})</h4>
+      }}>{t("customers_[id].active_rewards")} ({rewardsVouchers.rewards?.length || 0})</h4>
         <div className="table-container" style={{
         marginBottom: 20
       }}><table className="data-table"><thead><tr><th>{t("customers_[id].code")}</th><th>{t("customers_[id].status")}</th><th>{t("customers_[id].points")}</th><th>{t("customers_[id].expires")}</th></tr></thead><tbody>
@@ -723,7 +723,7 @@ export default function CustomerDetailPage() {
                 fontSize: 12
               }}>{dt(r.expires_at)}</td></tr>)}
         </tbody></table></div>
-        <h4>{t("customers_[id].active_vouchers")}{rewardsVouchers.vouchers?.length || 0})</h4>
+        <h4>{t("customers_[id].active_vouchers")} ({rewardsVouchers.vouchers?.length || 0})</h4>
         <div className="table-container"><table className="data-table"><thead><tr><th>{t("customers_[id].code_2")}</th><th>{t("customers_[id].title")}</th><th>{t("customers_[id].status_2")}</th><th>{t("customers_[id].expires_2")}</th></tr></thead><tbody>
           {(rewardsVouchers.vouchers || []).length === 0 ? <tr><td colSpan={4} className="data-table-empty">{t("customers_[id].none_2")}</td></tr> : rewardsVouchers.vouchers.map((v: VoucherItem) => <tr key={v.id}><td style={{
                 fontSize: 11

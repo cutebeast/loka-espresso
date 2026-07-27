@@ -591,7 +591,7 @@ export default function BundleProductEditPage() {
               color: "var(--color-text-muted)",
               display: "block",
               marginTop: 2
-            }}>{t("menu_bundle-products_[id].max_quantity_per_item_pick_count")}{form.pick_count || "?"})
+            }}>{t("menu_bundle-products_[id].max_quantity_per_item_pick_count")} ({form.pick_count || "?"})
                   </span>}
               </div>
             </>}
@@ -748,7 +748,7 @@ export default function BundleProductEditPage() {
             fontSize: 11,
             color: "var(--color-info)",
             margin: "0 0 8px"
-          }}>{t("menu_bundle-products_[id].extras_allowed_up_to")}{g.max_pick}{t("menu_bundle-products_[id].items_extra_items_are_charged_at")}</p>}
+          }}>{t("menu_bundle-products_[id].extras_allowed_up_to")} {g.max_pick} {t("menu_bundle-products_[id].items_extra_items_are_charged_at")}</p>}
                 <div style={{
             borderTop: "1px solid var(--color-border-light)",
             paddingTop: 8
@@ -807,7 +807,7 @@ export default function BundleProductEditPage() {
                   <button type="button" onClick={() => addComponent(gi)} className="btn btn-ghost btn-sm" style={{
               fontSize: 12,
               paddingLeft: 0
-            }}><Plus size={12} />{t("menu_bundle-products_[id].add_item_to")}{g.group_label || "this group"}</button>
+            }}><Plus size={12} />{t("menu_bundle-products_[id].add_item_to")} {g.group_label || "this group"}</button>
                 </div>
               </div>)}
           </div> : <>

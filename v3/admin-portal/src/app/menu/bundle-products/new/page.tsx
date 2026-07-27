@@ -361,7 +361,7 @@ export default function BundleProductNewPage() {
             color: "var(--color-text-secondary)",
             fontStyle: "italic",
             margin: 0
-          }}>{t("menu_bundle-products_new.e_g")}{opt.example}</p>
+          }}>{t("menu_bundle-products_new.e_g")} {opt.example}</p>
             </div>)}
         </div>
       </div>;
@@ -381,7 +381,7 @@ export default function BundleProductNewPage() {
         <button onClick={() => setMode(null)} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div><h1 className="page-title" style={{
           margin: 0
-        }}>{t("menu_bundle-products_new.new")}{modeLabel}{t("menu_bundle-products_new.bundle")}</h1><p className="page-subtitle" style={{
+        }}>{t("menu_bundle-products_new.new")} {modeLabel} {t("menu_bundle-products_new.bundle")}</h1><p className="page-subtitle" style={{
           marginTop: 2
         }}>{mode === "fixed" ? "All items included at a set price" : mode === "pick_n" ? "Customer picks N items from the pool" : "Multiple groups, each with its own pick count"}</p></div>
       </div>
@@ -565,7 +565,7 @@ export default function BundleProductNewPage() {
               fontSize: 11,
               color: "var(--color-info)",
               margin: "0 0 8px"
-            }}>{t("menu_bundle-products_new.extras_allowed_up_to")}{g.max_pick}{t("menu_bundle-products_new.items_extra_items_are_charged_at")}</p>}
+            }}>{t("menu_bundle-products_new.extras_allowed_up_to")} {g.max_pick} {t("menu_bundle-products_new.items_extra_items_are_charged_at")}</p>}
 
                   <div style={{
               borderTop: "1px solid var(--color-border-light)",
@@ -622,7 +622,7 @@ export default function BundleProductNewPage() {
                     <button type="button" onClick={() => addComponent(gi)} className="btn btn-ghost btn-sm" style={{
                 fontSize: 12,
                 paddingLeft: 0
-              }}><Plus size={12} />{t("menu_bundle-products_new.add_item_to")}{g.group_label || "this group"}</button>
+              }}><Plus size={12} />{t("menu_bundle-products_new.add_item_to")} {g.group_label || "this group"}</button>
                   </div>
                 </div>)}
             </div> : <div style={{
