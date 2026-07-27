@@ -4,7 +4,7 @@ import { RoleGuard, canUseKitchen } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getOrderById, getTables, updateOrderStatus, transferTable, OrderDetail, OrderStatus, type Table } from "@/lib/api";
+import { getOrderById, getOrders, getTables, updateOrderStatus, transferTable, mergeOrder, OrderDetail, OrderStatus, type Order, type Table } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
@@ -94,6 +94,9 @@ function KitchenDetailPageContent() {
   const [showTableTransfer, setShowTableTransfer] = useState(false);
   const [availableTables, setAvailableTables] = useState<Pick<Table, 'id' | 'table_number' | 'current_status'>[]>([]);
   const [transferring, setTransferring] = useState(false);
+  const [showMerge, setShowMerge] = useState(false);
+  const [mergeCandidates, setMergeCandidates] = useState<Order[]>([]);
+  const [merging, setMerging] = useState(false);
   const load = useCallback(async () => {
     try {
       const data = await getOrderById(id);
@@ -149,6 +152,30 @@ function KitchenDetailPageContent() {
       setShowTableTransfer(true);
     } catch {
       setError(t("kitchen.err_load_tables"));
+    }
+  };
+  const loadMergeCandidates = async () => {
+    try {
+      const items = await getOrders();
+      const paid = (ps?: string) => ps === "paid" || ps === "captured" || ps === "settled" || ps === "authorized";
+      const terminal = ["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed"];
+      setMergeCandidates((Array.isArray(items) ? items : []).filter(o => String(o.id) !== String(id) && !paid(o.payment_status) && !terminal.includes(o.status)));
+      setShowMerge(true);
+    } catch {
+      setError(t("kitchen.err_load_merge"));
+    }
+  };
+  const handleMerge = async (targetId: number) => {
+    setMerging(true);
+    try {
+      const res = await mergeOrder(id, targetId);
+      setMsg(t("kitchen.merged_into", { order: res.order_number }));
+      setShowMerge(false);
+      router.push(`/kitchen/${targetId}`);
+    } catch (e: unknown) {
+      setError(parseApiError(e, "Failed to merge order"));
+    } finally {
+      setMerging(false);
     }
   };
   const fmt = (v: number) => `${Number(v || 0).toFixed(2)}`;
@@ -263,6 +290,46 @@ function KitchenDetailPageContent() {
                       {t.table_number}
                     </button>)}
                 </div>}
+            </div>}
+        </div>}
+
+      {/* Merge into another unpaid order */}
+      {!["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed"].includes(order.status) && !["paid", "captured", "settled", "authorized"].includes(order.payment_status || "") && <div className="card" style={{
+      marginBottom: 20
+    }}>
+          <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between"
+      }}>
+            <h4 style={{
+          fontSize: 14,
+          fontWeight: 700,
+          margin: 0
+        }}>{t("kitchen.merge_order")}</h4>
+            {!showMerge ? <button className="btn btn-sm btn-ghost" onClick={loadMergeCandidates} disabled={merging}>
+                <MoveRight size={14} />{t("kitchen.merge_into")}</button> : <button className="btn btn-sm btn-ghost" onClick={() => setShowMerge(false)}>{t("kitchen.cancel")}</button>}
+          </div>
+          {showMerge && <div style={{
+        marginTop: 12
+      }}>
+              {mergeCandidates.length === 0 ? <p style={{
+          fontSize: 13,
+          color: "var(--color-text-muted)"
+        }}>{t("kitchen.no_merge_candidates")}</p> : <div style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap"
+        }}>
+                  {mergeCandidates.map(o => <button key={o.id} className="btn btn-sm btn-outline" onClick={() => handleMerge(o.id)} disabled={merging}>
+                      {o.order_number}{o.table_number ? ` · ${o.table_number}` : ""} · {fmt(o.total_amount)}
+                    </button>)}
+                </div>}
+              <p style={{
+          fontSize: 12,
+          color: "var(--color-text-muted)",
+          marginTop: 8
+        }}>{t("kitchen.merge_hint")}</p>
             </div>}
         </div>}
 

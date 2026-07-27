@@ -486,6 +486,8 @@ export interface Table {
   capacity: number;
   section?: string | null;
   current_status: "available" | "occupied" | "reserved" | "cleaning" | "maintenance";
+  occupied_since?: string | null;
+  current_order_id?: number | null;
   is_active?: boolean;
   qr_code_image_url?: string | null;
   qr_code_token?: string | null;
@@ -668,6 +670,46 @@ export function payWithWallet(orderId: string | number, amount: number) {
   return api.post<{ order_id: number; amount_paid: number; wallet_balance_remaining: number; payment_status: string; message: string }>(`/staff/orders/${orderId}/wallet-payment`, { amount });
 }
 
+// ── POS cash drawer session ──
+export interface PosSessionLive {
+  window_start: string;
+  window_end: string;
+  order_count: number;
+  sales_cash: string;
+  sales_card: string;
+  sales_qr: string;
+  cash_refunds: string;
+  opening_cash: string;
+  expected_cash: string;
+}
+export interface PosSession {
+  id: number;
+  terminal_id: number;
+  staff_id: number | null;
+  status: string;
+  opened_at: string;
+  closed_at: string | null;
+  opening_cash: number;
+  closing_cash: number | null;
+  expected_cash: number | null;
+  discrepancy: number | null;
+  discrepancy_notes: string | null;
+  total_sales_cash: number;
+  total_sales_card: number;
+  total_sales_qr: number;
+  order_count: number;
+  live?: PosSessionLive | null;
+}
+export function getPosSessionCurrent() {
+  return api.get<{ session: PosSession | null }>("/staff/pos/session/current");
+}
+export function openPosSession(openingCash: number) {
+  return api.post<{ session: PosSession }>("/staff/pos/session/open", { opening_cash: openingCash });
+}
+export function closePosSession(closingCash: number, notes?: string) {
+  return api.post<{ session: PosSession }>("/staff/pos/session/close", { closing_cash: closingCash, ...(notes ? { discrepancy_notes: notes } : {}) });
+}
+
 export function addOrderItem(orderId: string | number, payload: { menu_item_id: number; quantity?: number; modifier_ids?: number[]; special_instructions?: string; unit_price?: number }) {
   return api.post(`/staff/orders/${orderId}/items`, payload);
 }
@@ -682,6 +724,10 @@ export function cancelOrder(orderId: string | number, reason?: string) {
 
 export function transferTable(orderId: string | number, newTableId: number) {
   return api.patch(`/staff/orders/${orderId}/transfer-table?new_table_id=${newTableId}`);
+}
+
+export function mergeOrder(orderId: string | number, targetOrderId: number) {
+  return api.post<{ id: number; order_number: string; merged_from_order_number: string; moved_items: number; total_amount: string }>(`/staff/orders/${orderId}/merge`, { target_order_id: targetOrderId });
 }
 
 export function getReservations(_storeId: number, date?: string, status?: ReservationStatus) {

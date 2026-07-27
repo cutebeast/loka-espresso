@@ -64,6 +64,7 @@ from app.api.routes.endpoints.staff import staff_ops as staff_operations
 from app.api.routes.endpoints.staff import orders as staff_orders
 from app.api.routes.endpoints.staff import customer_ops as staff_customer_ops
 from app.api.routes.endpoints.staff import tables as staff_tables
+from app.api.routes.endpoints.staff import pos_sessions as staff_pos_sessions
 from app.api.routes.endpoints.admin import scan as admin_scan
 from app.api.routes.endpoints.admin import pos as admin_pos
 from app.api.routes.endpoints.admin import equipment as admin_equipment
@@ -132,6 +133,7 @@ api_router.include_router(staff_operations.router, tags=["staff — operations"]
 api_router.include_router(staff_orders.router, tags=["staff — orders"])
 api_router.include_router(staff_customer_ops.router, tags=["staff — customers"])
 api_router.include_router(staff_tables.router, tags=["staff — tables"])
+api_router.include_router(staff_pos_sessions.router, tags=["staff — pos session"])
 
 api_router.include_router(public_rsvp.router, tags=["public — events"])
 

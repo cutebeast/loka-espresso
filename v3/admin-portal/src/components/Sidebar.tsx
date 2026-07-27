@@ -9,7 +9,7 @@ import {
   FileText, Bell, UserCircle, BarChart3,
   LayoutTemplate, ShoppingBag, Grid3X3,
   Star, Settings, Languages, TrendingUp, Wrench,
-  Shield, ClipboardCheck, HelpCircle, GraduationCap,
+  Shield, ClipboardCheck, HelpCircle, GraduationCap, Vault,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
@@ -144,6 +144,7 @@ const navItems: NavItem[] = [
     ],
   },
   { id: "tables", labelKey: "admin.nav.tables", href: "/tables", icon: Grid3X3 },
+  { id: "cashSessions", labelKey: "admin.nav.cashSessions", href: "/cash-sessions", icon: Vault },
   {
     id: "inventory", labelKey: "admin.nav.inventory", href: "/inventory", icon: Package,
     children: [

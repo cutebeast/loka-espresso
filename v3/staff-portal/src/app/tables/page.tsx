@@ -322,8 +322,17 @@ export default function TablesPage() {
                   {hasQr ? <span className="badge badge-sm badge-green flex items-center gap-1">
                       <QrCode size={10} />{t("tables.qr_active")}</span> : <span className="badge badge-sm badge-outline flex items-center gap-1">
                       <AlertTriangle size={10} />{t("tables.no_qr")}</span>}
-                  {table.current_status === "occupied" && <span className="badge badge-sm badge-red flex items-center gap-1">
-                      <Circle size={6} fill="currentColor" />{t("tables.in_use")}</span>}
+                  {table.current_status === "occupied" && (() => {
+                    const since = table.occupied_since ? new Date(table.occupied_since).getTime() : null;
+                    const mins = since ? Math.max(0, Math.floor((Date.now() - since) / 60000)) : null;
+                    const dur = mins == null ? "" : mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+                    const durCls = mins == null ? "" : mins > 120 ? "badge-red" : mins > 60 ? "badge-yellow" : "badge-outline";
+                    return <>
+                      <span className="badge badge-sm badge-red flex items-center gap-1">
+                        <Circle size={6} fill="currentColor" />{t("tables.in_use")}</span>
+                      {mins != null && <span className={`badge badge-sm ${durCls}`}>{dur}</span>}
+                    </>;
+                  })()}
                 </div>
               </div>;
       })}

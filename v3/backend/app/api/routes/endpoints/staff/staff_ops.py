@@ -1265,6 +1265,7 @@ async def staff_pos_create_order(
             if snap:
                 snap.status = "occupied"
                 snap.current_order_id = order.id
+                snap.updated_at = datetime.now(timezone.utc)
 
         await db.commit()
     except IntegrityError as exc:
@@ -2050,13 +2051,14 @@ async def staff_list_tables(staff: CurrentStaff, db: DBDependency):
         .order_by(DiningTable.section, DiningTable.table_number)
     )
     tables = result.scalars().all()
-    # Enrich with current status from TableStatusSnapshot
+    # Enrich with current status from TableStatusSnapshot (one batched query)
+    snap_result = await db.execute(
+        select(TableStatusSnapshot).where(TableStatusSnapshot.table_id.in_([t.id for t in tables] or [0]))
+    )
+    snap_map = {s.table_id: s for s in snap_result.scalars().all()}
     out = []
     for t in tables:
-        status_result = await db.execute(
-            select(TableStatusSnapshot.status).where(TableStatusSnapshot.table_id == t.id)
-        )
-        status = status_result.scalar_one_or_none() or "available"
+        snap = snap_map.get(t.id)
         out.append({
             "id": t.id,
             "store_id": t.store_id,
@@ -2064,7 +2066,9 @@ async def staff_list_tables(staff: CurrentStaff, db: DBDependency):
             "table_number": t.table_number,
             "display_name": t.display_name,
             "capacity": t.capacity,
-            "current_status": status,
+            "current_status": (snap.status if snap else "available"),
+            "occupied_since": (snap.updated_at.isoformat() if snap and snap.status == "occupied" else None),
+            "current_order_id": (snap.current_order_id if snap and snap.status == "occupied" else None),
             "is_active": t.is_active,
         })
     return APIResponse(data=out)
@@ -2195,6 +2199,7 @@ async def staff_update_table_status(
     snap = snap_result.scalar_one_or_none()
     if snap:
         snap.status = current_status
+        snap.updated_at = datetime.now(timezone.utc)
     else:
         snap = TableStatusSnapshot(table_id=table_id, status=current_status)
         db.add(snap)

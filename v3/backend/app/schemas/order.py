@@ -190,9 +190,14 @@ class ProcessOrderPaymentRequest(BaseSchema):
     charge_amount: Money | None = Field(None, gt=0)
 
 
+class MergeOrderRequest(BaseSchema):
+    """Merge this order into another unpaid order at the same store."""
+
+    target_order_id: int = Field(..., gt=0)
+
+
 class ApplyOrderVoucherRequest(BaseSchema):
     voucher_code: str
-
 
 class ApplyOrderRewardRequest(BaseSchema):
     reward_id: int = Field(..., gt=0)

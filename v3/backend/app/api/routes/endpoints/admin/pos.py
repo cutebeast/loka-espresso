@@ -100,8 +100,11 @@ async def list_sessions(
     terminal_id: int | None = Query(None),
     staff_id: int | None = Query(None),
     status: str | None = Query(None),
+    store_id: int | None = Query(None),
 ):
     q = select(PosSession)
+    if store_id:
+        q = q.join(PosTerminal, PosTerminal.id == PosSession.terminal_id).where(PosTerminal.store_id == store_id)
     if terminal_id:
         q = q.where(PosSession.terminal_id == terminal_id)
     if staff_id:
@@ -150,12 +153,11 @@ async def close_session(
     if session.status != "open":
         raise HTTPException(status_code=400, detail="Session is not open")
 
-    session.status = "closed"
-    session.closed_at = datetime.now(timezone.utc)
-    session.closing_cash = payload.closing_cash
-    session.expected_cash = session.opening_cash + session.total_sales_cash
-    session.discrepancy = (payload.closing_cash or 0) - (session.expected_cash or 0)
-    session.discrepancy_notes = payload.discrepancy_notes
+    terminal = await db.get(PosTerminal, session.terminal_id)
+    from app.services.pos_session import close_session_with_report
+    await close_session_with_report(
+        db, session, terminal.store_id, payload.closing_cash, payload.discrepancy_notes
+    )
 
     await db.commit()
     await db.refresh(session)

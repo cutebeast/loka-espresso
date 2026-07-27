@@ -767,3 +767,21 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - Staff POS: `PosSplitBillSection.tsx` (Full Bill / By Item / Evenly), checkout stays open after a partial share with "X of Y paid" header.
 - e2e: `e2e-tests/test_pos_split_bill.py` (3 tests: by-item, even shares, refund re-opens share).
 - FIXED pre-existing bug: staff-portal `request`/`requestRaw` in `src/lib/api.ts` unwrapped any `data` containing an `items` array into a bare array — `getOrderById` returned line items instead of the order (checkout always RM 0). Now only unwraps when `!("id" in data)`. The admin-portal wrapper has the same unwrap but was left as-is (its list callers rely on it).
+
+## POS Cash Drawer Sessions (Phase 2)
+
+- Reuses the existing `pos_sessions`/`pos_terminals` tables (terminals are seeded per store; sessions were never used before this).
+- `app/services/pos_session.py` computes the Z-report LIVE from payments on the store's orders in [opened_at, now]: expected = opening_float + cash captured − cash refunds; buckets providers cash/stripe→card/grabpay→qr. `close_session_with_report` snapshots totals + variance into the session row.
+- Staff endpoints (`staff/pos_sessions.py`, prefix `/staff/pos/session`): GET `/current` (open session + live figures), POST `/open` (409 if a session is already open for the store — one drawer per store, uses the store's first active terminal), POST `/close`. Roles: cashier/shift_supervisor/store_manager (server is read-only on `/current`).
+- Admin `POST /admin/pos/sessions/{id}/close` now uses the same live computation (previously expected = float + a `total_sales_cash` column that was never updated). `GET /admin/pos/sessions` gained a `store_id` filter.
+- Staff POS header: `PosDrawerChip.tsx` — chip shows expected cash (or "Drawer closed"), tap for the Z-report dialog with counted-cash input and live variance.
+- Admin page `/cash-sessions` (sidebar: Store Ops → Cash Sessions) lists sessions with store/status filters and an inline close action.
+- e2e: `test_pos_sessions_merge.py::test_cash_drawer_session_lifecycle`.
+
+## POS Order Merge + Table Occupancy Timer (Phase 3)
+
+- `POST /staff/orders/{id}/merge {target_order_id}`: moves all line items to the target, ADDs totals (same store ⇒ same tax/service config), cancels the source ("Merged into order X"). Guards: not self, neither completed/cancelled, NEITHER may have captured/partially_refunded payments (split-bill allocations would orphan). Does NOT call `reverse_order_effects` — moved workshop lines keep their booked seats (covered by e2e). Frees the source table snapshot if it pointed at the source order.
+- `table_status_snapshot.updated_at` is now stamped on every status change (POS dine-in order creation + manual status update) — it drives the occupancy timer.
+- `GET /staff/tables` returns `occupied_since` + `current_order_id` for occupied tables (batched snapshot query). Staff tables page shows a duration badge on occupied tables (outline <60m, amber >60m, red >120m).
+- Staff kitchen order detail: "Merge into…" card (unpaid, non-terminal orders only) lists other unpaid orders as merge targets.
+- e2e: `test_pos_sessions_merge.py::test_merge_orders`, `::test_merge_preserves_workshop_seats`.

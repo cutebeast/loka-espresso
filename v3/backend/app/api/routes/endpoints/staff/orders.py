@@ -23,6 +23,7 @@ from app.schemas.base import APIResponse, BaseSchema
 from app.schemas.order import (
     ApplyOrderRewardRequest,
     ApplyOrderVoucherRequest,
+    MergeOrderRequest,
     PayWithWalletRequest,
     ProcessOrderPaymentRequest,
 )
@@ -997,5 +998,125 @@ async def cancel_staff_order(
         "id": order.id,
         "order_number": order.order_number,
         "status": "cancelled_by_merchant",
+        "cancelled_payment_ids": cancelled_payment_ids,
+    })
+
+
+@router.post("/{order_id}/merge", response_model=APIResponse[dict])
+async def merge_staff_order(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+    data: MergeOrderRequest,
+):
+    """Merge this (source) order into the target order — move all line items,
+    add totals, cancel the source. Both orders must be unpaid (no captured
+    payments) so split-bill allocations are never orphaned. Source side
+    effects (workshop seats, loyalty) are intentionally NOT reversed: the
+    line items live on under the target order."""
+    if data.target_order_id == order_id:
+        raise HTTPException(status_code=400, detail="Cannot merge an order into itself")
+
+    lock_ids = sorted([order_id, data.target_order_id])
+    locked: dict[int, Order] = {}
+    for lid in lock_ids:
+        r = await db.execute(
+            select(Order).where(Order.id == lid, Order.deleted_at.is_(None)).with_for_update()
+        )
+        o = r.scalar_one_or_none()
+        if o is None:
+            raise HTTPException(status_code=404, detail=f"Order {lid} not found")
+        locked[lid] = o
+    source, target = locked[order_id], locked[data.target_order_id]
+    await _require_store_order(staff, source)
+    await _require_store_order(staff, target)
+
+    terminal_statuses = ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded")
+    for o in (source, target):
+        if o.status in terminal_statuses:
+            raise HTTPException(status_code=400, detail=f"Order {o.order_number} is already completed or cancelled")
+
+    from app.models.payment import Payment
+    for o in (source, target):
+        has_captured = (await db.execute(
+            select(Payment.id).where(
+                Payment.order_id == o.id,
+                Payment.status.in_(("captured", "partially_refunded")),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if has_captured is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Order {o.order_number} already has payments — only fully unpaid orders can be merged",
+            )
+
+    # Move line items to the target order
+    li_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.order_id == source.id).with_for_update()
+    )
+    moved = 0
+    for li in li_result.scalars().all():
+        li.order_id = target.id
+        moved += 1
+    if moved == 0:
+        raise HTTPException(status_code=400, detail="Source order has no line items to merge")
+
+    # Additive totals — both orders are same-store, same tax/service config
+    target.items_subtotal += source.items_subtotal
+    target.modifier_subtotal += source.modifier_subtotal
+    target.service_charge += source.service_charge
+    target.tax_amount += source.tax_amount
+    target.discount_amount += source.discount_amount
+    target.total_amount += source.total_amount
+    target.updated_at = datetime.now(timezone.utc)
+
+    # Free the source table if its snapshot points at the source order
+    if source.dining_table_id:
+        from app.models.store import TableStatusSnapshot
+        snap_r = await db.execute(
+            select(TableStatusSnapshot).where(
+                TableStatusSnapshot.table_id == source.dining_table_id
+            ).with_for_update()
+        )
+        snap = snap_r.scalar_one_or_none()
+        if snap and snap.current_order_id == source.id:
+            snap.status = "available"
+            snap.current_order_id = None
+            snap.updated_at = datetime.now(timezone.utc)
+
+    # Cancel the (now empty) source order — no reverse_order_effects: seats
+    # and loyalty stay attached to the moved line items.
+    source.status = "cancelled_by_merchant"
+    source.cancellation_reason = f"Merged into order {target.order_number}"
+    source.cancelled_by = "merchant"
+    source.cancelled_at = datetime.now(timezone.utc)
+    source.updated_at = datetime.now(timezone.utc)
+    cancelled_payment_ids = await cancel_pending_order_payments(db, source.id)
+
+    db.add(OrderStatusLog(
+        order_id=source.id,
+        from_status="pending",
+        to_status="cancelled_by_merchant",
+        reason=f"Merged into order {target.order_number}",
+        actor_type="staff",
+        actor_id=staff.id,
+    ))
+    db.add(OrderStatusLog(
+        order_id=target.id,
+        from_status=target.status,
+        to_status=target.status,
+        reason=f"Merged order {source.order_number} into this order ({moved} items)",
+        actor_type="staff",
+        actor_id=staff.id,
+    ))
+    await db.commit()
+
+    return APIResponse(data={
+        "id": target.id,
+        "order_number": target.order_number,
+        "merged_from_order_id": source.id,
+        "merged_from_order_number": source.order_number,
+        "moved_items": moved,
+        "total_amount": str(target.total_amount),
         "cancelled_payment_ids": cancelled_payment_ids,
     })

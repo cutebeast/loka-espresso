@@ -15,6 +15,7 @@ import PosSessionDrawer from "@/components/pos/PosSessionDrawer";
 import PosQrScannerModal from "@/components/pos/PosQrScannerModal";
 import PosHeldOrdersDrawer from "@/components/pos/PosHeldOrdersDrawer";
 import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
+import PosDrawerChip from "@/components/pos/PosDrawerChip";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
@@ -221,6 +222,7 @@ function PosPageContent() {
           color: "#1E1B18"
         }}>{t("pos.table")}{pos.tables.find(t => t.id === pos.tableId)?.table_number || pos.tableId}
             </span>}
+          <PosDrawerChip />
           <div style={{
           flex: 1
         }} />
