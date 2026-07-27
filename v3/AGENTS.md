@@ -751,3 +751,8 @@ Verified whole flow: wallet refunds credit the wallet via `_credit_wallet_for_re
 - StaffTaskOut enriched with staff_name/store_name for the page.
 - Help guide (admin/staff.md) documents the Tasks page + recurring behavior; help re-seeded.
 - Seeded: daily "Clean grease trap", weekly "Deep clean espresso machine (weekly)" duty tasks.
+
+### POS improvements (2026-07-27)
+- **Delivery tab removed from POS** — in-store ordering is dine-in/takeaway only (delivery is a PWA customer-app flow). Was just a tab in the order-type selector; no dependent UI.
+- **Customer phone at POS**: the search field already handles it — staff type the phone; existing customers appear; if none, "+ Add new customer by phone" quick-adds (name + phone via /staff/customers/find-or-create). Placeholder changed to "Search or add customer by phone…" (×5 locales) so staff know. Workshops REQUIRE an attached customer (phone = identity anchor); menu orders are optional.
+- **89 junk unpaid orders purged** (Unpaid drawer 93→5): auto-created phone-only e2e profiles with no captured payments. Purge added to cleanup_e2e_test_data.py (scoped: name=phone, empty email, unpaid only — never touches captured orders or named customers).

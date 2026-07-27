@@ -298,6 +298,30 @@ def _purge_customers(cur: Any, dry_run: bool) -> CleanupResult:
         " AND (body ILIKE '%E2E%' OR body = 'Great coffee and friendly staff!')"
     )
 
+    # Unpaid orders from auto-created phone-only profiles (e2e PWA/POS flows) —
+    # these clutter the POS Unpaid drawer. Never touches orders with captured
+    # payments or named customers.
+    cur.execute("""
+        CREATE TEMP TABLE _e2e_junk_orders AS
+        SELECT o.id FROM orders o JOIN customers c ON c.id = o.customer_id
+        WHERE o.payment_status != 'captured'
+          AND o.status NOT IN ('delivered','cancelled_by_customer','cancelled_by_merchant')
+          AND c.display_name = c.phone_number
+          AND (c.email_address IS NULL OR c.email_address = '')
+    """)
+    for stmt in (
+        "DELETE FROM order_line_items WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM payment_events WHERE payment_id IN (SELECT id FROM payments WHERE order_id IN (SELECT id FROM _e2e_junk_orders))",
+        "DELETE FROM payments WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM tip_allocations WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM order_status_log WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM order_fulfillment WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM order_modification_logs WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM order_adjustments WHERE order_id IN (SELECT id FROM _e2e_junk_orders)",
+        "DELETE FROM orders WHERE id IN (SELECT id FROM _e2e_junk_orders)",
+    ):
+        cur.execute(stmt)
+
     return result
 
 

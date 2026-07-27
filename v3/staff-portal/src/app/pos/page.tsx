@@ -208,8 +208,9 @@ function PosPageContent() {
           display: "flex",
           gap: 6
         }}>
-                      {(["dine_in", "takeaway", "delivery"] as const).map(orderType => <button key={orderType} className={`btn btn-sm ${pos.orderType === orderType ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setOrderType(orderType)}>
-                {orderType === "dine_in" ? t("pos.dine_in_label") : orderType === "takeaway" ? t("pos.takeaway_label") : t("pos.delivery_label")}
+                      {/* In-store ordering is dine-in or takeaway only — delivery is a PWA (customer app) flow, not POS. */}
+                      {(["dine_in", "takeaway"] as const).map(orderType => <button key={orderType} className={`btn btn-sm ${pos.orderType === orderType ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setOrderType(orderType)}>
+                {orderType === "dine_in" ? t("pos.dine_in_label") : t("pos.takeaway_label")}
               </button>)}
           </div>
           {pos.selectedCustomer && <span className="badge badge-primary badge-sm flex items-center gap-1">
