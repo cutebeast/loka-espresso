@@ -137,9 +137,18 @@ The success screen shows the order number, total, and any change. From there you
 For stores with a second screen:
 
 1. Tap **Customer Screen** in the POS top bar.
-2. A new window opens on the second display showing the store name, order type and table, cart, service charge and tax, total, and the payment QR during QR payments.
+2. A new window opens for the customer — it updates live as you work:
 
-The display reads service charge and tax from the store configuration keys `order.service_charge` and `order.tax_rate`, and its window position from `pos.customer_display.left` (default `1920`). These are set by an admin in store settings.
+| Phase | What the customer sees |
+|-------|------------------------|
+| Idle | Store name, welcome, clock, and the wallet top-up QR. |
+| Building the order | Cart items, quantities, and the running total as you tap. |
+| Checkout (unpaid order) | The actual order's items, service charge, tax, and total. |
+| Split bill | Progress under the total — "RM X of RM Y paid · This share RM Z". |
+| QR payment | The payment QR to scan (a "payment in progress" prompt on a separate display tablet). |
+| Paid | Thank-you screen with order number, total, change, payment method — and the **e-invoice validation QR** when e-invoicing is active. |
+
+The display resets to the idle screen when the order is done or the cart is cleared. It works on a second window of the same device (`BroadcastChannel`) or on a separate tablet polling with the store's display key; signed payment URLs are never sent to the tablet, only a pay prompt. The window position comes from `pos.customer_display.left` (default `1920`), set by an admin in store settings.
 
 ## Refunds and corrections
 
