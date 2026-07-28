@@ -316,6 +316,8 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "pos.display_scan_with_phone": "Scan with your phone to pay",
   "pos.display_payment_in_progress": "Payment in progress",
   "pos.display_thank_you": "Thank you!",
+  "pos.display_this_share": "This share",
+  "pos.display_einvoice_scan": "Scan for your e-invoice",
   "pos.parked_orders": "Parked Orders",
   "pos.pay_rm": "Pay RM ",
   "pos.payment": "Payment",

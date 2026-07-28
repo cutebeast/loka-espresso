@@ -20,7 +20,7 @@ import PosOfflineQueueChip from "@/components/pos/PosOfflineQueueChip";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
-import { api, findOrCreateCustomer } from "@/lib/api";
+import { api, findOrCreateCustomer, getOrderEinvoice } from "@/lib/api";
 export default function PosPage() {
   return <RoleGuard allowed={canUsePOS}>
     <PosPageContent />
@@ -37,6 +37,8 @@ function PosPageContent() {
   const [quickAddName, setQuickAddName] = useState("");
   const [quickAddBusy, setQuickAddBusy] = useState(false);
   const [storeConfig, setStoreConfig] = useState<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number; display_key?: string } | null>(null);
+  // Split-bill progress reported by the checkout panel — forwarded to the display
+  const [splitDisplay, setSplitDisplay] = useState<{ paid: number; total: number; charging: number | null } | null>(null);
 
   // Load store config for customer display branding and fees
   useEffect(() => {
@@ -78,9 +80,27 @@ function PosPageContent() {
     const taxAmount = Math.round(pos.subtotal * (storeConfig?.tax_rate || 0) * 100) / 100;
     const displayTotal = Number((pos.total + serviceCharge + taxAmount).toFixed(2));
 
+    // In checkout mode the POS cart is empty — the display must show the
+    // checkout ORDER's items and totals (it is what the customer is paying).
+    const co = pos.checkoutOrder as Record<string, unknown> | null;
+    const coItems = ((co?.line_items || co?.items || []) as Record<string, unknown>[]).map(li => ({
+      menu_item_id: (li.menu_item_id as number) ?? 0,
+      name: (li.item_name || li.name || "Item") as string,
+      qty: Number(li.quantity ?? 1),
+      price: Number(li.unit_price ?? li.price ?? 0),
+      modifiers_label: (li.modifiers_label || "") as string,
+    }));
+    const inCheckout = pos.mode === "checkout" && !!co;
+    const cartForDisplay = inCheckout ? coItems : pos.cart;
+    const subtotalForDisplay = inCheckout ? Number(co?.items_subtotal ?? 0) : pos.subtotal;
+    const serviceForDisplay = inCheckout ? Number(co?.service_charge ?? 0) : serviceCharge;
+    const taxForDisplay = inCheckout ? Number(co?.tax_amount ?? 0) : taxAmount;
+    const totalForDisplay = inCheckout ? Number(co?.total_amount ?? 0) : displayTotal;
+    const countForDisplay = cartForDisplay.reduce((s, c) => s + c.qty, 0);
+
     if (pos.state === "done" && pos.result) {
       // Order confirmed / paid
-      broadcastDisplay({
+      const paidState = {
         storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
@@ -90,25 +110,33 @@ function PosPageContent() {
         taxAmount,
         total: ((pos.result as Record<string, unknown>)?.total as number | undefined) || displayTotal,
         itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
-        phase: "paid",
+        phase: "paid" as const,
         orderNumber: (pos.result as Record<string, unknown>)?.order_number?.toString(),
         orderId,
         paidTotal: (pos.result as Record<string, unknown>)?.total as number | undefined,
         change: pos.successChange,
         paymentMethod: pos.paymentMethod,
-      });
+      };
+      broadcastDisplay(paidState);
+      // E-invoice: when a validated document exists, re-broadcast with the
+      // validation link so the display can show its QR on the thank-you screen.
+      if (orderId) {
+        getOrderEinvoice(orderId).then((doc) => {
+          if (doc?.validation_link) broadcastDisplay({ ...paidState, einvoiceUrl: doc.validation_link });
+        }).catch(() => {});
+      }
     } else if (pos.state === "qr_payment" && pos.qrPayment) {
       // Stripe QR payment — show QR linking to PWA
       broadcastDisplay({
         storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
-        cart: pos.cart,
-        subtotal: pos.subtotal,
+        cart: cartForDisplay,
+        subtotal: subtotalForDisplay,
         serviceCharge: 0,
         taxAmount: 0,
         total: pos.qrPayment.total,
-        itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
+        itemCount: countForDisplay,
         phase: "qr_payment",
         paymentUrl: pos.qrPayment.paymentUrl,
         pwaPayUrl,
@@ -121,15 +149,17 @@ function PosPageContent() {
         storeName,
         orderType: pos.orderType,
         tableNumber: tableNum ? String(tableNum) : null,
-        cart: pos.cart,
-        subtotal: pos.subtotal,
-        serviceCharge,
-        taxAmount,
-        total: displayTotal,
-        itemCount: pos.cart.reduce((s, c) => s + c.qty, 0),
+        cart: cartForDisplay,
+        subtotal: subtotalForDisplay,
+        serviceCharge: serviceForDisplay,
+        taxAmount: taxForDisplay,
+        total: totalForDisplay,
+        itemCount: countForDisplay,
         phase: "payment",
         orderNumber: pos.checkoutOrder?.order_number,
         orderId: pos.checkoutOrderId || undefined,
+        // Split bill: progress + the share currently being charged
+        splitInfo: splitDisplay || undefined,
       });
     } else if (pos.cart.length > 0) {
       // Browsing — cart building
@@ -148,7 +178,7 @@ function PosPageContent() {
     } else {
       broadcastReset();
     }
-  }, [pos.state, pos.mode, pos.cart, pos.subtotal, pos.total, pos.orderType, pos.tableId, pos.tables, pos.qrPayment, pos.result, pos.successChange, pos.paymentMethod, pos.checkoutOrder, pos.checkoutOrderId, storeConfig, t]);
+  }, [pos.state, pos.mode, pos.cart, pos.subtotal, pos.total, pos.orderType, pos.tableId, pos.tables, pos.qrPayment, pos.result, pos.successChange, pos.paymentMethod, pos.checkoutOrder, pos.checkoutOrderId, storeConfig, splitDisplay, t]);
   const handleToggleModifier = useCallback((groupId: number, modId: number, selectionType: string, maxSelections: number) => {
     pos.setSelectedModifiers(prev => {
       const current = prev[groupId] || [];
@@ -184,7 +214,7 @@ function PosPageContent() {
     return <PosCheckoutPanel order={pos.checkoutOrder} orderId={pos.checkoutOrderId} customer={pos.checkoutCustomer} walletData={pos.checkoutWalletData} paymentMethod={pos.paymentMethod} amountTendered={pos.amountTendered} discountAmount={pos.discountAmount} discountType={pos.discountType} tipAmount={pos.tipAmount} saving={pos.saving} applyingDiscount={pos.applyingDiscount} discountsApplied={pos.checkoutDiscountsApplied} error={pos.error} msg={pos.msg} showDiscounts={pos.showCheckoutDiscounts} onSetPaymentMethod={pos.setPaymentMethod} onSetAmountTendered={pos.setAmountTendered} onSetDiscountAmount={pos.setDiscountAmount} onSetDiscountType={pos.setDiscountType} onSetTipAmount={pos.setTipAmount} onSetShowDiscounts={pos.setShowCheckoutDiscounts} onSetCustomer={pos.setCheckoutCustomer} onSetWalletData={pos.setCheckoutWalletData} onSetError={pos.setError} onSetMsg={pos.setMsg} onScanCustomer={() => {
       pos.setQrScanMode("customer");
       pos.startScanner();
-    }} onApplyVoucher={pos.handleApplyCheckoutVoucher} onApplyReward={pos.handleApplyCheckoutReward} onWalletPayment={pos.handleCheckoutWalletPayment} onCheckout={pos.handleCheckout} stripeEnabled={pos.stripeEnabled} offline={!pos.online} />;
+    }} onApplyVoucher={pos.handleApplyCheckoutVoucher} onApplyReward={pos.handleApplyCheckoutReward} onWalletPayment={pos.handleCheckoutWalletPayment} onCheckout={pos.handleCheckout} stripeEnabled={pos.stripeEnabled} offline={!pos.online} onSplitDisplayChange={setSplitDisplay} />;
   }
 
   // ── New Order Mode ──

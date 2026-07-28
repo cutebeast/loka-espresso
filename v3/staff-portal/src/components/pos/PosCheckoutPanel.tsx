@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/hooks/useTranslation";
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Drawer from "@/components/Drawer";
@@ -69,6 +69,8 @@ interface PosCheckoutPanelProps {
   stripeEnabled?: boolean | null;
   /** Offline mode: cash only — QR / card terminals need connectivity. */
   offline?: boolean;
+  /** Reports split-bill progress for the customer display (null on unmount). */
+  onSplitDisplayChange?: (info: { paid: number; total: number; charging: number | null } | null) => void;
 }
 export default function PosCheckoutPanel({
   order,
@@ -102,7 +104,8 @@ export default function PosCheckoutPanel({
   onWalletPayment,
   onCheckout,
   stripeEnabled,
-  offline = false
+  offline = false,
+  onSplitDisplayChange
 }: PosCheckoutPanelProps) {
   const {
     t
@@ -122,6 +125,13 @@ export default function PosCheckoutPanel({
   const [split, setSplit] = useState<import("./PosSplitBillSection").SplitSelection>({ mode: "full", allocations: [], chargeAmount: null, shareTotal: checkoutTotal });
   const splitActive = split.mode !== "full";
   const activeTotal = splitActive ? split.shareTotal : checkoutTotal;
+  // Echo split progress to the customer display (paid/total + current share)
+  const [splitProgress, setSplitProgress] = useState<{ paid: number; total: number } | null>(null);
+  useEffect(() => {
+    if (!onSplitDisplayChange) return;
+    onSplitDisplayChange(splitProgress ? { ...splitProgress, charging: splitActive ? split.shareTotal : null } : null);
+  }, [splitProgress, splitActive, split.shareTotal, onSplitDisplayChange]);
+  useEffect(() => () => onSplitDisplayChange?.(null), [onSplitDisplayChange]);
   return <div style={{
     padding: 24,
     maxWidth: 600,
@@ -274,6 +284,7 @@ export default function PosCheckoutPanel({
         currencySymbol={t("pos.currency_symbol")}
         refreshKey={String((order as any).updated_at ?? "")}
         onSplitChange={setSplit}
+        onSplitStateChange={setSplitProgress}
       />}
 
       {customer && walletData && <button className="btn btn-outline w-full" style={{

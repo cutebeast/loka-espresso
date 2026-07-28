@@ -33,11 +33,13 @@ export default function PosSplitBillSection({
   currencySymbol,
   refreshKey,
   onSplitChange,
+  onSplitStateChange,
 }: {
   orderId: string;
   currencySymbol: string;
   refreshKey: string | number;
   onSplitChange: (sel: SplitSelection) => void;
+  onSplitStateChange?: (info: { paid: number; total: number } | null) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -62,6 +64,11 @@ export default function PosSplitBillSection({
     setItemQty({});
     setMode("full");
   }, [state?.total_paid]);
+
+  // Echo the paid/total progress upward (customer display shows it)
+  useEffect(() => {
+    onSplitStateChange?.(state ? { paid: state.total_paid, total: state.total_amount } : null);
+  }, [state, onSplitStateChange]);
 
   const selectedTotal = useMemo(() => {
     if (!state) return 0;

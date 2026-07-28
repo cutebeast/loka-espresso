@@ -849,3 +849,12 @@ Browser-crawled every page (admin: ~95 list routes + all [id] editors; staff: 17
 - i18n: 11 `pos.offline_*` keys ×5 (+ EN bundle). Seed: `seed_staff_ui_offline_translations.py`.
 - Tests: `e2e-tests/test_pos_offline_idempotency.py` (ref replay → same order, no dup). Puppeteer-verified: CDP offline → queued sale → online → auto-sync → order captured server-side.
 - v1 limits: offline orders are cash-only; stale snapshot prices possible offline (server total wins at sync); no offline table-status updates.
+
+## Customer display sync with POS features (2026-07-27)
+
+Browser-driven audit of `/pos/display` against the POS feature work found 2 gaps + 1 pre-existing bug, all fixed and verified end-to-end (POS tab drives the display tab via BroadcastChannel in puppeteer):
+- **Split-bill progress on the display** (was: full total shown during split payments): `PosSplitBillSection` echoes `{paid,total}` up → `PosCheckoutPanel` merges in the live share (`charging`) → POS broadcast includes `splitInfo`. Display shows "RM X of RM Y paid · This share RM Z" under the total during checkout. New staff-ui keys `pos.display_this_share` (+ existing `pos.split_paid_of` reused) ×5.
+- **E-invoice QR on the thank-you screen** (was: nothing): after payment the POS re-broadcasts with `einvoiceUrl` (fetched from `GET /staff/orders/{id}/einvoice` — the display itself is unauthenticated so the link rides the broadcast; the public display-state endpoint only strips payment URLs). Display renders the validation QR via the existing `qrcode` dep when present (nothing shows while e-invoice is dormant/simulated-off). New key `pos.display_einvoice_scan` ×5.
+- **PRE-EXISTING BUG — checkout mode showed an EMPTY display**: the broadcast always sent the POS cart, which is empty when charging an unpaid order (two-stage flow) — customers saw "No items found · RM 0.00" during checkout. The effect now maps the checkout order's `line_items`/`items_subtotal`/`service_charge`/`tax_amount`/`total_amount` in checkout + QR-payment phases.
+- Offline: nothing needed — BroadcastChannel is same-device local (works offline), the Redis cross-device write is already fire-and-forget.
+- Verified: typecheck, rebuild, puppeteer 2-tab run — cart/total in checkout, split progress advancing (RM 12 of RM 24), thank-you screen, e-invoice QR visible with `einvoice.auto_issue` on (restored to false after).

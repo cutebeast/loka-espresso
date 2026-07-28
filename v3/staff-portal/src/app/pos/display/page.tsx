@@ -41,6 +41,7 @@ export default function CustomerDisplayPage() {
   const { t, locale } = useTranslation();
   const [state, setState] = useState<DisplayState>(DEFAULT_STATE);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [einvoiceQrUrl, setEinvoiceQrUrl] = useState<string | null>(null);
   const [topUpQrUrl, setTopUpQrUrl] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -112,6 +113,19 @@ export default function CustomerDisplayPage() {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [state.pwaPayUrl, state.paymentUrl]);
+
+  // ── Generate e-invoice validation QR (thank-you screen) ──
+  useEffect(() => {
+    setEinvoiceQrUrl(null);
+    if (!state.einvoiceUrl) return;
+    let cancelled = false;
+    import("qrcode").then(QRCode =>
+      QRCode.toDataURL(state.einvoiceUrl!, { width: 240, margin: 1, errorCorrectionLevel: "M" }),
+    ).then(dataUrl => {
+      if (!cancelled) setEinvoiceQrUrl(dataUrl);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [state.einvoiceUrl]);
 
   // ── Generate wallet top-up QR for idle screen ──
   useEffect(() => {
@@ -258,6 +272,12 @@ export default function CustomerDisplayPage() {
             <div style={styles.changeText}>{t("pos.change_rm")}{fmt(state.change)}</div>
           )}
           <div style={styles.paymentMethod}>{state.paymentMethod?.toUpperCase()}</div>
+          {state.einvoiceUrl && einvoiceQrUrl && (
+            <div style={{ marginTop: 24, textAlign: "center" }}>
+              <img src={einvoiceQrUrl} alt="e-invoice" style={{ width: 120, height: 120 }} />
+              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 8 }}>{t("pos.display_einvoice_scan")}</div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -318,6 +338,12 @@ export default function CustomerDisplayPage() {
               <span>{t("pos.total_due")}</span>
               <span>{fmt(state.total)}</span>
             </div>
+            {state.splitInfo && (
+              <div style={{ ...styles.totalRow, color: "#2563EB", fontWeight: 600 }}>
+                <span>{t("pos.split_paid_of", { paid: fmt(state.splitInfo.paid), total: fmt(state.splitInfo.total) })}</span>
+                {state.splitInfo.charging != null && <span>{t("pos.display_this_share")} {fmt(state.splitInfo.charging)}</span>}
+              </div>
+            )}
           </div>
         </div>
 

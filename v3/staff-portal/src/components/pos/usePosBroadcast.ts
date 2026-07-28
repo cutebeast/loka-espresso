@@ -42,6 +42,10 @@ export type DisplayState = {
   paidTotal?: number;
   change?: number;
   paymentMethod?: string;
+  /** LHDN e-invoice validation link — shown as a QR on the thank-you screen. */
+  einvoiceUrl?: string;
+  /** Split-bill progress while a bill is being settled in shares. */
+  splitInfo?: { paid: number; total: number; charging: number | null };
 };
 
 const CHANNEL = "pos-display";
