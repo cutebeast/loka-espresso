@@ -880,3 +880,19 @@ https://<staff-host>/pos/display?store=<store_id>&key=<store display_key>
 - Caddy vhost configs take `{$APP_DOMAIN}`/`{$ADMIN_DOMAIN}`/`{$STAFF_DOMAIN}` env vars (dev defaults only).
 
 **Domain-migration checklist additions** (see the main checklist above): (1) update `*.public_url` configs in Settings; (2) update portal `.env.local` files (`NEXT_PUBLIC_APP_URL` etc.); (3) update the **guide/help articles** that name `app.loyaltysystem.uk` (`v3/guide/customer/index.md`, `getting-started.md`, `orders-and-order-detail.md`, `admin/index.md`, `staff/index.md`, `getting-started.md`) then re-run `seed_help_articles.py` + `translate_missing_content.py`; (4) re-seed test accounts with @lokaespresso.com emails or leave dev seeds out of prod entirely; (5) after cutover, verify the display top-up QR + guest-pay QR resolve to `app.lokaespresso.com` (they derive automatically — spot-check only).
+
+## Portal deploy hardening — rebuild-portal.sh (2026-07-27)
+
+- **Root cause of historical 502s + restart storms**: `next build` wipes `.next/` at the start; with pm2 serving from it, the process crashes ("Could not find a production build") and pm2 crash-restarts for the whole build duration. staff-portal error log showed this pattern repeatedly (500+ lifetime restarts, mostly this).
+- **Fix — ALWAYS deploy frontend changes with `v3/scripts/rebuild-portal.sh <staff-portal|admin-portal|customer-pwa>`**: builds to `.next-fresh` (each portal's next.config.ts honors `BUILD_DIST_DIR`), stops pm2 for ~2s, swaps `.next`→`.next-previous` + `.next-fresh`→`.next`, starts, and waits for a healthy HTTP code. Downtime ~5s; no crash window; instant rollback (`mv .next-previous .next` + restart).
+- Verified on staff-portal: healthy in ~4s, no new restarts, public URL serving.
+- Supersedes the older "rebuild then pm2 restart" / "delete pm2 process + fuser -k" notes — use the script instead.
+
+## Kiosk audit + fixes (2026-07-27)
+
+Full browser audit of the self-ordering kiosk (`/#kiosk?store=N`, portrait tablet). Two REAL bugs, both present since the kiosk launched:
+- **Kiosk menu was truncated to the first 20 items alphabetically** (of 163): KioskPage called `/menu/items` with `per_page=500`, but the endpoint's pagination param is `limit` (default 20). One-word fix (`limit: 500`). Every other PWA caller already used `limit` — only the kiosk had it wrong.
+- **Every dine-in kiosk order 500'd**: `OrderCreate.fulfillment_type` defaults to `counter_pickup`, which violates `ck_orders_type_fulfillment_alignment` (dine_in ⇒ `dine_in_service`). `public/kiosk.py` now sets `fulfillment_type` from the order type. Takeaway always worked, which is why this went unnoticed.
+- Verified end-to-end (puppeteer, portrait viewport): welcome → dine-in + table number → full menu (all items now) → modifier drawer → cart → checkout confirm (table shown) → Pay Now → success (order number + guest-pay QR + counter note) → order lands in staff orders unpaid, dine_in, table T2 → reload returns to welcome; zero page errors, zero own-domain 5xx. e2e customer order/menu suites: 22 passed.
+- Help: kiosk was undocumented — added a "Self-ordering kiosk (`#kiosk`)" section to `staff/hardware-peripherals.md` (URL, flow, unpaid-then-counter/QR pattern, inactivity reset, wake lock).
+- Kiosk guest-pay QR uses `window.location.origin` (the PWA's own host) — domain-agnostic, no migration work needed here.

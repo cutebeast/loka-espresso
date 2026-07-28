@@ -314,6 +314,9 @@ async def create_kiosk_order(
         store_id=data.store_id,
         cart_id=cart.id,
         order_type=data.order_type,  # type: ignore[arg-type]
+        # ck_orders_type_fulfillment_alignment: dine_in orders must be
+        # dine_in_service; the schema default (counter_pickup) violates it.
+        fulfillment_type="dine_in_service" if data.order_type == "dine_in" else "counter_pickup",
         dining_table_id=dining_table_id,
     )
 

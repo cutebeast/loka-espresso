@@ -17,6 +17,10 @@ function getBackendUrl(): string {
 const backendUrl = getBackendUrl();
 
 const nextConfig: NextConfig = {
+  // BUILD_DIST_DIR lets scripts/rebuild-portal.sh build to a fresh directory
+  // and swap it in atomically — building in place wipes .next under the
+  // running server (the cause of past 502/crash-loop incidents).
+  distDir: process.env.BUILD_DIST_DIR || ".next",
   images: {
     remotePatterns: [
       ...domains.map((hostname) => ({ protocol: "https" as const, hostname })),

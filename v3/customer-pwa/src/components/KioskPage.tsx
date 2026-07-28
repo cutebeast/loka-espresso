@@ -121,7 +121,7 @@ export default function KioskPage() {
       try {
         const [catRes, itemRes] = await Promise.all([
           api.get('/menu/categories'),
-          api.get('/menu/items', { params: { per_page: 500 } }),
+          api.get('/menu/items', { params: { limit: 500 } }),
         ]);
         // Axios interceptor already unwraps { success, data } → data
         // So catRes.data = { categories: [...] } and itemRes.data = { items: [...] }

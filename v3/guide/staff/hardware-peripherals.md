@@ -12,6 +12,16 @@ The POS includes a built-in customer display that runs in a second browser windo
 - **Setup:** Tap **Open Customer Display** on the POS. Position the window on the customer-facing monitor.
 - **Configuration:** Set `pos.customer_display.left` in store config to control the window's X coordinate.
 
+## Self-ordering kiosk (`#kiosk`)
+
+A McDonald's/KFC-style self-ordering kiosk runs inside the customer PWA — a simplified, touch-optimized, guest-only ordering flow.
+
+- **URL:** `https://<app-host>/#kiosk?store=N` (e.g. `…/#kiosk?store=1`) — open it on the counter tablet in fullscreen. It needs no login; the store comes from the `store` parameter.
+- **Flow for the customer:** **Tap to Order** → **Dine In** (enters a table number) or **Takeaway** → browse the full menu by category or search → pick modifiers (size, milk, add-ons) → **Cart** → **Checkout** → **Pay Now**.
+- **What happens next:** the kiosk places the order as **unpaid** and shows the order number with a **guest-pay QR** — the customer either pays at the counter (staff charge it from the POS **Unpaid** list as usual) or scans the QR to pay from their phone. The order appears in the staff order queue and kitchen display like any other order (dine-in shows the table number).
+- **Kiosk behavior:** inactivity returns it to the welcome screen automatically; it requests fullscreen and keeps the screen awake (wake lock) on supported tablets.
+- **Menu note:** the kiosk shows the full available menu for the store (all categories). If items look stale, reload the page.
+
 ## Coming-soon hardware
 
 The following devices are not yet integrated. Buttons for these actions are disabled in the UI and show a tooltip until backend integrations are available.
@@ -25,6 +35,7 @@ The following devices are not yet integrated. Buttons for these actions are disa
 ## What to do now
 
 - Use the customer display for live cart and QR payment visibility.
+- Set up a counter tablet with the self-ordering kiosk (`#kiosk`) for walk-in customers.
 - Print receipts manually from the browser if required (`Ctrl+P` / `Cmd+P`).
 - Contact the platform administrator if you need a hardware integration timeline.
 
