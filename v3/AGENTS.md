@@ -905,3 +905,23 @@ Full browser audit of the self-ordering kiosk (`/#kiosk?store=N`, portrait table
 - **Kiosk i18n-ified**: was ~35 hardcoded English strings → all `kiosk.*` keys via `useTranslation`. 34 keys ×5 locales in pwa-ui DB (hand-written, `is_auto_translated=false`) + nested `kiosk` object hand-added to `customer-pwa/src/locales/en.json` (the sync script skips EN by design) + `sync_translations_to_json.py` regenerated the other locale JSONs.
 - **Correction noted**: an earlier audit claim that the kiosk success screen never times out was WRONG — `AutoResetTimer` (30s countdown) already existed.
 - Verified: full kiosk order flow in Chinese end-to-end; display language switch; item image in checkout (needs the backend restart for the serializer change); thank-you → idle auto-reset. 42 unit + 9 POS e2e green.
+
+## New subdomains registered (2026-07-28) — migration planned, NOT YET DONE
+
+The owner added 3 subdomains in Cloudflare. **No code/config changes made yet** — this is the plan for when we execute it:
+
+| Subdomain | Intended role | Today |
+|---|---|---|
+| `api.loyaltysystem.uk` | Backend API endpoints | DNS exists but **526 (Cloudflare origin SSL error)** — needs a Caddy vhost + valid origin cert before use. Apps currently proxy the API internally (`API_PROXY_URL=http://127.0.0.1:13800/api`). |
+| `kiosk.loyaltysystem.uk` | Self-ordering kiosk | Currently `app.loyaltysystem.uk/#kiosk?store=N` (hash route in the PWA) |
+| `pos-disp.loyaltysystem.uk` | POS customer display | Currently `staff.loyaltysystem.uk/pos/display?store=N&key=…` |
+
+### Migration plan (when approved)
+
+1. **Caddy vhosts** (pattern: `v3/infra/host-caddy/*.conf`, env-var domains): add `KIOSK_DOMAIN` and `POS_DISP_DOMAIN` site blocks with TLS (Caddy on-demand TLS or Cloudflare origin certs) + one for `API_DOMAIN` → `127.0.0.1:13800`.
+2. **`pos-disp.*`**: Caddy `rewrite / /pos/display` (query params `store`/`key` preserved) → proxy to the staff portal (13820). No app-code change needed.
+3. **`kiosk.*`**: hash routes can't be set server-side — the PWA `AppShell.tsx` needs host detection: if the hostname starts with `kiosk.`, render the kiosk page regardless of the hash (keep `#kiosk` working for backwards compat). Then Caddy proxies `kiosk.*` → the PWA (13810).
+4. **`api.*`**: after the vhost + cert work, either point portal `API_PROXY_URL`s at it or keep internal proxying (recommended: keep internal — public api.* only matters if third parties/kiosk hardware need direct API access). Backend `TRUSTED_HOSTS`/`CORS_ORIGINS` in `v3/backend/.env` must include any host the browser calls the API from directly.
+5. **Cross-device display**: unaffected — the display poll goes through whichever host serves it; the `display_key` mechanism is host-agnostic.
+6. **Verify after cutover**: kiosk full order flow on `kiosk.*`; POS display 14-check suite on `pos-disp.*`; old URLs (`/#kiosk`, `/pos/display`) keep working.
+7. Update the "Customer display URL" note above and the domain-migration checklist with the final `*.lokaespresso.com` equivalents (`kiosk.lokaespresso.com`, `pos-disp.lokaespresso.com`, `api.lokaespresso.com` — register those in Cloudflare at go-live too).
