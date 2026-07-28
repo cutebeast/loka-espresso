@@ -1,4 +1,6 @@
 /.next/
+/.next-fresh/
+/.next-previous/
 /node_modules/
 /out/
 
