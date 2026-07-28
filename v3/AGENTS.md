@@ -896,3 +896,12 @@ Full browser audit of the self-ordering kiosk (`/#kiosk?store=N`, portrait table
 - Verified end-to-end (puppeteer, portrait viewport): welcome → dine-in + table number → full menu (all items now) → modifier drawer → cart → checkout confirm (table shown) → Pay Now → success (order number + guest-pay QR + counter note) → order lands in staff orders unpaid, dine_in, table T2 → reload returns to welcome; zero page errors, zero own-domain 5xx. e2e customer order/menu suites: 22 passed.
 - Help: kiosk was undocumented — added a "Self-ordering kiosk (`#kiosk`)" section to `staff/hardware-peripherals.md` (URL, flow, unpaid-then-counter/QR pattern, inactivity reset, wake lock).
 - Kiosk guest-pay QR uses `window.location.origin` (the PWA's own host) — domain-agnostic, no migration work needed here.
+
+## Customer-facing UX improvements (2026-07-28)
+
+- **POS display thank-you auto-reset** (was: stuck until the next order): the display returns to idle 25s after payment (local state reset; safe with BroadcastChannel + the Redis poll's ts-gated updates). The kiosk already had a 30s `AutoResetTimer` on its success screen — nothing needed there.
+- **POS display cart item images**: full chain — staff order detail serializer exposes `image_url` from `item_snapshot` (staff/orders.py), POS `CartItem` carries it from `addToCart`, `DisplayCartItem` passes it through the broadcast, display renders 40px thumbs in cart rows (checkout + browsing).
+- **Language selectors on both customer screens**: POS display idle (top-left, persists to localStorage `locale` — note: the staff `useTranslation` `setLocale` is state-only, persistence is manual) and kiosk welcome (via PWA `LocaleProviderWrapper`).
+- **Kiosk i18n-ified**: was ~35 hardcoded English strings → all `kiosk.*` keys via `useTranslation`. 34 keys ×5 locales in pwa-ui DB (hand-written, `is_auto_translated=false`) + nested `kiosk` object hand-added to `customer-pwa/src/locales/en.json` (the sync script skips EN by design) + `sync_translations_to_json.py` regenerated the other locale JSONs.
+- **Correction noted**: an earlier audit claim that the kiosk success screen never times out was WRONG — `AutoResetTimer` (30s countdown) already existed.
+- Verified: full kiosk order flow in Chinese end-to-end; display language switch; item image in checkout (needs the backend restart for the serializer change); thank-you → idle auto-reset. 42 unit + 9 POS e2e green.

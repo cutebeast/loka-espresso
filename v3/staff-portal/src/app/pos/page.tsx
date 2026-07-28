@@ -90,6 +90,7 @@ function PosPageContent() {
       qty: Number(li.quantity ?? 1),
       price: Number(li.unit_price ?? li.price ?? 0),
       modifiers_label: (li.modifiers_label || "") as string,
+      image_url: (li.image_url || "") as string,
     }));
     const inCheckout = pos.mode === "checkout" && !!co;
     const cartForDisplay = inCheckout ? coItems : pos.cart;

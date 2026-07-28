@@ -545,6 +545,7 @@ export interface CartItem {
   price: number;
   modifier_ids: number[];
   modifiers_label: string;
+  image_url?: string;
   bundle_product_id?: number;
   bundle_component_id?: number;
   class_session_id?: number;

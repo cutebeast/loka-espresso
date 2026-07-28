@@ -39,7 +39,7 @@ const DEFAULT_STATE: DisplayState = {
 const TOPUP_QR_CACHE_KEY = "pos-display-topup-qr";
 
 export default function CustomerDisplayPage() {
-  const { t, locale } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const [state, setState] = useState<DisplayState>(DEFAULT_STATE);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [einvoiceQrUrl, setEinvoiceQrUrl] = useState<string | null>(null);
@@ -65,6 +65,17 @@ export default function CustomerDisplayPage() {
       setState(saved);
     }
   }, []);
+
+  // ── Auto-return to idle from the thank-you screen (~25s) ──
+  // Without this the paid screen stays up until the next order starts.
+  useEffect(() => {
+    if (state.phase !== "paid") return;
+    const timer = setTimeout(() => {
+      setState(prev => ({ ...DEFAULT_STATE, storeName: prev.storeName }));
+      clearLocal();
+    }, 25_000);
+    return () => clearTimeout(timer);
+  }, [state.phase]);
 
   // ── Subscribe to BroadcastChannel (same-browser, instant) ──
   useEffect(() => {
@@ -212,6 +223,20 @@ export default function CustomerDisplayPage() {
   if (state.phase === "idle" || (state.phase === "browsing" && state.cart.length === 0)) {
     return (
       <div ref={containerRef} style={styles.container} onClick={enterFullscreen}>
+        {/* Language selector (top-left) */}
+        <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, display: "flex", gap: 6 }}>
+          {([["en", "EN"], ["ms", "BM"], ["zh", "中文"], ["ta", "தமிழ்"], ["tr", "TR"]] as const).map(([code, label]) => (
+            <button key={code} onClick={(e) => { e.stopPropagation(); setLocale(code); try { localStorage.setItem("locale", code); } catch { /* */ } }}
+              style={{
+                padding: "6px 10px", fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: "pointer",
+                border: locale === code ? "2px solid var(--color-primary)" : "1px solid var(--color-border-light)",
+                background: locale === code ? "var(--color-primary)" : "rgba(255,255,255,0.85)",
+                color: locale === code ? "#fff" : "var(--color-text-secondary)",
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
         {/* Fullscreen button (top-right, subtle) */}
         {!isFullscreen && (
           <button style={styles.fullscreenBtn} onClick={(e) => { e.stopPropagation(); enterFullscreen(); }} aria-label="Fullscreen">
@@ -305,6 +330,9 @@ export default function CustomerDisplayPage() {
           <div style={styles.cartList}>
             {state.cart.map((item, i) => (
               <div key={i} style={styles.cartRow}>
+                {item.image_url ? (
+                  <img src={item.image_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                ) : null}
                 <div style={styles.qty}>{item.qty}×</div>
                 <div style={styles.itemName}>
                   {item.name}
@@ -415,7 +443,7 @@ const styles: Record<string, React.CSSProperties> = {
   cartWithQR: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
   cartTitle: { fontSize: 20, fontWeight: 700, marginBottom: 12, padding: "0 4px" },
   cartList: { flex: 1, overflowY: "auto", padding: "0 4px" },
-  cartRow: { display: "flex", alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--color-border-light)" },
+  cartRow: { display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--color-border-light)" },
   qty: { fontSize: 22, fontWeight: 700, color: "var(--color-primary)", minWidth: 48 },
   itemName: { flex: 1, fontSize: 18, fontWeight: 500, lineHeight: 1.4 },
   modLabel: { fontSize: 14, color: "var(--color-text-muted)", marginTop: 2 },

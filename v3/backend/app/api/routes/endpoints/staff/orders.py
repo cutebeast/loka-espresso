@@ -1323,6 +1323,7 @@ async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
                 "id": li.id,
                 "menu_item_id": li.menu_item_id,
                 "item_name": (li.item_snapshot or {}).get("item_name") if li.item_snapshot else None,
+                "image_url": (li.item_snapshot or {}).get("image_url") if li.item_snapshot else None,
                 "quantity": li.quantity,
                 "unit_price": float(li.unit_price) if li.unit_price else 0,
                 "total": float(li.line_total) if li.line_total else 0,

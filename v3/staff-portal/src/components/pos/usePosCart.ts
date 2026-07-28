@@ -66,6 +66,7 @@ export function usePosCart(crewName: string) {
         price: item.base_price + modPrice,
         modifier_ids: modifierIds,
         modifiers_label: modifierLabel,
+        image_url: item.image_url || undefined,
         bundle_product_id: bundleProductId,
         bundle_component_id: bundleComponentId,
         class_session_id: session?.id,

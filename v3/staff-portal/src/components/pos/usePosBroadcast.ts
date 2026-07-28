@@ -16,6 +16,7 @@ export type DisplayCartItem = {
   qty: number;
   price: number;
   modifiers_label: string;
+  image_url?: string;
   bundle_product_id?: number;
   bundle_component_id?: number;
 };
