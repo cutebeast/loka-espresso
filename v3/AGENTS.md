@@ -858,3 +858,25 @@ Browser-driven audit of `/pos/display` against the POS feature work found 2 gaps
 - **PRE-EXISTING BUG — checkout mode showed an EMPTY display**: the broadcast always sent the POS cart, which is empty when charging an unpaid order (two-stage flow) — customers saw "No items found · RM 0.00" during checkout. The effect now maps the checkout order's `line_items`/`items_subtotal`/`service_charge`/`tax_amount`/`total_amount` in checkout + QR-payment phases.
 - Offline: nothing needed — BroadcastChannel is same-device local (works offline), the Redis cross-device write is already fire-and-forget.
 - Verified: typecheck, rebuild, puppeteer 2-tab run — cart/total in checkout, split progress advancing (RM 12 of RM 24), thank-you screen, e-invoice QR visible with `einvoice.auto_issue` on (restored to false after).
+
+## Customer display URL + domain-hardcoding rule (2026-07-27)
+
+**The customer-facing POS display lives at a RELATIVE path — no domain anywhere:**
+
+```
+https://<staff-host>/pos/display?store=<store_id>&key=<store display_key>
+```
+
+- Dev today: `https://staff.loyaltysystem.uk/pos/display?store=1&key=…`
+- After migration the same path just works: `https://staff.lokaespresso.com/pos/display?store=1&key=…`
+- Opened from the POS top bar (**Display** button) — `openCustomerDisplay()` passes `store` + `key` automatically and positions the popup (`pos.customer_display.left` store config, default 1920).
+- `store` selects the store; `key` is the per-store `display_key` (required for the cross-device Redis poll — the unauthenticated GET 403s without it; rotate it if exposed). Same-device second windows work via `BroadcastChannel` and need nothing else.
+
+**Domain-hardcoding rule:** never hardcode `loyaltysystem.uk` (or any domain) in app code. Everything derives at runtime:
+- Display path is relative (`/pos/display`) — immune to migration by construction.
+- PWA deep-links (guest-pay QR, wallet top-up QR) derive from the current host via `staff.X → app.X` — shared helper **`staff-portal/src/lib/pwaBase.ts` (`pwaBaseUrl()`)**; use it for any new PWA link (3 call sites: pos/page.tsx, usePosState.ts, pos/display/page.tsx — the old inline `… : "https://app.loyaltysystem.uk"` fallbacks were removed 2026-07-27).
+- Payment redirects (Stripe/HitPay success/cancel) come from `app.public_url` / `admin.public_url` / `staff.public_url` platform_config (Settings → App; update at migration).
+- Table QR payloads are scheme-based (`loka:table:{token}`) — no domain at all.
+- Caddy vhost configs take `{$APP_DOMAIN}`/`{$ADMIN_DOMAIN}`/`{$STAFF_DOMAIN}` env vars (dev defaults only).
+
+**Domain-migration checklist additions** (see the main checklist above): (1) update `*.public_url` configs in Settings; (2) update portal `.env.local` files (`NEXT_PUBLIC_APP_URL` etc.); (3) update the **guide/help articles** that name `app.loyaltysystem.uk` (`v3/guide/customer/index.md`, `getting-started.md`, `orders-and-order-detail.md`, `admin/index.md`, `staff/index.md`, `getting-started.md`) then re-run `seed_help_articles.py` + `translate_missing_content.py`; (4) re-seed test accounts with @lokaespresso.com emails or leave dev seeds out of prod entirely; (5) after cutover, verify the display top-up QR + guest-pay QR resolve to `app.lokaespresso.com` (they derive automatically — spot-check only).

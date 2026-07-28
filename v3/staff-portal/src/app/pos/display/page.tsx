@@ -19,6 +19,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { subscribeToPos, pollRedisState, loadFromLocal, clearLocal, type DisplayState } from "@/components/pos/usePosBroadcast";
+import { pwaBaseUrl } from "@/lib/pwaBase";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Wallet, Maximize2 } from "lucide-react";
 
@@ -129,10 +130,8 @@ export default function CustomerDisplayPage() {
 
   // ── Generate wallet top-up QR for idle screen ──
   useEffect(() => {
-    // Build PWA wallet top-up URL
-    const pwaBase = typeof window !== "undefined"
-      ? window.location.origin.replace("://staff.", "://app.")
-      : "https://app.loyaltysystem.uk";
+    // Build PWA wallet top-up URL (domain derived from current host — no hardcoding)
+    const pwaBase = pwaBaseUrl();
     const topUpUrl = `${pwaBase}/#wallet?action=topup&store=${storeId}`;
 
     // Check cache

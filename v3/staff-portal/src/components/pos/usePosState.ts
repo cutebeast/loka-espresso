@@ -21,6 +21,7 @@ import {
   type Reward, type Voucher, type BundleProduct
 } from "@/lib/api";
 import { api } from "@/lib/api";
+import { pwaBaseUrl } from "@/lib/pwaBase";
 import { usePosCart, type HeldOrder } from "./usePosCart";
 import { usePosCustomer } from "./usePosCustomer";
 import { usePosCheckout } from "./usePosCheckout";
@@ -580,7 +581,7 @@ export function usePosState() {
         // Build the PWA deep-link so the staff-facing QR opens the PWA guest-pay
         // page (no login required).  The signed pay_token authorises the
         // walk-in customer to view + pay for this specific order only.
-        const pwaBase = typeof window !== "undefined" ? window.location.origin.replace("://staff.", "://app.") : "https://app.loyaltysystem.uk";
+        const pwaBase = pwaBaseUrl();
         const payToken = (resRecord.pay_token as string | undefined) || "";
         const pwaPayUrl = payToken
           ? `${pwaBase}/#guest-pay?orderId=${checkoutOrderId}&token=${payToken}`

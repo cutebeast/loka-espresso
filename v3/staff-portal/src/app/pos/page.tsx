@@ -21,6 +21,7 @@ import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
 import { api, findOrCreateCustomer, getOrderEinvoice } from "@/lib/api";
+import { pwaBaseUrl } from "@/lib/pwaBase";
 export default function PosPage() {
   return <RoleGuard allowed={canUsePOS}>
     <PosPageContent />
@@ -66,7 +67,7 @@ function PosPageContent() {
     // Derive PWA deep-link: customer scans QR → opens PWA guest-pay page →
     // pays from their phone without logging in.  Uses the signed pay_token
     // returned by the POS order endpoint so only this QR's scanner can pay.
-    const pwaBase = typeof window !== "undefined" ? window.location.origin.replace("://staff.", "://app.") : "https://app.loyaltysystem.uk";
+    const pwaBase = pwaBaseUrl();
     const orderId = pos.qrPayment?.orderId || (pos.result as Record<string, unknown>)?.order_id?.toString() || "";
     const payToken = pos.qrPayment?.payToken || "";
     const pwaPayUrl = orderId
