@@ -30,6 +30,9 @@ View and search the order queue.
 2. View details.
 3. Depending on your role, you may update status or view payment info.
 
+### Merged orders
+If two unpaid orders were combined on the kitchen display (see [Kitchen Display](kitchen-display.md)), the cancelled one shows **"Merged into order X"** as its cancellation reason, and all its items appear on the surviving order.
+
 ### Filter
 - By status
 - By order type
@@ -48,6 +51,8 @@ View table status and access table QR codes.
 | Occupied | Has an active order. |
 | Reserved | Booked via reservation. |
 | Cleaning | Being cleaned. |
+
+Occupied tables show a **duration badge** — how long the table has been occupied (e.g. "45m"). It turns **amber after 60 minutes** and **red after 120 minutes**, so long-stay tables stand out during a rush. The badge also links to the current order.
 
 ### Seat a customer
 1. Tap an available table.

@@ -37,7 +37,7 @@ The Staff Portal (`staff.loyaltysystem.uk`) is where daily store operations happ
 ## Ordering journey from the staff view
 
 1. Customer arrives or places an order remotely.
-2. Staff opens **POS** and selects order type (dine-in, takeaway, delivery).
+2. Staff opens **POS** and selects order type (dine-in or takeaway).
 3. For dine-in, staff selects or scans a table.
 4. Staff adds items, modifiers, vouchers, and rewards.
 5. Staff takes payment (cash or Stripe QR).

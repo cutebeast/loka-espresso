@@ -4,7 +4,7 @@
 `/pos`
 
 ## Purpose
-Create dine-in, takeaway, and delivery orders, sell workshop/experience seats, take payments, and send orders to the kitchen.
+Create dine-in and takeaway orders, sell workshop/experience seats, take payments, and send orders to the kitchen.
 
 ## Order types
 
@@ -12,7 +12,8 @@ Create dine-in, takeaway, and delivery orders, sell workshop/experience seats, t
 |------|-------------|
 | Dine-in | Customer eats in the store. A table is required — the order cannot be sent without one. |
 | Takeaway | Customer picks up the order at the counter. |
-| Delivery | Order is delivered to the customer. |
+
+In-store ordering is dine-in and takeaway only — delivery orders come from the customer app (PWA), not the POS.
 
 ## The two-stage flow
 
@@ -26,7 +27,7 @@ This means food preparation never waits for payment.
 ## Create an order
 
 1. Tap **POS** from the home screen.
-2. Select **Dine-in**, **Takeaway**, or **Delivery**.
+2. Select **Dine-in** or **Takeaway**.
 3. For dine-in, pick a table from the table bar (or tap **Scan Table** and scan the table QR).
 4. Tap menu items to add them to the cart. Use the category tabs or the search bar to find items.
 5. Items with modifiers (size, milk, add-ons) open a modifier drawer — pick the options and confirm.
@@ -82,6 +83,44 @@ If you try to send a workshop order without a customer attached, the POS blocks 
 | QR | Generates a Stripe checkout QR. The customer scans it with their phone and pays on a guest-pay page — no app login needed. The POS confirms automatically when paid. Disabled if Stripe is not configured for the store. |
 
 If the wallet balance (or a 100% discount) covers the whole bill, checkout completes with no further payment.
+
+### Split the bill
+
+When a table wants to pay separately, use the **Split Bill** section in checkout (visible while more than one line item is unpaid):
+
+| Mode | How it works |
+|------|--------------|
+| Full Bill | The default — one payment covers everything. |
+| By Item | Tick the items (and quantities) for this share; the POS pro-rates their total including modifiers. Tap **Pay selected** to take that share. |
+| Evenly | Pick how many ways to split (2–6) — the remaining bill divides into equal shares. |
+
+- After each share, checkout stays open with a **"RM X of RM Y paid"** header so you can collect the next share. Each share can use a different payment method.
+- Each share is its own payment record — admins can see exactly which items each payment covered on the order detail page.
+- An item can't be split across more shares than its ordered quantity, and a share can't exceed what's left to pay — the POS blocks both.
+- Refunding a share fully re-opens its items for payment again; partial refunds keep them paid.
+
+## Cash drawer session (shift float & Z-report)
+
+If your store uses a cash drawer, open a session at shift start and close it at shift end:
+
+1. Tap the **drawer chip** in the POS header (it shows **Drawer closed** when no session is open).
+2. Tap **Open drawer** and enter the opening float (the cash in the drawer).
+3. During the shift the chip shows the **expected cash** — float plus cash sales minus cash refunds, computed live.
+4. At shift end, tap the chip, enter the **counted cash**, and confirm. The dialog shows expected vs counted and the **variance** (green within tolerance, red otherwise) before you close — add a note for any difference.
+
+One drawer session per store at a time. `cashier`, `shift_supervisor`, and `store_manager` can open and close; `server` can only view the current figures. Admins can review every session (with the payments behind the numbers) under **Store Ops → Cash Sessions** in the Admin Portal.
+
+## Working offline
+
+If the network drops, the POS keeps selling:
+
+1. An **amber banner** appears and the menu switches to the last synced copy (prices may be slightly stale — the server total is authoritative when the order syncs).
+2. **Cash is the only payment method offline** (card and QR need connectivity and are hidden).
+3. Send the order as usual — it is saved **on this device** and the **Queued** chip in the header shows the count waiting to sync.
+4. When the network returns, queued orders **sync automatically** in order — no duplicates, even if you retry or the page reloads. The payment is recorded against the server-computed total.
+5. If an order fails to sync (e.g. a menu item was deleted), it stays in the queue with the reason — open the **Queued** chip and tap **Retry** after fixing the cause.
+
+Offline orders are created as normal orders once synced — the kitchen sees them like any other order.
 
 ### After payment
 

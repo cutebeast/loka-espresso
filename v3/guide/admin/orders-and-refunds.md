@@ -65,6 +65,15 @@ Full order information:
 - Payment method and status.
 - Status history log.
 - Fulfillment details.
+- **Cancellation reason**, when the order is cancelled — e.g. "Merged into order POS-…" for orders combined on the POS.
+
+### Payments and split bills
+
+An order can be settled by several payments when staff split the bill at the POS (by item or evenly). In the payments table:
+
+- The **Covers** column lists exactly which items (and quantities) each payment paid for — e.g. "1× Espresso, 1× Pink Panther".
+- **Full bill** means the payment has no item allocation and simply covers the whole order.
+- Refunding a split payment only refunds its own amount; a full refund of a share re-opens its items for payment again.
 
 ### Update order status
 1. Open the order detail.

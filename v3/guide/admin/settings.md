@@ -23,6 +23,8 @@ Configuration keys grouped into sections. A section only appears when it has key
 | Uploads | `upload.` | Image upload limits. |
 | Reservation | `reservation.` | Table reservation rules. |
 | Payments | `stripe.` | Core Stripe options (full setup on the Payment Gateway page). |
+| Kitchen Display (KDS) | `kds.` | Station routing — which menu categories go to the Bar vs Kitchen tabs. |
+| E-Invoice | `einvoice.` | LHDN MyInvois connection and supplier identity. |
 
 Each row shows the key (without its prefix), the current value, its value type, and a Save button where applicable.
 
@@ -37,6 +39,8 @@ Each row shows the key (without its prefix), the current value, its value type, 
 | Uploads | `max_size_mb` — maximum image upload size. |
 | Reservation | Reservation rules (appears when keys are configured). |
 | Payments | Core `stripe.*` options mirrored from the Payment Gateway page. |
+| Kitchen Display (KDS) | `station_map` — JSON map of station → category slugs, e.g. `{"bar": ["cafe-specialty-coffee", …], "kitchen": ["*"]}`. `"*"` means every category not claimed by another station. Edit with care — invalid JSON is rejected. |
+| E-Invoice | `enabled` (real MyInvois submissions — until then they are simulated), `auto_issue` (generate an e-invoice on every captured payment), `base_url` (preprod vs production API), `client_id` / `client_secret` (masked), `tin` / `brn` / `msic` / `sst_number` / `supplier_name` (supplier identity on the UBL document), `default_classification`. |
 
 Exact keys vary as features ship — the page renders whatever is configured.
 
