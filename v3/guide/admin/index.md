@@ -2,7 +2,7 @@
 
 ## What the Admin Portal is for
 
-The Admin Portal (`admin.loyaltysystem.uk`) is the back-office control centre for the Loka Espresso platform. It is used to configure stores, build menus, manage inventory, create staff accounts, run marketing campaigns, set up loyalty programs, process refunds, view reports, and control platform settings.
+The Admin Portal is the back-office control centre for the Loka Espresso platform. It is used to configure stores, build menus, manage inventory, create staff accounts, run marketing campaigns, set up loyalty programs, process refunds, view reports, and control platform settings.
 
 ## Who should use this guide
 
@@ -13,7 +13,7 @@ The Admin Portal (`admin.loyaltysystem.uk`) is the back-office control centre fo
 
 ## First login
 
-1. Open `admin.loyaltysystem.uk`.
+1. Open the Admin Portal URL.
 2. Enter your email and password.
 3. If OTP is enabled, enter the code sent to your registered device.
 4. The Dashboard loads.

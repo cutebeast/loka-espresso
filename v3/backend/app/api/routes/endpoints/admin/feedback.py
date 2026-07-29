@@ -204,12 +204,13 @@ async def submit_feedback(
     body = data.body or data.message or ""
     rating = data.rating
 
-    # Validate rating - reject invalid values
-    if not isinstance(rating, int) or rating < 1 or rating > 5:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Rating must be an integer between 1 and 5",
-        )
+    # Validate rating when provided - support tickets may omit it
+    if rating is not None:
+        if not isinstance(rating, int) or rating < 1 or rating > 5:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Rating must be an integer between 1 and 5",
+            )
 
     entry = FeedbackEntry(
         customer_id=customer_id,

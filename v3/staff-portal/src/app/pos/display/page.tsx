@@ -1,19 +1,24 @@
 "use client";
 
 /**
- * Customer-facing POS display — designed for a second screen / counter tablet.
+ * Customer-facing POS display — designed for a second screen / counter tablet
+ * or wall-mounted LCD at the outlet.
  *
- * Works in two modes:
- * 1. Same-browser (dual-screen): listens to BroadcastChannel for instant updates
+ * Modes:
+ * 1. Same-browser (dual-screen): BroadcastChannel for instant updates
  * 2. Cross-device (separate tablet): polls Redis via API every 2 seconds
  *
  * Features:
  * - Idle screen with welcome, clock, and wallet top-up QR
- * - Live cart display as staff builds the order
+ * - Live cart display with item images
  * - Payment QR (Stripe) for customer to scan with their phone
- * - Payment pending spinner (for cash/card)
- * - Thank-you screen with order number and change
- * - Fullscreen + Wake Lock for kiosk-like operation
+ * - Split-bill progress with remaining/shares
+ * - Thank-you screen with e-invoice QR + auto-reset
+ * - Fullscreen + Wake Lock with re-acquisition
+ * - Connection status indicator (live / stale / disconnected)
+ * - Stale state auto-return to idle (30s no updates)
+ * - LCD mode: ?mode=lcd or auto-detect large screens → 2x font scaling
+ * - Landscape-optimised layout (cart left, totals right)
  * - localStorage persistence for refresh recovery
  */
 
@@ -21,7 +26,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { subscribeToPos, pollRedisState, loadFromLocal, clearLocal, type DisplayState } from "@/components/pos/usePosBroadcast";
 import { pwaBaseUrl } from "@/lib/pwaBase";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Wallet, Maximize2 } from "lucide-react";
+import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Wallet, Maximize2, Wifi, WifiOff } from "lucide-react";
 
 const DEFAULT_STATE: DisplayState = {
   storeName: "Loka Espresso",
@@ -37,6 +42,8 @@ const DEFAULT_STATE: DisplayState = {
 };
 
 const TOPUP_QR_CACHE_KEY = "pos-display-topup-qr";
+const STALE_TIMEOUT_MS = 30_000; // 30s — return to idle if no updates
+const STALE_WARN_MS = 5_000;     // show amber indicator after 5s
 
 export default function CustomerDisplayPage() {
   const { t, locale, setLocale } = useTranslation();
@@ -48,14 +55,24 @@ export default function CustomerDisplayPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [storeId, setStoreId] = useState<number>(1);
   const [displayKey, setDisplayKey] = useState("");
+  const [isLCD, setIsLCD] = useState(false);
+  const [connStatus, setConnStatus] = useState<"live" | "stale" | "disconnected">("live");
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastUpdateRef = useRef<number>(Date.now());
 
-  // ── Determine store ID + display key from URL ──
+  // ── Determine store ID + display key + LCD mode from URL ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = parseInt(params.get("store") || "1", 10);
     setStoreId(sid || 1);
     setDisplayKey(params.get("key") || "");
+    // LCD mode: explicit ?mode=lcd OR auto-detect large landscape screen
+    const mode = params.get("mode");
+    if (mode === "lcd") {
+      setIsLCD(true);
+    } else if (window.innerWidth >= 1920 && window.innerWidth > window.innerHeight) {
+      setIsLCD(true);
+    }
   }, []);
 
   // ── Restore from localStorage on mount (refresh recovery) ──
@@ -63,11 +80,11 @@ export default function CustomerDisplayPage() {
     const saved = loadFromLocal();
     if (saved && saved.phase !== "idle") {
       setState(saved);
+      lastUpdateRef.current = Date.now();
     }
   }, []);
 
-  // ── Auto-return to idle from the thank-you screen (~25s) ──
-  // Without this the paid screen stays up until the next order starts.
+  // ── Auto-return to idle from thank-you screen (~25s) ──
   useEffect(() => {
     if (state.phase !== "paid") return;
     const timer = setTimeout(() => {
@@ -80,23 +97,40 @@ export default function CustomerDisplayPage() {
   // ── Subscribe to BroadcastChannel (same-browser, instant) ──
   useEffect(() => {
     const unsub = subscribeToPos(
-      (s) => setState(s),
+      (s) => { setState(s); lastUpdateRef.current = Date.now(); },
       () => { setState(DEFAULT_STATE); clearLocal(); },
     );
     return unsub;
   }, []);
 
-  // ── Poll Redis (cross-device fallback) — requires the per-store display key ──
+  // ── Poll Redis (cross-device fallback) ──
   useEffect(() => {
     if (!storeId || !displayKey) return;
     const stopPoll = pollRedisState(
       storeId,
       displayKey,
-      (s) => setState(s),
+      (s) => { setState(s); lastUpdateRef.current = Date.now(); },
       () => { setState(DEFAULT_STATE); clearLocal(); },
     );
     return stopPoll;
   }, [storeId, displayKey]);
+
+  // ── Connection status monitor ──
+  useEffect(() => {
+    const check = setInterval(() => {
+      const elapsed = Date.now() - lastUpdateRef.current;
+      if (elapsed > STALE_TIMEOUT_MS && state.phase !== "idle") {
+        setConnStatus("disconnected");
+        setState(prev => ({ ...DEFAULT_STATE, storeName: prev.storeName }));
+        clearLocal();
+      } else if (elapsed > STALE_WARN_MS) {
+        setConnStatus("stale");
+      } else {
+        setConnStatus("live");
+      }
+    }, 1000);
+    return () => clearInterval(check);
+  }, [state.phase]);
 
   // ── Clock for welcome screen ──
   useEffect(() => {
@@ -107,68 +141,45 @@ export default function CustomerDisplayPage() {
     }
   }, [state.phase]);
 
-  // ── Generate payment QR from PWA payment URL ──
+  // ── Generate payment QR ──
   useEffect(() => {
     setQrDataUrl(null);
     if (!state.pwaPayUrl && !state.paymentUrl) return;
     const url = state.pwaPayUrl || state.paymentUrl!;
     let cancelled = false;
     import("qrcode").then(QRCode =>
-      QRCode.toDataURL(url, {
-        width: 320,
-        margin: 2,
-        color: { dark: "#2C1E16", light: "#FFFFFF" },
-        errorCorrectionLevel: "M",
-      }),
-    ).then(dataUrl => {
-      if (!cancelled) setQrDataUrl(dataUrl);
-    }).catch(() => {});
+      QRCode.toDataURL(url, { width: isLCD ? 480 : 320, margin: 2, color: { dark: "#2C1E16", light: "#FFFFFF" }, errorCorrectionLevel: "M" }),
+    ).then(dataUrl => { if (!cancelled) setQrDataUrl(dataUrl); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [state.pwaPayUrl, state.paymentUrl]);
+  }, [state.pwaPayUrl, state.paymentUrl, isLCD]);
 
-  // ── Generate e-invoice validation QR (thank-you screen) ──
+  // ── Generate e-invoice validation QR ──
   useEffect(() => {
     setEinvoiceQrUrl(null);
     if (!state.einvoiceUrl) return;
+    const size = isLCD ? 360 : 240;
     let cancelled = false;
     import("qrcode").then(QRCode =>
-      QRCode.toDataURL(state.einvoiceUrl!, { width: 240, margin: 1, errorCorrectionLevel: "M" }),
-    ).then(dataUrl => {
-      if (!cancelled) setEinvoiceQrUrl(dataUrl);
-    }).catch(() => {});
+      QRCode.toDataURL(state.einvoiceUrl!, { width: size, margin: 1, errorCorrectionLevel: "M" }),
+    ).then(dataUrl => { if (!cancelled) setEinvoiceQrUrl(dataUrl); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [state.einvoiceUrl]);
+  }, [state.einvoiceUrl, isLCD]);
 
   // ── Generate wallet top-up QR for idle screen ──
   useEffect(() => {
-    // Build PWA wallet top-up URL (domain derived from current host — no hardcoding)
     const pwaBase = pwaBaseUrl();
     const topUpUrl = `${pwaBase}/#wallet?action=topup&store=${storeId}`;
-
-    // Check cache
     const cacheKey = `${TOPUP_QR_CACHE_KEY}-${storeId}`;
     const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      setTopUpQrUrl(cached);
-      return;
-    }
-
+    if (cached) { setTopUpQrUrl(cached); return; }
     let cancelled = false;
     import("qrcode").then(QRCode =>
-      QRCode.toDataURL(topUpUrl, {
-        width: 200,
-        margin: 1,
-        color: { dark: "#3B4A1A", light: "#FFFFFF" },
-        errorCorrectionLevel: "L",
-      }),
+      QRCode.toDataURL(topUpUrl, { width: isLCD ? 280 : 200, margin: 1, color: { dark: "#3B4A1A", light: "#FFFFFF" }, errorCorrectionLevel: "L" }),
     ).then(dataUrl => {
-      if (!cancelled) {
-        setTopUpQrUrl(dataUrl);
-        try { sessionStorage.setItem(cacheKey, dataUrl); } catch {}
-      }
+      if (!cancelled) { setTopUpQrUrl(dataUrl); try { sessionStorage.setItem(cacheKey, dataUrl); } catch {} }
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [storeId]);
+  }, [storeId, isLCD]);
 
   // ── Fullscreen + Wake Lock ──
   const enterFullscreen = useCallback(async () => {
@@ -177,106 +188,83 @@ export default function CustomerDisplayPage() {
         await containerRef.current.requestFullscreen();
         setIsFullscreen(true);
       }
-    } catch { /* user gesture required on some browsers */ }
-
-    // Wake Lock — prevents screen from sleeping
-    try {
-      if ("wakeLock" in navigator) {
-        await (navigator as any).wakeLock.request("screen");
-      }
-    } catch { /* not supported */ }
+    } catch {}
+    try { if ("wakeLock" in navigator) await (navigator as any).wakeLock.request("screen"); } catch {}
   }, []);
 
-  // Auto-attempt fullscreen on first user interaction
   useEffect(() => {
-    const onFirstClick = () => {
-      enterFullscreen();
-      document.removeEventListener("click", onFirstClick);
-      document.removeEventListener("touchstart", onFirstClick);
-    };
+    const onFirstClick = () => { enterFullscreen(); document.removeEventListener("click", onFirstClick); document.removeEventListener("touchstart", onFirstClick); };
     document.addEventListener("click", onFirstClick);
     document.addEventListener("touchstart", onFirstClick);
-    return () => {
-      document.removeEventListener("click", onFirstClick);
-      document.removeEventListener("touchstart", onFirstClick);
-    };
+    return () => { document.removeEventListener("click", onFirstClick); document.removeEventListener("touchstart", onFirstClick); };
   }, [enterFullscreen]);
 
-  // Re-acquire wake lock when page becomes visible again
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        try {
-          if ("wakeLock" in navigator) {
-            (navigator as any).wakeLock.request("screen").catch(() => {});
-          }
-        } catch { /* */ }
-      }
+      if (document.visibilityState === "visible") { try { if ("wakeLock" in navigator) (navigator as any).wakeLock.request("screen").catch(() => {}); } catch {} }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   const fmt = useCallback((amt: number | string) => `${t("pos.currency_symbol")}${Number(amt ?? 0).toFixed(2)}`, [t]);
+  const scale = (size: number) => isLCD ? Math.round(size * 2) : size;
 
   // ── IDLE / WELCOME ──
   if (state.phase === "idle" || (state.phase === "browsing" && state.cart.length === 0)) {
     return (
-      <div ref={containerRef} style={styles.container} onClick={enterFullscreen}>
-        {/* Language selector (top-left) */}
-        <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, display: "flex", gap: 6 }}>
+      <div ref={containerRef} style={s.container} onClick={enterFullscreen}>
+        {/* Connection status dot */}
+        <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{
+            width: scale(8), height: scale(8), borderRadius: "50%",
+            background: connStatus === "live" ? "#16A34A" : connStatus === "stale" ? "#F59E0B" : "#DC2626",
+            boxShadow: `0 0 ${scale(4)}px currentColor`,
+          }} />
+          <span style={{ fontSize: scale(11), color: "var(--color-text-muted)" }}>
+            {connStatus === "live" ? t("pos.display_live") : connStatus === "stale" ? t("pos.display_waiting") : t("pos.display_disconnected")}
+          </span>
+        </div>
+
+        {/* Language selector */}
+        <div style={{ position: "absolute", top: scale(12), left: scale(12), zIndex: 10, display: "flex", gap: scale(6) }}>
           {([["en", "EN"], ["ms", "BM"], ["zh", "中文"], ["ta", "தமிழ்"], ["tr", "TR"]] as const).map(([code, label]) => (
-            <button key={code} onClick={(e) => { e.stopPropagation(); setLocale(code); try { localStorage.setItem("locale", code); } catch { /* */ } }}
+            <button key={code} onClick={(e) => { e.stopPropagation(); setLocale(code); try { localStorage.setItem("locale", code); } catch {} }}
               style={{
-                padding: "6px 10px", fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: "pointer",
-                border: locale === code ? "2px solid var(--color-primary)" : "1px solid var(--color-border-light)",
+                padding: `${scale(6)}px ${scale(10)}px`, fontSize: scale(13), fontWeight: 700, borderRadius: 8, cursor: "pointer",
+                border: locale === code ? `2px solid var(--color-primary)` : "1px solid var(--color-border-light)",
                 background: locale === code ? "var(--color-primary)" : "rgba(255,255,255,0.85)",
                 color: locale === code ? "#fff" : "var(--color-text-secondary)",
-              }}>
-              {label}
-            </button>
+              }}>{label}</button>
           ))}
         </div>
-        {/* Fullscreen button (top-right, subtle) */}
+        {/* Fullscreen button */}
         {!isFullscreen && (
-          <button style={styles.fullscreenBtn} onClick={(e) => { e.stopPropagation(); enterFullscreen(); }} aria-label="Fullscreen">
-            <Maximize2 size={20} />
-          </button>
+          <button style={{ position: "absolute", top: scale(12), right: scale(12), zIndex: 10, background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 8, padding: scale(8), cursor: "pointer", color: "var(--color-text-muted)" }}
+            onClick={(e) => { e.stopPropagation(); enterFullscreen(); }}><Maximize2 size={scale(20)} /></button>
         )}
-
-        <div style={styles.welcomeWrap}>
-          <div style={styles.logo}>{state.storeName}</div>
-          <div style={styles.welcomeText}>{t("pos.display_welcome")}</div>
-          <div style={styles.clock}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontSize: scale(36), fontWeight: 800, color: "var(--color-primary)" }}>{state.storeName}</div>
+          <div style={{ fontSize: scale(22), color: "var(--color-text-muted)", marginTop: scale(12) }}>{t("pos.display_welcome")}</div>
+          <div style={{ fontSize: scale(48), fontWeight: 300, color: "var(--color-text-secondary)", marginTop: scale(24) }}>
             {now != null ? new Date(now).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : ""}
           </div>
-
-          {/* Wallet Top-Up QR */}
           {topUpQrUrl && (
-            <div style={styles.topUpSection} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.topUpQrWrap}>
-                {topUpQrUrl ? (
-                  <img src={topUpQrUrl} alt="Top Up QR" style={styles.topUpQrImg} />
-                ) : (
-                  <Loader2 size={32} className="animate-spin" style={{ color: "var(--color-primary)" }} />
-                )}
+            <div style={{ marginTop: scale(32), display: "flex", flexDirection: "column", alignItems: "center", gap: scale(8) }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: scale(160), height: scale(160), background: "white", borderRadius: 12, padding: scale(8), boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
+                <img src={topUpQrUrl} alt="Top Up QR" style={{ width: "100%", height: "100%" }} />
               </div>
-              <div style={styles.topUpLabel}>
-                <Wallet size={18} style={{ marginRight: 6, verticalAlign: "middle" }} />
-                {t("pos.display_topup_qr_label")}
+              <div style={{ fontSize: scale(16), fontWeight: 700, color: "var(--color-primary)", display: "flex", alignItems: "center" }}>
+                <Wallet size={scale(18)} style={{ marginRight: 6 }} />{t("pos.display_topup_qr_label")}
               </div>
-              <div style={styles.topUpHint}>
-                <Smartphone size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
-                {t("pos.display_scan_to_topup")}
+              <div style={{ fontSize: scale(13), color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>
+                <Smartphone size={scale(14)} style={{ marginRight: 4 }} />{t("pos.display_scan_to_topup")}
               </div>
             </div>
           )}
-
-          <div style={styles.hint}>
-            <ShoppingBag size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
-            <div style={{ fontSize: 18, color: "var(--color-text-muted)" }}>
-              {t("pos.display_scan_to_order_hint")}
-            </div>
+          <div style={{ marginTop: scale(48), textAlign: "center" }}>
+            <ShoppingBag size={scale(48)} style={{ opacity: 0.3, marginBottom: scale(16) }} />
+            <div style={{ fontSize: scale(18), color: "var(--color-text-muted)" }}>{t("pos.display_scan_to_order_hint")}</div>
           </div>
         </div>
       </div>
@@ -286,20 +274,20 @@ export default function CustomerDisplayPage() {
   // ── PAID / THANK YOU ──
   if (state.phase === "paid") {
     return (
-      <div ref={containerRef} style={styles.container}>
-        <div style={styles.thankYouWrap}>
-          <CheckCircle size={80} style={{ color: "#16A34A", marginBottom: 24 }} />
-          <div style={styles.thankYouTitle}>{t("pos.display_thank_you")}</div>
-          {state.orderNumber && <div style={styles.orderNum}>#{state.orderNumber}</div>}
-          <div style={styles.paidTotal}>{fmt(state.paidTotal || state.total)}</div>
+      <div ref={containerRef} style={s.container}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <CheckCircle size={scale(80)} style={{ color: "#16A34A", marginBottom: scale(24) }} />
+          <div style={{ fontSize: scale(42), fontWeight: 800, color: "var(--color-primary)", marginTop: scale(16) }}>{t("pos.display_thank_you")}</div>
+          {state.orderNumber && <div style={{ fontSize: scale(24), color: "var(--color-text-muted)", marginTop: scale(8) }}>#{state.orderNumber}</div>}
+          <div style={{ fontSize: scale(56), fontWeight: 800, color: "var(--color-primary)", marginTop: scale(24) }}>{fmt(state.paidTotal || state.total)}</div>
           {state.change !== undefined && state.change > 0 && (
-            <div style={styles.changeText}>{t("pos.change_rm")}{fmt(state.change)}</div>
+            <div style={{ fontSize: scale(24), fontWeight: 600, color: "var(--color-text-secondary)", marginTop: scale(12) }}>{t("pos.change_rm")}{fmt(state.change)}</div>
           )}
-          <div style={styles.paymentMethod}>{state.paymentMethod?.toUpperCase()}</div>
+          <div style={{ fontSize: scale(16), color: "var(--color-text-muted)", marginTop: scale(16), letterSpacing: 2 }}>{state.paymentMethod?.toUpperCase()}</div>
           {state.einvoiceUrl && einvoiceQrUrl && (
-            <div style={{ marginTop: 24, textAlign: "center" }}>
-              <img src={einvoiceQrUrl} alt="e-invoice" style={{ width: 120, height: 120 }} />
-              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 8 }}>{t("pos.display_einvoice_scan")}</div>
+            <div style={{ marginTop: scale(24), textAlign: "center" }}>
+              <img src={einvoiceQrUrl} alt="e-invoice" style={{ width: scale(120), height: scale(120) }} />
+              <div style={{ fontSize: scale(13), opacity: 0.7, marginTop: scale(8) }}>{t("pos.display_einvoice_scan")}</div>
             </div>
           )}
         </div>
@@ -309,66 +297,69 @@ export default function CustomerDisplayPage() {
 
   // ── BROWSING + PAYMENT + QR PAYMENT ──
   const showPaymentQR = state.phase === "qr_payment" && qrDataUrl;
-  // Cross-device (polled) state has the payment URLs stripped and sets
-  // payment_pending instead — show a generic pay prompt, not the QR.
   const showPaymentPending = !showPaymentQR && (state.phase === "payment" || (state.phase === "qr_payment" && !!state.payment_pending));
+  const isLandscape = window.innerWidth > window.innerHeight;
+
   return (
-    <div ref={containerRef} style={styles.container}>
+    <div ref={containerRef} style={s.container}>
       {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.logo}>{state.storeName}</div>
-        <div style={styles.orderTypeBadge}>
-          {state.orderType === "dine_in" ? t("pos.dine_in") : state.orderType === "takeaway" ? t("pos.takeaway") : t("pos.delivery")}
-          {state.tableNumber && ` · ${t("pos.table")} ${state.tableNumber}`}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: `${scale(16)}px ${scale(24)}px`, borderBottom: "1px solid var(--color-border-light)" }}>
+        <div style={{ fontSize: scale(36), fontWeight: 800, color: "var(--color-primary)" }}>{state.storeName}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: scale(12) }}>
+          {/* Connection dot */}
+          <div style={{ display: "flex", alignItems: "center", gap: scale(4) }}>
+            {connStatus === "live" ? (
+              <Wifi size={scale(14)} style={{ color: "#16A34A" }} />
+            ) : connStatus === "stale" ? (
+              <Wifi size={scale(14)} style={{ color: "#F59E0B" }} />
+            ) : (
+              <WifiOff size={scale(14)} style={{ color: "#DC2626" }} />
+            )}
+          </div>
+          <div style={{ fontSize: scale(16), fontWeight: 600, color: "var(--color-text-muted)", background: "var(--color-bg-muted)", padding: `${scale(6)}px ${scale(16)}px`, borderRadius: 20 }}>
+            {state.orderType === "dine_in" ? t("pos.dine_in") : t("pos.takeaway")}
+            {state.tableNumber && ` · ${t("pos.table")} ${state.tableNumber}`}
+          </div>
         </div>
       </div>
 
-      <div style={showPaymentQR ? styles.bodyWithQR : styles.body}>
+      <div style={{ flex: 1, display: "flex", flexDirection: showPaymentQR && !isLandscape ? "column" : "row", padding: scale(16), gap: scale(16), overflow: "hidden" }}>
         {/* Cart / order summary */}
-        <div style={showPaymentQR ? styles.cartWithQR : styles.cart}>
-          <div style={styles.cartTitle}>{t("pos.order_summary")}</div>
-          <div style={styles.cartList}>
+        <div style={{ flex: showPaymentQR && isLandscape ? 1 : 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ fontSize: scale(20), fontWeight: 700, marginBottom: scale(12), padding: `0 ${scale(4)}px` }}>{t("pos.order_summary")}</div>
+          <div style={{ flex: 1, overflowY: "auto", padding: `0 ${scale(4)}px` }}>
             {state.cart.map((item, i) => (
-              <div key={i} style={styles.cartRow}>
-                {item.image_url ? (
-                  <img src={item.image_url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
-                ) : null}
-                <div style={styles.qty}>{item.qty}×</div>
-                <div style={styles.itemName}>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: scale(10), padding: `${scale(10)}px 0`, borderBottom: "1px solid var(--color-border-light)" }}>
+                {item.image_url ? <img src={item.image_url} alt="" style={{ width: scale(40), height: scale(40), borderRadius: 8, objectFit: "cover", flexShrink: 0 }} /> : null}
+                <div style={{ fontSize: scale(22), fontWeight: 700, color: "var(--color-primary)", minWidth: scale(48) }}>{item.qty}×</div>
+                <div style={{ flex: 1, fontSize: scale(18), fontWeight: 500, lineHeight: 1.4 }}>
                   {item.name}
-                  {item.modifiers_label && (
-                    <div style={styles.modLabel}>{item.modifiers_label}</div>
-                  )}
+                  {item.modifiers_label && <div style={{ fontSize: scale(14), color: "var(--color-text-muted)", marginTop: 2 }}>{item.modifiers_label}</div>}
                 </div>
-                <div style={styles.itemPrice}>{fmt(item.price * item.qty)}</div>
+                <div style={{ fontSize: scale(18), fontWeight: 600, marginLeft: scale(8), whiteSpace: "nowrap" }}>{fmt(item.price * item.qty)}</div>
               </div>
             ))}
-            {state.cart.length === 0 && (
-              <div style={styles.emptyCart}>{t("pos.no_items_found")}</div>
-            )}
+            {state.cart.length === 0 && <div style={{ fontSize: scale(18), color: "var(--color-text-muted)", textAlign: "center", padding: scale(40) }}>{t("pos.no_items_found")}</div>}
           </div>
           {/* Totals */}
-          <div style={styles.totalsWrap}>
+          <div style={{ borderTop: "2px solid var(--color-border-light)", padding: `${scale(12)}px ${scale(4)}px 0` }}>
             {state.serviceCharge > 0 && (
-              <div style={styles.totalRow}>
-                <span>{t("pos.service_charge")}</span>
-                <span>{fmt(state.serviceCharge)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: scale(16), color: "var(--color-text-muted)", padding: `${scale(4)}px 0` }}>
+                <span>{t("pos.service_charge")}</span><span>{fmt(state.serviceCharge)}</span>
               </div>
             )}
             {state.taxAmount > 0 && (
-              <div style={styles.totalRow}>
-                <span>{t("pos.tax")}</span>
-                <span>{fmt(state.taxAmount)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: scale(16), color: "var(--color-text-muted)", padding: `${scale(4)}px 0` }}>
+                <span>{t("pos.tax")}</span><span>{fmt(state.taxAmount)}</span>
               </div>
             )}
-            <div style={styles.grandTotalRow}>
-              <span>{t("pos.total_due")}</span>
-              <span>{fmt(state.total)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: scale(28), fontWeight: 800, padding: `${scale(8)}px 0 0`, color: "var(--color-primary)" }}>
+              <span>{t("pos.total_due")}</span><span>{fmt(state.total)}</span>
             </div>
             {state.splitInfo && (
-              <div style={{ ...styles.totalRow, color: "#2563EB", fontWeight: 600 }}>
-                <span>{t("pos.split_paid_of", { paid: fmt(state.splitInfo.paid), total: fmt(state.splitInfo.total) })}</span>
-                {state.splitInfo.charging != null && <span>{t("pos.display_this_share")} {fmt(state.splitInfo.charging)}</span>}
+              <div style={{ fontSize: scale(16), fontWeight: 600, color: "#2563EB", marginTop: scale(4) }}>
+                {t("pos.split_paid_of", { paid: fmt(state.splitInfo.paid), total: fmt(state.splitInfo.total) })}
+                {state.splitInfo.charging != null && ` · ${t("pos.display_this_share")} ${fmt(state.splitInfo.charging)}`}
               </div>
             )}
           </div>
@@ -376,35 +367,25 @@ export default function CustomerDisplayPage() {
 
         {/* Payment QR panel */}
         {showPaymentQR && (
-          <div style={styles.qrPanel}>
-            <div style={styles.qrTitle}>
-              <QrIcon size={28} style={{ marginRight: 8 }} />
-              {t("pos.scan_to_pay")}
+          <div style={{ width: isLandscape ? scale(400) : "100%", display: "flex", flexDirection: isLandscape ? "column" : "row", alignItems: "center", background: "var(--color-bg-card)", borderRadius: 16, padding: scale(24), boxShadow: "0 4px 24px rgba(0,0,0,0.08)", gap: isLandscape ? 0 : scale(16) }}>
+            <div style={{ fontSize: scale(22), fontWeight: 700, display: "flex", alignItems: "center", marginBottom: isLandscape ? scale(16) : 0 }}><QrIcon size={scale(28)} style={{ marginRight: 8 }} />{t("pos.scan_to_pay")}</div>
+            <div style={{ width: scale(320), height: scale(320), display: "flex", alignItems: "center", justifyContent: "center", background: "white", borderRadius: 12, padding: scale(8) }}>
+              {qrDataUrl ? <img src={qrDataUrl} alt={t("pos.payment_qr_alt")} style={{ width: scale(300), height: scale(300) }} /> : <Loader2 size={scale(48)} className="animate-spin" style={{ color: "var(--color-primary)" }} />}
             </div>
-            <div style={styles.qrImageWrap}>
-              {qrDataUrl ? (
-                <img src={qrDataUrl} alt={t("pos.payment_qr_alt")} style={styles.qrImage} />
-              ) : (
-                <Loader2 size={48} className="animate-spin" style={{ color: "var(--color-primary)" }} />
-              )}
+            <div style={{ fontSize: scale(36), fontWeight: 800, color: "var(--color-primary)", margin: `${scale(16)}px 0 ${scale(8)}px` }}>{fmt(state.total)}</div>
+            <div style={{ fontSize: scale(16), color: "var(--color-text-muted)", textAlign: "center" }}>
+              <Smartphone size={scale(18)} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("pos.display_scan_with_phone")}
             </div>
-            <div style={styles.qrAmount}>{fmt(state.total)}</div>
-            <div style={styles.qrHint}>
-              <Smartphone size={18} style={{ verticalAlign: "middle", marginRight: 6 }} />
-              {t("pos.display_scan_with_phone")}
-            </div>
-            {state.orderNumber && (
-              <div style={styles.qrOrderNum}>#{state.orderNumber}</div>
-            )}
+            {state.orderNumber && <div style={{ fontSize: scale(14), color: "var(--color-text-muted)", marginTop: scale(8) }}>#{state.orderNumber}</div>}
           </div>
         )}
 
-        {/* Payment pending (non-QR, e.g. cash — or cross-device polled mode) */}
+        {/* Payment pending */}
         {showPaymentPending && (
-          <div style={styles.paymentPendingWrap}>
-            <div style={styles.paymentPendingText}>{t("pos.display_payment_in_progress")}</div>
-            <div style={styles.qrAmount}>{fmt(state.total)}</div>
-            <Loader2 size={40} className="animate-spin" style={{ color: "var(--color-primary)", marginTop: 16 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: scale(22), fontWeight: 600, color: "var(--color-text-muted)", marginBottom: scale(16) }}>{t("pos.display_payment_in_progress")}</div>
+            <div style={{ fontSize: scale(36), fontWeight: 800, color: "var(--color-primary)" }}>{fmt(state.total)}</div>
+            <Loader2 size={scale(40)} className="animate-spin" style={{ color: "var(--color-primary)", marginTop: scale(16) }} />
           </div>
         )}
       </div>
@@ -412,59 +393,6 @@ export default function CustomerDisplayPage() {
   );
 }
 
-// ── Styles ──
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    width: "100vw", height: "100vh", display: "flex", flexDirection: "column",
-    background: "var(--color-bg-page)", color: "var(--color-text-primary)",
-    fontFamily: "var(--font-sans)", overflow: "hidden", userSelect: "none",
-    cursor: "default",
-  },
-  fullscreenBtn: {
-    position: "absolute", top: 12, right: 12, zIndex: 10,
-    background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 8,
-    padding: 8, cursor: "pointer", color: "var(--color-text-muted)",
-  },
-  welcomeWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  logo: { fontSize: 36, fontWeight: 800, color: "var(--color-primary)" },
-  welcomeText: { fontSize: 22, color: "var(--color-text-muted)", marginTop: 12 },
-  clock: { fontSize: 48, fontWeight: 300, color: "var(--color-text-secondary)", marginTop: 24 },
-  topUpSection: { marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
-  topUpQrWrap: { width: 160, height: 160, background: "white", borderRadius: 12, padding: 8, boxShadow: "0 2px 12px rgba(0,0,0,0.08)" },
-  topUpQrImg: { width: "100%", height: "100%" },
-  topUpLabel: { fontSize: 16, fontWeight: 700, color: "var(--color-primary)", display: "flex", alignItems: "center" },
-  topUpHint: { fontSize: 13, color: "var(--color-text-muted)", display: "flex", alignItems: "center" },
-  hint: { marginTop: 48, textAlign: "center" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: "1px solid var(--color-border-light)" },
-  orderTypeBadge: { fontSize: 16, fontWeight: 600, color: "var(--color-text-muted)", background: "var(--color-bg-muted)", padding: "6px 16px", borderRadius: 20 },
-  body: { flex: 1, display: "flex", padding: 16, overflow: "hidden" },
-  bodyWithQR: { flex: 1, display: "flex", padding: 16, gap: 16, overflow: "hidden" },
-  cart: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
-  cartWithQR: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
-  cartTitle: { fontSize: 20, fontWeight: 700, marginBottom: 12, padding: "0 4px" },
-  cartList: { flex: 1, overflowY: "auto", padding: "0 4px" },
-  cartRow: { display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--color-border-light)" },
-  qty: { fontSize: 22, fontWeight: 700, color: "var(--color-primary)", minWidth: 48 },
-  itemName: { flex: 1, fontSize: 18, fontWeight: 500, lineHeight: 1.4 },
-  modLabel: { fontSize: 14, color: "var(--color-text-muted)", marginTop: 2 },
-  itemPrice: { fontSize: 18, fontWeight: 600, marginLeft: 8, whiteSpace: "nowrap" },
-  emptyCart: { fontSize: 18, color: "var(--color-text-muted)", textAlign: "center", padding: 40 },
-  totalsWrap: { borderTop: "2px solid var(--color-border-light)", padding: "12px 4px 0" },
-  totalRow: { display: "flex", justifyContent: "space-between", fontSize: 16, color: "var(--color-text-muted)", padding: "4px 0" },
-  grandTotalRow: { display: "flex", justifyContent: "space-between", fontSize: 28, fontWeight: 800, padding: "8px 0 0", color: "var(--color-primary)" },
-  qrPanel: { width: 400, display: "flex", flexDirection: "column", alignItems: "center", background: "var(--color-bg-card)", borderRadius: 16, padding: 24, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" },
-  qrTitle: { fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", marginBottom: 16 },
-  qrImageWrap: { width: 320, height: 320, display: "flex", alignItems: "center", justifyContent: "center", background: "white", borderRadius: 12, padding: 8 },
-  qrImage: { width: 300, height: 300 },
-  qrAmount: { fontSize: 36, fontWeight: 800, color: "var(--color-primary)", margin: "16px 0 8px" },
-  qrHint: { fontSize: 16, color: "var(--color-text-muted)", textAlign: "center" },
-  qrOrderNum: { fontSize: 14, color: "var(--color-text-muted)", marginTop: 8 },
-  paymentPendingWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  paymentPendingText: { fontSize: 22, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 16 },
-  thankYouWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  thankYouTitle: { fontSize: 42, fontWeight: 800, color: "var(--color-primary)", marginTop: 16 },
-  orderNum: { fontSize: 24, color: "var(--color-text-muted)", marginTop: 8 },
-  paidTotal: { fontSize: 56, fontWeight: 800, color: "var(--color-primary)", marginTop: 24 },
-  changeText: { fontSize: 24, fontWeight: 600, color: "var(--color-text-secondary)", marginTop: 12 },
-  paymentMethod: { fontSize: 16, color: "var(--color-text-muted)", marginTop: 16, letterSpacing: 2 },
+const s: Record<string, React.CSSProperties> = {
+  container: { width: "100vw", height: "100vh", display: "flex", flexDirection: "column", background: "var(--color-bg-page)", color: "var(--color-text-primary)", fontFamily: "var(--font-sans)", overflow: "hidden", userSelect: "none" },
 };

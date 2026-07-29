@@ -125,7 +125,7 @@ async def resend_webhook(request: Request, db: DBDependency):
     if not secrets:
         logger.warning("Resend webhook received but no signing secret is configured")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Webhook secret not configured",
         )
 

@@ -2,7 +2,7 @@
 
 ## First login
 
-1. Open `staff.loyaltysystem.uk` in a browser.
+1. Open the Staff Portal URL in a browser.
 2. Enter your phone number or staff credentials.
 3. Enter your PIN.
 4. If you are an admin user, select the store you want to work in.

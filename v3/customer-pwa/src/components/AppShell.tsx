@@ -141,6 +141,16 @@ export default function AppShell() {
   useEffect(() => {
     setAppHost(window.location.host);
   }, []);
+  // Kiosk subdomain: force kiosk mode regardless of hash
+  useEffect(() => {
+    if (window.location.hostname.startsWith('kiosk.')) {
+      const params: Record<string, unknown> = {};
+      new URLSearchParams(window.location.search).forEach((v, k) => {
+        params[k] = v;
+      });
+      setPage('kiosk', Object.keys(params).length > 0 ? params : undefined);
+    }
+  }, [setPage]);
   const onNotificationClick = useCallback(() => {
     if (isGuest) triggerSignIn();else setPage('notifications');
   }, [isGuest, triggerSignIn, setPage]);

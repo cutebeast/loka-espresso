@@ -291,7 +291,7 @@ async def test_resend_rejected_without_secret(resend_webhook_client, monkeypatch
         headers={"svix-signature": "v1=invalid"},
         content=b"{}",
     )
-    assert res.status_code == 500
+    assert res.status_code == 400
     assert "webhook secret not configured" in res.text.lower()
 
 

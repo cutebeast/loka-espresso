@@ -2,7 +2,7 @@
 
 ## What the Staff Portal is for
 
-The Staff Portal (`staff.loyaltysystem.uk`) is where daily store operations happen: taking orders at the POS, managing the kitchen display, tracking tables, handling reservations, clocking in and out, completing tasks, and reporting operational issues.
+The Staff Portal is where daily store operations happen: taking orders at the POS, managing the kitchen display, tracking tables, handling reservations, clocking in and out, completing tasks, and reporting operational issues.
 
 ## Who should use this guide
 
@@ -15,7 +15,7 @@ The Staff Portal (`staff.loyaltysystem.uk`) is where daily store operations happ
 
 ## First login
 
-1. Open `staff.loyaltysystem.uk`.
+1. Open the Staff Portal URL.
 2. Enter your phone number or staff credentials.
 3. Enter your PIN.
 4. If you are an admin user, select the store you want to work in.

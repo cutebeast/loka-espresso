@@ -2,7 +2,7 @@
 
 ## What the Customer PWA is for
 
-The Customer PWA (`app.loyaltysystem.uk`) is the customer-facing app for browsing the menu, placing orders, earning loyalty points, redeeming rewards, managing a profile, and paying.
+The Customer PWA is the customer-facing app for browsing the menu, placing orders, earning loyalty points, redeeming rewards, managing a profile, and paying.
 
 ## Who should use this guide
 
@@ -12,7 +12,7 @@ The Customer PWA (`app.loyaltysystem.uk`) is the customer-facing app for browsin
 
 ## First use
 
-1. Open `app.loyaltysystem.uk` in a mobile browser.
+1. Open the Customer PWA URL in a mobile browser.
 2. Allow the prompt to **Add to Home Screen** for the best experience.
 3. Register with your phone number or log in.
 4. If OTP is enabled, enter the code sent to your phone.

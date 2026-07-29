@@ -37,6 +37,7 @@ class KioskOrderCreateRequest(BaseModel):
     order_type: str = Field(..., pattern="^(dine_in|takeaway)$")
     items: list[KioskOrderItem] = Field(..., min_length=1)
     dining_table_number: str | None = Field(None, max_length=20)
+    customer_phone: str | None = Field(None, max_length=20, description="Optional phone to link order to an existing or new customer profile")
 
 
 class KioskOrderOut(BaseModel):
@@ -69,6 +70,50 @@ async def _get_or_create_walkin_customer(db) -> Customer:
     await db.flush()
     await db.refresh(walkin)
     return walkin
+
+
+async def _find_or_create_kiosk_customer(db, raw_phone: str) -> Customer:
+    """Find customer by phone or create a minimal profile. Normalises Malaysian formats.
+
+    Unlike the staff find-or-create, this skips OTP — the customer is at the kiosk
+    in person and verified by staff at the counter. When the customer later registers
+    with the same phone via OTP they take over the same profile.
+    """
+    import re
+    phone = re.sub(r"[^\d+]", "", raw_phone.strip())
+    if phone.startswith("60") and len(phone) >= 10:
+        phone = "+" + phone
+    elif phone.startswith("01") and 9 <= len(phone) <= 11:
+        phone = "+6" + phone
+    elif phone.startswith("+60") and len(phone) >= 11:
+        pass
+    elif phone.startswith("1") and len(phone) == 10 and not phone.startswith("10"):
+        phone = "+6" + phone
+    else:
+        phone = "+6" + phone if not phone.startswith("+") else phone
+
+    result = await db.execute(
+        select(Customer).where(
+            Customer.phone_number == phone,
+            Customer.deleted_at.is_(None),
+        )
+    )
+    customer = result.scalar_one_or_none()
+    if customer:
+        if not customer.is_active:
+            customer.is_active = True
+        return customer
+
+    customer = Customer(
+        phone_number=phone,
+        display_name="Kiosk Customer",
+        is_active=True,
+        preferred_language="en",
+    )
+    db.add(customer)
+    await db.flush()
+    await db.refresh(customer)
+    return customer
 
 
 @public_router.post("/orders", response_model=APIResponse[KioskOrderOut], status_code=status.HTTP_201_CREATED)
@@ -174,22 +219,25 @@ async def create_kiosk_order(
         for v in v_result.scalars().all():
             variants_map[v.id] = v
 
-    # Get or create walk-in customer
-    walkin = await _get_or_create_walkin_customer(db)
+    # Get or create customer — phone-based if provided, else walk-in
+    if data.customer_phone:
+        kiosk_customer = await _find_or_create_kiosk_customer(db, data.customer_phone)
+    else:
+        kiosk_customer = await _get_or_create_walkin_customer(db)
 
-    # Get or create cart for walk-in customer at this store. The row lock
-    # serialises concurrent kiosk orders sharing the walk-in cart so two
+    # Get or create cart for this customer at this store. The row lock
+    # serialises concurrent kiosk orders sharing the same cart so two
     # kiosks cannot wipe/rebuild each other's lines mid-order.
     cart_result = await db.execute(
         select(CustomerCart).where(
-            CustomerCart.customer_id == walkin.id,
+            CustomerCart.customer_id == kiosk_customer.id,
             CustomerCart.store_id == data.store_id,
         ).with_for_update()
     )
     cart = cart_result.scalar_one_or_none()
     if cart is None:
         cart = CustomerCart(
-            customer_id=walkin.id,
+            customer_id=kiosk_customer.id,
             store_id=data.store_id,
             item_count=0,
             subtotal=Decimal("0"),
@@ -203,7 +251,7 @@ async def create_kiosk_order(
             # lock and reuse that row instead.
             cart_result = await db.execute(
                 select(CustomerCart).where(
-                    CustomerCart.customer_id == walkin.id,
+                    CustomerCart.customer_id == kiosk_customer.id,
                     CustomerCart.store_id == data.store_id,
                 ).with_for_update()
             )
@@ -321,7 +369,7 @@ async def create_kiosk_order(
     )
 
     try:
-        order = await create_order_from_cart(db, walkin.id, order_data)
+        order = await create_order_from_cart(db, kiosk_customer.id, order_data)
     except OrderError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 

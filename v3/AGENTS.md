@@ -1,6 +1,6 @@
 # FNB Super App v3 — Agent Notes
 
-*Last updated: 2026-07-20*
+*Last updated: 2026-07-28*
 
 ## Active code
 
@@ -906,22 +906,103 @@ Full browser audit of the self-ordering kiosk (`/#kiosk?store=N`, portrait table
 - **Correction noted**: an earlier audit claim that the kiosk success screen never times out was WRONG — `AutoResetTimer` (30s countdown) already existed.
 - Verified: full kiosk order flow in Chinese end-to-end; display language switch; item image in checkout (needs the backend restart for the serializer change); thank-you → idle auto-reset. 42 unit + 9 POS e2e green.
 
-## New subdomains registered (2026-07-28) — migration planned, NOT YET DONE
+## Subdomain deployment — COMPLETED (2026-07-28)
 
-The owner added 3 subdomains in Cloudflare. **No code/config changes made yet** — this is the plan for when we execute it:
+All 3 Cloudflare-registered subdomains are now live with dedicated Caddy vhosts and PM2 processes.
 
-| Subdomain | Intended role | Today |
+| Subdomain | Port | PM2 Process | Serves | Caddy Config |
+|---|---|---|---|---|
+| `api.loyaltysystem.uk` | 13800 | v3-backend (shared) | **External-only** API entry: webhooks, third-party integrations. Portals DO NOT route through it — they keep internal `/api` proxy. | `fnb-api.conf` — direct proxy to localhost:13800 |
+| `kiosk.loyaltysystem.uk` | 13840 | kiosk-v3 | Self-ordering kiosk. PWA `AppShell.tsx` detects `kiosk.*` hostname → forces kiosk mode. Old `/#kiosk` still works. | `fnb-kiosk.conf` — proxy to localhost:13840 |
+| `pos-disp.loyaltysystem.uk` | 13850 | pos-disp-v3 | POS customer display. Caddy rewrites `/?store=&key=` → `/pos/display?store=&key=` → staff portal. Old `/pos/display` still works. | `fnb-pos-disp.conf` — rewrite + proxy to localhost:13850 |
+
+### `api.loyaltysystem.uk` — external-only API entry
+
+**Purpose**: Stable public URL for webhooks and future external API consumers. NOT for internal portal traffic.
+
+**What uses it (today)**:
+- Stripe webhooks: `POST https://api.loyaltysystem.uk/api/webhooks/stripe`
+- HitPay webhooks: `POST https://api.loyaltysystem.uk/api/webhooks/hitpay`
+- Resend webhooks: `POST https://api.loyaltysystem.uk/api/webhooks/resend`
+- Health checks: `GET https://api.loyaltysystem.uk/health`
+
+**What does NOT use it**:
+- All 3 portals use path-relative `/api/*` or `http://127.0.0.1:13800/api` internally — zero code changes.
+- Cookie auth stays scoped to each portal's origin (no cross-origin issues).
+
+**Changes made**:
+- `/etc/caddy/sites/fnb-api.conf` — new vhost, TLS via existing `*.loyaltysystem.uk` wildcard cert, proxies to `localhost:13800`
+- `/etc/caddy/Caddyfile` — added `import /etc/caddy/sites/fnb-api.conf`
+- `backend/.env` — `CORS_ORIGINS` + `TRUSTED_HOSTS` now include `api.loyaltysystem.uk`
+- Backend restarted via PM2 to pick up env changes
+
+**At domain migration** (loyaltysystem.uk → lokaespresso.com): update the webhook URLs in Stripe/HitPay/Resend dashboards from `api.loyaltysystem.uk` to `api.lokaespresso.com`.
+
+### `kiosk.loyaltysystem.uk` — dedicated kiosk entry
+
+**App code**: `customer-pwa/src/components/AppShell.tsx:143-152` — `useEffect` checks `window.location.hostname.startsWith('kiosk.')` → extracts query params → calls `setPage('kiosk', params)`. Runs before the existing `page === 'kiosk'` early return.
+
+**PM2**: `kiosk-v3` — separate Next.js process on port 13840 (same build as customer-pwa). Hostname detection happens client-side.
+
+**Old URL preserved**: `app.loyaltysystem.uk/#kiosk?store=N` still works unchanged.
+
+### `pos-disp.loyaltysystem.uk` — dedicated display entry
+
+**Caddy rewrite**: `/?store=X&key=Y` → `/pos/display?store=X&key=Y` → staff portal (13850). Staff portal middleware already has `/pos/display` in `PUBLIC_PATHS` — no auth redirect.
+
+**PM2**: `pos-disp-v3` — separate Next.js process on port 13850 (same build as staff-portal).
+
+**Old URL preserved**: `staff.loyaltysystem.uk/pos/display?store=N&key=…` still works unchanged.
+
+### Verification (2026-07-28)
+- All 6 subdomains respond: admin 307, staff 307, app 200, api 200, kiosk 200, pos-disp 200
+- API webhooks: stripe/hitpay/resend respond 405 (GET not allowed — POST-only, correct)
+- Public menu via api: 200
+- Health via all hosts: 200
+- E2E smoke: 5/5 passed
+- Backend: 42/42 passed
+- Alembic check: no drift
+
+### Full port map
+
+| Service | Port | PM2 |
 |---|---|---|
-| `api.loyaltysystem.uk` | Backend API endpoints | DNS exists but **526 (Cloudflare origin SSL error)** — needs a Caddy vhost + valid origin cert before use. Apps currently proxy the API internally (`API_PROXY_URL=http://127.0.0.1:13800/api`). |
-| `kiosk.loyaltysystem.uk` | Self-ordering kiosk | Currently `app.loyaltysystem.uk/#kiosk?store=N` (hash route in the PWA) |
-| `pos-disp.loyaltysystem.uk` | POS customer display | Currently `staff.loyaltysystem.uk/pos/display?store=N&key=…` |
+| Backend API | 13800 | v3-backend |
+| Customer PWA | 13810 | customer-pwa-v3 |
+| Staff Portal | 13820 | staff-portal-v3 |
+| Admin Portal | 13830 | admin-portal-v3 |
+| Kiosk | 13840 | kiosk-v3 |
+| POS Display | 13850 | pos-disp-v3 |
 
-### Migration plan (when approved)
+## Round 33 — remaining gaps closed (2026-07-28)
 
-1. **Caddy vhosts** (pattern: `v3/infra/host-caddy/*.conf`, env-var domains): add `KIOSK_DOMAIN` and `POS_DISP_DOMAIN` site blocks with TLS (Caddy on-demand TLS or Cloudflare origin certs) + one for `API_DOMAIN` → `127.0.0.1:13800`.
-2. **`pos-disp.*`**: Caddy `rewrite / /pos/display` (query params `store`/`key` preserved) → proxy to the staff portal (13820). No app-code change needed.
-3. **`kiosk.*`**: hash routes can't be set server-side — the PWA `AppShell.tsx` needs host detection: if the hostname starts with `kiosk.`, render the kiosk page regardless of the hash (keep `#kiosk` working for backwards compat). Then Caddy proxies `kiosk.*` → the PWA (13810).
-4. **`api.*`**: after the vhost + cert work, either point portal `API_PROXY_URL`s at it or keep internal proxying (recommended: keep internal — public api.* only matters if third parties/kiosk hardware need direct API access). Backend `TRUSTED_HOSTS`/`CORS_ORIGINS` in `v3/backend/.env` must include any host the browser calls the API from directly.
-5. **Cross-device display**: unaffected — the display poll goes through whichever host serves it; the `display_key` mechanism is host-agnostic.
-6. **Verify after cutover**: kiosk full order flow on `kiosk.*`; POS display 14-check suite on `pos-disp.*`; old URLs (`/#kiosk`, `/pos/display`) keep working.
-7. Update the "Customer display URL" note above and the domain-migration checklist with the final `*.lokaespresso.com` equivalents (`kiosk.lokaespresso.com`, `pos-disp.lokaespresso.com`, `api.lokaespresso.com` — register those in Cloudflare at go-live too).
+Four issues identified in a full-system audit, all investigated and fixed:
+
+### #2 Feedback rating made optional (real, fixed)
+- **Backend**: `feedback_entries.rating` → nullable (`models/feedback.py`), CHECK constraint widened to `rating IS NULL OR (rating BETWEEN 1 AND 5)` (migration `60077da51931`), `FeedbackCreate.rating: int = 5` → `int | None = None` (`schemas/feedback.py`), endpoint handler allows None rating (`admin/feedback.py`).
+- **PWA**: `HelpSupportPage.tsx` no longer sends hardcoded `rating: 3` for support tickets — rating is simply omitted.
+- **Alembic head**: `60077da51931`; check passes.
+
+### #3 Product card prices — confirmed FALSE POSITIVE
+The AGENTS.md note about "3 product cards missing prices (owner to supply)" referred to Cocinare grinders + Loveramics cups. Investigation confirmed these are **loyalty rewards** (not menu items) with correct `points_cost` populated in `reward_catalog`. The PWA `RewardsPage` renders points cost on every card via `reward.points_cost.toLocaleString()`. Admin portal reward table/edit also show `points_cost`. No rendering gap. The note was misleading — rewards are points-priced by design, not RM-priced.
+
+### #4 Loyalty tier downgrade background job (real, fixed)
+- **Script**: `backend/scripts/evaluate_loyalty_tiers.py` — iterates all active loyalty accounts with a non-Bloom tier and an elapsed spend window, runs `_evaluate_tier_renewal` for each (renew or downgrade). Idempotent; safe to re-run.
+- **Cron**: daily 02:00 (`crontab -l` → `evaluate_loyalty_tiers.py --force-prod --quiet`). Previously downgrade only fired on payment capture or lazy `/loyalty/me` read — a dormant customer could retain a higher tier indefinitely.
+
+### #5 Help guide domain references (real, fixed)
+- **7 guide files** (11 occurrences of `loyaltysystem.uk`) updated to domain-agnostic text (removed hardcoded URLs, use descriptive text like "the Admin Portal URL").
+- **`customer-pwa/src/app/layout.tsx`**: metadataBase fallback changed from `app.loyaltysystem.uk` to `localhost:13810`.
+- **0 remaining `loyaltysystem.uk` references in `v3/guide/`**.
+
+### Verification
+- Backend: 42 passed
+- E2E: 5 smoke passed
+- TypeScript strict: all 3 portals pass
+- Alembic check: no drift
+- Crontab: 6 entries (agency + 4 translation + 1 loyalty tier eval)
+
+### #6 Resend webhook 500 → 400 (real, fixed — found during endpoint audit)
+- `POST /api/webhooks/resend` returned `500 Internal Server Error` when no signing secret was configured — should be `400 Bad Request` (unconfigured is a client/config error, not a server crash).
+- **Fix**: `webhooks.py:128` — `HTTP_500_INTERNAL_SERVER_ERROR` → `HTTP_400_BAD_REQUEST`. Test `test_resend_rejected_without_secret` updated to expect 400.
+

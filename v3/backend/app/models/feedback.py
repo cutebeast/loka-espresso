@@ -23,8 +23,8 @@ class FeedbackEntry(Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
-    rating: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, default=5,
+    rating: Mapped[int | None] = mapped_column(
+        SmallInteger, nullable=True, default=None,
     )
     admin_reply: Mapped[str | None] = mapped_column(Text, nullable=True)
     replied_at: Mapped[datetime | None] = mapped_column(
@@ -42,5 +42,5 @@ class FeedbackEntry(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_feedback_rating"),
+        CheckConstraint("rating IS NULL OR (rating BETWEEN 1 AND 5)", name="ck_feedback_rating"),
     )

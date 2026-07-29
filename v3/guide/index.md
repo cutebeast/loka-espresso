@@ -24,7 +24,7 @@ Cross-references between the three guides are included so you can follow an orde
 
 | Term | Meaning |
 |------|---------|
-| **PWA** | Progressive Web App — the customer-facing app at `app.loyaltysystem.uk`. |
+| **PWA** | Progressive Web App — the customer-facing app (mobile browser or installed). |
 | **POS** | Point of Sale — the staff checkout screen. |
 | **KDS** | Kitchen Display System — the staff kitchen screen. |
 | **Store scope** | Many records (orders, staff, inventory) belong to one store. Users only see data for stores they are assigned to. |

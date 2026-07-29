@@ -70,11 +70,6 @@ export default function HelpSupportPage() {
     try {
       await api.post('/feedback', {
         store_id: storeId ?? undefined,
-        // Backend requires an integer rating 1–5 (422 otherwise). Support
-        // tickets are not reviews — use a neutral 3 so they don't skew
-        // feedback analytics as 5-star reviews.
-        // TODO(backend): make rating optional for support-type feedback.
-        rating: 3,
         title: subject,
         body: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nMessage: ${message}`,
       });

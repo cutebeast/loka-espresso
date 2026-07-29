@@ -498,7 +498,22 @@
     "start_new_order": "Start New Order",
     "returning_in": "Returning to home in {n}s...",
     "order_failed": "Order failed. Please try again.",
-    "load_failed": "Failed to load menu"
+    "load_failed": "Failed to load menu",
+    "call_staff": "Call Staff",
+    "need_help": "Need Help?",
+    "staff_assistance": "Please call a staff member for assistance.",
+    "close": "Close",
+    "inactivity_warning": "Session ending soon",
+    "tap_to_continue": "Tap anywhere to continue",
+    "keep_ordering": "Keep Ordering",
+    "menu": "Menu",
+    "phone_title": "Order Updates",
+    "phone_desc": "Enter your phone number to receive order status updates. Skip if you prefer.",
+    "skip": "Skip",
+    "continue_with_phone": "Continue",
+    "continue_skip": "Skip & Continue",
+    "tablet_idle": "Tap to order from your table",
+    "phone_label": "Phone"
   },
   "layouts": {
     "wizard_layout": {

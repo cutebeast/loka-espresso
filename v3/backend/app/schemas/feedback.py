@@ -12,7 +12,7 @@ class FeedbackEntryOut(BaseSchema):
     store_id: int | None = None
     title: str
     body: str | None = None
-    rating: int
+    rating: int | None = None
     admin_reply: str | None = None
     replied_at: datetime | None = None
     is_read: bool = False
@@ -38,5 +38,5 @@ class FeedbackCreate(BaseSchema):
     subject: str | None = None
     body: str | None = None
     message: str | None = None
-    rating: int = 5
+    rating: int | None = None
     store_id: int | None = None

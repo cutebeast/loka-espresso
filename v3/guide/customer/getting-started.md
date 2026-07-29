@@ -5,13 +5,13 @@
 The Loka Espresso Customer PWA works best when added to your home screen.
 
 ### Android (Chrome)
-1. Open `app.loyaltysystem.uk`.
+1. Open the Customer PWA in Chrome.
 2. Tap the menu (three dots).
 3. Tap **Add to Home screen**.
 4. Confirm.
 
 ### iOS (Safari)
-1. Open `app.loyaltysystem.uk`.
+1. Open the Customer PWA in Safari.
 2. Tap the share icon.
 3. Tap **Add to Home Screen**.
 4. Confirm.

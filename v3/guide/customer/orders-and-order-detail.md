@@ -70,7 +70,7 @@ Swipe down to refresh the order list.
 
 Orders can be opened via deep link from SMS, email, or QR codes. The format uses the order ID:
 ```
-app.loyaltysystem.uk/#order-detail?orderId=123
+#order-detail?orderId=123
 ```
 
 ## Related
