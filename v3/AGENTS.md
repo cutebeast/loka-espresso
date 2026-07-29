@@ -1,6 +1,6 @@
 # FNB Super App v3 — Agent Notes
 
-*Last updated: 2026-07-28*
+*Last updated: 2026-07-29*
 
 ## Active code
 
@@ -1005,4 +1005,93 @@ The AGENTS.md note about "3 product cards missing prices (owner to supply)" refe
 ### #6 Resend webhook 500 → 400 (real, fixed — found during endpoint audit)
 - `POST /api/webhooks/resend` returned `500 Internal Server Error` when no signing secret was configured — should be `400 Bad Request` (unconfigured is a client/config error, not a server crash).
 - **Fix**: `webhooks.py:128` — `HTTP_500_INTERNAL_SERVER_ERROR` → `HTTP_400_BAD_REQUEST`. Test `test_resend_rejected_without_secret` updated to expect 400.
+
+## Kiosk overhaul — standing LCD + tablet + phone (2026-07-28/29)
+
+Complete UX rebuild for production kiosk deployment at `kiosk.loyaltysystem.uk` (port 13840).
+
+### Two kiosk modes
+| Mode | URL | Screen | Flow | Table |
+|---|---|---|---|---|
+| Standing | `kiosk.loyaltysystem.uk/` | Floor-standing LCD | Welcome → Order Type → Phone → Menu → Cart → Checkout → Success | Manual input |
+| Tablet | `kiosk.loyaltysystem.uk/?mode=tablet` | Table-top tablet | Staff setup → Menu → Cart → Checkout → Success | Persisted via localStorage |
+
+### Responsive layout
+- **Portrait** (standing LCD 1080×1920): single-column vertical stack, larger cards
+- **Landscape** (tablet 1920×1080): sidebar categories + item grid, side-by-side layout
+- All font sizes scaled per orientation via `fs(portrait, landscape)` function
+
+### Phone input (standing mode)
+- New `phone` phase between order_type and menu — optional, skippable
+- Phone sent as `customer_phone` in `POST /kiosk/orders` payload
+- Backend: `_find_or_create_kiosk_customer()` — finds or creates customer by phone (no OTP)
+- AML re-activation on profile reuse (was inactive → is_active=true)
+- Falls back to walk-in `+0000000000` when no phone provided
+
+### Tablet staff setup
+- First load: shows "Tablet Setup" screen → staff enters table number → persists to localStorage
+- Subsequent loads: detects saved table → goes straight to menu
+- URL override: `?mode=tablet&table=5` sets and saves table
+- Table number auto-sets order_type to dine_in
+
+### Other improvements
+- Wake lock: re-acquires on `visibilitychange` (previously one-shot, would sleep)
+- Fullscreen: triggers on both `click` AND `touchstart` (was click-only, unreliable on touch LCDs)
+- Inactivity: 10s countdown overlay before 60s silent reset ("Session ending soon — tap to continue")
+- Call Staff: button on welcome + menu header → modal with store phone
+- Cart running total: menu header button shows "Cart (3) · RM 45.00"
+- Order type badge: "Dine In" / "Takeaway" indicator in menu header
+- Font sizes: all bumped for LCD readability, descriptions 14→16px, min touch targets 48px
+- `manifest.json`: `display: standalone` → `fullscreen`, `display_override` → `["fullscreen"]`
+
+### Backend
+- `KioskOrderCreateRequest.customer_phone` — new optional field
+- `_find_or_create_kiosk_customer()` — phone normalisation (MY formats), find-or-create
+
+## POS display improvements (2026-07-28/29)
+
+Production-ready outlet LCD display at `pos-disp.loyaltysystem.uk` (port 13850).
+
+### New features
+- **Connection status indicator**: green/amber/red dot with Wifi/WifiOff icons in bottom-left corner (idle) and header (active). States: live (<5s), stale (>5s), disconnected (>30s → auto-idle)
+- **Stale state handling**: auto-returns to idle after 30s of no BroadcastChannel/Redis updates. Prevents frozen screen showing stale orders.
+- **LCD font scaling**: `?mode=lcd` query param OR auto-detect ≥1920px landscape → 2× font multiplier via `scale()` function. Readable from 3-5m.
+- **Landscape layout optimisations**: header with store name + connection indicator + order type badge. Active phase: two-column (cart left, QR/totals right). Column layout on portrait.
+- **Responsive QR**: payment QR resizes for LCD mode (480px vs 320px), e-invoice QR also scales
+- **Translations**: 3 new keys — `pos.display_live`, `pos.display_waiting`, `pos.display_disconnected`
+
+### Code refactor
+- Removed hardcoded style object → inline styles with `scale()` function
+- All font sizes, paddings, icons scale automatically for LCD mode
+- Landscape detection: `window.innerWidth > window.innerHeight`
+- `lastUpdateRef` timestamp tracking for staleness detection
+
+## Final verification (2026-07-29)
+
+| Check | Result |
+|---|---|
+| PM2 (8 services) | All online |
+| All 6 subdomains | admin 307, staff 307, app 200, api 200(health), kiosk 200, pos-disp 200 |
+| Backend tests | 42/42 passed |
+| E2E smoke | 5/5 passed |
+| TypeScript strict | admin/staff/pwa all clean |
+| Alembic | No drift |
+| Backend 500s (last 50 log lines) | 0 |
+| Caddy kiosk/pos-disp errors | 0 |
+| PWA menu items | 163 (full catalog — was 20) |
+| PWA public help articles | 3 customer articles |
+| PWA content events | 3 event cards |
+| PWA hash pages (10 routes) | All 200 |
+| Feedback (rating optional) | Works with/without rating |
+| OTP (bypass on dev) | Working |
+| Guest-pay GET (summary) | 200 |
+| Guest-pay POST (pay) | 201 |
+| Kiosk order (takeaway, no phone) | 201 |
+| Kiosk order (dine_in, +table, +phone) | 201 |
+| Kiosk bad table reject | 400 (correct) |
+| Kiosk tablet setup mode | 200 |
+| Kiosk tablet +table=5 | 200 |
+| Webhook resend (no secret) | 400 (was 500) |
+| Webhook stripe/hitpay | 400 (body validation, correct) |
+| Crontab | 6 entries (agency + 4 translation + 1 loyalty tier eval) |
 
