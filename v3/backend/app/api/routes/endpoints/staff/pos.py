@@ -39,8 +39,14 @@ def _is_walkin_customer(customer_id: int) -> bool:
     return False  # Conservative: always try to award; _award_pos_loyalty_points handles missing account
 
 
-async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order, order_number: str) -> int:
-    """Award loyalty points for a POS order, mirroring the customer flow."""
+async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order, order_number: str, credit: bool = True) -> int:
+    """Compute loyalty points for a POS order, mirroring the customer flow.
+
+    Always stores the multiplier-adjusted estimate on order.loyalty_points_earned.
+    With credit=True (paid at creation) the points are granted immediately with
+    a ledger entry; with credit=False (pay-later / QR orders) only the estimate
+    is stored and _credit_order_loyalty_points grants the points on capture.
+    """
     from decimal import Decimal
     from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
     from app.models.platform import PlatformConfig
@@ -60,10 +66,11 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
     if points_earned <= 0:
         return 0
 
-    # Load loyalty account with row lock
-    la_result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id).with_for_update()
-    )
+    # Load loyalty account (row lock only needed when actually crediting)
+    la_stmt = select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id)
+    if credit:
+        la_stmt = la_stmt.with_for_update()
+    la_result = await db.execute(la_stmt)
     la = la_result.scalar_one_or_none()
     if not la:
         return 0  # No loyalty account — skip silently
@@ -93,6 +100,14 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
         points_earned = int(
             (Decimal(points_earned) * birthday_mult).to_integral_value(rounding="ROUND_DOWN")
         )
+
+    # Store the estimate on the order (capture hook credits it for pay-later orders)
+    order.loyalty_points_earned = points_earned
+
+    if not credit:
+        return points_earned
+
+    if birthday_mult > 1:
         # Birthday perk voucher (Origin: drink upgrade / Reserve: gift), once per year
         tier_key_r = await db.execute(
             select(LoyaltyTier.tier_key).where(LoyaltyTier.id == la.current_tier_id)
@@ -105,6 +120,7 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
         event_type="order_earned",
         points_delta=points_earned,
         running_balance=la.points_balance + points_earned,
+        order_id=order.id,  # lets the capture hook's idempotency check see this grant
         description=f"Points earned from POS order {order_number}"
         + (" (BYOT eco-campaign)" if eco else "")
         + (" (birthday month double points)" if birthday_mult > 1 else ""),
@@ -114,8 +130,6 @@ async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order
     la.lifetime_points_earned = (la.lifetime_points_earned or 0) + points_earned
     await _recalculate_tier(db, la)
 
-    # Update order record
-    order.loyalty_points_earned = points_earned
     return points_earned
 
 
@@ -126,7 +140,9 @@ async def staff_pos_create_order(
     data: POSOrderCreateRequest,
     response: Response,
 ):
-    store_id = data.store_id or staff.store_id
+    if data.store_id is not None and data.store_id != staff.store_id:
+        raise HTTPException(status_code=403, detail="Cannot create orders for another store")
+    store_id = staff.store_id
 
     # Validate store
     store_r = await db.execute(select(Store).where(Store.id == store_id, Store.deleted_at.is_(None)))
@@ -361,9 +377,10 @@ async def staff_pos_create_order(
                 "created_at": client_ref_order.created_at.isoformat(),
             })
 
-    # Generate order number
+    # Generate order number — 8 hex chars (was 4: only 65k values/day and
+    # collided in production under normal volume)
     from uuid import uuid4
-    order_number = f"POS-{datetime.now(timezone.utc).strftime('%m%d')}-{uuid4().hex[:4].upper()}"
+    order_number = f"POS-{datetime.now(timezone.utc).strftime('%m%d')}-{uuid4().hex[:8].upper()}"
 
     order = Order(
         customer_id=customer_id,
@@ -400,11 +417,21 @@ async def staff_pos_create_order(
         # Deduct recipe-based stock
         await _deduct_stock_for_order(db, order, line_items)
 
-        # Award loyalty points (skip walk-in customer)
+        # Loyalty points: credit immediately only when the order is actually
+        # paid now (cash / manual card). Pay-later and Stripe-QR orders get an
+        # estimate only; _credit_order_loyalty_points grants the points on
+        # capture — unpaid orders must never mint redeemable points.
+        paid_now = bool(payment_data) and total > 0 and payment_data.method != "stripe_qr"
         if customer_id and not _is_walkin_customer(customer_id):
-            loyalty_pts = await _award_pos_loyalty_points(db, customer_id, subtotal, order, order_number)
+            loyalty_pts = await _award_pos_loyalty_points(db, customer_id, subtotal, order, order_number, credit=paid_now)
         else:
             loyalty_pts = 0
+
+        # Purchase-based product benefits (Coffee Pass) on paid-now orders;
+        # pay-later/QR orders get it from the capture hook instead.
+        if paid_now and customer_id:
+            from app.services.payment import _grant_coffee_pass_if_purchased
+            await _grant_coffee_pass_if_purchased(db, order)
 
         # Create payment (skip if total is zero — e.g. complimentary orders)
         payment_url: str | None = None

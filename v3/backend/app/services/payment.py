@@ -985,6 +985,87 @@ async def _apply_capture_fees(
     payment.net_amount = money_round(payment.captured_amount - fee, precision, rounding_mode)
 
 
+async def _grant_coffee_pass_if_purchased(db: AsyncSession, order: Order) -> None:
+    """Grant the 12-use free-drink voucher when a Coffee Pass item is in a
+    captured order (idempotent per order)."""
+    if not order.customer_id:
+        return
+    from app.models.menu import MenuItem
+    pass_item_id = (
+        await db.execute(
+            select(MenuItem.id).where(MenuItem.item_code == "COFFEE-PASS-12")
+        )
+    ).scalar_one_or_none()
+    if pass_item_id is None:
+        return
+    from app.models.order import OrderLineItem
+    li_result = await db.execute(
+        select(OrderLineItem.menu_item_id).where(OrderLineItem.order_id == order.id)
+    )
+    if pass_item_id not in {row[0] for row in li_result.all()}:
+        return
+    from app.models.voucher import CustomerVoucher
+    already = (
+        await db.execute(
+            select(CustomerVoucher.id).where(
+                CustomerVoucher.customer_id == order.customer_id,
+                CustomerVoucher.source == "coffee_pass",
+                CustomerVoucher.source_id == order.id,
+            ).limit(1)
+        )
+    ).scalar_one_or_none()
+    if already is not None:
+        return
+    from app.services.commerce import grant_voucher_to_customer
+    await grant_voucher_to_customer(db, order.customer_id, "PASS-CLASSIC-12", source="coffee_pass", source_id=order.id)
+
+
+async def _credit_order_loyalty_points(db: AsyncSession, order: Order) -> None:
+    """Credit an order's estimated loyalty points now that it is paid (idempotent).
+
+    Points are computed and stored on the order at creation as an estimate, but
+    only granted to the customer's balance on capture. POS orders paid at
+    creation are credited by the POS flow itself (staff/pos.py) with an
+    order_id-linked ledger row, which the idempotency check below detects.
+    """
+    points = int(order.loyalty_points_earned or 0)
+    # Purchase-based product benefits (Coffee Pass) — must run even when the
+    # customer has no loyalty account / zero point estimate
+    await _grant_coffee_pass_if_purchased(db, order)
+    if points <= 0 or not order.customer_id:
+        return
+    from app.models.loyalty import LoyaltyPointsLedger
+    already_credited = (
+        await db.execute(
+            select(LoyaltyPointsLedger.id).where(
+                LoyaltyPointsLedger.order_id == order.id,
+                LoyaltyPointsLedger.event_type == "order_earned",
+            ).limit(1)
+        )
+    ).scalar_one_or_none()
+    if already_credited is not None:
+        return
+    la_result = await db.execute(
+        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == order.customer_id).with_for_update()
+    )
+    la = la_result.scalar_one_or_none()
+    if la is None:
+        return
+    db.add(LoyaltyPointsLedger(
+        loyalty_account_id=la.id,
+        customer_id=order.customer_id,
+        event_type="order_earned",
+        points_delta=points,
+        running_balance=la.points_balance + points,
+        order_id=order.id,
+        description=f"Points earned from order {order.order_number}",
+    ))
+    la.points_balance += points
+    la.lifetime_points_earned = (la.lifetime_points_earned or 0) + points
+    from app.services.commerce import _recalculate_tier
+    await _recalculate_tier(db, la)
+
+
 async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None:
     """Recompute and persist an order's payment status from its payments."""
     order_result = await db.execute(
@@ -1027,6 +1108,8 @@ async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None
             order.payment_status = "partially_refunded"
     elif total_captured >= order_total:
         order.payment_status = "captured"
+        # Loyalty points are granted on capture, not at order creation (idempotent).
+        await _credit_order_loyalty_points(db, order)
         # Spend-based lucky draw: grant tickets on capture (idempotent).
         from app.services.lucky_draw import grant_tickets_for_order
         await grant_tickets_for_order(db, order)
@@ -1202,6 +1285,76 @@ async def cancel_pending_order_payments(db: AsyncSession, order_id: int) -> list
     return cancelled_ids
 
 
+async def _reverse_order_benefits_on_refund(
+    db: AsyncSession,
+    payment: Payment,
+    refund_amount: Decimal,
+    is_full_refund: bool,
+) -> None:
+    """Reverse loyalty points, vouchers/rewards, and annual spend for a refund.
+
+    Full refund: claw back all of the order's loyalty points (capped at the
+    account's current balance, with ledger entry), release any voucher/reward
+    bound to the order, and decrement annual spend by the refunded amount.
+    Partial refund: pro-rata points clawback and annual-spend decrement only
+    (no voucher/reward release). Stock is never restored on refunds.
+    """
+    order_result = await db.execute(
+        select(Order).where(Order.id == payment.order_id).with_for_update()
+    )
+    order = order_result.scalar_one_or_none()
+    if order is None:
+        return
+
+    la = None
+    if order.customer_id:
+        la_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.customer_id == order.customer_id).with_for_update()
+        )
+        la = la_result.scalar_one_or_none()
+
+    # ── Loyalty points clawback (pro-rata for partial refunds) ──
+    points = int(order.loyalty_points_earned or 0)
+    if points > 0 and order.customer_id:
+        captured = to_decimal(payment.captured_amount or 0)
+        if is_full_refund or captured <= 0:
+            points_to_claw = points
+        else:
+            ratio = to_decimal(refund_amount) / captured
+            points_to_claw = min(
+                points,
+                int((Decimal(points) * ratio).to_integral_value(rounding="ROUND_DOWN")),
+            )
+        if points_to_claw > 0:
+            if la:
+                clawback = min(points_to_claw, la.points_balance)
+                if clawback > 0:
+                    from app.models.loyalty import LoyaltyPointsLedger
+                    db.add(LoyaltyPointsLedger(
+                        loyalty_account_id=la.id,
+                        customer_id=order.customer_id,
+                        event_type="return_deduction",
+                        points_delta=-clawback,
+                        running_balance=la.points_balance - clawback,
+                        order_id=order.id,
+                        description=f"Points reversed for refunded order {order.order_number}",
+                    ))
+                    la.points_balance -= clawback
+                la.lifetime_points_earned = max(0, (la.lifetime_points_earned or 0) - points_to_claw)
+                from app.services.commerce import _recalculate_tier
+                await _recalculate_tier(db, la)
+            order.loyalty_points_earned = max(0, points - points_to_claw)
+
+    # ── Annual spend rollback (minor units, floored at 0) ──
+    if la is not None:
+        la.annual_spend = max(0, (la.annual_spend or 0) - _to_cents(to_decimal(refund_amount)))
+
+    # ── Voucher / reward release (full refunds only) ──
+    if is_full_refund:
+        from app.services.order import _release_order_vouchers_and_rewards
+        await _release_order_vouchers_and_rewards(db, order)
+
+
 async def refund_payment(
     db: AsyncSession,
     payment_id: int,
@@ -1329,6 +1482,10 @@ async def refund_payment(
     if payment.provider == "internal_wallet" and refund_status == "completed":
         await _credit_wallet_for_refund(db, payment, refund, refund_amount, precision, rounding_mode)
 
+    await _reverse_order_benefits_on_refund(
+        db, payment, refund_amount, is_full_refund=(new_status == "refunded")
+    )
+
     await _sync_order_payment_status(db, payment)
     await db.commit()
     await db.refresh(refund)
@@ -1424,6 +1581,11 @@ async def _handle_stripe_refund_webhook(
     payment.refunded_amount = new_total
     payment.refund_count = (payment.refund_count or 0) + 1
 
+    # Mirror refund_payment: reverse loyalty points / vouchers / annual spend
+    # for refunds initiated outside the API (e.g. Stripe Dashboard).
+    is_full = bool(payment.captured_amount) and new_total >= payment.captured_amount
+    await _reverse_order_benefits_on_refund(db, payment, refund_delta, is_full)
+
 
 async def _complete_wallet_topup(
     db: AsyncSession,
@@ -1504,6 +1666,79 @@ async def _handle_wallet_topup_webhook(
     await _complete_wallet_topup(db, session, "Online top-up via Stripe", data.get("payment_intent"))
 
 
+async def _reverse_wallet_topup(
+    db: AsyncSession,
+    session_id: int,
+    event_type: str,
+) -> None:
+    """Reverse a wallet top-up whose async payment failed or the session expired.
+
+    If the wallet was already credited, append a compensating debit ledger
+    entry mirroring _complete_wallet_topup's crediting logic.
+    """
+    result = await db.execute(
+        select(WalletTopupSession).where(WalletTopupSession.id == session_id).with_for_update()
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        logger.warning("Wallet top-up session %s not found", session_id)
+        return
+    if session.status != "completed":
+        if session.status == "pending":
+            session.status = "failed"
+            await db.commit()
+        return
+
+    wallet_result = await db.execute(
+        select(Wallet).where(Wallet.customer_id == session.customer_id).with_for_update()
+    )
+    wallet = wallet_result.scalar_one_or_none()
+    if wallet is None:
+        logger.warning("Wallet not found for customer %s", session.customer_id)
+        return
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    # Compute current balance (mirrors _complete_wallet_topup)
+    balance_result = await db.execute(
+        select(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (WalletLedgerEntry.entry_type.in_(["credit", "release", "adjustment"]), WalletLedgerEntry.amount),
+                        else_=0,
+                    )
+                )
+                -
+                func.sum(
+                    case(
+                        (WalletLedgerEntry.entry_type.in_(["debit", "hold"]), WalletLedgerEntry.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            )
+        ).where(WalletLedgerEntry.wallet_id == wallet.id)
+    )
+    current_balance = money_round(balance_result.scalar() or 0, precision, rounding_mode)
+    new_balance = money_round(current_balance - session.amount, precision, rounding_mode)
+
+    ledger = WalletLedgerEntry(
+        wallet_id=wallet.id,
+        entry_type="debit",
+        amount=session.amount,
+        running_balance=new_balance,
+        description=f"Reversal of wallet top-up #{session.id} (Stripe {event_type})",
+        reference_type="wallet_topup",
+        reference_id=session.id,
+    )
+    db.add(ledger)
+    session.status = "failed"
+    await db.commit()
+
+
 async def _handle_stripe_dispute_webhook(
     db: AsyncSession,
     payment: Payment,
@@ -1567,7 +1802,24 @@ async def process_webhook_event(
         metadata = data.get("metadata", {})
         wallet_session_id = metadata.get("wallet_topup_session_id")
         if wallet_session_id:
+            if event_type == "checkout.session.completed" and data.get("payment_status") != "paid":
+                # Delayed-notification methods (fpx, grabpay) complete with
+                # payment_status="unpaid" — wait for async_payment_succeeded.
+                logger.info(
+                    "Skipping checkout.session.completed with payment_status=%s for wallet top-up %s",
+                    data.get("payment_status"),
+                    wallet_session_id,
+                )
+                return None
             await _handle_wallet_topup_webhook(db, int(wallet_session_id), data)
+            return None
+
+    # A failed/expired async checkout reverses any wallet credit already made.
+    if provider == "stripe" and event_type in ("checkout.session.async_payment_failed", "checkout.session.expired"):
+        metadata = data.get("metadata", {})
+        wallet_session_id = metadata.get("wallet_topup_session_id")
+        if wallet_session_id:
+            await _reverse_wallet_topup(db, int(wallet_session_id), event_type)
             return None
 
     # Stripe disputes reference the charge id, not the PaymentIntent/session id.
@@ -1680,6 +1932,15 @@ async def process_webhook_event(
             new_status = "captured"
             payment.captured_amount = _from_cents(data.get("amount_received")) if data.get("amount_received") is not None else payment.amount
         elif event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
+            if event_type == "checkout.session.completed" and data.get("payment_status") != "paid":
+                # Delayed-notification methods (fpx, grabpay) complete with
+                # payment_status="unpaid" — wait for async_payment_succeeded.
+                logger.info(
+                    "Skipping checkout.session.completed with payment_status=%s for payment %s",
+                    data.get("payment_status"),
+                    payment.id,
+                )
+                return payment
             new_status = "captured"
             payment.captured_amount = _from_cents(data.get("amount_total")) if data.get("amount_total") is not None else payment.amount
             # Link the payment to the underlying PaymentIntent id when available.
@@ -1752,6 +2013,12 @@ async def process_webhook_event(
             await _sync_order_payment_status(db, payment)
             await _accrue_loyalty_annual_spend(db, payment)
         elif new_status in ("refunded", "partially_refunded"):
+            await db.flush()
+            await _sync_order_payment_status(db, payment)
+        elif new_status in ("failed", "voided") and event_type in (
+            "checkout.session.async_payment_failed",
+            "checkout.session.expired",
+        ):
             await db.flush()
             await _sync_order_payment_status(db, payment)
 

@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.order import Order
 from app.models.store import (
     DiningTable,
@@ -279,6 +279,7 @@ async def update_store(
 ):
     """Update a store (partial)."""
     store = await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     update_data = data.model_dump(exclude_unset=True)
     hours_data = update_data.pop("operating_hours", None)
@@ -364,6 +365,7 @@ async def delete_store(
 ):
     """Soft-delete a store."""
     store = await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     store.is_active = False
     store.deleted_at = datetime.now(timezone.utc)
@@ -407,6 +409,7 @@ async def replace_operating_hours(
 ):
     """Bulk replace operating hours for a store (exactly 7 days)."""
     await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     if len(data) != 7:
         raise HTTPException(
@@ -533,6 +536,7 @@ async def create_table(
 ):
     """Create a dining table for a store."""
     await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     qr_token = data.qr_code_token or uuid4().hex
 
@@ -564,6 +568,7 @@ async def update_table(
 ):
     """Update a dining table."""
     await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     result = await db.execute(
         select(DiningTable).where(
@@ -615,6 +620,7 @@ async def delete_table(
 ):
     """Soft-delete a dining table."""
     await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     result = await db.execute(
         select(DiningTable).where(
@@ -649,6 +655,7 @@ async def generate_table_qr(
 ):
     """Generate QR code URL for a dining table."""
     await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
 
     result = await db.execute(
         select(DiningTable).where(

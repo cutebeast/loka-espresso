@@ -1,6 +1,8 @@
 """API router assembly."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.api.routes.deps import reject_readonly_admin_mutations
 
 from app.api.routes.endpoints.common import health
 from app.api.routes.endpoints.common import upload
@@ -81,7 +83,10 @@ from app.api.routes.endpoints.admin import lucky_draw as admin_lucky_draw
 from app.api.routes.endpoints.public import lucky_draw as public_lucky_draw
 from app.api.routes.endpoints.admin import class_sessions as admin_class_sessions
 
-api_router = APIRouter()
+# The write-guard runs on every route but only acts on mutation requests
+# carrying an admin-context token (admin_id claim); reads, public traffic,
+# customer tokens and pure-staff tokens pass through untouched.
+api_router = APIRouter(dependencies=[Depends(reject_readonly_admin_mutations)])
 
 # System
 api_router.include_router(health.router, prefix="/health", tags=["system"])

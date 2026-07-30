@@ -34,9 +34,9 @@ class FeedbackStatsOut(BaseSchema):
 
 
 class FeedbackCreate(BaseSchema):
-    title: str | None = None
-    subject: str | None = None
-    body: str | None = None
-    message: str | None = None
-    rating: int | None = None
+    title: str | None = Field(None, max_length=200)
+    subject: str | None = Field(None, max_length=200)
+    body: str | None = Field(None, max_length=5000)
+    message: str | None = Field(None, max_length=5000)
+    rating: int | None = Field(None, ge=1, le=5)
     store_id: int | None = None

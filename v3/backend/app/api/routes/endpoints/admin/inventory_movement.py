@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -134,6 +134,8 @@ async def create_movement(
     data: MovementLogCreate,
 ):
     """Record an inventory movement (stock in, out, adjustment, waste)."""
+    await require_store_admin(db, admin, data.store_id)
+
     # Verify item exists and is not deleted
     item_result = await db.execute(
         select(InventoryItem).where(

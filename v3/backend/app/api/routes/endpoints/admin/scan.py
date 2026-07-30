@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.reward import CustomerReward, RewardCatalog
@@ -124,6 +124,7 @@ async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, dat
     cr.status = "used"
     cr.used_at = now
     if data.store_id:
+        await require_store_admin(db, admin, data.store_id)
         cr.store_id = data.store_id
 
     rc_result = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
@@ -172,6 +173,7 @@ async def scan_voucher_code(admin: CurrentAdmin, db: DBDependency, code: str, da
     cv.status = "used"
     cv.used_at = now
     if data.store_id:
+        await require_store_admin(db, admin, data.store_id)
         cv.store_id = data.store_id
 
     vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))

@@ -318,7 +318,9 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
             @dataclass
             class AdminStaff:
                 id: int = 0
-                principal_id: int = 0
+                # Real principal of the underlying admin account so wallet /
+                # redemption audit rows are attributed (was 0 → audit skipped).
+                principal_id: int = admin.principal_id or 0
                 store_id: int = int(payload.get("store_id", 0))
                 display_name: str = payload.get("admin_name", admin.display_name or "Admin")
                 email_address: str = admin.email or ""
@@ -446,3 +448,50 @@ async def require_store_admin(
             detail="Store access denied",
         )
     return admin
+
+
+# Roles allowed to perform write operations in the admin portal.
+WRITE_CAPABLE_ADMIN_ROLES = {"system_admin", "regional_manager", "store_manager"}
+
+# Self-service mutations any authenticated admin may call regardless of role
+# (otherwise read-only accounts could not maintain their own session).
+_WRITE_GUARD_EXEMPT_PATHS = (
+    "/api/admin/auth/logout",
+    "/api/admin/auth/refresh",
+    "/api/admin/auth/change-password",
+)
+
+
+async def reject_readonly_admin_mutations(request: Request, db: DBDependency) -> None:
+    """Router-level guard: reject admin mutations by accounts with no
+    write-capable role (readonly_analyst, or no role assignments at all).
+
+    Attached as a dependency on every admin router include. GET/HEAD/OPTIONS
+    and unauthenticated requests pass through untouched — route-level auth
+    dependencies decide those. This is the central enforcement of the
+    documented "readonly_analyst = view only" contract.
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+    if any(request.url.path.startswith(p) for p in _WRITE_GUARD_EXEMPT_PATHS):
+        return
+    token = get_admin_access_token(request) or get_staff_access_token(request)
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[len("Bearer "):]
+    if not token:
+        return  # route's own CurrentAdmin dependency will reject
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return  # route's own CurrentAdmin dependency will reject
+    admin_id = int(payload.get("admin_id", 0))
+    if not admin_id:
+        return  # not an admin-context token — route deps decide
+    role_keys = await _get_admin_role_keys(db, admin_id)
+    if not (role_keys & WRITE_CAPABLE_ADMIN_ROLES):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This admin role is read-only",
+        )

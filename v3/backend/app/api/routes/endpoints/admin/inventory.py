@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.inventory import InventoryCategory, InventoryItem, InventoryStock, Supplier
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.inventory import (
@@ -399,6 +399,7 @@ async def create_stock(
     data: InventoryStockCreate,
 ):
     """Create per-store stock levels for a global inventory item."""
+    await require_store_admin(db, admin, data.store_id)
     existing = await db.execute(
         select(InventoryStock).where(
             InventoryStock.inventory_item_id == data.inventory_item_id,
@@ -442,6 +443,8 @@ async def update_stock(
             status_code=status.HTTP_404_NOT_FOUND, detail="Stock record not found"
         )
 
+    await require_store_admin(db, admin, stock.store_id)
+
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(stock, key, value)
@@ -464,6 +467,8 @@ async def delete_stock(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Stock record not found"
         )
+
+    await require_store_admin(db, admin, stock.store_id)
 
     await db.delete(stock)
     await db.commit()
@@ -520,6 +525,8 @@ async def create_supplier(
     data: SupplierCreate,
 ):
     """Create a new supplier."""
+    if data.store_id is not None:
+        await require_store_admin(db, admin, data.store_id)
     supplier_data = data.model_dump()
     field_map = {"phone_number": "phone", "email_address": "email"}
     mapped = {field_map.get(k, k): v for k, v in supplier_data.items()}
@@ -558,6 +565,8 @@ async def update_supplier(
             status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found"
         )
 
+    await require_store_admin(db, admin, supplier.store_id)
+
     update_data = data.model_dump(exclude_unset=True)
     field_map = {"phone_number": "phone", "email_address": "email"}
     mapped = {field_map.get(k, k): v for k, v in update_data.items()}
@@ -587,6 +596,8 @@ async def delete_supplier(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found"
         )
+
+    await require_store_admin(db, admin, supplier.store_id)
 
     supplier.is_active = False
     supplier.deleted_at = datetime.now(timezone.utc)

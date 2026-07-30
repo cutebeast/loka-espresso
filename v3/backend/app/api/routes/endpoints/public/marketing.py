@@ -2,11 +2,12 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from app.api.routes.deps import ActiveCustomer, DBDependency
+from app.core.rate_limiter import limiter
 from app.models.customer import Customer, CustomerConsent
 from app.schemas.base import APIResponse
 
@@ -58,7 +59,8 @@ async def _apply_opt_out(db: DBDependency, customer: Customer | None) -> None:
 
 
 @router.post("/opt-out", response_model=APIResponse[MarketingOptOutResponse])
-async def public_marketing_opt_out(db: DBDependency, data: MarketingOptOutRequest):
+@limiter.limit("5/minute")
+async def public_marketing_opt_out(request: Request, db: DBDependency, data: MarketingOptOutRequest):
     """Allow a customer to opt out of marketing messages using email or phone.
 
     Returns success even if no matching customer is found so the endpoint does not

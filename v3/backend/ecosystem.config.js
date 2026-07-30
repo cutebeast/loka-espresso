@@ -4,7 +4,11 @@ module.exports = {
       name: "v3-backend",
       cwd: "/root/fnb-super-app/v3/backend",
       script: "./.venv/bin/python",
-      args: "-m uvicorn app.main:app --host 0.0.0.0 --port 13800",
+      // --no-proxy-headers: keep scope client = real TCP peer so the rate
+      // limiter's proxy-chain detection (loopback ⇒ Caddy) works; without
+      // this uvicorn rewrites client from XFF and per-IP keys shard across
+      // Cloudflare edge nodes.
+      args: "-m uvicorn app.main:app --host 0.0.0.0 --port 13800 --no-proxy-headers",
       instances: 1,
       autorestart: true,
       watch: false,

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.core.security import hash_password
 from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
 from app.models.platform import AuditLog
@@ -81,6 +81,8 @@ async def create_staff(
 
     if not display_name:
         raise HTTPException(status_code=400, detail="Display name required")
+
+    await require_store_admin(db, admin, data.store_id)
 
     principal = IAMPrincipal(principal_type="human", status="active")
     db.add(principal)
@@ -605,6 +607,8 @@ async def update_staff(
     if profile is None:
         raise HTTPException(status_code=404, detail="Staff not found")
 
+    await require_store_admin(db, admin, profile.store_id)
+
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(profile, field, value)
@@ -630,6 +634,8 @@ async def delete_staff(
     profile = result.scalar_one_or_none()
     if profile is None:
         raise HTTPException(status_code=404, detail="Staff not found")
+
+    await require_store_admin(db, admin, profile.store_id)
 
     profile.is_active = False
     profile.deleted_at = datetime.now(timezone.utc)
@@ -659,6 +665,8 @@ async def update_staff_role(
     sp = result.scalar_one_or_none()
     if not sp:
         raise HTTPException(status_code=404, detail="Staff not found")
+
+    await require_store_admin(db, admin, sp.store_id)
 
     sp.role = data.role
     sp.updated_at = datetime.now(timezone.utc)

@@ -130,6 +130,7 @@ class OrderOut(BaseSchema):
     customer_notes: str | None
     delivery_instructions: str | None
     pickup_time: datetime | None
+    estimated_ready_at: datetime | None = None
     delivery_address: dict | str | None = None
     recipient_name: str | None = None
     recipient_phone: str | None = None

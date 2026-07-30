@@ -1,7 +1,7 @@
 """Order service layer."""
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import inspect as sa_inspect, select, func, update
 from sqlalchemy.exc import IntegrityError
@@ -238,6 +238,33 @@ def generate_order_number() -> str:
     return f"ORD-{now.strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
 
 
+async def compute_estimated_ready_at(db: AsyncSession, order: Order, line_items: list) -> datetime:
+    """Honest pickup estimate for the ETA card: longest item prep time plus a
+    queue buffer derived from the store's current in-progress orders (capped).
+    A customer-scheduled pickup_time always wins. Not persisted — the queue
+    moves, so the estimate is computed at read time.
+    """
+    if order.pickup_time:
+        return order.pickup_time
+    menu_ids = [li.menu_item_id for li in line_items]
+    max_prep = 10
+    if menu_ids:
+        prep_result = await db.execute(
+            select(func.max(MenuItem.prep_time_minutes)).where(MenuItem.id.in_(menu_ids))
+        )
+        max_prep = prep_result.scalar() or 10
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    queue_result = await db.execute(
+        select(func.count(Order.id)).where(
+            Order.store_id == order.store_id,
+            Order.status.in_(("confirmed", "preparing")),
+            Order.created_at >= today_start,
+        )
+    )
+    queue_count = queue_result.scalar() or 0
+    return datetime.now(timezone.utc) + timedelta(minutes=max_prep + min(queue_count * 2, 30))
+
+
 async def _deduct_stock_for_order(
     db: AsyncSession,
     order: Order,
@@ -410,6 +437,39 @@ async def _restore_stock_for_order(
         ))
 
 
+async def _release_order_vouchers_and_rewards(db: AsyncSession, order: Order) -> None:
+    """Release vouchers/rewards consumed by the order (decrementing global
+    usage counters). Shared by order cancellation and full refunds."""
+    cv_result = await db.execute(
+        select(CustomerVoucher).where(
+            CustomerVoucher.order_id == order.id,
+            CustomerVoucher.status == "used",
+        ).with_for_update()
+    )
+    for cv in cv_result.scalars().all():
+        cv.status = "active"
+        cv.used_at = None
+        cv.order_id = None
+        cv.use_count = max(0, (cv.use_count or 0) - 1)
+        vd = await db.get(VoucherDefinition, cv.voucher_definition_id)
+        if vd:
+            vd.global_use_count = max(0, (vd.global_use_count or 0) - 1)
+
+    cr_result = await db.execute(
+        select(CustomerReward).where(
+            CustomerReward.order_id == order.id,
+            CustomerReward.status == "used",
+        ).with_for_update()
+    )
+    for cr in cr_result.scalars().all():
+        cr.status = "active"
+        cr.used_at = None
+        cr.order_id = None
+        rc = await db.get(RewardCatalog, cr.reward_catalog_id)
+        if rc:
+            rc.total_redemptions = max(0, (rc.total_redemptions or 0) - 1)
+
+
 async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
     """Reverse side effects granted at order creation.
 
@@ -462,34 +522,7 @@ async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
         order.loyalty_points_earned = 0
 
     # ── Voucher / reward release ──
-    cv_result = await db.execute(
-        select(CustomerVoucher).where(
-            CustomerVoucher.order_id == order.id,
-            CustomerVoucher.status == "used",
-        ).with_for_update()
-    )
-    for cv in cv_result.scalars().all():
-        cv.status = "active"
-        cv.used_at = None
-        cv.order_id = None
-        cv.use_count = max(0, (cv.use_count or 0) - 1)
-        vd = await db.get(VoucherDefinition, cv.voucher_definition_id)
-        if vd:
-            vd.global_use_count = max(0, (vd.global_use_count or 0) - 1)
-
-    cr_result = await db.execute(
-        select(CustomerReward).where(
-            CustomerReward.order_id == order.id,
-            CustomerReward.status == "used",
-        ).with_for_update()
-    )
-    for cr in cr_result.scalars().all():
-        cr.status = "active"
-        cr.used_at = None
-        cr.order_id = None
-        rc = await db.get(RewardCatalog, cr.reward_catalog_id)
-        if rc:
-            rc.total_redemptions = max(0, (rc.total_redemptions or 0) - 1)
+    await _release_order_vouchers_and_rewards(db, order)
 
     # ── Stock restoration ──
     li_result = await db.execute(
@@ -609,7 +642,34 @@ async def create_order_from_cart(
         select(CartLineItem).where(CartLineItem.cart_id == cart.id)
     )
     cart_items = items_result.scalars().all()
-    
+
+    # Members-only ("Vault") enforcement: menu items with minimum_tier_id
+    # require the ordering customer to hold at least that loyalty tier.
+    # Walk-in/guest profiles have no tier and cannot order locked items.
+    # (POS orders bypass this path — staff may sell locked items in-store.)
+    line_item_ids = [ci.menu_item_id for ci in cart_items]
+    if line_item_ids:
+        locked_result = await db.execute(
+            select(MenuItem.id, MenuItem.item_name, MenuItem.minimum_tier_id).where(
+                MenuItem.id.in_(line_item_ids),
+                MenuItem.minimum_tier_id.isnot(None),
+            )
+        )
+        locked_items = locked_result.all()
+        if locked_items:
+            la_result = await db.execute(
+                select(LoyaltyAccount.current_tier_id).where(
+                    LoyaltyAccount.customer_id == customer_id
+                )
+            )
+            customer_tier_id = la_result.scalar_one_or_none()
+            for _item_id, item_name, min_tier in locked_items:
+                if min_tier and (customer_tier_id is None or customer_tier_id < min_tier):
+                    raise OrderError(
+                        f'"{item_name}" is a members-only item — unlock it by reaching a higher loyalty tier',
+                        403,
+                    )
+
     # Fetch store config for fees and admin-configured accounting precision
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
@@ -1010,7 +1070,8 @@ async def create_order_from_cart(
         )
         db.add(tip)
 
-    # Award loyalty points to customer
+    # Estimate loyalty points for display — the balance is credited only when
+    # payment is captured (see _credit_order_loyalty_points in services/payment.py).
     if loyalty_points_earned > 0 and customer_id:
         la_result = await db.execute(
             select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id).with_for_update()
@@ -1024,10 +1085,8 @@ async def create_order_from_cart(
                 tier = await db.get(LoyaltyTier, la.current_tier_id)
                 if tier and tier.is_active:
                     multiplier = to_decimal(tier.points_multiplier)
-            eco = False
             if order.is_byot:
                 # Eco-campaign (BYOT): 2x points (Bloom/Origin), 3x (Reserve) — replaces tier multiplier
-                eco = True
                 multiplier = Decimal(3) if (tier and tier.tier_key == "reserve") else Decimal(2)
             # Double points during the customer's birthday month (all tiers)
             from app.services.commerce import _birthday_points_multiplier, grant_birthday_perk
@@ -1041,23 +1100,6 @@ async def create_order_from_cart(
                     (Decimal(loyalty_points_earned) * multiplier).to_integral_value(rounding="ROUND_DOWN")
                 )
                 order.loyalty_points_earned = loyalty_points_earned
-            from app.models.loyalty import LoyaltyPointsLedger
-            ledger = LoyaltyPointsLedger(
-                loyalty_account_id=la.id,
-                customer_id=customer_id,
-                event_type="order_earned",
-                points_delta=loyalty_points_earned,
-                running_balance=la.points_balance + loyalty_points_earned,
-                description=f"Points earned from order {order.order_number}"
-                + (" (BYOT eco-campaign)" if eco else "")
-                + (" (birthday month double points)" if birthday_mult > 1 else ""),
-            )
-            db.add(ledger)
-            la.points_balance += loyalty_points_earned
-            la.lifetime_points_earned = (la.lifetime_points_earned or 0) + loyalty_points_earned
-            # Auto-upgrade tier if applicable
-            from app.services.commerce import _recalculate_tier
-            await _recalculate_tier(db, la)
 
     # Track order count + referral conversion (first order converts a pending referral)
     if customer_id:

@@ -357,6 +357,18 @@ async def get_ledger_entry(
 # Public (customer) endpoints
 # ---------------------------------------------------------------------------
 
+@public_loyalty_router.get("/tiers", response_model=APIResponse[list[LoyaltyTierOut]])
+async def list_public_tiers(db: DBDependency):
+    """Public tier list (names, thresholds, multipliers, benefits) — marketing
+    info used by the PWA membership card / tier preview. No auth required."""
+    result = await db.execute(
+        select(LoyaltyTier)
+        .where(LoyaltyTier.is_active.is_(True))
+        .order_by(LoyaltyTier.sort_order)
+    )
+    return APIResponse(data=[LoyaltyTierOut.model_validate(t) for t in result.scalars().all()])
+
+
 @public_loyalty_router.get("/me", response_model=APIResponse[LoyaltyAccountOut])
 async def get_my_loyalty_account(
     db: DBDependency,

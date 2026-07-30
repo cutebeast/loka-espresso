@@ -460,7 +460,9 @@ async def staff_use_reward(
 
     cr.status = "used"
     cr.used_at = now
-    store_id = data.store_id if data.store_id is not None else staff.store_id
+    # Always attribute the redemption to the staff member's own store (token
+    # store_id for admin-context staff sessions); ignore client-supplied store_id.
+    store_id = staff.store_id
     cr.store_id = store_id
 
     principal_id = _audit_principal_id(staff)
@@ -510,7 +512,9 @@ async def staff_use_voucher(
 
     cv.status = "used"
     cv.used_at = now
-    store_id = data.store_id if data.store_id is not None else staff.store_id
+    # Always attribute the redemption to the staff member's own store (token
+    # store_id for admin-context staff sessions); ignore client-supplied store_id.
+    store_id = staff.store_id
     cv.store_id = store_id
 
     principal_id = _audit_principal_id(staff)
@@ -639,7 +643,9 @@ async def staff_scan_reward_code(
 
     cr.status = "used"
     cr.used_at = now
-    store_id = data.store_id if data.store_id is not None else staff.store_id
+    # Always attribute the redemption to the staff member's own store (token
+    # store_id for admin-context staff sessions); ignore client-supplied store_id.
+    store_id = staff.store_id
     cr.store_id = store_id
 
     rc_result = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
@@ -691,7 +697,9 @@ async def staff_scan_voucher_code(
 
     cv.status = "used"
     cv.used_at = now
-    store_id = data.store_id if data.store_id is not None else staff.store_id
+    # Always attribute the redemption to the staff member's own store (token
+    # store_id for admin-context staff sessions); ignore client-supplied store_id.
+    store_id = staff.store_id
     cv.store_id = store_id
 
     vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))

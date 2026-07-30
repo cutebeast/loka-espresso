@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
 from app.models.einvoice import EinvoiceDocument
 from app.models.order import Order
 from app.models.payment import Payment
@@ -55,11 +55,35 @@ async def list_einvoice_documents(
     per_page: int = Query(20, ge=1, le=200),
 ):
     """List e-invoice documents with pagination and filters."""
+    # Enforce store scoping for non-HQ admins (mirrors admin/orders.py narrowing)
+    admin_store_ids = await _get_admin_store_ids(db, admin.id)
+    admin_roles = await _get_admin_role_keys(db, admin.id)
+    is_hq = bool(admin_roles & {"system_admin", "regional_manager", "readonly_analyst"})
+    if not is_hq:
+        if not admin_store_ids:
+            # Non-HQ admin with no store assignments sees nothing
+            return APIResponse(data=PaginatedResponse(
+                items=[],
+                total=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0,
+            ))
+        if store_id is not None:
+            if store_id not in admin_store_ids:
+                raise HTTPException(status_code=403, detail="Access denied for this store")
+        else:
+            store_id = admin_store_ids
+
     base = select(EinvoiceDocument)
     cnt = select(func.count(EinvoiceDocument.id))
     if store_id is not None:
-        base = base.where(EinvoiceDocument.store_id == store_id)
-        cnt = cnt.where(EinvoiceDocument.store_id == store_id)
+        if isinstance(store_id, (list, set)):
+            base = base.where(EinvoiceDocument.store_id.in_(store_id))
+            cnt = cnt.where(EinvoiceDocument.store_id.in_(store_id))
+        else:
+            base = base.where(EinvoiceDocument.store_id == store_id)
+            cnt = cnt.where(EinvoiceDocument.store_id == store_id)
     if status_filter:
         base = base.where(EinvoiceDocument.status == status_filter)
         cnt = cnt.where(EinvoiceDocument.status == status_filter)
@@ -114,6 +138,7 @@ async def get_einvoice_document(
     doc = await db.get(EinvoiceDocument, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="E-invoice document not found")
+    await require_store_admin(db, admin, doc.store_id)
     order = await db.get(Order, doc.order_id)
     return APIResponse(data=_doc_dict(doc, order.order_number if order else None, include_ubl=True))
 
@@ -128,6 +153,7 @@ async def retry_einvoice_document(
     doc = await db.get(EinvoiceDocument, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="E-invoice document not found")
+    await require_store_admin(db, admin, doc.store_id)
     if doc.status not in RETRIABLE_STATUSES:
         raise HTTPException(
             status_code=400,
@@ -162,6 +188,8 @@ async def issue_einvoice_for_order(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    await require_store_admin(db, admin, order.store_id)
 
     pay_result = await db.execute(
         select(Payment)

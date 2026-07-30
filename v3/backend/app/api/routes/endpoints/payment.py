@@ -225,22 +225,34 @@ async def guest_pay(
     if phone_number:
         phone = phone_number.strip()
         if phone:
-            existing = await db.execute(select(Customer).where(Customer.phone_number == phone))
-            customer = existing.scalar_one_or_none()
-            if customer is None:
-                # Register a new passwordless customer — no OTP here because the
-                # customer is paying in-store; we trust the staff-issued token.
-                customer = Customer(
-                    phone_number=phone,
-                    display_name=phone,
-                    phone_verified_at=datetime.now(timezone.utc),
-                )
-                db.add(customer)
-                await db.flush()
-                await db.refresh(customer)
-            # Link the customer to the order so they earn loyalty + get a receipt.
-            order.customer_id = customer.id
-            customer_id = customer.id
+            # Only link orders that are unassigned or sit on the shared
+            # walk-in profile — never move an order that already belongs to
+            # a registered customer (refunds credit order.customer_id).
+            current_customer = None
+            if order.customer_id is not None:
+                cur = await db.execute(select(Customer).where(Customer.id == order.customer_id))
+                current_customer = cur.scalar_one_or_none()
+            order_is_unlinked = (
+                current_customer is None
+                or current_customer.phone_number == "+0000000000"
+            )
+            if order_is_unlinked:
+                existing = await db.execute(select(Customer).where(Customer.phone_number == phone))
+                customer = existing.scalar_one_or_none()
+                if customer is None:
+                    # Register a new passwordless customer. phone_verified_at
+                    # stays NULL: the staff-issued guest token proves table
+                    # presence, not phone ownership — verification requires OTP.
+                    customer = Customer(
+                        phone_number=phone,
+                        display_name=phone,
+                    )
+                    db.add(customer)
+                    await db.flush()
+                    await db.refresh(customer)
+                # Link the customer to the order so they earn loyalty + get a receipt.
+                order.customer_id = customer.id
+                customer_id = customer.id
 
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()

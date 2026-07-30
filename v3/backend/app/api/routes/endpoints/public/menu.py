@@ -357,8 +357,14 @@ async def list_menu_items(
         })
 
     result_items = []
+    # Serialize only the public contract — never dump all ORM columns:
+    # cost_price, search_vector, deleted_at, tax_category_id etc. are internal.
+    public_fields = tuple(
+        f for f in MenuItemPublicOut.model_fields
+        if f not in ("dietary_tags", "allergens", "modifier_groups", "variants")
+    )
     for i in items:
-        d = {c.name: getattr(i, c.name) for c in i.__table__.columns}
+        d = {k: getattr(i, k, None) for k in public_fields}
         d["dietary_tags"] = None
         d["allergens"] = []
         d["variants"] = variants_map.get(i.id, [])

@@ -181,6 +181,22 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
         store_check = await db.execute(select(Store).where(Store.id == int(store_id), Store.deleted_at.is_(None), Store.is_active.is_(True)))
         if not store_check.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Store not found")
+        # Authorize the requested store: HQ roles may act at any store;
+        # everyone else needs an explicit StoreAssignment — same rule as
+        # /staff/auth/admin-store. Without this check any admin (incl.
+        # readonly_analyst) could mint a staff-context token for an arbitrary
+        # store and pass RequireStaffRole's admin override on money endpoints.
+        from app.api.routes.deps import _get_admin_role_keys
+        role_keys = await _get_admin_role_keys(db, admin.id)
+        if not (role_keys & {"system_admin", "regional_manager", "readonly_analyst"}):
+            assignment_result = await db.execute(
+                select(StoreAssignment).where(
+                    StoreAssignment.assignee_id == admin.id,
+                    StoreAssignment.store_id == int(store_id),
+                )
+            )
+            if not assignment_result.scalar_one_or_none():
+                raise HTTPException(status_code=403, detail="Admin not assigned to this store")
         access_token = create_access_token(
             admin.id,
             token_type="staff",
@@ -189,7 +205,7 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
         refresh_token = create_refresh_token(
             admin.id,
             extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id},
-            days=30,
+            days=7,  # admin principals get the admin-portal lifetime, not the 30-day staff one
         )
         set_staff_auth_cookies(response, access_token, refresh_token)
         return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id), "is_admin": True}}
@@ -204,7 +220,7 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
     refresh_token = create_refresh_token(
         admin.id,
         extra_claims={"admin_id": admin.id},
-        days=30,
+        days=7,  # admin principals get the admin-portal lifetime, not the 30-day staff one
     )
     set_staff_auth_cookies(response, access_token, refresh_token)
     return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "is_admin": True, "stores": stores}}
@@ -382,7 +398,7 @@ async def staff_refresh_token(request: Request, response: Response, db: DBDepend
         new_refresh_token = create_refresh_token(
             admin.id,
             extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id},
-            days=30,
+            days=7,  # admin principals get the admin-portal lifetime, not the 30-day staff one
         )
         # Revoke this refresh token so it cannot be reused (atomic)
         await blacklist_refresh_token(db, jti, admin.principal_id, payload)
@@ -469,6 +485,7 @@ async def staff_profile_me(db: DBDependency, request: Request):
 
 
 @router.post("/staff/auth/logout")
+@limiter.limit("10/minute")
 async def staff_logout(request: Request, response: Response, db: DBDependency):
     """Logout staff/admin from staff portal. Blacklists refresh token if available."""
     refresh_token = get_staff_refresh_token(request)
@@ -507,9 +524,16 @@ async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentSta
     if not pin or len(pin) != 6 or not pin.isdigit():
         raise HTTPException(status_code=400, detail="PIN must be exactly 6 digits")
 
-    import bcrypt
     if not hasattr(staff, "pin_hash") or not staff.pin_hash:
         return APIResponse(data={"valid": False, "message": "No PIN set"})
+
+    # Per-account throttling using the same counters as PIN login — the
+    # 10/min per-IP limit alone would let a stolen staff session brute-force
+    # the 6-digit PIN space (or lock the victim out deliberately is
+    # preferable to silent disclosure; login clears the lock on success).
+    now = datetime.now(timezone.utc)
+    if staff.locked_until and staff.locked_until > now:
+        return APIResponse(data={"valid": False, "message": "Account temporarily locked. Try again later."})
 
     try:
         valid = verify_password_staff(pin, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode())
@@ -517,8 +541,15 @@ async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentSta
         valid = False
 
     if not valid:
+        staff.failed_login_count = (staff.failed_login_count or 0) + 1
+        if staff.failed_login_count >= 5:
+            staff.locked_until = now + timedelta(minutes=30)
+            staff.failed_login_count = 0
+        await db.commit()
         return APIResponse(data={"valid": False, "message": "Invalid PIN"})
 
+    staff.failed_login_count = 0
+    await db.commit()
     return APIResponse(data={"valid": True, "message": "PIN verified"})
 
 
@@ -542,8 +573,8 @@ async def staff_change_password(
     if not staff.password_hash or not verify_password_staff(current, staff.password_hash if isinstance(staff.password_hash, str) else staff.password_hash.decode()):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     pw = (data.new_password or "").strip()
-    if len(pw) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(pw) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     staff.password_hash = hash_password(pw)
     await db.commit()
     return APIResponse(data={"updated": True})

@@ -26,8 +26,8 @@ public_router = APIRouter(prefix="/kiosk", tags=["kiosk"])
 
 class KioskOrderItem(BaseModel):
     menu_item_id: int = Field(..., gt=0)
-    quantity: int = Field(..., ge=1)
-    modifier_option_ids: list[int] | None = None
+    quantity: int = Field(..., ge=1, le=99)
+    modifier_option_ids: list[int] | None = Field(None, max_length=50)
     variant_id: int | None = None
 
 
@@ -35,7 +35,7 @@ class KioskOrderCreateRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     store_id: int = Field(..., gt=0)
     order_type: str = Field(..., pattern="^(dine_in|takeaway)$")
-    items: list[KioskOrderItem] = Field(..., min_length=1)
+    items: list[KioskOrderItem] = Field(..., min_length=1, max_length=100)
     dining_table_number: str | None = Field(None, max_length=20)
     customer_phone: str | None = Field(None, max_length=20, description="Optional phone to link order to an existing or new customer profile")
 

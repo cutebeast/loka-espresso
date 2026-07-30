@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, PurchaseOrder, PurchaseOrderLine, Supplier
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -184,6 +184,8 @@ async def create_purchase_order(
     data: PurchaseOrderCreate,
 ):
     """Create a purchase order with lines."""
+    await require_store_admin(db, admin, data.store_id)
+
     # Verify supplier exists
     supplier_result = await db.execute(
         select(Supplier).where(
@@ -286,6 +288,7 @@ async def update_purchase_order(
 ):
     """Update a purchase order."""
     po = await _get_po_or_404(db, id)
+    await require_store_admin(db, admin, po.store_id)
 
     if po.status in ("received", "cancelled"):
         raise HTTPException(
@@ -321,6 +324,7 @@ async def receive_purchase_order(
 ):
     """Mark purchase order as received (partial or full)."""
     po = await _get_po_or_404(db, id)
+    await require_store_admin(db, admin, po.store_id)
 
     if po.status == "cancelled":
         raise HTTPException(
@@ -439,6 +443,7 @@ async def delete_purchase_order(
 ):
     """Cancel/delete a purchase order."""
     po = await _get_po_or_404(db, id)
+    await require_store_admin(db, admin, po.store_id)
 
     if po.status == "received":
         raise HTTPException(

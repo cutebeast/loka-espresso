@@ -16,7 +16,7 @@ from app.core.money import money_round, to_decimal
 from app.models.platform import AuditLog
 from app.models.wallet import Wallet, WalletLedgerEntry, WalletTopupSession
 from app.services.platform_config import PlatformConfigService
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, Money, PaginatedResponse
 from app.schemas.wallet import (
     AdminTopupRequest,
     TopUpRequest,
@@ -193,7 +193,7 @@ async def list_wallet_ledger(
 
 
 class WalletAdjustRequest(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: Money = Field(..., gt=0)
     entry_type: str = Field(..., pattern=r"^(credit|debit|adjustment)$")
     description: str | None = Field(None, max_length=255)
 
@@ -210,7 +210,14 @@ async def adjust_wallet(
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
-    wallet = await _get_wallet_or_404(db, wallet_id)
+    # Lock the wallet row first so concurrent adjustments serialize on it (the
+    # last-ledger-entry lock alone does not protect a wallet with no entries).
+    wallet_result = await db.execute(
+        select(Wallet).where(Wallet.id == wallet_id).with_for_update()
+    )
+    wallet = wallet_result.scalar_one_or_none()
+    if wallet is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
 
     # Get current running balance with row lock
     result = await db.execute(
@@ -265,7 +272,12 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupReq
     if amount <= 0:
         raise HTTPException(400, "Amount must be positive")
 
-    wallet = await _get_customer_wallet(db, customer_id)
+    # Lock the wallet row first so concurrent top-ups serialize on it (the
+    # last-ledger-entry lock alone does not protect a wallet with no entries).
+    wallet_result = await db.execute(
+        select(Wallet).where(Wallet.customer_id == customer_id).with_for_update()
+    )
+    wallet = wallet_result.scalar_one_or_none()
     if not wallet:
         wallet = Wallet(customer_id=customer_id, currency_code=await _get_default_currency(db))
         db.add(wallet); await db.flush()
@@ -303,7 +315,7 @@ async def admin_topup_alias(db: DBDependency, admin: CurrentAdmin, data: AdminTo
 
 class AdminDeductRequest(BaseModel):
     customer_id: int = Field(..., gt=0)
-    amount: float = Field(..., gt=0)
+    amount: Money = Field(..., gt=0)
     reason: str | None = Field(None, max_length=255)
 
 
@@ -318,7 +330,12 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
     amount = to_decimal(data.amount)
     reason = data.reason or "Admin deduction"
 
-    wallet = await _get_customer_wallet(db, customer_id)
+    # Lock the wallet row first so concurrent deductions serialize on it (the
+    # last-ledger-entry lock alone does not protect a wallet with no entries).
+    wallet_result = await db.execute(
+        select(Wallet).where(Wallet.customer_id == customer_id).with_for_update()
+    )
+    wallet = wallet_result.scalar_one_or_none()
     if not wallet: raise HTTPException(404, "No wallet found")
 
     r = await db.execute(

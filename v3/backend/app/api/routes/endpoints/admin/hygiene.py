@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.hygiene import HygieneReport
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.hygiene import HygieneReportOut, HygieneReportUpdate
@@ -66,6 +66,8 @@ async def update_hygiene_report(
     report = result.scalar_one_or_none()
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+
+    await require_store_admin(db, admin, report.store_id)
 
     if data.status is not None:
         report.status = data.status

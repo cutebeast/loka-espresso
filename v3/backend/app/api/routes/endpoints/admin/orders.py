@@ -543,6 +543,12 @@ async def process_order_payment(
     if fully_paid_by_wallet:
         order.payment_status = "captured"
 
+    # Grant loyalty points on capture (idempotent — this endpoint sets the
+    # status directly instead of going through _sync_order_payment_status).
+    if order.payment_status == "captured":
+        from app.services.payment import _credit_order_loyalty_points
+        await _credit_order_loyalty_points(db, order)
+
     # Log status change
     log = OrderStatusLog(
         order_id=order.id,
@@ -968,6 +974,9 @@ async def pay_with_wallet(
     new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
     if new_total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
+        # Grant loyalty points on capture (idempotent — direct status set).
+        from app.services.payment import _credit_order_loyalty_points
+        await _credit_order_loyalty_points(db, order)
     order.updated_at = now
 
     # Audit log

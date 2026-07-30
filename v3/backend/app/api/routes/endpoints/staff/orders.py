@@ -76,10 +76,13 @@ async def process_staff_order_payment(
     rounding_mode = await config_service.get_accounting_rounding()
 
     existing_payments = await db.execute(
-        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
     )
     captured_from_payments = money_round(
-        sum(to_decimal(p.amount) for p in existing_payments.scalars().all()),
+        sum(to_decimal(p.captured_amount or 0) for p in existing_payments.scalars().all()),
         precision,
         rounding_mode,
     )
@@ -97,6 +100,8 @@ async def process_staff_order_payment(
     computed_discount = Decimal(0)
     if discount_amount > 0:
         if discount_type == "percentage":
+            if discount_amount > 100:
+                raise HTTPException(status_code=400, detail="Percentage discount cannot exceed 100%")
             computed_discount = money_round(
                 to_decimal(order.items_subtotal or order.total_amount) * discount_amount / Decimal(100),
                 precision,
@@ -302,12 +307,19 @@ async def process_staff_order_payment(
     if order.payment_status == "captured":
         from app.services.lucky_draw import grant_tickets_for_order
         await grant_tickets_for_order(db, order)
+        # Loyalty points are granted on capture, not at order creation (idempotent).
+        from app.services.payment import _credit_order_loyalty_points
+        await _credit_order_loyalty_points(db, order)
 
+    discount_note = (
+        f", discount {discount_type or 'fixed'}={discount_amount} (-{computed_discount})"
+        if computed_discount > 0 else ""
+    )
     log = OrderStatusLog(
         order_id=order.id,
         from_status=order.status,
         to_status=order.status,
-        reason=f"Payment processed: {payment_method}, amount={net_amount}",
+        reason=f"Payment processed: {payment_method}, amount={net_amount}{discount_note}",
         actor_type="staff",
         actor_id=staff.id,
     )
@@ -491,6 +503,12 @@ async def apply_staff_order_voucher(
     if not row:
         raise HTTPException(status_code=404, detail="Voucher not found or not active for this customer")
     customer_voucher, voucher_def = row
+    if voucher_def is not None:
+        # Lock the definition row as well — the outer join above cannot
+        # FOR UPDATE its nullable side.
+        voucher_def = (await db.execute(
+            select(VoucherDefinition).where(VoucherDefinition.id == voucher_def.id).with_for_update()
+        )).scalar_one()
 
     now = datetime.now(timezone.utc)
     if customer_voucher.expires_at and customer_voucher.expires_at < now:
@@ -570,6 +588,9 @@ async def apply_staff_order_voucher(
     customer_voucher.status = "used"
     customer_voucher.used_at = now
     customer_voucher.order_id = order_id
+    customer_voucher.use_count = (customer_voucher.use_count or 0) + 1
+    if voucher_def:
+        voucher_def.global_use_count = (voucher_def.global_use_count or 0) + 1
 
     order.voucher_discount = money_round(to_decimal(order.voucher_discount) + discount, precision, rounding_mode)
     order.discount_amount = money_round(to_decimal(order.discount_amount) + discount, precision, rounding_mode)
@@ -646,6 +667,12 @@ async def apply_staff_order_reward(
     if not row:
         raise HTTPException(status_code=404, detail="Reward not found or not available for this customer")
     customer_reward, reward_cat = row
+    if reward_cat is not None:
+        # Lock the catalog row as well — the outer join above cannot
+        # FOR UPDATE its nullable side.
+        reward_cat = (await db.execute(
+            select(RewardCatalog).where(RewardCatalog.id == reward_cat.id).with_for_update()
+        )).scalar_one()
 
     now = datetime.now(timezone.utc)
     if customer_reward.expires_at and customer_reward.expires_at < now:
@@ -683,6 +710,8 @@ async def apply_staff_order_reward(
     customer_reward.status = "used"
     customer_reward.used_at = now
     customer_reward.order_id = order_id
+    if reward_cat:
+        reward_cat.total_redemptions = (reward_cat.total_redemptions or 0) + 1
 
     order.reward_discount = money_round(to_decimal(order.reward_discount) + discount, precision, rounding_mode)
     order.discount_amount = money_round(to_decimal(order.discount_amount) + discount, precision, rounding_mode)
@@ -785,10 +814,13 @@ async def staff_pay_with_wallet(
         raise HTTPException(status_code=400, detail=f"Insufficient wallet balance. Available: RM {current_balance:.2f}")
 
     payment_result = await db.execute(
-        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
     )
     already_paid = money_round(
-        sum(to_decimal(p.amount) for p in payment_result.scalars().all()),
+        sum(to_decimal(p.captured_amount or 0) for p in payment_result.scalars().all()),
         precision,
         rounding_mode,
     )
@@ -832,6 +864,9 @@ async def staff_pay_with_wallet(
     new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
     if new_total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
+        # Loyalty points are granted on capture, not at order creation (idempotent).
+        from app.services.payment import _credit_order_loyalty_points
+        await _credit_order_loyalty_points(db, order)
     order.updated_at = now
 
     principal_id = _audit_principal_id(staff)
@@ -1346,11 +1381,18 @@ async def staff_update_order_status(
 ):
     """Update order status (staff endpoint)."""
     # Valid staff transitions (must match the order_status enum — an invalid
-    # value would otherwise blow up as a 500 at commit time).
+    # value would otherwise blow up as a 500 at commit time). Cancellations
+    # must go through the dedicated cancel endpoint, which blocks captured
+    # orders and reverses order side effects.
     VALID = {
         "confirmed", "preparing", "ready_for_pickup", "out_for_delivery",
-        "delivered", "cancelled_by_customer", "cancelled_by_merchant",
+        "delivered",
     }
+    if status in ("cancelled_by_customer", "cancelled_by_merchant"):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot cancel via this endpoint — use POST /staff/orders/{order_id}/cancel instead",
+        )
     if status not in VALID:
         raise HTTPException(
             status_code=400,
@@ -1366,10 +1408,7 @@ async def staff_update_order_status(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     order.status = status
-    if status.startswith("cancelled") and reason:
-        order.cancellation_reason = reason
-        order.cancelled_at = datetime.now(timezone.utc)
-    elif status == "delivered":
+    if status == "delivered":
         order.completed_at = datetime.now(timezone.utc)
     elif status == "preparing":
         order.prepared_at = datetime.now(timezone.utc)

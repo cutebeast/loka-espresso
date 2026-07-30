@@ -1,5 +1,6 @@
 """Authentication service layer."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
@@ -26,6 +27,8 @@ from app.schemas.auth import (
 )
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -168,6 +171,32 @@ async def register_customer(
         from app.services.commerce import grant_voucher_to_customer
         voucher_code = str(cfg.get("loyalty.welcome_reward_voucher_code") or "WELCOME-RM5")
         await grant_voucher_to_customer(db, customer.id, voucher_code, source="welcome_reward")
+
+    # Day-one discovery: inbox message so the new member actually sees their
+    # welcome gift (drives the notification bell badge + inbox card).
+    try:
+        from app.models.notification import NotificationMessage
+        gift_parts: list[str] = []
+        if reward_type in ("points", "points_and_voucher"):
+            gift_parts.append(f"{welcome_pts} bonus points")
+        if reward_type in ("voucher", "points_and_voucher"):
+            from app.models.voucher import VoucherDefinition
+            vd_result = await db.execute(
+                select(VoucherDefinition.display_title).where(
+                    VoucherDefinition.voucher_code == voucher_code
+                )
+            )
+            gift_parts.append(vd_result.scalar_one_or_none() or "a welcome voucher")
+        if gift_parts:
+            db.add(NotificationMessage(
+                customer_id=customer.id,
+                message_type="loyalty",
+                title="Welcome to LOKA Espresso",
+                body=f"Your welcome gift is here: {' and '.join(gift_parts)}. Find it in My Rewards.",
+                action_url="#my-rewards",
+            ))
+    except Exception:
+        logger.warning("Failed to create welcome notification for customer %s", customer.id, exc_info=True)
     
     # Create device record if fingerprint provided
     if data.device_fingerprint:
@@ -230,7 +259,15 @@ async def refresh_customer_tokens(
     
     if payload.get("type") != "refresh":
         raise AuthError("Invalid token type", 401)
-    
+
+    # Domain check: only genuine customer refresh tokens carry a customer_id
+    # claim. Without this, any admin/staff refresh token (same secret, same
+    # type="refresh", sub = admin/staff id) could mint customer tokens for a
+    # colliding Customer.id.
+    customer_id = int(payload.get("customer_id", 0))
+    if not customer_id:
+        raise AuthError("Invalid customer refresh token", 401)
+
     # Check if this refresh token has already been used (replay protection)
     jti = payload.get("jti")
     if jti:
@@ -240,7 +277,6 @@ async def refresh_customer_tokens(
         if blacklist_result.scalar_one_or_none():
             raise AuthError("Refresh token has already been used", 401)
     
-    customer_id = int(payload.get("sub", 0))
     result = await db.execute(
         select(Customer).where(Customer.id == customer_id)
     )
@@ -337,7 +373,15 @@ async def refresh_admin_tokens(
     
     if payload.get("type") != "refresh":
         raise AuthError("Invalid token type", 401)
-    
+
+    # Domain check: only genuine admin refresh tokens carry an admin_id claim.
+    # Without this, any customer/staff refresh token (same secret, same
+    # type="refresh", sub = customer/staff id) could mint admin tokens for a
+    # colliding AdminAccount.id — full system-admin takeover.
+    admin_id = int(payload.get("admin_id", 0))
+    if not admin_id:
+        raise AuthError("Invalid admin refresh token", 401)
+
     # Replay protection
     jti = payload.get("jti")
     if jti:
@@ -347,7 +391,6 @@ async def refresh_admin_tokens(
         if blacklist_result.scalar_one_or_none():
             raise AuthError("Refresh token has already been used", 401)
     
-    admin_id = int(payload.get("sub", 0))
     result = await db.execute(
         select(AdminAccount).where(AdminAccount.id == admin_id)
     )

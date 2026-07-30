@@ -205,6 +205,7 @@ async def customer_refresh(request: Request, response: Response, db: DBDependenc
 
 
 @router.post("/logout")
+@limiter.limit("10/minute")
 async def customer_logout(request: Request, response: Response, db: DBDependency, data: RefreshTokenRequest | None = None):
     """Logout endpoint — blacklists refresh token for server-side revocation.
 
@@ -222,8 +223,11 @@ async def customer_logout(request: Request, response: Response, db: DBDependency
                 raise HTTPException(status_code=400, detail="Invalid token type")
             jti = payload.get("jti")
             await blacklist_refresh_token(db, jti, None, payload)
-        except HTTPException:
-            raise
+        except HTTPException as exc:
+            # Already-blacklisted / invalid token — still clear the cookies
+            # below; logout must never fail or skip the clearing headers.
+            if exc.status_code == 400:
+                raise
         except Exception as e:
             logger.warning("Failed to blacklist refresh token: %s", str(e))
     clear_customer_auth_cookies(response)

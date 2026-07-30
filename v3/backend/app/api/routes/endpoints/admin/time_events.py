@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, CurrentStaff
+from app.api.routes.deps import CurrentAdmin, DBDependency, CurrentStaff, require_store_admin
 from app.models.staff import StaffProfile, StaffTimeEvent
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -142,6 +142,8 @@ async def create_time_event(
     data: TimeEventCreate,
 ):
     """Create a time event (admin or manager)."""
+    await require_store_admin(db, admin, data.store_id)
+
     # Verify staff exists
     staff_result = await db.execute(
         select(StaffProfile).where(
@@ -193,6 +195,8 @@ async def verify_time_event(
     event = result.scalar_one_or_none()
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Time event not found")
+
+    await require_store_admin(db, admin, event.store_id)
 
     if data.approved:
         event.approved_by = admin.id

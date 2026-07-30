@@ -57,7 +57,9 @@ def set_customer_auth_cookies(
     refresh_token: str,
 ) -> None:
     _set_cookie(response, ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE, "/")
-    _set_cookie(response, REFRESH_COOKIE_NAME, refresh_token, CUSTOMER_REFRESH_MAX_AGE, "/api/auth/refresh")
+    # Refresh cookie is scoped to the auth root (not just /refresh) so the
+    # logout endpoint also receives it and can blacklist it server-side.
+    _set_cookie(response, REFRESH_COOKIE_NAME, refresh_token, CUSTOMER_REFRESH_MAX_AGE, "/api/auth")
 
 
 def set_staff_auth_cookies(
@@ -67,16 +69,19 @@ def set_staff_auth_cookies(
 ) -> None:
     _set_cookie(response, STAFF_ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE, "/")
     if refresh_token:
-        _set_cookie(response, STAFF_REFRESH_COOKIE_NAME, refresh_token, STAFF_REFRESH_MAX_AGE, "/api/staff/auth/refresh")
+        _set_cookie(response, STAFF_REFRESH_COOKIE_NAME, refresh_token, STAFF_REFRESH_MAX_AGE, "/api/staff/auth")
 
 
 def clear_customer_auth_cookies(response: Response) -> None:
     response.delete_cookie(ACCESS_COOKIE_NAME, path="/")
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/auth")
+    # Legacy path (pre round-34) — clear both during the transition.
     response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/auth/refresh")
 
 
 def clear_staff_auth_cookies(response: Response) -> None:
     response.delete_cookie(STAFF_ACCESS_COOKIE_NAME, path="/")
+    response.delete_cookie(STAFF_REFRESH_COOKIE_NAME, path="/api/staff/auth")
     response.delete_cookie(STAFF_REFRESH_COOKIE_NAME, path="/api/staff/auth/refresh")
 
 
@@ -87,11 +92,12 @@ def set_admin_auth_cookies(
 ) -> None:
     _set_cookie(response, ADMIN_ACCESS_COOKIE_NAME, access_token, ACCESS_MAX_AGE, "/")
     if refresh_token:
-        _set_cookie(response, ADMIN_REFRESH_COOKIE_NAME, refresh_token, REFRESH_MAX_AGE, "/api/admin/auth/refresh")
+        _set_cookie(response, ADMIN_REFRESH_COOKIE_NAME, refresh_token, REFRESH_MAX_AGE, "/api/admin/auth")
 
 
 def clear_admin_auth_cookies(response: Response) -> None:
     response.delete_cookie(ADMIN_ACCESS_COOKIE_NAME, path="/")
+    response.delete_cookie(ADMIN_REFRESH_COOKIE_NAME, path="/api/admin/auth")
     response.delete_cookie(ADMIN_REFRESH_COOKIE_NAME, path="/api/admin/auth/refresh")
 
 

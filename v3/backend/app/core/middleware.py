@@ -26,6 +26,42 @@ class PublicMutationRateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject oversized request bodies via their declared Content-Length.
+
+    Webhook and public JSON endpoints buffer request.body() unbounded — a
+    declared-size cap stops trivial memory-exhaustion attempts before the
+    body is read. JSON-ish /api/* bodies are capped at 1 MB; multipart
+    uploads (image endpoints, staff equipment photos) get 10 MB, matching
+    the per-file cap in the upload handlers.
+    """
+
+    JSON_LIMIT = 1 * 1024 * 1024
+    MULTIPART_LIMIT = 10 * 1024 * 1024
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if request.url.path.startswith("/api/"):
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    declared = int(content_length)
+                except ValueError:
+                    return Response(
+                        content='{"detail":"Invalid Content-Length"}',
+                        status_code=400,
+                        media_type="application/json",
+                    )
+                is_multipart = (request.headers.get("content-type") or "").startswith("multipart/")
+                limit = self.MULTIPART_LIMIT if is_multipart else self.JSON_LIMIT
+                if declared > limit:
+                    return Response(
+                        content='{"detail":"Request body too large"}',
+                        status_code=413,
+                        media_type="application/json",
+                    )
+        return await call_next(request)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)

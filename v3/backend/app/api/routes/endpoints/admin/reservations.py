@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
-from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, get_staff_store_id_from_request, _get_admin_store_ids, _get_admin_role_keys
+from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
 from app.models.customer import Customer
 from app.models.store import DiningTable, Reservation, Store
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -180,6 +180,7 @@ async def create_reservation(
     data: ReservationCreate,
 ):
     """Create a reservation (admin)."""
+    await require_store_admin(db, admin, data.store_id)
     if data.dining_table_id is not None:
         await _check_table_availability(
             db, data.dining_table_id, data.reservation_date,
@@ -200,6 +201,7 @@ async def get_reservation(
 ):
     """Get a reservation by ID."""
     reservation = await _get_reservation_or_404(db, id)
+    await require_store_admin(db, admin, reservation.store_id)
     return APIResponse(data=ReservationOut.model_validate(reservation))
 
 
@@ -212,7 +214,13 @@ async def update_reservation(
 ):
     """Update a reservation (full or partial)."""
     reservation = await _get_reservation_or_404(db, id)
+    await require_store_admin(db, admin, reservation.store_id)
     update_data = data.model_dump(exclude_unset=True)
+    if "store_id" in update_data and update_data["store_id"] != reservation.store_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cross-store moves are not allowed",
+        )
     for field, value in update_data.items():
         setattr(reservation, field, value)
     if reservation.dining_table_id is not None and reservation.status in ("confirmed", "seated"):
@@ -238,6 +246,7 @@ async def update_reservation_status(
 ):
     """Update reservation status."""
     reservation = await _get_reservation_or_404(db, id)
+    await require_store_admin(db, admin, reservation.store_id)
     reservation.status = data.status
     if data.dining_table_id is not None and data.status == "confirmed":
         await _check_table_availability(
@@ -260,6 +269,7 @@ async def delete_reservation(
 ):
     """Delete/cancel a reservation."""
     reservation = await _get_reservation_or_404(db, id)
+    await require_store_admin(db, admin, reservation.store_id)
     await db.delete(reservation)
     await db.commit()
     return APIResponse(data={"id": reservation.id, "deleted": True})

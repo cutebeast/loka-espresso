@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.staff import StaffProfile, TipAllocation
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse, Money
@@ -170,8 +170,11 @@ async def create_tip_allocation(
             StaffProfile.deleted_at.is_(None),
         )
     )
-    if staff_result.scalar_one_or_none() is None:
+    staff_profile = staff_result.scalar_one_or_none()
+    if staff_profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
+
+    await require_store_admin(db, admin, staff_profile.store_id)
 
     allocation = TipAllocation(**data.model_dump())
     db.add(allocation)

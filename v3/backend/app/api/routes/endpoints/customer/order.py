@@ -124,6 +124,8 @@ async def create_order(
     
     order_out = _build_order_out(order)
     order_out.line_items = [OrderLineItemOut.model_validate(i) for i in line_items]
+    from app.services.order import compute_estimated_ready_at
+    order_out.estimated_ready_at = await compute_estimated_ready_at(db, order, line_items)
     
     return APIResponse(data=order_out)
 
@@ -337,6 +339,10 @@ async def get_order(customer: ActiveCustomer, db: DBDependency, order_id: int):
     # Add store info
     order_out.store_name = order.store.store_name if order.store else None
     order_out.store_address = order.store.address_line_1 if order.store else None
+
+    # Honest pickup estimate for the ETA card (computed — the queue moves)
+    from app.services.order import compute_estimated_ready_at
+    order_out.estimated_ready_at = await compute_estimated_ready_at(db, order, order.line_items)
 
     # Build line items from eager-loaded relationship
     line_items = []

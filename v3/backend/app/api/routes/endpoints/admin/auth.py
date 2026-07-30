@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from pydantic import Field
 from sqlalchemy import delete, select
 
 from app.api.routes.deps import DBDependency, CurrentAdmin
@@ -36,7 +37,7 @@ class AdminMeOut(BaseSchema):
 
 class AdminRegisterRequest(BaseSchema):
     email: str
-    password: str
+    password: str = Field(min_length=8)
     display_name: str
     phone_number: str | None = None
     role_id: int | None = None
@@ -224,6 +225,7 @@ async def admin_refresh(request: Request, response: Response, db: DBDependency, 
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
 async def admin_logout(
     request: Request,
     response: Response,
@@ -239,8 +241,11 @@ async def admin_logout(
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
             jti = payload.get("jti")
             await blacklist_refresh_token(db, jti, None, payload)
-        except HTTPException:
-            raise
+        except HTTPException as exc:
+            # Already-blacklisted / invalid token — still clear the cookies
+            # below; logout must never fail or skip the clearing headers.
+            if exc.status_code == status.HTTP_400_BAD_REQUEST:
+                raise
         except Exception:
             logger.exception("Failed to blacklist token during logout")
     clear_admin_auth_cookies(response)

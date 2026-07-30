@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.order import Order
 from app.models.payment import Payment
 from app.models.pos import OrderModificationLog, PosSession, PosTerminal
@@ -51,6 +51,7 @@ async def create_terminal(
     db: DBDependency,
     admin: CurrentAdmin,
 ):
+    await require_store_admin(db, admin, payload.store_id)
     existing = await db.execute(select(PosTerminal).where(PosTerminal.terminal_code == payload.terminal_code))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Terminal code already exists")
@@ -71,6 +72,7 @@ async def update_terminal(
     terminal = await db.get(PosTerminal, terminal_id)
     if not terminal:
         raise HTTPException(status_code=404, detail="Terminal not found")
+    await require_store_admin(db, admin, terminal.store_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(terminal, field, value)
     await db.commit()
@@ -87,6 +89,7 @@ async def delete_terminal(
     terminal = await db.get(PosTerminal, terminal_id)
     if not terminal:
         raise HTTPException(status_code=404, detail="Terminal not found")
+    await require_store_admin(db, admin, terminal.store_id)
     await db.delete(terminal)
     await db.commit()
     return None
@@ -182,6 +185,11 @@ async def open_session(
     db: DBDependency,
     admin: CurrentAdmin,
 ):
+    terminal = await db.get(PosTerminal, payload.terminal_id)
+    if not terminal:
+        raise HTTPException(status_code=404, detail="Terminal not found")
+    await require_store_admin(db, admin, terminal.store_id)
+
     # Close any existing open session for this terminal
     open_q = select(PosSession).where(
         PosSession.terminal_id == payload.terminal_id,
@@ -213,6 +221,9 @@ async def close_session(
         raise HTTPException(status_code=400, detail="Session is not open")
 
     terminal = await db.get(PosTerminal, session.terminal_id)
+    if not terminal:
+        raise HTTPException(status_code=404, detail="Terminal not found")
+    await require_store_admin(db, admin, terminal.store_id)
     from app.services.pos_session import close_session_with_report
     await close_session_with_report(
         db, session, terminal.store_id, payload.closing_cash, payload.discrepancy_notes

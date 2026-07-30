@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.equipment import (
@@ -182,6 +182,7 @@ async def create_equipment(
     data: EquipmentCreate,
 ):
     """Create new equipment record."""
+    await require_store_admin(db, admin, data.store_id)
     item = Equipment(**data.model_dump())
     db.add(item)
     await db.commit()
@@ -210,6 +211,8 @@ async def update_equipment(
     if item is None:
         raise HTTPException(status_code=404, detail="Equipment not found")
 
+    await require_store_admin(db, admin, item.store_id)
+
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(item, field, value)
@@ -233,6 +236,8 @@ async def delete_equipment(
     item = result.scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=404, detail="Equipment not found")
+
+    await require_store_admin(db, admin, item.store_id)
 
     item.is_active = False
     item.updated_at = datetime.now(timezone.utc)
@@ -277,8 +282,11 @@ async def create_maintenance_log(
     result = await db.execute(
         select(Equipment).where(Equipment.id == equipment_id, Equipment.is_active.is_(True))
     )
-    if result.scalar_one_or_none() is None:
+    equipment = result.scalar_one_or_none()
+    if equipment is None:
         raise HTTPException(status_code=404, detail="Equipment not found")
+
+    await require_store_admin(db, admin, equipment.store_id)
 
     log = EquipmentMaintenanceLog(
         equipment_id=equipment_id,
@@ -316,6 +324,11 @@ async def update_maintenance_log(
     if log is None:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
 
+    equipment = await db.get(Equipment, equipment_id)
+    if equipment is None:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    await require_store_admin(db, admin, equipment.store_id)
+
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(log, field, value)
@@ -349,6 +362,11 @@ async def delete_maintenance_log(
     log = result.scalar_one_or_none()
     if log is None:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
+
+    equipment = await db.get(Equipment, equipment_id)
+    if equipment is None:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    await require_store_admin(db, admin, equipment.store_id)
 
     await db.delete(log)
     await db.commit()
