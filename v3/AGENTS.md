@@ -1184,6 +1184,9 @@ The residual cache did NOT self-heal: the poisoned responses carried `s-maxage=3
 - First purge attempt did NOT clear the entries (`age` header kept counting past 60,000s = still the original poisoned copies). Requires re-purge: CF zone `loyaltysystem.uk` → Caching → Purge Cache → Custom Purge → Hostname `pos-disp.loyaltysystem.uk` — or "Purge Everything". Verify after: `curl -sI https://pos-disp.loyaltysystem.uk/_next/static/chunks/13j-rtocaphap.css` must return `content-type: text/css` with `cf-cache-status: MISS/EXPIRED`, not `HIT`+text/html.
 - **Do NOT post-process the prerendered `display.html`** to append query strings to chunk URLs — it breaks turbopack's module mapping and the page never mounts (silent, no console errors). Tried and reverted via rebuild.
 - After any staff-portal rebuild, restart `pos-disp-v3` (it serves the same `.next`).
+
+### Image compression pass (2026-07-30)
+Customer-facing uploads were uncompressed: promo banners 0.7–2.2MB, product gallery 1.4–1.9MB, rewards 1.5–1.6MB, splash 1.5MB. Compressed 15 files (ImageMagick: resize to display-size max — promos 1376w, gallery 1200w, rewards 900w, splash 1080w — `-strip -interlace Plane -quality 80`): **18MB → ~1.7MB (~90% smaller)**, visually identical at display size. Originals backed up at `/root/image-backup-20260730/`. Note: the upload endpoint does NO compression — future uploads land full-size; consider server-side compression on upload (or a "compress after upload" step in the admin flow).
 - **RESOLVED 2026-07-30 ~08:30**: second CF purge cleared the poisoned chunks (all 12 verified MISS→correct content-type, CSS re-cached correctly). Display fully verified through the public domain: translations, live clock, wallet top-up QR, language selector, connection indicator, API polling all working.
 
 ### pos-disp idle screen rework (2026-07-30, owner feedback)
