@@ -114,6 +114,10 @@ async def update_avatar(
     if not _validate_file_content(contents, ext):
         raise HTTPException(400, detail=f"File content does not match extension {ext}")
 
+    # Compress server-side: max 400px edge (avatars render ≤96px), JPEG/PNG
+    from app.services.images import MAX_EDGE_AVATAR, compress_image
+    contents, ext = compress_image(contents, ext, max_edge=MAX_EDGE_AVATAR)
+
     # Save file to shared uploads directory (served by Caddy)
     # Save file using phone number (unique per customer) for stable avatar URL
     phone_slug = (customer.phone_number or f"user_{customer.id}").replace("+", "").replace(" ", "")

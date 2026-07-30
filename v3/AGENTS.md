@@ -1187,6 +1187,13 @@ The residual cache did NOT self-heal: the poisoned responses carried `s-maxage=3
 
 ### Image compression pass (2026-07-30)
 Customer-facing uploads were uncompressed: promo banners 0.7–2.2MB, product gallery 1.4–1.9MB, rewards 1.5–1.6MB, splash 1.5MB. Compressed 15 files (ImageMagick: resize to display-size max — promos 1376w, gallery 1200w, rewards 900w, splash 1080w — `-strip -interlace Plane -quality 80`): **18MB → ~1.7MB (~90% smaller)**, visually identical at display size. Originals backed up at `/root/image-backup-20260730/`. Note: the upload endpoint does NO compression — future uploads land full-size; consider server-side compression on upload (or a "compress after upload" step in the admin flow).
+
+### Server-side upload compression (2026-07-30)
+All upload points compress on save via `app/services/images.py::compress_image` (Pillow, in requirements.txt): resize to a per-kind max edge + progressive JPEG q80 (opaque) / optimized PNG (transparency); animated GIFs pass through; undecodable input saved as-is (magic-byte validation is the gate, compression is not). Verified with an 857KB test file:
+- Admin `POST /api/upload/image` (max 1600px) → 181KB
+- Customer `PUT /api/me/avatar` (max 400px) → 26KB
+- Staff equipment photos `POST /api/staff/equipment/{id}/report` (max 1200px) → 146KB
+Gotcha found: one legacy promo file was a PNG saved with a .jpg extension — the magic-byte check correctly rejected it in testing; ImageMagick-converted files are real JPEGs.
 - **RESOLVED 2026-07-30 ~08:30**: second CF purge cleared the poisoned chunks (all 12 verified MISS→correct content-type, CSS re-cached correctly). Display fully verified through the public domain: translations, live clock, wallet top-up QR, language selector, connection indicator, API polling all working.
 
 ### pos-disp idle screen rework (2026-07-30, owner feedback)

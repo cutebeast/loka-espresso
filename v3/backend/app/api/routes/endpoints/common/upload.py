@@ -71,6 +71,12 @@ async def upload_image(admin: CurrentAdmin, file: UploadFile):
     if not _validate_file_content(contents, ext):
         raise HTTPException(400, f"File content does not match extension {ext}")
 
+    # Compress server-side: resize to max 1600px edge + progressive JPEG q80
+    # (opaque) / optimized PNG (transparency). Uploads arrive full-size
+    # otherwise — multi-MB banners were noticeably slowing the portals.
+    from app.services.images import compress_image
+    contents, ext = compress_image(contents, ext)
+
     upload_dir = settings.upload_dir / "images"
     upload_dir.mkdir(parents=True, exist_ok=True)
 

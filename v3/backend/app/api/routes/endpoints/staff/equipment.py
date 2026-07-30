@@ -38,6 +38,9 @@ def _save_uploaded_images(files: list[UploadFile]) -> list[str]:
         contents = f.file.read()
         if len(contents) > 10 * 1024 * 1024:
             continue
+        # Compress server-side: max 1200px edge, progressive JPEG q80
+        from app.services.images import MAX_EDGE_EQUIPMENT, compress_image
+        contents, ext = compress_image(contents, ext, max_edge=MAX_EDGE_EQUIPMENT)
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = upload_dir / filename
         filepath.write_bytes(contents)
