@@ -172,7 +172,11 @@ export default function WorkshopsPage({ onBack }: WorkshopsPageProps) {
                   </div>
                   <div className="info-card-body" style={{ flex: 1 }}>
                     <div className="info-card-title">{w.item_name}</div>
-                    {w.description && <div className="info-card-desc">{w.description}</div>}
+                    {(w.long_description || w.description) && (
+                      <div className="info-card-desc" style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'unset', display: 'block', lineHeight: 1.5 }}>
+                        {w.long_description || w.description}
+                      </div>
+                    )}
                     <div className="info-card-tag experience">{priceText(w)}</div>
                   </div>
                 </div>

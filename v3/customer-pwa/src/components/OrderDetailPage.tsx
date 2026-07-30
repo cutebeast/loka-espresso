@@ -82,7 +82,9 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (!orderId) { setPage('orders'); return; }
-    if (!order || order.id !== orderId) fetchOrder(orderId);
+    // Always refresh on mount — the list-loaded order is stale (status moves,
+    // and it lacks computed fields like estimated_ready_at)
+    fetchOrder(orderId);
   }, [orderId]);
 
   useEffect(() => {
@@ -259,7 +261,10 @@ export default function OrderDetailPage() {
           <div className="od-eta-card">
             <div className="od-eta-title">{order.order_type === 'delivery' ? t('orderDetail.estimatedDelivery') : t('orderDetail.estimatedReady')}</div>
             <div className="od-eta-time">
-              {order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+              {(() => {
+                const eta = order.estimated_ready_at || order.pickup_time;
+                return eta ? new Date(eta).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '--:--';
+              })()}
             </div>
             <div className="od-eta-sub">{order.order_type === 'delivery' ? t('orderDetail.preparingDelivery') : order.order_type === 'dine_in' ? t('orderDetail.preparingDineIn') : t('orderDetail.preparingPickup')}</div>
             <div className="od-eta-progress"><div className="od-eta-fill" style={{ width: `${Math.min((current / steps.length) * 100, 100)}%` }} /></div>
@@ -295,7 +300,7 @@ export default function OrderDetailPage() {
             <div className="od-cancelled-banner">{t('orderDetail.orderCancelled')}</div>
           )}
           {canPayOnline && (
-            <button onClick={handleInitiatePayment} className="w-full mt-4 rounded-xl bg-[#C8A46E] px-4 py-3 text-sm font-semibold text-black flex items-center justify-center gap-2">
+            <button onClick={handleInitiatePayment} className="w-full mt-4 rounded-xl bg-[var(--color-gold-light)] px-4 py-3 text-sm font-semibold text-black flex items-center justify-center gap-2">
               <CreditCard size={16} /> {t('orderDetail.payNow')}
             </button>
           )}
@@ -307,7 +312,7 @@ export default function OrderDetailPage() {
             <div className="od-section-title">{order.order_type === 'delivery' ? t('orderDetail.deliveryInfo') : t('orderDetail.contact')}</div>
             {order.recipient_name && (
               <div className="od-info-row">
-                <div className="od-info-icon green"><User color="#8A8078" size={14} /></div>
+                <div className="od-info-icon green"><User color="var(--color-text-muted)" size={14} /></div>
                 <div className="od-info-text">
                   <div className="od-info-label">{order.recipient_name}</div>
                 </div>
@@ -338,7 +343,7 @@ export default function OrderDetailPage() {
         <div className="od-section">
           <div className="od-section-title">{t('orderDetail.orderType')}</div>
           <div className="od-info-row od-info-row-compact">
-            <div className="od-info-icon green">{order.order_type === 'delivery' ? <Truck color="#C4893A" size={14} /> : order.order_type === 'dine_in' ? <Utensils color="#4A2210" size={14} /> : <ShoppingBag color="#4A2210" size={14} />}</div>
+            <div className="od-info-icon green">{order.order_type === 'delivery' ? <Truck color="var(--color-copper)" size={14} /> : order.order_type === 'dine_in' ? <Utensils color="var(--color-brown)" size={14} /> : <ShoppingBag color="var(--color-brown)" size={14} />}</div>
             <div className="od-info-text">
               <div className="od-info-label">{order.order_type === 'delivery' ? t('cart.mode.delivery') : order.order_type === 'dine_in' ? t('cart.mode.dineIn') : t('cart.mode.pickup')}</div>
               <div className="od-info-value">{order.store_name ? t('orderDetail.fromStore', { store: order.store_name }) : order.store_address || t('orderDetail.storeId', { id: order.store_id || '?' })}</div>

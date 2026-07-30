@@ -68,3 +68,39 @@
 .myrv-empty-title { font-size: 16px; font-weight: 600; color: var(--loka-text-primary); margin-bottom: 6px; }
 .myrv-empty-desc { font-size: 13px; color: var(--loka-text-muted); line-height: 1.5; margin-bottom: 16px; }
 .myrv-empty-cta { display: inline-block; padding: 10px 24px; background: var(--loka-primary); color: var(--loka-white); border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
+
+
+/* Redemption QR — one-tap redemption at the POS */
+.myrv-redeem-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--color-gold);
+  border-radius: 14px;
+  background: var(--loka-white);
+}
+.myrv-redeem-qr img {
+  width: 180px;
+  height: 180px;
+  image-rendering: pixelated;
+  border-radius: 8px;
+}
+.myrv-redeem-qr-loading {
+  width: 180px;
+  height: 180px;
+  border-radius: 8px;
+  background: var(--loka-cream);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.myrv-redeem-qr-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--loka-text-muted);
+  text-align: center;
+}
+.myrv-active-tag {
+  color: var(--color-gold);
+  font-weight: 700;
+}

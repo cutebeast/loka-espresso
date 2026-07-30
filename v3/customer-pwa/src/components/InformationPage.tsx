@@ -220,7 +220,7 @@ export default function InformationPage({
                   <div className={`info-card-tag ${tagClass}`}>{tag}</div>
                 </div>
                 <div className="info-card-arrow">
-                  <ChevronRight color="#8A8078" size={16} />
+                  <ChevronRight color="var(--color-text-muted)" size={16} />
                 </div>
               </div>;
       })}
@@ -297,10 +297,10 @@ function ImageCarousel({
         {/* Arrow buttons */}
         {total > 1 && <>
             <button className="info-carousel-arrow info-carousel-arrow-left" onClick={prev} aria-label={t("information_page.previous")}>
-              <ChevronLeft color="#8A8078" size={14} strokeWidth={3} />
+              <ChevronLeft color="var(--color-text-muted)" size={14} strokeWidth={3} />
             </button>
             <button className="info-carousel-arrow info-carousel-arrow-right" onClick={next} aria-label={t("information_page.next")}>
-              <ChevronRight color="#8A8078" size={14} strokeWidth={3} />
+              <ChevronRight color="var(--color-text-muted)" size={14} strokeWidth={3} />
             </button>
           </>}
       </div>

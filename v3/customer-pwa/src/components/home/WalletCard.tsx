@@ -41,7 +41,7 @@ export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance
     return (
       <div className="wallet-card wallet-card-guest" onClick={onSignIn}>
         <div className="wallet-row">
-          <span className="balance-label"><Wallet size={16} color="#C9A84C" /> {t('home.wallet.lokaWallet')}</span>
+          <span className="balance-label"><Wallet size={16} color="var(--color-gold)" /> {t('home.wallet.lokaWallet')}</span>
         </div>
         <div className="wallet-row wallet-row-mt">
           <span className="guest-wallet-text">{t('home.wallet.signInPrompt')}</span>
@@ -56,7 +56,7 @@ export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance
   return (
     <div className="wallet-card">
       <div className="wallet-row">
-        <span className="balance-label"><Wallet size={16} color="#C9A84C" /> {t('home.wallet.lokaBalance')}</span>
+        <span className="balance-label"><Wallet size={16} color="var(--color-gold)" /> {t('home.wallet.lokaBalance')}</span>
         <button
           className="homepage-topup-btn"
           onClick={(e) => { e.stopPropagation(); onTopUp(); }}
@@ -70,24 +70,24 @@ export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance
           <span className="amount-number" ref={amountRef}>{formatAmount(balance)}</span>
         </span>
         <span className="homepage-points-badge">
-          <span className="homepage-points-icon"><Crown size={16} color="#C9A84C" /></span>
+          <span className="homepage-points-icon"><Crown size={16} color="var(--color-gold)" /></span>
           <span className="homepage-points-value">{formatPoints(points)} {t('home.wallet.pts')}</span>
         </span>
       </div>
       <div className="wallet-tier-row">
         <div className="wallet-tier-badge">
-          <Award size={14} color="#C4893A" /> {t('home.wallet.tierMember', { tier })}
+          <Award size={14} color="var(--color-copper)" /> {t('home.wallet.tierMember', { tier })}
         </div>
       </div>
       <div className="wallet-chip-row">
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onRewards(); }}>
-          <Gift size={14} color="#3B4A1A" /> {t('home.wallet.rewards')}
+          <Gift size={14} color="var(--color-primary)" /> {t('home.wallet.rewards')}
         </span>
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onVouchers(); }}>
-          <Ticket size={14} color="#C4893A" /> {t('home.wallet.vouchers')}
+          <Ticket size={14} color="var(--color-copper)" /> {t('home.wallet.vouchers')}
         </span>
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onCheckin(); }}>
-          <CalendarCheck size={14} color="#3B4A1A" /> {t('home.wallet.checkin')}
+          <CalendarCheck size={14} color="var(--color-primary)" /> {t('home.wallet.checkin')}
         </span>
       </div>
     </div>

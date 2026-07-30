@@ -48,7 +48,7 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
-  themeColor: "#384B16",
+  themeColor: "#16130F",
 };
 
 export default function RootLayout({
@@ -59,6 +59,15 @@ export default function RootLayout({
   return (
     <html suppressHydrationWarning>
       <head>
+        {/* Theme boot — set data-theme before first paint (default: dark "Loka
+            Ritual"; localStorage 'loka-theme' = 'light' restores light mode).
+            The self-ordering kiosk (kiosk.* subdomain) stays light: a bright
+            in-store LCD reads better in the light theme than the dark one. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(location.hostname.indexOf('kiosk.')===0||(location.hash||'').indexOf('#kiosk')===0){document.documentElement.dataset.theme='light';return;}var t=localStorage.getItem('loka-theme');document.documentElement.dataset.theme=(t==='light'||t==='dark')?t:'dark';}catch(e){document.documentElement.dataset.theme='dark';}})()`,
+          }}
+        />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
@@ -74,12 +83,12 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" href="/icon-512.png" />
         
         {/* MS Tile Color */}
-        <meta name="msapplication-TileColor" content="#384B16" />
+        <meta name="msapplication-TileColor" content="#16130F" />
         <meta name="msapplication-TileImage" content="/icon-192.png" />
         
         {/* Theme Colors for different platforms */}
-        <meta name="theme-color" content="#384B16" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#2A3910" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#16130F" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#16130F" media="(prefers-color-scheme: dark)" />
         <meta name="screen-orientation" content="portrait" />
         
         {/* Preconnect for performance */}

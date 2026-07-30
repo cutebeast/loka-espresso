@@ -1,0 +1,163 @@
+/* ── Membership Hero — "Loka Ritual" home centerpiece ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Digital membership card — gold border + ornamental corners */
+.hero-card {
+  position: relative;
+  border: 1px solid var(--color-gold);
+  border-radius: 14px;
+  padding: 20px 18px 16px;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(201, 168, 76, 0.10) 0%, rgba(201, 168, 76, 0.02) 55%, transparent 100%),
+    var(--loka-bg-card);
+  box-shadow: var(--shadow-card);
+}
+.hero-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--color-gold);
+  border-style: solid;
+  opacity: 0.9;
+}
+.hero-corner-tl { top: 5px; left: 5px; border-width: 1px 0 0 1px; border-top-left-radius: 8px; }
+.hero-corner-tr { top: 5px; right: 5px; border-width: 1px 1px 0 0; border-top-right-radius: 8px; }
+.hero-corner-bl { bottom: 5px; left: 5px; border-width: 0 0 1px 1px; border-bottom-left-radius: 8px; }
+.hero-corner-br { bottom: 5px; right: 5px; border-width: 0 1px 1px 0; border-bottom-right-radius: 8px; }
+
+.hero-logo {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--color-gold);
+  margin-bottom: 14px;
+}
+.hero-logo span {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 5px;
+  color: var(--loka-text-muted);
+  margin-top: 2px;
+}
+
+.hero-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+.hero-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--loka-text-muted);
+}
+.hero-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--loka-text-primary);
+  margin-top: 3px;
+}
+.hero-points {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.hero-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--loka-cream);
+  border: 1px solid var(--loka-border);
+  overflow: hidden;
+}
+.hero-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-gold-gradient);
+  transition: width 0.6s ease;
+}
+.hero-progress-text {
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--loka-text-muted);
+  text-align: center;
+}
+
+/* Gold gradient Tap-to-Scan button */
+.hero-scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 14px;
+  background: var(--color-gold-gradient);
+  color: #1A1710;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: var(--shadow-primary);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.hero-scan-btn:hover { background: var(--color-gold-gradient-hover); }
+.hero-scan-btn:active { transform: scale(0.985); }
+
+/* Tier status preview */
+.hero-preview-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--loka-text-secondary);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.hero-preview-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: var(--loka-bg-card);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--loka-text-secondary);
+}
+.hero-preview-box strong {
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+/* Quick links */
+.hero-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--loka-text-muted);
+}
+.hero-links button {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-gold);
+  cursor: pointer;
+}

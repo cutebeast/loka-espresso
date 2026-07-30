@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Gift, ChevronRight } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -10,16 +9,23 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard } from '@/lib/api';
-import { LOKA } from '@/lib/tokens';
 
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
+import MembershipHero from './home/MembershipHero';
+import EventCountdown from './home/EventCountdown';
+import BrewSpotlight from './home/BrewSpotlight';
+import LuckyDrawPanel from './home/LuckyDrawPanel';
+import BirthdayPrompt from './home/BirthdayPrompt';
+import WelcomeGiftCard from './home/WelcomeGiftCard';
+import ReferralCard from './home/ReferralCard';
+import TuesdayCard from './home/TuesdayCard';
 
 export default function HomePage() {
   const { t } = useTranslation();
   const { setPage, isGuest, triggerSignIn, selectedStore, showToast } = useUIStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const addItem = useCartStore((s) => s.addItem);
-  const { balance, points, tier } = useWalletStore();
+  const { balance, points, tier, lifetimePoints } = useWalletStore();
 
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
@@ -162,8 +168,22 @@ export default function HomePage() {
         initial="hidden"
         animate="show"
       >
-        {/* Wallet Card — hidden for guests, shown for authenticated users */}
+        {/* Membership hero (membership card + scan + tier preview) for
+            authenticated users; guest wallet card prompts sign-in */}
         {isAuthenticated && (
+          <motion.div variants={itemVariants}>
+            <MembershipHero
+              points={points}
+              lifetimePoints={lifetimePoints}
+              tier={tier}
+              onScan={() => setPage('my-card')}
+              onRewards={() => setPage('my-rewards', { initialTab: 'rewards' })}
+              onVouchers={() => setPage('my-rewards', { initialTab: 'vouchers' })}
+              onCheckin={() => setPage('checkin')}
+            />
+          </motion.div>
+        )}
+        {!isAuthenticated && (
           <motion.div variants={itemVariants}>
             <WalletCard
               isGuest={isGuest}
@@ -180,6 +200,42 @@ export default function HomePage() {
           </motion.div>
         )}
 
+        {/* Day-one welcome gift card (new members with an unused welcome voucher) */}
+        {isAuthenticated && (
+          <motion.div variants={itemVariants}>
+            <WelcomeGiftCard />
+          </motion.div>
+        )}
+
+        {/* Live extras: birthday enrichment (authed, no DOB) + next-session countdown */}
+        {isAuthenticated && (
+          <motion.div variants={itemVariants}>
+            <BirthdayPrompt />
+          </motion.div>
+        )}
+        <motion.div variants={itemVariants}>
+          <EventCountdown />
+        </motion.div>
+
+        {/* Lucky Draw panel — live campaign with entries/spins balance */}
+        {luckyDrawLive && (
+          <motion.div variants={itemVariants}>
+            <LuckyDrawPanel />
+          </motion.div>
+        )}
+
+        {/* Referral entry (share your code, both sides earn) */}
+        {isAuthenticated && (
+          <motion.div variants={itemVariants}>
+            <ReferralCard />
+          </motion.div>
+        )}
+
+        {/* LOKA Tuesday — standing weekly promo with countdown */}
+        <motion.div variants={itemVariants}>
+          <TuesdayCard />
+        </motion.div>
+
         {/* Banners & Info Carousels */}
         <HomeCarousel
           banners={banners}
@@ -192,46 +248,10 @@ export default function HomePage() {
           onViewAllDiscover={() => setPage('information')}
         />
 
-        {/* Lucky Draw banner — only when a campaign is live */}
-        {luckyDrawLive && (
-          <motion.div variants={itemVariants}>
-            <button
-              onClick={() => setPage('lucky-draw')}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '16px 18px',
-                borderRadius: 16,
-                border: 'none',
-                background: `linear-gradient(135deg, ${LOKA.gold}, ${LOKA.copper})`,
-                color: '#fff',
-                cursor: 'pointer',
-                textAlign: 'left',
-                boxShadow: '0 4px 16px rgba(196,137,58,0.3)',
-              }}
-            >
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                background: 'rgba(255,255,255,0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Gift size={22} color="#fff" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800 }}>{t('luckyDraw.homeBannerTitle')}</div>
-                <div style={{ fontSize: 12, opacity: 0.9 }}>{t('luckyDraw.homeBannerSubtitle')}</div>
-              </div>
-              <ChevronRight size={20} color="#fff" />
-            </button>
-          </motion.div>
-        )}
+        {/* Daily Brew Spotlight — origin-story product card */}
+        <motion.div variants={itemVariants}>
+          <BrewSpotlight />
+        </motion.div>
 
         {/* Today's Picks */}
         <motion.div variants={itemVariants}>

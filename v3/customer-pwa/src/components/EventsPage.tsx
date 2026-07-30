@@ -330,7 +330,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
                   )}
                 </div>
                 <div className="info-card-arrow">
-                  <ChevronRight color="#8A8078" size={16} />
+                  <ChevronRight color="var(--color-text-muted)" size={16} />
                 </div>
               </div>
             );

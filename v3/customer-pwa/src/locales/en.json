@@ -341,6 +341,11 @@
     "inviteOnlyDesc": "This event is open to invited guests only.",
     "loadFailed": "Failed to load events"
   },
+  "experience": {
+    "about": "About the Experience",
+    "priorityBooking": "Reserve early — seats are limited",
+    "reserve": "Reserve Your Seat"
+  },
   "helpSupport": {
     "backToHome": "Back To Home",
     "email": "Email",
@@ -412,6 +417,22 @@
     "greetingEvening": "Good evening",
     "greetingMorning": "Good morning",
     "guestName": "Guest",
+    "hero": {
+      "currentPoints": "Current Points",
+      "locked": "Locked",
+      "nextPerks": "{tier} Perks:",
+      "perkDelivery": "Free delivery",
+      "perkGeneric": "Exclusive {tier} benefits",
+      "perkMultiplier": "{mult}× points on every order",
+      "perkSupport": "Priority support",
+      "pointsToNext": "{count} points to {tier}",
+      "previewTitle": "Tier Status Preview",
+      "scan": "Tap to Scan at Counter",
+      "scanAria": "Show my membership QR for scanning at the counter",
+      "tierStatus": "Tier Status",
+      "topTier": "You're at the highest tier",
+      "unlocked": "Unlocked"
+    },
     "home_carousel": {
       "featured_banner": "Featured banner",
       "featured_card": "Featured card"
@@ -615,11 +636,19 @@
     "noSessions": "No upcoming sessions — please check back soon.",
     "sessionFull": "Full",
     "seatsLeft": "{count} seats left",
-    "selectSessionFirst": "Select a session first"
+    "selectSessionFirst": "Select a session first",
+    "addedToCart": "Added to cart"
   },
   "menu_page": {
     "kcal": "kcal",
-    "members": "MEMBERS"
+    "members": "MEMBERS",
+    "per_person": "per person",
+    "vault_sub": "Members-only secret experiments",
+    "vault_title": "The Vault — Secret Menu",
+    "vault_unlock": "Unlock at {tier}",
+    "usuals": "Your Usuals",
+    "saveUsualAria": "Save as one of your usuals",
+    "removeUsualAria": "Remove from your usuals"
   },
   "myCard": {
     "brand": "LOKA Espresso",
@@ -635,6 +664,7 @@
     "totalPoints": "Total Points"
   },
   "myRewards": {
+    "active": "Active",
     "amountOff": "{amount} OFF",
     "claimDesc": "Claim promotions and complete surveys to earn vouchers.",
     "expires": "Expires {date}",
@@ -646,6 +676,9 @@
     "myRewards": "My Rewards",
     "myVouchers": "My Vouchers",
     "noRewards": "No rewards yet",
+    "redeemQrAlt": "Redemption QR code",
+    "redeemQrAria": "Show this QR at the counter to redeem",
+    "scanAtPos": "One-tap redemption — staff scan this at the POS",
     "noVouchers": "No vouchers yet",
     "percentOff": "{value}% OFF",
     "promoVoucher": "Promo Voucher",
@@ -1004,7 +1037,9 @@
   "settings": {
     "about": "About",
     "aboutFallback": "Born from a passion for authentic Turkish coffee culture, LOKA Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft.",
+    "appearance": "Appearance",
     "attribution": "Made with care by LOKA Espresso",
+    "darkMode": "Dark Mode",
     "enable_notifications": "Enable notifications",
     "language": "Language",
     "languages": {
@@ -1014,6 +1049,7 @@
       "tr": "Türkçe",
       "zh": "中文"
     },
+    "lightMode": "Light Mode",
     "notifications": "Notifications",
     "privacyLegal": "Privacy & Legal",
     "privacyPolicy": "Privacy Policy",
@@ -1231,5 +1267,31 @@
   },
   "pos": {
     "table": "Table"
+  },
+  "homeExtras": {
+    "birthdayPrompt": "Tell us when your birthday is to unlock an annual celebratory treat.",
+    "brewSpotlight": "The Daily Brew Spotlight",
+    "completeProfile": "Complete Profile",
+    "everyCup": "Every cup is a ticket — more purchases, more chances!",
+    "luckyDraw": "Seasonal Lucky Draw",
+    "nextGathering": "Next Coffee Gathering",
+    "orderNow": "Order Now",
+    "profileEnrichment": "Profile Enrichment",
+    "rsvpSoon": "Book ahead to secure your seat",
+    "spins": "spins",
+    "tickets": "tickets",
+    "yourEntries": "Your entries: {count} {label}",
+    "spin": "spin",
+    "ticket": "ticket",
+    "referralBody": "Share your code — earn 50 points when a friend places their first order.",
+    "referralCta": "Share your code",
+    "referralTitle": "Invite friends, earn points",
+    "welcomeGiftBody": "Your welcome gift is here — {value} off your next order, waiting in My Rewards.",
+    "welcomeGiftCta": "View my gift",
+    "welcomeGiftTitle": "Welcome to LOKA Espresso",
+    "tuesdayBody": "Members get 15% off every Tuesday — a fresh voucher lands in My Rewards each week.",
+    "tuesdayHint": "One use per week, app only",
+    "tuesdayTitle": "LOKA Tuesday",
+    "tuesdayToday": "Today!"
   }
 }

@@ -76,7 +76,7 @@ function PaymentForm({ paymentId, orderId, onSuccess, onCancel, onError }: Omit<
         <button
           type="submit"
           disabled={!stripe || submitting}
-          className="flex-[2] rounded-xl bg-[#C8A46E] px-4 py-3 text-sm font-semibold text-black disabled:opacity-50"
+          className="flex-[2] rounded-xl bg-[var(--color-gold-light)] px-4 py-3 text-sm font-semibold text-black disabled:opacity-50"
         >
           {submitting ? <Loader2 size={16} className="mx-auto animate-spin" /> : t('checkout.payNow')}
         </button>
@@ -110,13 +110,13 @@ export default function StripePaymentSheet(props: StripePaymentSheetProps) {
   if (!stripe) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 size={24} className="animate-spin text-[#C8A46E]" />
+        <Loader2 size={24} className="animate-spin text-[var(--color-gold-light)]" />
       </div>
     );
   }
 
   return (
-    <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: 'night', variables: { colorPrimary: '#C8A46E' } } }}>
+    <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: 'night', variables: { colorPrimary: 'var(--color-gold-light)' } } }}>
       <PaymentForm {...rest} />
     </Elements>
   );

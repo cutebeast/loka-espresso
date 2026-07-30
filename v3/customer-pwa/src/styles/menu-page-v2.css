@@ -444,3 +444,315 @@
   height: 104px;
   border-radius: 14px;
 }
+
+
+/* ── Experience (workshop/class) cards — richer than menu items ── */
+.menu-experience-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.menu-experience-card {
+  background: var(--loka-bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--loka-border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.menu-experience-card:active { transform: scale(0.99); }
+
+.menu-experience-img {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--loka-cream);
+  overflow: hidden;
+}
+.menu-experience-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.menu-experience-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.menu-experience-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-experience-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--loka-text-primary);
+  line-height: 1.25;
+}
+
+/* Full description — classes need more room than a 1-line menu preview */
+.menu-experience-desc {
+  font-size: 13px;
+  color: var(--loka-text-secondary);
+  line-height: 1.5;
+}
+
+.menu-experience-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.menu-experience-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--loka-primary);
+}
+.menu-experience-per {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+}
+
+.menu-experience-sessions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.menu-experience-session-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--loka-text-secondary);
+  background: var(--loka-cream);
+  border: 1px solid var(--loka-border);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+.menu-experience-no-session {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--loka-text-muted);
+}
+
+.menu-experience-book-btn {
+  margin-top: 4px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--loka-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.menu-experience-book-btn:disabled {
+  background: var(--loka-border);
+  color: var(--loka-text-muted);
+  cursor: not-allowed;
+}
+
+
+/* ── The Vault — members-only items ── */
+.menu-vault-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--color-gold);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(201, 168, 76, 0.08) 0%, transparent 60%),
+    var(--loka-bg-card);
+}
+
+.menu-vault-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+.menu-vault-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-gold);
+  border-radius: 10px;
+  background: var(--color-gold-soft);
+}
+.menu-vault-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--color-gold);
+}
+.menu-vault-sub {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+}
+
+.menu-vault-card {
+  background: var(--loka-bg-card);
+  border-radius: 14px;
+  display: flex;
+  border: 1px solid var(--loka-border);
+  padding: 12px;
+  gap: 10px;
+  position: relative;
+  transition: transform 0.15s;
+  cursor: pointer;
+}
+.menu-vault-card.locked {
+  cursor: default;
+  border-style: dashed;
+}
+.menu-vault-card.locked .menu-product-img img,
+.menu-vault-card.locked .menu-product-name,
+.menu-vault-card.locked .menu-product-desc,
+.menu-vault-card.locked .menu-product-price {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+.menu-vault-card:not(.locked):active { transform: scale(0.985); }
+
+.menu-vault-lock-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--color-gold);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.menu-vault-lock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-gold);
+  border: 1px solid var(--color-gold-mid, rgba(201, 168, 76, 0.35));
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+
+/* ── Your Usuals (favorites) ── */
+.menu-usuals-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px;
+}
+.menu-usuals-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+.menu-usuals-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.menu-usuals-scroll::-webkit-scrollbar { display: none; }
+.menu-usual-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid var(--loka-border);
+  border-radius: 999px;
+  background: var(--loka-bg-card);
+  padding: 5px 10px 5px 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.12s;
+}
+.menu-usual-chip:active { transform: scale(0.96); }
+.menu-usual-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+.menu-usual-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-usual-price {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-gold);
+  white-space: nowrap;
+}
+
+/* Favorite heart on product cards */
+.menu-product-card { position: relative; }
+.menu-fav-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--loka-border);
+  background: var(--loka-bg-card);
+  color: var(--loka-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.menu-fav-btn.active {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+}
+
+/* Favorite heart in the customize sheet footer */
+.ics-fav-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--loka-border);
+  background: var(--loka-bg-card);
+  color: var(--loka-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ics-fav-btn.active {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+}

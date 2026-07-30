@@ -89,7 +89,7 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
 
         <div className="store-picker-search-wrap">
           <div className="store-picker-search-box">
-            <Search color="#8A8078" size={16} className="store-picker-search-icon" strokeWidth={2} />
+            <Search color="var(--color-text-muted)" size={16} className="store-picker-search-icon" strokeWidth={2} />
             <input
               type="text"
               value={storeSearch}

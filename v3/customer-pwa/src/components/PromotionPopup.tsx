@@ -26,7 +26,7 @@ function SafeActionLink({ actionUrl, actionLabel }: { actionUrl: string; actionL
     <a
       href={actionUrl}
       className="inline-block mt-3 px-5 py-2.5 rounded-full text-white text-sm font-semibold"
-      style={{ background: 'var(--loka-accent-gold, #C9A84C)' }}
+      style={{ background: 'var(--loka-accent-gold, var(--color-gold))' }}
       onClick={(e) => {
         e.stopPropagation();
         if (isInternal) {

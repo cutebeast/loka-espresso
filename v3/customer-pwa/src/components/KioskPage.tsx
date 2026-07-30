@@ -173,9 +173,17 @@ export default function KioskPage() {
         ]);
         const cats = catRes.data?.categories || catRes.data || [];
         const items = itemRes.data?.items || itemRes.data || [];
-        setCategories(cats);
-        setMenuItems(items.filter((i: KioskMenuItem) => i.is_available));
-        const firstCatWithItems = cats.find((c: KioskCategory) => items.some((i: KioskMenuItem) => i.category_id === c.id && i.is_available));
+        // Classes/workshops are session-booked on the PWA — the kiosk backend
+        // rejects them at checkout (400), so hide the category entirely
+        // rather than let customers build a cart that cannot be placed.
+        const expCatIds = new Set(
+          cats.filter((c: KioskCategory & { slug?: string }) => c.slug === 'experiences').map((c: KioskCategory) => c.id)
+        );
+        const sellableCats = cats.filter((c: KioskCategory) => !expCatIds.has(c.id));
+        const sellableItems = items.filter((i: KioskMenuItem) => i.is_available && !expCatIds.has(i.category_id));
+        setCategories(sellableCats);
+        setMenuItems(sellableItems);
+        const firstCatWithItems = sellableCats.find((c: KioskCategory) => sellableItems.some((i: KioskMenuItem) => i.category_id === c.id));
         if (firstCatWithItems) setActiveCategory(firstCatWithItems.id);
         else if (cats.length > 0) setActiveCategory(cats[0].id);
       } catch {
@@ -593,7 +601,7 @@ export default function KioskPage() {
                   <div style={{
                     display: 'inline-block', padding: '4px 12px', borderRadius: 20,
                     fontSize: 14, fontWeight: 600,
-                    background: orderType === 'dine_in' ? '#E8F5E9' : '#FFF3E0',
+                    background: orderType === 'dine_in' ? 'var(--color-success-light)' : 'var(--color-warning-light)',
                     color: orderType === 'dine_in' ? '#2E7D32' : '#E65100',
                   }}>
                     {orderType === 'dine_in' ? t('kiosk.dine_in') : t('kiosk.takeaway')}
@@ -631,7 +639,7 @@ export default function KioskPage() {
                 {isPortrait && (
                   <div style={{
                     padding: '6px 14px', borderRadius: 20, fontSize: 15, fontWeight: 600,
-                    background: orderType === 'dine_in' ? '#E8F5E9' : '#FFF3E0',
+                    background: orderType === 'dine_in' ? 'var(--color-success-light)' : 'var(--color-warning-light)',
                     color: orderType === 'dine_in' ? '#2E7D32' : '#E65100',
                   }}>
                     {orderType === 'dine_in' ? t('kiosk.dine_in') : t('kiosk.takeaway')}
@@ -665,7 +673,7 @@ export default function KioskPage() {
                   {categories.map(cat => (
                     <button key={cat.id} onClick={() => setActiveCategory(cat.id)} style={{
                       padding: '14px 24px', borderRadius: 24, fontSize: 18, fontWeight: 600, whiteSpace: 'nowrap',
-                      background: activeCategory === cat.id ? LOKA.primary : '#f0f0f0',
+                      background: activeCategory === cat.id ? LOKA.primary : 'var(--color-surface)',
                       color: activeCategory === cat.id ? 'white' : '#666', border: 'none', cursor: 'pointer',
                       minHeight: 48,
                     }}>{cat.category_name}</button>
@@ -744,7 +752,7 @@ export default function KioskPage() {
                       <button onClick={() => updateQty(item.lineKey, -1)} style={kioskQtyBtn(fs)}><Minus size={fs(22, 20)} /></button>
                       <span style={{ fontSize: fs(28, 24), fontWeight: 700, minWidth: 40, textAlign: 'center' }}>{item.qty}</span>
                       <button onClick={() => updateQty(item.lineKey, 1)} style={kioskQtyBtn(fs)}><Plus size={fs(22, 20)} /></button>
-                      <button onClick={() => removeFromCart(item.lineKey)} style={{ ...kioskQtyBtn(fs), marginLeft: 8, color: '#DC2626' }}><Trash2 size={fs(22, 20)} /></button>
+                      <button onClick={() => removeFromCart(item.lineKey)} style={{ ...kioskQtyBtn(fs), marginLeft: 8, color: 'var(--color-danger)' }}><Trash2 size={fs(22, 20)} /></button>
                     </div>
                   </div>
                 ))
@@ -775,7 +783,7 @@ export default function KioskPage() {
             <div style={{ fontSize: fs(24, 20), marginBottom: 32 }}>
               {t('kiosk.items_count', { n: cartCount })} · <strong style={{ color: LOKA.primary, fontSize: fs(36, 28) }}>{formatPrice(String(cartTotal))}</strong>
             </div>
-            {error && <div style={{ color: '#DC2626', fontSize: fs(20, 18), marginBottom: 16 }}>{error}</div>}
+            {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(20, 18), marginBottom: 16 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 16 }}>
               <button onClick={() => setPhase('cart')} style={kioskBtnGhost(fs)}>{t('kiosk.back')}</button>
               <button onClick={placeOrder} disabled={loading} style={kioskBtnPrimary(fs)}>
@@ -791,7 +799,7 @@ export default function KioskPage() {
         {phase === 'success' && (
           <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <CheckCircle size={fs(96, 80)} style={{ color: '#16A34A', marginBottom: 24 }} />
+            <CheckCircle size={fs(96, 80)} style={{ color: 'var(--color-success)', marginBottom: 24 }} />
             <h1 style={{ fontSize: fs(52, 42), fontWeight: 800, color: LOKA.primary }}>{t('kiosk.order_placed')}</h1>
             <div style={{ fontSize: fs(36, 28), color: '#666', marginTop: 8 }}>Order #{orderNumber}</div>
             <div style={{ fontSize: fs(22, 20), color: '#888', marginTop: 16, maxWidth: 400, textAlign: 'center' }}>{t('kiosk.counter_note')}</div>
@@ -895,7 +903,7 @@ export default function KioskPage() {
               <div key={group.id} style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: fs(20, 18), fontWeight: 600, marginBottom: 8 }}>
                   {group.group_name}
-                  {group.min_selections > 0 && <span style={{ color: '#DC2626', fontSize: fs(16, 14) }}> *</span>}
+                  {group.min_selections > 0 && <span style={{ color: 'var(--color-danger)', fontSize: fs(16, 14) }}> *</span>}
                   <span style={{ fontSize: fs(16, 14), color: '#999', marginLeft: 8 }}>
                     {group.selection_type === 'single' ? t('kiosk.choose_one') : t('kiosk.choose_up_to', { n: group.max_selections })}
                   </span>
@@ -992,6 +1000,6 @@ function kioskQtyBtn(fs: (p: number, l: number) => number): React.CSSProperties 
   return {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     width: fs(52, 44), height: fs(52, 44), borderRadius: 10,
-    background: '#f0f0f0', border: 'none', cursor: 'pointer', color: '#333',
+    background: 'var(--color-surface)', border: 'none', cursor: 'pointer', color: '#333',
   };
 }

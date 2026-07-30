@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Gift, Ticket, Clock, Copy, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
@@ -145,7 +145,7 @@ export default function MyRewardsPage({
                   <Ticket size={24} />
                 </div>
                 <div className="myrv-item-body">
-                  <div className="myrv-voucher-source">{voucher.source || t('myRewards.promoVoucher')}</div>
+                  <div className="myrv-voucher-source"><span className="myrv-active-tag">{t('myRewards.active')}</span> {voucher.source || t('myRewards.promoVoucher')}</div>
                   <div className="myrv-voucher-discount">
                     {voucher.discount_type === 'percentage_off' ? `${voucher.discount_value}% OFF` : voucher.discount_type === 'free_item' ? t('myRewards.freeItem') : `${formatPrice(Number(voucher.discount_value))} OFF`}
                   </div>
@@ -192,6 +192,25 @@ function CopyCode({ code, t }: { code: string; t: ReturnType<typeof useTranslati
   </div>;
 }
 
+/** Scannable redemption code (QR) — staff scan it at the POS to redeem. */
+function RedeemQR({ code, t }: { code: string; t: ReturnType<typeof useTranslation>['t'] }) {
+  const [dataUrl, setDataUrl] = useState('');
+  useEffect(() => {
+    let alive = true;
+    import('qrcode')
+      .then((QRCode) => QRCode.toDataURL(code, { width: 220, margin: 1, color: { dark: '#1A1710', light: '#FFFDF8' } }))
+      .then((url) => { if (alive) setDataUrl(url); })
+      .catch(() => { if (alive) setDataUrl(''); });
+    return () => { alive = false; };
+  }, [code]);
+  return (
+    <div className="myrv-redeem-qr" role="img" aria-label={t('myRewards.redeemQrAria')}>
+      {dataUrl ? <img src={dataUrl} alt={t('myRewards.redeemQrAlt')} /> : <div className="myrv-redeem-qr-loading" />}
+      <span className="myrv-redeem-qr-hint">{t('myRewards.scanAtPos')}</span>
+    </div>
+  );
+}
+
 function RewardDetailSheet({ reward, onClose, t, formatDate }: { reward: UserReward; onClose: () => void; t: ReturnType<typeof useTranslation>['t']; formatDate: (s: string | null | undefined) => string }) {
   return <div className="myrv-sheet-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
     <div className="myrv-sheet">
@@ -199,7 +218,7 @@ function RewardDetailSheet({ reward, onClose, t, formatDate }: { reward: UserRew
       <div className="myrv-sheet-title">{reward.reward_name}</div>
       <div className="myrv-sheet-sub">{t('myRewards.showToCashier')}</div>
       <div className="myrv-sheet-info">
-        <div className="myrv-sheet-info-icon"><QrCode size={40} color="var(--loka-primary)" /></div>
+        <RedeemQR code={reward.code || reward.redemption_code} t={t} />
         <div className="myrv-sheet-info-text">{t('common.yourCode')}</div>
         <CopyCode code={reward.code || reward.redemption_code} t={t} />
       </div>
@@ -220,7 +239,7 @@ function VoucherDetailSheet({ voucher, onClose, t, formatDate }: { voucher: User
         {voucher.source || t('myRewards.promoVoucher')} · {t('myRewards.minSpend', { amount: formatPrice(Number(voucher.min_spend || 0)) })}
       </div>
       <div className="myrv-sheet-info">
-        <div className="myrv-sheet-info-icon"><Shield size={40} color="var(--loka-primary)" /></div>
+        <RedeemQR code={voucher.code} t={t} />
         <div className="myrv-sheet-info-text">{t('common.yourCode')}</div>
         <CopyCode code={voucher.code} t={t} />
       </div>

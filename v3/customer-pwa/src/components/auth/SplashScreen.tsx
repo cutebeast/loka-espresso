@@ -61,14 +61,14 @@ function SvgLogo({
   return <div className={`splash-logo-v2 ${reducedMotion ? '' : 'animate-fade-scale'}`}>
       <svg width="80" height="100" viewBox="0 0 80 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         {!reducedMotion && <>
-            <path className="smoke-wisp smoke-wisp-1" d="M32 18c0-4 2-8 4-10s2-6 0-8" stroke="#C4893A" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.6" />
-            <path className="smoke-wisp smoke-wisp-2" d="M40 16c0-5 3-9 2-13s-1-7 2-9" stroke="#C4893A" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.5" />
-            <path className="smoke-wisp smoke-wisp-3" d="M48 18c0-3 1-7 3-9s3-5 1-7" stroke="#C4893A" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.4" />
+            <path className="smoke-wisp smoke-wisp-1" d="M32 18c0-4 2-8 4-10s2-6 0-8" stroke="var(--color-copper)" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.6" />
+            <path className="smoke-wisp smoke-wisp-2" d="M40 16c0-5 3-9 2-13s-1-7 2-9" stroke="var(--color-copper)" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.5" />
+            <path className="smoke-wisp smoke-wisp-3" d="M48 18c0-3 1-7 3-9s3-5 1-7" stroke="var(--color-copper)" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.4" />
           </>}
-        <path d="M20 32c0-2 2-4 4-4h32c2 0 4 2 4 4v4c0 14-8 26-20 26S20 50 20 36v-4z" fill="#4A2210" />
+        <path d="M20 32c0-2 2-4 4-4h32c2 0 4 2 4 4v4c0 14-8 26-20 26S20 50 20 36v-4z" fill="var(--color-brown)" />
         <ellipse cx="40" cy="32" rx="20" ry="4" fill="#7A4A2E" />
         <ellipse cx="40" cy="33" rx="16" ry="3" fill="#3D2517" />
-        <path d="M58 38c6 0 10 4 10 10s-4 10-10 10" stroke="#4A2210" strokeWidth="4" strokeLinecap="round" fill="none" />
+        <path d="M58 38c6 0 10 4 10 10s-4 10-10 10" stroke="var(--color-brown)" strokeWidth="4" strokeLinecap="round" fill="none" />
         <ellipse cx="40" cy="64" rx="24" ry="6" fill="#D4C4B0" />
         <ellipse cx="40" cy="63" rx="16" ry="4" fill="#C4B4A0" />
       </svg>

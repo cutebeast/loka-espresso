@@ -385,7 +385,7 @@ function StripeCardInput({
   }, [stripeLoaded, publishableKey, clientSecret, onStatusChange]);
 
   if (error) {
-    return <div style={{ color: '#DC2626', fontSize: 14, padding: 8 }}>{error}</div>;
+    return <div style={{ color: 'var(--color-danger)', fontSize: 14, padding: 8 }}>{error}</div>;
   }
 
   if (!stripeLoaded || !publishableKey) {

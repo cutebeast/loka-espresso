@@ -1,0 +1,132 @@
+/* ── Home extras — countdown / spotlight / lucky draw / birthday ── */
+.home-extra-card {
+  display: block;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--color-gold);
+  border-radius: 14px;
+  padding: 14px;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(201, 168, 76, 0.07) 0%, transparent 60%),
+    var(--loka-bg-card);
+  box-shadow: var(--shadow-card);
+  cursor: default;
+  font-family: inherit;
+}
+button.home-extra-card { cursor: pointer; }
+
+.home-extra-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--color-gold);
+}
+.home-extra-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--loka-text-secondary);
+}
+.home-extra-hint {
+  margin-top: 6px;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--loka-text-muted);
+}
+.home-extra-cta {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+/* Countdown */
+.home-countdown {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--loka-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brew spotlight */
+.home-spotlight-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  text-align: left;
+}
+.home-spotlight-img {
+  width: 86px;
+  height: 86px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--loka-border);
+}
+.home-spotlight-body { flex: 1; min-width: 0; }
+.home-spotlight-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--loka-text-primary);
+}
+.home-spotlight-desc {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--loka-text-secondary);
+}
+.home-spotlight-price {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-gold);
+}
+.home-spotlight-btn {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-gold);
+  cursor: pointer;
+}
+
+/* Lucky draw entries */
+.home-lucky-entries {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--loka-text-primary);
+}
+
+
+/* Welcome gift card (dismissible) */
+.home-welcome-gift {
+  position: relative;
+  cursor: pointer;
+}
+.home-welcome-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--loka-border);
+  background: var(--loka-bg-card);
+  color: var(--loka-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}

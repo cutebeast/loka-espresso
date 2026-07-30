@@ -353,6 +353,8 @@ export interface Order {
   status_log?: OrderStatusEntry[];
   // Fulfillment extras (flattened by backend or derived)
   pickup_time?: string;
+  estimated_ready_at?: string;
+  estimated_delivery_at?: string;
   delivery_address?: Record<string, unknown> | string;
   recipient_name?: string;
   recipient_phone?: string;

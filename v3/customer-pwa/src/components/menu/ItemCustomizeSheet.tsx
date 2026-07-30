@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minus, Plus, Coffee, AlertTriangle } from 'lucide-react';
+import { X, Minus, Plus, Coffee, AlertTriangle, Heart } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
+import { useFavoritesStore } from '@/stores/favoritesStore';
 import type { MenuItem, CustomizationOption, ClassSession } from '@/lib/api';
 import { resolveAssetUrl, formatPrice, LOKA } from '@/lib/tokens';
 interface SelectedOption {
@@ -53,7 +54,7 @@ const CUP_SIZES: Record<string, {
 
 /** Milk option colors */
 const MILK_COLORS: Record<string, string> = {
-  'full cream': '#FFF8E7',
+  'full cream': 'var(--color-warning-light)',
   'oat': '#F5E6CC',
   'soy': '#F0EDE8',
   'almond': '#F5EDDF',
@@ -153,6 +154,22 @@ export default function ItemCustomizeSheet({
     if (isExperience && !selectedSession) return; // session required for classes
     onAdd(item, quantity, selectedOptions, totalPrice, selectedVariant, selectedSession);
     onClose();
+  };
+  // "Your Usuals" — save the current item + variant + option selection
+  const { toggleFavorite, isFavorite } = useFavoritesStore();
+  const isFav = item ? isFavorite(item.id) : false;
+  const saveUsual = () => {
+    if (!item) return;
+    toggleFavorite({
+      menu_item_id: item.id,
+      name: item.item_name,
+      price: totalPrice,
+      base_price: item.base_price,
+      image_url: item.image_url ?? null,
+      variant_id: selectedVariant?.id ?? null,
+      variant_name: selectedVariant?.variant_name ?? null,
+      options: selectedOptions.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })),
+    });
   };
   const imgSrc = item?.image_url ? resolveAssetUrl(item.image_url) : null;
   const allergenWarning = item ? getAllergenWarning(item) : null;
@@ -308,7 +325,7 @@ export default function ItemCustomizeSheet({
                       </div>) : <div className="ics-options-list">
                         {opts.map(opt => {
                   const sel = isSelected(opt.id);
-                  const milkColor = isMilk ? MILK_COLORS[opt.name.toLowerCase()] || '#FFF8E7' : null;
+                  const milkColor = isMilk ? MILK_COLORS[opt.name.toLowerCase()] || 'var(--color-warning-light)' : null;
                   return <button key={opt.id} onClick={() => toggleOption(opt)} className={`ics-option-btn ${sel ? 'selected' : ''}`}>
                               {milkColor && <span className="ics-milk-dot" style={{
                       background: milkColor
@@ -341,6 +358,10 @@ export default function ItemCustomizeSheet({
                   <Plus size={14} />
                 </button>
               </div>
+              {/* Save this exact configuration as a "usual" (one-tap reorder on the menu) */}
+              <button className={`ics-fav-btn ${isFav ? 'active' : ''}`} onClick={saveUsual} aria-label={t('menu_page.saveUsualAria')} aria-pressed={isFav}>
+                <Heart size={17} fill={isFav ? 'currentColor' : 'none'} />
+              </button>
               <button onClick={handleAdd} className="ics-add-btn" disabled={isExperience && !selectedSession} style={isExperience && !selectedSession ? { opacity: 0.6 } : undefined}>
                 {isExperience && !selectedSession ? t('menu.selectSessionFirst') : quantity > 1 ? t('menu.addQuantity', {
               quantity,

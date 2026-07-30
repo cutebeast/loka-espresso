@@ -38,7 +38,7 @@ class ErrorBoundaryInner extends React.Component<Props & { t: TFunc }, State> {
       return (
         <div className="eb-container">
           <div className="eb-inner">
-            <div className="eb-icon"><AlertTriangle size={28} color="#C9A84C" /></div>
+            <div className="eb-icon"><AlertTriangle size={28} color="var(--color-gold)" /></div>
             <h2 className="eb-title">{t('common.error')}</h2>
             <p className="eb-message">
               {t('errorBoundary.message')}

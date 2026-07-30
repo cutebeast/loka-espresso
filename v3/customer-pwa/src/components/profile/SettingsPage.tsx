@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, FileText, Shield, ChevronRight, Coffee, Globe, Bell } from 'lucide-react';
+import { ArrowLeft, FileText, Shield, ChevronRight, Coffee, Globe, Bell, Sun, Moon } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSelectorModal } from '@/components/shared/LanguageSelectorModal';
@@ -20,6 +20,19 @@ export default function SettingsPage() {
   const [aboutText, setAboutText] = useState('');
   const [appVersion, setAppVersion] = useState('0.1.0');
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  useEffect(() => {
+    const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    setTheme(current);
+  }, []);
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('loka-theme', next);
+    } catch { /* storage unavailable */ }
+  };
   const [aboutLoading, setAboutLoading] = useState(true);
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -69,6 +82,20 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-content-scroll">
+        {/* Appearance (dark/light) */}
+        <div className="settings-section-title">{t('settings.appearance')}</div>
+        <div className="settings-menu-card">
+          <button className="settings-menu-item" onClick={toggleTheme} aria-pressed={theme === 'dark'}>
+            <div className="settings-menu-icon settings-icon-language">
+              {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+            </div>
+            <span className="settings-menu-label">
+              {theme === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}
+            </span>
+            <ChevronRight size={16} className="settings-menu-arrow" style={{ transform: theme === 'light' ? 'rotate(180deg)' : undefined }} />
+          </button>
+        </div>
+
         {/* Language */}
         <div className="settings-section-title">{t('settings.language')}</div>
         <div className="settings-menu-card">

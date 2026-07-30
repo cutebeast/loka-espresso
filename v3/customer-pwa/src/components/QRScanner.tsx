@@ -100,7 +100,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         {!hasPermission && !isLoading && (
           <div className="qr-permission">
             <div className="qr-permission-icon">
-              {notSupported ? <AlertTriangle size={28} color="#C9A84C" /> : <CameraOff size={28} color="#4A2210" />}
+              {notSupported ? <AlertTriangle size={28} color="var(--color-gold)" /> : <CameraOff size={28} color="var(--color-brown)" />}
             </div>
             <h2 className="qr-permission-title">{notSupported ? t('qr.browserUnsupported') : t('qr.cameraPermissionNeeded')}</h2>
             <p className="qr-permission-text">

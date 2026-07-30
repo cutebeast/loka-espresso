@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Search, X, ArrowLeft, Plus, Coffee, Star, Crown } from 'lucide-react';
+import { Search, X, ArrowLeft, Plus, Coffee, Star, Crown, KeyRound, Lock, Heart } from 'lucide-react';
+import { useFavoritesStore, type FavoriteItem } from '@/stores/favoritesStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -15,8 +16,11 @@ import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import AddonDealSheet from '@/components/menu/AddonDealSheet';
 import BundlePickerSheet from '@/components/menu/BundlePickerSheet';
 import MultiCourseBundleSheet from '@/components/menu/MultiCourseBundleSheet';
+import ExperienceCard, { type ExperienceSession } from '@/components/menu/ExperienceCard';
+import ExperienceDetailSheet from '@/components/menu/ExperienceDetailSheet';
 import { bundleIdsInCart } from '@/lib/addonDeal';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { getLocale } from '@/stores/localeStore';
 export default function MenuPage() {
   const {
     t
@@ -47,7 +51,31 @@ export default function MenuPage() {
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
+  const [experienceDetailItem, setExperienceDetailItem] = useState<MenuItem | null>(null);
+  const { favorites, toggleFavorite } = useFavoritesStore();
+  const addUsual = useCallback((fav: FavoriteItem) => {
+    const item = menuItems.find(i => i.id === fav.menu_item_id && i.is_available);
+    if (!item) {
+      showToast(t('menu.noItemsAvailable'), 'error');
+      return;
+    }
+    addItem({
+      menu_item_id: fav.menu_item_id,
+      name: fav.variant_name ? `${fav.name} (${fav.variant_name})` : fav.name,
+      price: fav.price,
+      base_price: fav.base_price,
+      quantity: 1,
+      variant_id: fav.variant_id ?? undefined,
+      variant_name: fav.variant_name ?? undefined,
+      customizations: { options: fav.options.map(o => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) },
+      customization_option_ids: fav.options.map(o => o.id),
+      customization_count: fav.options.length,
+      store_id: selectedStore?.id,
+    });
+    showToast(t('menu.addedToCart'), 'success');
+  }, [menuItems, addItem, selectedStore?.id, showToast, t]);
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
+  const [workshopSessions, setWorkshopSessions] = useState<Record<number, ExperienceSession[]>>({});
   const [pendingAddonBundle, setPendingAddonBundle] = useState<BundleProduct | null>(null);
   const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
   const [multiCourseBundle, setMultiCourseBundle] = useState<BundleProduct | null>(null);
@@ -60,7 +88,7 @@ export default function MenuPage() {
     setLoadError(false);
     try {
       const storeId = selectedStore?.id;
-      const [catRes, itemRes, bpRes] = await Promise.all([api.get(`/menu/categories`, {
+      const [catRes, itemRes, bpRes, wsRes] = await Promise.all([api.get(`/menu/categories`, {
         signal
       }), api.get(`/menu/items`, {
         signal,
@@ -72,6 +100,11 @@ export default function MenuPage() {
         } : undefined
       }).catch(() => ({
         data: []
+      })), api.get(`/menu/workshops`, {
+        signal,
+        params: { locale: getLocale() }
+      }).catch(() => ({
+        data: []
       }))]);
       const catData = catRes.data;
       const itemData = itemRes.data;
@@ -81,6 +114,13 @@ export default function MenuPage() {
       setBundleProducts((bpRes as {
         data?: BundleProduct[];
       })?.data || []);
+      // Session availability for experience (class/workshop) cards
+      const wsList = Array.isArray((wsRes as { data?: unknown }).data)
+        ? (wsRes as { data: { id: number; sessions?: ExperienceSession[] }[] }).data
+        : [];
+      const wsMap: Record<number, ExperienceSession[]> = {};
+      for (const w of wsList) wsMap[w.id] = w.sessions || [];
+      setWorkshopSessions(wsMap);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setCategories([]);
@@ -230,9 +270,8 @@ export default function MenuPage() {
   const filteredItems = useMemo(() => menuItems.filter(item => {
     const matchesSearch = !debouncedSearch || item.item_name.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesDietary = !selectedDietaryTag || item.dietary_tags && item.dietary_tags.some((t: string) => t.toLowerCase() === selectedDietaryTag.toLowerCase());
-    const hasTierAccess = !item.minimum_tier_id || customerTierId >= item.minimum_tier_id;
-    return matchesSearch && matchesDietary && hasTierAccess && item.is_available;
-  }), [menuItems, debouncedSearch, selectedDietaryTag, customerTierId]);
+    return matchesSearch && matchesDietary && item.is_available;
+  }), [menuItems, debouncedSearch, selectedDietaryTag]);
   const availableDietaryTags = useMemo(() => {
     const tags = new Set<string>();
     menuItems.forEach(item => {
@@ -244,8 +283,20 @@ export default function MenuPage() {
   }, [menuItems]);
   const itemsByCategory = useMemo(() => categories.map(cat => ({
     category: cat,
-    items: filteredItems.filter(item => item.category_id === cat.id)
+    // Tier-locked ("Vault") items live only in the Vault section, not the grids
+    items: filteredItems.filter(item => item.category_id === cat.id && !item.minimum_tier_id)
   })).filter(group => group.items.length > 0), [categories, filteredItems]);
+  const vaultItems = useMemo(() => filteredItems.filter(item => item.minimum_tier_id), [filteredItems]);
+  // Public tier names for the Vault "Unlock at X" hints
+  const [tierNames, setTierNames] = useState<Record<number, string>>({});
+  useEffect(() => {
+    if (vaultItems.length === 0) return;
+    api.get('/loyalty/tiers').then(res => {
+      const map: Record<number, string> = {};
+      for (const t2 of (Array.isArray(res.data) ? res.data : [])) map[t2.id] = t2.display_name;
+      setTierNames(map);
+    }).catch(() => setTierNames({}));
+  }, [vaultItems.length]);
   const allCats = useMemo(() => [{
     id: null as number | null,
     name: t('menu.all')
@@ -328,6 +379,18 @@ export default function MenuPage() {
           </>}
       </div>
 
+      {/* Your Usuals — one-tap reorder of saved drinks */}
+      {!showSearch && favorites.length > 0 && <div className="menu-usuals-bar">
+          <span className="menu-usuals-label">{t('menu_page.usuals')}</span>
+          <div className="menu-usuals-scroll">
+            {favorites.map(fav => <button key={fav.menu_item_id} className="menu-usual-chip" onClick={() => addUsual(fav)}>
+                {fav.image_url ? <img src={resolveAssetUrl(fav.image_url) ?? undefined} alt="" className="menu-usual-img" loading="lazy" /> : <Coffee size={14} color={LOKA.border} />}
+                <span className="menu-usual-name">{fav.variant_name ? `${fav.name} (${fav.variant_name})` : fav.name}</span>
+                <span className="menu-usual-price">{formatPrice(fav.price)}</span>
+              </button>)}
+          </div>
+        </div>}
+
       {/* Category Tabs */}
       {!showSearch && categories.length > 0 && <div className="menu-cat-bar" ref={navRef}>
           {allCats.map(cat => <button key={cat.id ?? 'all'} className={`menu-cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`} onClick={() => scrollToCategory(cat.id)} aria-pressed={activeCategoryId === cat.id}>
@@ -344,6 +407,44 @@ export default function MenuPage() {
 
       {/* Product List */}
       <div className="menu-product-list scroll-container">
+        {/* The Vault — members-only items, locked below the required tier */}
+        {!loading && vaultItems.length > 0 && !showSearch && <div className="menu-vault-section">
+            <div className="menu-vault-header">
+              <span className="menu-vault-key"><KeyRound size={18} color="var(--color-gold)" /></span>
+              <div>
+                <div className="menu-vault-title">{t('menu_page.vault_title')}</div>
+                <div className="menu-vault-sub">{t('menu_page.vault_sub')}</div>
+              </div>
+            </div>
+            {vaultItems.map(item => {
+              const minTier = item.minimum_tier_id ?? 0;
+              const locked = !customerTierId || customerTierId < minTier;
+              const imgSrc = resolveAssetUrl(item.image_url);
+              return <div key={item.id} className={`menu-vault-card ${locked ? 'locked' : ''}`} onClick={() => { if (!locked) openItem(item); }}>
+                      <div className="menu-product-img">
+                        {imgSrc && !brokenImages.has(item.id) ? <img src={imgSrc} alt={item.item_name} loading="lazy" className="menu-product-img-bg" onError={() => {
+                  setBrokenImages(prev => new Set(prev).add(item.id));
+                }} /> : <div className="menu-img-fallback">
+                            <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
+                          </div>}
+                        {locked && <span className="menu-vault-lock-badge"><Lock size={10} /> {t('menu_page.members')}</span>}
+                      </div>
+                      <div className="menu-product-info">
+                        <div className="menu-product-name">{item.item_name}</div>
+                        <div className="menu-product-desc">{item.description}</div>
+                        <div className="menu-product-bottom">
+                          <span className="menu-product-price">{formatPrice(item.base_price)}</span>
+                          {locked ? <span className="menu-vault-lock-chip"><Lock size={11} /> {t('menu_page.vault_unlock', { tier: tierNames[minTier] || '…' })}</span> : <button className="menu-add-btn" onClick={e => {
+                    e.stopPropagation();
+                    openItem(item);
+                  }}>
+                              <Plus size={14} strokeWidth={2.5} /> {t('common.add')}
+                            </button>}
+                        </div>
+                      </div>
+                    </div>;
+            })}
+          </div>}
         {loading ? <>
             {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton menu-skeleton-card" />)}
           </> : filteredItems.length === 0 ? <div className="menu-empty-state">
@@ -376,9 +477,22 @@ export default function MenuPage() {
                   {category.category_name}
                 </h2>
               </div>
+              {/* Classes/workshops get a rich booking card, not a product card —
+                  they need the full description, schedule and a Book CTA. */}
+              {category.slug === 'experiences' ? <div className="menu-experience-list">
+                  {items.map(item => <ExperienceCard
+                    key={item.id}
+                    item={item}
+                    sessions={workshopSessions[item.id] || []}
+                    imageBroken={brokenImages.has(item.id)}
+                    onImageError={() => setBrokenImages(prev => new Set(prev).add(item.id))}
+                    onBook={() => setExperienceDetailItem(item)}
+                  />)}
+                </div> : <>
               <div className="menu-items-grid">
                 {items.map(item => {
             const imgSrc = resolveAssetUrl(item.image_url);
+            const isFav = favorites.some(f => f.menu_item_id === item.id);
             return <div key={item.id} className="menu-product-card" onClick={() => openItem(item)}>
                       <div className="menu-product-img">
                         {imgSrc && !brokenImages.has(item.id) ? <img src={imgSrc} alt={item.item_name} loading="lazy" width="160" height="160" className="menu-product-img-bg" onError={() => {
@@ -386,13 +500,33 @@ export default function MenuPage() {
                 }} /> : <div className="menu-img-fallback">
                             <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
                           </div>}
-                        {item.is_featured && <span className="menu-img-badge"><Star color="#C9A84C" size={12} fill="currentColor" /></span>}
+                        <button
+                          className={`menu-fav-btn ${isFav ? 'active' : ''}`}
+                          onClick={e => {
+                            e.stopPropagation();
+                            toggleFavorite({
+                              menu_item_id: item.id,
+                              name: item.item_name,
+                              price: item.base_price,
+                              base_price: item.base_price,
+                              image_url: item.image_url ?? null,
+                              variant_id: null,
+                              variant_name: null,
+                              options: [],
+                            });
+                          }}
+                          aria-label={isFav ? t('menu_page.removeUsualAria') : t('menu_page.saveUsualAria')}
+                          aria-pressed={isFav}
+                        >
+                          <Heart size={13} fill={isFav ? 'currentColor' : 'none'} />
+                        </button>
+                        {item.is_featured && <span className="menu-img-badge"><Star color="var(--color-gold)" size={12} fill="currentColor" /></span>}
                         {item.minimum_tier_id && <span className="menu-img-badge" style={{
                   right: 4,
                   top: 4,
                   left: 'auto',
                   background: 'rgba(0,0,0,0.6)',
-                  color: '#C9A84C',
+                  color: 'var(--color-gold)',
                   fontSize: 10,
                   fontWeight: 700,
                   padding: '2px 6px',
@@ -490,10 +624,21 @@ export default function MenuPage() {
                       </div>;
           })}
                 </div>}
+              </>}
             </div>)}
       </div>
 
       {customizeItem && <ItemCustomizeSheet item={customizeItem} isOpen={customizeItem !== null} onClose={() => setCustomizeItem(null)} onAdd={handleCustomizeAdd} customizations={deriveCustomizationOptions(customizeItem)} />}
+      {experienceDetailItem && <ExperienceDetailSheet
+        item={experienceDetailItem}
+        sessions={workshopSessions[experienceDetailItem.id] || []}
+        onClose={() => setExperienceDetailItem(null)}
+        onBook={() => {
+          const item = experienceDetailItem;
+          setExperienceDetailItem(null);
+          setCustomizeItem(item);
+        }}
+      />}
       <AddonDealSheet bundle={pendingAddonBundle} menuItems={menuItems} onClose={() => setPendingAddonBundle(null)} />
 
       {pickerBundle && <BundlePickerSheet bundle={pickerBundle} onClose={() => setPickerBundle(null)} onDone={bp => {

@@ -115,3 +115,68 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 }
+
+/* ============================================
+   DARK THEME — "Loka Ritual" (charcoal + gold)
+   Applied when <html data-theme="dark">; the boot
+   script in layout.tsx defaults to dark, Settings
+   offers a Light Mode toggle.
+   ============================================ */
+:root[data-theme="dark"] {
+  /* Brand actions shift olive → Turkish Gold in dark mode */
+  --color-primary: #C9A84C;
+  --color-primary-dark: #A8873A;
+  --color-primary-deep: #8A6E2A;
+  --color-primary-light: #D9C06A;
+  --color-primary-50: #241E12;
+  --color-primary-100: #2E2716;
+
+  /* Surfaces — deep warm charcoal */
+  --color-bg: #16130F;
+  --color-bg-light: #1C1813;
+  --color-bg-card: #211B14;
+  --color-surface: #1C1813;
+  --color-surface-warm: #262017;
+  --color-cream: #2A231B;
+
+  /* Text — warm parchment */
+  --color-text-primary: #F2EAE0;
+  --color-text-secondary: #C9BCA8;
+  --color-text-muted: #8A7F6E;
+
+  /* Borders — dark bronze, gold for accents */
+  --color-border: #3A322A;
+  --color-border-light: #453B2E;
+  --color-border-subtle: #2C251D;
+
+  /* Brown re-lifted for dark surfaces */
+  --color-brown: #C69A72;
+  --color-brown-light: #D9B28A;
+
+  /* Semantic — lifted for contrast on charcoal */
+  --color-success: #8FBC8F;
+  --color-success-light: #22301F;
+  --color-danger: #E06666;
+  --color-danger-light: #3A1F1F;
+  --color-info: #8AA4B5;
+  --color-info-light: #1F2A33;
+
+  /* Shadows — deep black instead of golden tint */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.50);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-nav: 0 -4px 10px rgba(0, 0, 0, 0.40);
+  --shadow-primary: 0 8px 16px rgba(201, 168, 76, 0.18);
+  --shadow-primary-sm: 0 2px 8px rgba(201, 168, 76, 0.10);
+  --shadow-wallet: 0 18px 36px -14px rgba(0, 0, 0, 0.70);
+
+  --loka-bg-dark: #0E0B08;
+  --loka-bg-light: var(--color-bg-light);
+  --loka-cream: var(--color-cream);
+
+  /* Metallic gold CTA (Tap to Scan etc.) */
+  --color-gold-gradient: linear-gradient(135deg, #D9C06A 0%, #C9A84C 45%, #A8873A 100%);
+  --color-gold-gradient-hover: linear-gradient(135deg, #E5CE7E 0%, #D4B45A 45%, #B79545 100%);
+}

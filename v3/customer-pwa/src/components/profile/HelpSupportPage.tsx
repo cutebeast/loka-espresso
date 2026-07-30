@@ -18,9 +18,9 @@ interface HelpArticle {
 }
 
 const SUBJECTS = [
-  { id: 'feedback', icon: MessageSquare, bg: '#F5F0E6', stroke: '#4A2210' },
-  { id: 'order', icon: Package, bg: '#FFF3E0', stroke: '#C4893A' },
-  { id: 'rewards', icon: Gift, bg: '#E6F0E8', stroke: '#3B4A1A' },
+  { id: 'feedback', icon: MessageSquare, bg: '#F5F0E6', stroke: 'var(--color-brown)' },
+  { id: 'order', icon: Package, bg: 'var(--color-warning-light)', stroke: 'var(--color-copper)' },
+  { id: 'rewards', icon: Gift, bg: '#E6F0E8', stroke: 'var(--color-primary)' },
   { id: 'technical', icon: AlertCircle, bg: '#FDEAEA', stroke: '#C75050' },
 ];
 
@@ -246,7 +246,7 @@ export default function HelpSupportPage() {
         ) : (
           /* Celebratory Success */
           <div className="support-celebratory">
-            <div className="support-celebratory-icon"><PartyPopper color="#C9A84C" size={40} /></div>
+            <div className="support-celebratory-icon"><PartyPopper color="var(--color-gold)" size={40} /></div>
             <h3>{t('helpSupport.messageSent')}</h3>
             <p>{t('helpSupport.messageSentDesc')}</p>
             <button className="support-celebratory-back" onClick={() => setPage('home')}>

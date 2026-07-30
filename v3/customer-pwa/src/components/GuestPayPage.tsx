@@ -109,7 +109,7 @@ export default function GuestPayPage() {
     return (
       <div className="guest-pay-screen">
         <div className="guest-pay-error">
-          <XCircle size={56} style={{ color: '#DC2626', marginBottom: 16 }} />
+          <XCircle size={56} style={{ color: 'var(--color-danger)', marginBottom: 16 }} />
           <h1 className="guest-pay-error-title">{t('guestPay.error')}</h1>
           <p className="guest-pay-error-msg">{error}</p>
         </div>
@@ -124,7 +124,7 @@ export default function GuestPayPage() {
     return (
       <div className="guest-pay-screen">
         <div className="guest-pay-success">
-          <CheckCircle size={72} style={{ color: '#16A34A', marginBottom: 20 }} />
+          <CheckCircle size={72} style={{ color: 'var(--color-success)', marginBottom: 20 }} />
           <h1 className="guest-pay-success-title">{t('guestPay.paymentSuccessful')}</h1>
           <p className="guest-pay-order-num">#{order.order_number}</p>
           <div className="guest-pay-amount">{formatPrice(order.total_amount)}</div>
@@ -146,7 +146,7 @@ export default function GuestPayPage() {
     return (
       <div className="guest-pay-screen">
         <div className="guest-pay-cancelled">
-          <XCircle size={56} style={{ color: '#DC2626', marginBottom: 16 }} />
+          <XCircle size={56} style={{ color: 'var(--color-danger)', marginBottom: 16 }} />
           <h1 className="guest-pay-error-title">{t('guestPay.paymentCancelled')}</h1>
           <p className="guest-pay-error-msg">{t('guestPay.cancelMsg')}</p>
           {order.can_pay && (
@@ -164,7 +164,7 @@ export default function GuestPayPage() {
     return (
       <div className="guest-pay-screen">
         <div className="guest-pay-success">
-          <CheckCircle size={72} style={{ color: '#16A34A', marginBottom: 20 }} />
+          <CheckCircle size={72} style={{ color: 'var(--color-success)', marginBottom: 20 }} />
           <h1 className="guest-pay-success-title">{t('guestPay.alreadyPaid')}</h1>
           <p className="guest-pay-order-num">#{order.order_number}</p>
         </div>

@@ -16,11 +16,11 @@ interface ToastData {
 }
 
 const ICONS: Record<string, React.ReactNode> = {
-  success: <CheckCircle2 size={20} color="#16A34A" />,
-  error: <XCircle size={20} color="#DC2626" />,
-  info: <Info size={20} color="#3B4A1A" />,
-  warning: <AlertTriangle size={20} color="#C9A84C" />,
-  reward: <Star size={20} color="#C9A84C" />,
+  success: <CheckCircle2 size={20} color="var(--color-success)" />,
+  error: <XCircle size={20} color="var(--color-danger)" />,
+  info: <Info size={20} color="var(--color-primary)" />,
+  warning: <AlertTriangle size={20} color="var(--color-gold)" />,
+  reward: <Star size={20} color="var(--color-gold)" />,
 };
 
 export default function Toast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {

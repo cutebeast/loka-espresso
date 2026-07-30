@@ -141,9 +141,15 @@ export default function AppShell() {
   useEffect(() => {
     setAppHost(window.location.host);
   }, []);
-  // Kiosk subdomain: force kiosk mode regardless of hash
+  // Kiosk mode (subdomain or #kiosk route) always uses the LIGHT theme — a
+  // bright in-store LCD reads better light, regardless of the app's theme.
   useEffect(() => {
-    if (window.location.hostname.startsWith('kiosk.')) {
+    const isKioskHost = window.location.hostname.startsWith('kiosk.');
+    const isKioskRoute = (window.location.hash || '').startsWith('#kiosk');
+    if (isKioskHost || isKioskRoute) {
+      document.documentElement.dataset.theme = 'light';
+    }
+    if (isKioskHost) {
       const params: Record<string, unknown> = {};
       new URLSearchParams(window.location.search).forEach((v, k) => {
         params[k] = v;

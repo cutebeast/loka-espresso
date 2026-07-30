@@ -99,7 +99,7 @@ export default function CheckinPage() {
         width: 64,
         height: 64,
         borderRadius: 32,
-        background: `linear-gradient(135deg, ${LOKA.copper}, #C4893A)`,
+        background: `linear-gradient(135deg, ${LOKA.copper}, var(--color-copper))`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -163,7 +163,7 @@ export default function CheckinPage() {
             flex: 1,
             height: 8,
             borderRadius: 4,
-            background: filled ? `linear-gradient(90deg, ${LOKA.copper}, #C4893A)` : 'var(--loka-cream)',
+            background: filled ? `linear-gradient(90deg, ${LOKA.copper}, var(--color-copper))` : 'var(--loka-cream)',
             transition: 'background 0.3s'
           }} />;
         })}
@@ -253,7 +253,7 @@ export default function CheckinPage() {
       textAlign: 'center',
       padding: 20,
       borderRadius: 16,
-      background: `linear-gradient(135deg, ${LOKA.copper}, #C4893A)`,
+      background: `linear-gradient(135deg, ${LOKA.copper}, var(--color-copper))`,
       color: '#fff',
       marginBottom: 16
     }}>
