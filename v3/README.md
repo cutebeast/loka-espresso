@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Documentation
 
-*Last updated: 2026-07-20*
+*Last updated: 2026-07-29 (round 34)*
 
 ## Overview
 
@@ -311,3 +311,16 @@ Full-system audit (~60 findings, each verified in code before fixing). Highlight
 
 Known intentional deviations: OTP bypass stays enabled until the lokaespresso.com cutover (then set `otp.bypass_enabled=false` and rotate the code); the tier validity/downgrade evaluation job is not built yet (fields stored only).
 - Access-denied message shown when role doesn't match
+
+## Security & reliability hardening (2026-07-29, round 34 audit)
+
+Full fresh audit (5 parallel tracks + infra sweep; every finding verified in code, ~30 fixes). Full details in `AGENTS.md` "Round 34 — full fresh audit & hardening". Highlights:
+
+- **Auth**: cross-domain refresh-token confusion closed (customer/staff tokens could mint admin tokens — proven live pre-fix); admin staff-portal login now enforces StoreAssignment; refresh cookies reach logout (blacklisting actually works); verify-pin lockout; admin-via-staff refresh tokens 30d → 7d
+- **Authorization**: central write-guard — `readonly_analyst`/role-less admins get 403 on every admin mutation; store scoping (`require_store_admin`) added across 13 admin modules; POS order creation pinned to the staff member's store
+- **Money**: loyalty points credited on payment capture (was: order creation — free-points exploit); Stripe async methods (fpx/grabpay) no longer captured before funds arrive; admin wallet mutations row-locked; refunds reverse points/vouchers/annual spend; POS voucher/reward usage counters enforced; status-PATCH can no longer bypass the cancel flow
+- **Public surface**: `/api/menu/items` no longer leaks `cost_price`/internal columns; request body size caps (1 MB JSON / 10 MB multipart); marketing opt-out rate-limited; guest-pay phone linking hardened
+- **Frontend**: markdown renderers block `javascript:`/`data:` links ×3 portals; staff logout clears cached identity from localStorage
+- **Infra**: PostgreSQL/Redis were internet-reachable (stale containers predating the compose `127.0.0.1` pin) — recreated, now localhost-only, data intact
+
+Verification: 42/42 backend unit tests, 217/217 E2E (15 skipped), tsc ×3 clean, no Alembic drift, exploit probes return 401, zero 500s during the full E2E run.

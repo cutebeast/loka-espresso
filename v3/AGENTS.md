@@ -64,12 +64,12 @@ pytest -q
 | store@loyaltysystem.uk | store123 | Admin (limited) + Staff (Store 1 + 2) |
 | staff1@loyaltysystem.uk | staff123 | Staff (Store 1 only) |
 | staff2@loyaltysystem.uk | staff123 | Staff (Store 2 only) |
-| Kitchen Staff (kitchen@loyaltysystem.uk) | kitchen123, PIN 654321 | Staff — kitchen display, wastage, inventory, hygiene (Store 1) |
-| Store Manager (manager@loyaltysystem.uk) | manager123, PIN 654321 | Staff — all ops pages incl. staff mgmt (Store 1) |
+| Kitchen Staff (kitchen@loyaltysystem.uk) | kitchen123, PIN 123456 | Staff — kitchen display, wastage, inventory, hygiene (Store 1) |
+| Store Manager (manager@loyaltysystem.uk) | manager123, PIN 123456 | Staff — all ops pages incl. staff mgmt (Store 1) |
 | demo@lokaespresso.my | +60123456001 | Customer PWA (RM50 wallet) |
 | vip@lokaespresso.my | +60123456002 | Customer PWA (RM200 wallet) |
 
-(Kitchen Staff + Store Manager seeded 2026-07-25 via `seed_staff.py` EMP004/EMP005 for role-gated page testing; PINs pre-rotated through the change-pin flow so no first-login PIN wall. Other seeded staff still get the `must_change_pin` flow on first login.)
+(Kitchen Staff + Store Manager seeded 2026-07-25 via `seed_staff.py` EMP004/EMP005 for role-gated page testing; PINs verified working as 123456 on 2026-07-29 — an earlier note claiming 654321 was stale. Other seeded staff still get the `must_change_pin` flow on first login.)
 
 ## Help center
 
@@ -1066,32 +1066,235 @@ Production-ready outlet LCD display at `pos-disp.loyaltysystem.uk` (port 13850).
 - Landscape detection: `window.innerWidth > window.innerHeight`
 - `lastUpdateRef` timestamp tracking for staleness detection
 
-## Final verification (2026-07-29)
+## Round 34 — full fresh audit & hardening (2026-07-29)
+
+Five parallel deep audits (auth/sessions, money flows, authz/store-scoping, public surface, 3 frontends) + infra sweep; every finding verified in code before fixing. ~30 fixes.
+
+### Critical
+- **Cross-domain refresh-token confusion (F1/F2)** — `refresh_admin_tokens`/`refresh_customer_tokens` accepted ANY `type="refresh"` JWT and used `sub` as the principal id; customer/staff ids collide with admin ids (both sequences start at 1). Proven live: customer-1 refresh token → `POST /api/admin/auth/refresh` → full system_admin tokens. Fixed by requiring the domain claim (`admin_id` / `customer_id`) in each refresh service (`services/auth.py:238,352`). Staff refresh was already claim-checked. Post-fix probes: both 401, legit refresh 200.
+- **Admin staff-portal login skipped StoreAssignment (F-1)** — `POST /staff/auth/login` with `store_id` only checked the store exists, then minted an admin-context staff token for ANY store (passes `RequireStaffRole` admin override on money endpoints). Now mirrors `/admin-store`: HQ roles or explicit assignment required (`staff/auth.py:179-199`).
+
+### High
+- **Systemic authz gap** — store scoping previously existed only in admin/orders; ~44 admin modules trusted any admin token, and `readonly_analyst` (documented "view only") could mutate nearly everything.
+  - **Central write-guard**: `reject_readonly_admin_mutations` (deps.py) attached to the root API router — mutations by admins with no write-capable role (`system_admin`/`regional_manager`/`store_manager`) → 403. Reads, public/customer/pure-staff traffic untouched; self-service auth paths (logout/refresh/change-password) exempt. Verified live: readonly GET 200 / POST 403.
+  - **Store-scoping sweep (13 modules)**: `require_store_admin` added to stores lifecycle, staff mgmt, POS terminals/sessions, reservations (incl. cross-store move rejection), e-invoice (mutations + list narrowing), inventory stocks/suppliers, inventory movements, purchase orders, equipment, hygiene verify, time events, tips; redemption `store_id` stamping validated (admin scan) or forced to `staff.store_id` (staff customer_ops); `staff/pos.py` rejects client `store_id` ≠ staff store.
+- **Loyalty points on unpaid orders (H1)** — points were credited at order CREATION; exploit: create order → redeem points → cancel → clawback capped at 0. Now credited on CAPTURE via idempotent `_credit_order_loyalty_points` (payment.py) hooked into `_sync_order_payment_status` + staff cash/wallet confirm + admin/orders capture paths; POS credits only when paid at creation (ledger rows now carry `order_id`); pay-later/Stripe-QR POS orders get estimate-only and credit on capture.
+- **Stripe async methods treated as paid (H2)** — `checkout.session.completed` (fpx/grabpay send it with `payment_status="unpaid"`) credited wallets/captured orders before funds arrived. Now requires `payment_status=="paid"`; `async_payment_failed`/`expired` re-syncs the order and reverses any credited wallet top-up (`_reverse_wallet_topup`).
+- **PostgreSQL/Redis internet-exposed** — running containers (created May/June, predating the compose `127.0.0.1` pin) bound `0.0.0.0:13334/13335`; docker iptables bypass UFW. Verified reachable via public IP (scram + non-default passwords held). Recreated both via repo compose → now `127.0.0.1` only; data intact (named volumes), backend healthy.
+- **Public menu leak** — `GET /api/menu/items` raw-dumped all ORM columns incl. `cost_price`, `search_vector`, `deleted_at`. Now serializes only `MenuItemPublicOut` fields (verified live).
+
+### Medium
+- **Refresh-cookie path scoping (F4)** — refresh cookies were pathed to `.../auth/refresh` only, so logout never received them → server-side blacklist silently skipped. Paths widened to the auth root (`/api/{,admin/,staff/}auth`); clear deletes both paths.
+- **verify-pin no lockout (F6)** — step-up PIN verify now shares the login counters (5 fails → 30 min lock).
+- **Admin wallet ledger race (M1)** — adjust/topup/deduct now lock the wallet row (`with_for_update`) before computing `running_balance` (was: locked only the last ledger entry — forkable).
+- **Refund reversal (M2)** — refunds now claw back loyalty points (pro-rata on partial), release bound vouchers/rewards (full refunds), and decrement annual spend, via `_reverse_order_benefits_on_refund`; wired into `refund_payment` AND the Stripe `charge.refunded` webhook (dashboard-initiated refunds). Stock is NOT restored on refunds.
+- **Double-charge after partial refund (M3)** — staff payment + wallet-pay endpoints count `partially_refunded` payments as paid (was: `captured` only), summing `captured_amount` like split-state.
+- **POS voucher/reward caps bypassed (M4)** — staff apply endpoints now increment `use_count`/`global_use_count`/`total_redemptions` under row locks.
+- **Status-PATCH cancel bypass (M5)** — `PATCH /staff/orders/{id}/status` no longer accepts `cancelled_*` (use the cancel endpoint, which reverses effects + blocks captured orders). Kitchen UI updated to call `cancelOrder`.
+- **Unbounded % discount (M6)** — staff percentage discounts > 100 rejected 400; discount recorded in OrderStatusLog reason.
+- **Body-size caps** — new `RequestBodySizeLimitMiddleware`: /api/* JSON 1 MB, multipart 10 MB (was: unbounded buffering on webhooks/public endpoints).
+- **Guest-pay phone linking** — new profiles no longer get `phone_verified_at` (token ≠ phone ownership); orders only (re)linked when unassigned or on the walk-in profile (refunds credit `order.customer_id`).
+- **Markdown link schemes (frontend ×3)** — `renderMarkdown` now anchors only http(s)/mailto/`/`/`#` URLs; `javascript:`/`data:` render as text (stored active-content vector via help articles).
+
+### Low
+- Logout rate limits ×3; logout always clears cookies even when blacklist 401s (customer + admin); admin-via-staff-portal refresh tokens 30d → 7d (same principal, same lifetime); password policy min 8 (staff change + admin register); `AdminStaff.principal_id` now the real admin principal (audit rows were skipped); feedback schema length caps + rating bounds; kiosk order item/qty/modifier caps; staff logout clears `staffProfile/staffEmail/staffName/staffId` from localStorage; wallet adjust/deduct schemas float → `Money`.
+
+### Deferred / documented (not fixed this round)
+- **F5 session revocation on password/PIN change** — needs per-principal `token_version` claim checked in deps; access tokens (8h) + refresh tokens remain valid after password change until then. Top candidate for round 35.
+- **F7 refresh-family revocation** — reuse detection blacklists only the single JTI, not descendants.
+- **F8 admin login enumeration** (lock oracle + timing), **F10 SMS-pumping global cap**, **F11 email-only registration without verification**.
+- **F-10 cross-store READS** for store_manager (refunds/feedback/dashboard/etc.) — writes scoped this round; read narrowing + audit-log system_admin gating deferred.
+- **F-11 admin registration** — store_manager can still mint own-role admins (write-guard now blocks readonly/no-role); restrict further at go-live.
+- **XFF spoofing (L6)** — rate-limit key trusts leftmost X-Forwarded-For; deliberate spoofers can rotate. Real fix = lock origin 80/443 to Cloudflare IPs + prefer `CF-Connecting-IP` at go-live.
+- **Money lows**: L1 duplicate payment sessions per order, L2 reward-cap race (customer path), L3 webhook amount/currency cross-check, L4 spurious `partially_refunded` on zero-delta, L5 late void events, L6 voucher-code oracle (10/min + random codes mitigate), L8 store_credit refund void.
+- **OTP bypass stays ON** (documented intentional until lokaespresso.com go-live — dev runs ENVIRONMENT=production, so no code-level prod guard was added).
+- **Cloudflare Flexible SSL** (HTTP CF→origin) — recommend Full mode at go-live.
+- **Upload magic-byte gaps** (.jpeg/.mov etc. not sniffed; extension whitelist + nosniff contain).
+- **display_key in query strings** (browser/proxy logs) — move to header at go-live.
+
+## Final verification (2026-07-29, round 34)
 
 | Check | Result |
 |---|---|
-| PM2 (8 services) | All online |
-| All 6 subdomains | admin 307, staff 307, app 200, api 200(health), kiosk 200, pos-disp 200 |
-| Backend tests | 42/42 passed |
-| E2E smoke | 5/5 passed |
-| TypeScript strict | admin/staff/pwa all clean |
-| Alembic | No drift |
-| Backend 500s (last 50 log lines) | 0 |
-| Caddy kiosk/pos-disp errors | 0 |
-| PWA menu items | 163 (full catalog — was 20) |
-| PWA public help articles | 3 customer articles |
-| PWA content events | 3 event cards |
-| PWA hash pages (10 routes) | All 200 |
-| Feedback (rating optional) | Works with/without rating |
-| OTP (bypass on dev) | Working |
-| Guest-pay GET (summary) | 200 |
-| Guest-pay POST (pay) | 201 |
-| Kiosk order (takeaway, no phone) | 201 |
-| Kiosk order (dine_in, +table, +phone) | 201 |
-| Kiosk bad table reject | 400 (correct) |
-| Kiosk tablet setup mode | 200 |
-| Kiosk tablet +table=5 | 200 |
-| Webhook resend (no secret) | 400 (was 500) |
-| Webhook stripe/hitpay | 400 (body validation, correct) |
-| Crontab | 6 entries (agency + 4 translation + 1 loyalty tier eval) |
+| Backend unit tests | 42/42 passed |
+| Alembic drift | none |
+| tsc strict ×3 portals | clean |
+| Exploit probe F1 (customer→admin refresh) | 401 (was 200 pre-fix) |
+| Exploit probe F2 (admin→customer refresh) | 401 |
+| Legit customer refresh | 200 |
+| Write-guard (readonly_analyst) | GET 200 / POST 403 |
+| Menu items leak | no internal columns |
+| Postgres/Redis via public IP | unreachable (was reachable) |
+| Backend health after restart | 200 |
+| Full E2E suite (excl. browser journey) | 217 passed, 15 skipped, 0 failed |
+| Backend 500s during full E2E | 0 |
+| PM2 (8 services) | all online after 3 portal rebuilds + kiosk/pos-disp restart |
+| All 6 ports | 13830/13820 307, 13810/13840 200, 13850 307, 13800 health 200 |
+| Kiosk takeaway / dine_in+phone / 101-item cap | 201 / 201 / 422 |
+
+## Round 34 addendum — subdomain verification (2026-07-29, same day)
+
+Full edge-level check of `api.`/`kiosk.`/`pos-disp.loyaltysystem.uk` (Cloudflare → Caddy → services) after the round-34 changes. Three real issues found and fixed:
+
+### Rate limiting was silently OFF
+`TestAwareLimiter` read `os.getenv("ENVIRONMENT")` — the pm2 process env has no `ENVIRONMENT` (only `.env` does, which pydantic loads into `Settings`, not `os.environ`), so it stayed in testing mode and **every rate limit was disabled**. Fix: env var falls back to `get_settings().environment` (`core/rate_limiter.py`).
+
+### Rate-limit keying broken through Cloudflare (two layers)
+- Leftmost-XFF trust was trivially spoofable (CF *appends* to a client-supplied `X-Forwarded-For`), and uvicorn's proxy-headers middleware rewrote `request.client` from XFF, so keys sharded across CF edge nodes (each edge = its own bucket → no effective limiting).
+- Fix (3 parts): (1) `get_client_key` keys on `CF-Connecting-IP` — only trusted when the last XFF hop is inside Cloudflare's published edge ranges (hardcoded in `rate_limiter.py`, fetched 2026-07-29) — else the last XFF hop (Caddy's real peer, not client-controllable), else the TCP peer; IPv6 clients bucketed by /64 (privacy-address rotation). (2) uvicorn started with `--no-proxy-headers` (`ecosystem.config.js`) so `scope.client` stays the real TCP peer. (3) environment fallback above.
+- Verified live: honest bursts 429 via CF domain AND direct; spoofed XFF ignored (429); client-supplied `CF-Connecting-IP` rejected by CF itself (edge error 1000); direct-to-origin API calls blocked by TrustedHost (400).
+- **Note**: `pm2 restart` does NOT re-read `ecosystem.config.js` args — `pm2 delete <name> && pm2 start ecosystem.config.js` is required (then `pm2 save`). The ecosystem file is JS — `#` comments are a syntax error (use `//`).
+- **E2E exemption**: with limits live, the E2E suite's bursts (login 5/min etc.) would 429 — `_is_local_direct_call` exempts loopback requests that carry NO `X-Forwarded-For` (only on-box processes can make those; Caddy always adds XFF, remote direct-to-origin callers have a non-loopback peer, so all external traffic stays limited). Implemented in `TestAwareLimiter._check_request_limit` — must set `request.state.view_rate_limit = None` when skipping (slowapi's decorator wrapper reads it, else 500).
+
+### pos-disp.loyaltysystem.uk served the display page for /api/*
+The Caddy block rewrote EVERYTHING to `/pos/display` — the display page's cross-device poll (`/api/staff/pos/display-state`) got HTML instead of JSON, so Redis polling through the pos-disp domain never worked (same-browser BroadcastChannel masked it). Added `/api/*` and `/uploads/*` proxy handles to both http/https blocks (`/etc/caddy/sites/fnb-pos-disp.conf`). Verified: no key → 422, wrong key → 403, real key → 200 sanitized (payment URLs/tokens stripped, `payment_pending: true`), push→poll→reset cycle clean.
+
+### Subdomain verification results
+| Check | Result |
+|---|---|
+| api. /api/health | 200 |
+| api. /docs + /openapi.json | 404 (production) |
+| api. stripe webhook bad body | 400 |
+| api. >1MB JSON body | 413 (new body cap) |
+| api. send-otp 5/min via CF | 429 after 5 |
+| kiosk. app shell + tablet mode | 200 |
+| kiosk. /api/menu/items?limit=500 | 163 items, no internal columns |
+| kiosk. order takeaway / dine_in+phone / bad table / qty 0 / delivery type | 201 / 201 / 400 / 422 / 422 |
+| kiosk. orders 10/min via CF | 429 after limit |
+| pos-disp. page + /api + display-state gating | all correct after Caddy fix |
+| Full E2E (limits live, local exempt) | 217 passed, 15 skipped, 0 failed |
+| Backend unit tests | 42/42 |
+| Backend 500s since final restart | 0 |
+| **Caveat for scripted probes** | Cloudflare bot protection 403s `Python-urllib` UAs — use a browser UA in curl/scripts |
+
+## UI/UX review + pos-disp critical fix (2026-07-29, evening)
+
+Visual review via Playwright screenshots across all surfaces (PWA guest+auth, kiosk standing mode, pos-disp, staff POS/KDS/login, admin dashboard).
+
+### CRITICAL: pos-disp.loyaltysystem.uk never hydrated (broken since 2026-07-28 deploy)
+The Caddy catchall `rewrite * /pos/display` also caught `/_next/static/chunks/*` — every JS/CSS chunk was served as HTML (`text/html`), so the browser refused to execute them. The display page showed its SSR shell forever: **raw translation keys, no polling, no clock, no connection indicator** (the "2026-07-28 verification" only checked HTTP 200, not hydration).
+- **Fix**: `/etc/caddy/sites/fnb-pos-disp.conf` now passes `/_next/*` straight through (no rewrite), plus the earlier `/api/*` + `/uploads/*` handles, in both http/https blocks.
+- **Verified at origin** (`--host-resolver-rules` to bypass CF): page hydrates — translated strings, live clock, wallet top-up QR, language selector, "Waiting..." connection state, translations + branding API calls firing.
+- **Residual**: Cloudflare edge cached the poisoned chunk responses (`max-age=14400`) at ~13:00 — they expire by ~17:00 the same day. **For an instant fix, purge the CF cache for `pos-disp.loyaltysystem.uk` (owner, CF dashboard → Caching → Purge by hostname).** The page HTML itself is `cf-cache-status: DYNAMIC` (not cached).
+
+### pos-disp CF poisoning — full resolution (2026-07-30)
+The residual cache did NOT self-heal: the poisoned responses carried `s-maxage=31536000` (1 year, from the Next.js prerender headers on the rewritten HTML) and Cloudflare honors `s-maxage` over `max-age` for shared caches — 9 of 12 chunks (incl. the framework chunk) were cached as text/html with a 1-year TTL. An origin-side redirect cannot help (CF HITs never reach the origin), and rebuilds can't bust framework-chunk hashes. **The only fix is a Cloudflare cache purge of `pos-disp.loyaltysystem.uk` (or the whole zone).** Origin verified 100% clean (all 12 chunks serve correct content types direct). Prevention: CF Cache Rule to bypass cache for `pos-disp.loyaltysystem.uk`, and/or strip `s-maxage` from rewritten responses.
+
+### pos-disp purge verification + what NOT to do (2026-07-30, morning)
+- First purge attempt did NOT clear the entries (`age` header kept counting past 60,000s = still the original poisoned copies). Requires re-purge: CF zone `loyaltysystem.uk` → Caching → Purge Cache → Custom Purge → Hostname `pos-disp.loyaltysystem.uk` — or "Purge Everything". Verify after: `curl -sI https://pos-disp.loyaltysystem.uk/_next/static/chunks/13j-rtocaphap.css` must return `content-type: text/css` with `cf-cache-status: MISS/EXPIRED`, not `HIT`+text/html.
+- **Do NOT post-process the prerendered `display.html`** to append query strings to chunk URLs — it breaks turbopack's module mapping and the page never mounts (silent, no console errors). Tried and reverted via rebuild.
+- After any staff-portal rebuild, restart `pos-disp-v3` (it serves the same `.next`).
+- **RESOLVED 2026-07-30 ~08:30**: second CF purge cleared the poisoned chunks (all 12 verified MISS→correct content-type, CSS re-cached correctly). Display fully verified through the public domain: translations, live clock, wallet top-up QR, language selector, connection indicator, API polling all working.
+
+### pos-disp idle screen rework (2026-07-30, owner feedback)
+The wallet top-up QR was the idle centerpiece — wrong first impression for customers. Replaced with a **promo carousel**: active promo banners from `GET /api/promos/banners` (image + title + short_description overlay), rotating every 8s with fade, dot indicators; store name + clock compacted to the top; falls back to the welcome text when no banners exist. The wallet top-up QR generation was removed entirely. Rotation verified live (banner 1 → banner 2 after 9s).
+- **Deployment lesson**: when a Caddy block rewrites `*` to an app route, it must pass `/_next/*` (and any asset dirs) through untouched. The kiosk block never rewrote, which is why only pos-disp broke.
+
+### Small fixes
+- Staff login: password-field label was hardcoded `PIN` in both modes — now shows "Password" in email mode / "PIN" in staff-name mode (new `login.password_label` key; other locales fall back to EN until the translation cron fills).
+- POS display: `layout.tsx` with proper `<title>Customer Display — Loka Espresso` (was untitled); aria-labels on the language-selector buttons.
+
+### What looked good (no changes needed)
+- Staff POS (order-type tabs, table selector, category tabs, modifier "Custom" badges, drawer status, park/display/unpaid actions) and KDS (station tabs, status chips, kanban, timers, paid/unpaid badges, do-not-hand-over warnings) are production-grade.
+- Admin dashboard (KPIs, store scoping, date filters, charts, floating help).
+- PWA: guest "Browse as Guest" path into full menu, returning-user session restore via /me (hard reload skips the wall — hash navigation does NOT remount the app, so scripted checks must `page.reload()`), wallet top-up with quick denominations + offline note, rewards with points costs.
+- Kiosk welcome + order-type screens scale properly at 1080×1920.
+- a11y sweep: 0 `<img>` without alt in all 3 apps, aria-labels on icon buttons, skeleton/loading states consistent (PWA 22 files, staff 14, admin uses AdminLoading/AdminError).
+
+## Kiosk layout verification (2026-07-29, evening)
+
+Both layouts exercised via Playwright at native sizes:
+- **Portrait 1080×1920 (standing LCD)**: welcome → order type → (skippable phone) → menu — single-column large cards, category chips, search + cart header ✓
+- **Landscape 1920×1080**: left sidebar categories + 5-column item grid ✓
+- **Modifier drawer**: bottom sheet with variants (Hot / Cold +RM2) + customisations with per-option price adjustments + Add to Cart ✓
+- **Tablet mode `?mode=tablet`**: staff Tablet Setup (table number, one-time) → menu with `Dine In · Table: 5` badge; table **persists across reload** (localStorage) ✓
+- **Fix shipped**: the `Experiences & Workshops` category tab was visible at the kiosk even though the backend rejects class items at checkout (400 "book on the mobile app") — customers could build an unplaceable cart. `KioskPage` now filters the `experiences` slug category + its items out of the menu entirely.
+- Note (business decision, not a bug): the `Add-ons & Customizations` category sells add-on items (Oat Milk RM4, Pulled Chicken RM12…) as standalone products at kiosk/POS — flag to owner if those should be modifier-only.
+
+## Experience (class/workshop) layout (2026-07-29, evening)
+
+Classes no longer render as plain menu items ("need more desc"):
+- **New `ExperienceCard`** (`customer-pwa/src/components/menu/ExperienceCard.tsx`): 16:9 banner image, title, FULL `long_description ?? description`, price (or variant range) "per person", up to 3 next-session chips (date/time/location/seats-left), and a Book Now CTA that opens the session-aware `ItemCustomizeSheet` (never direct-add — sessions are mandatory). Members/featured badges preserved. Styles in `menu-page-v2.css` (`.menu-experience-*`).
+- **MenuPage**: the `experiences`-slug category renders the experience-card list instead of the product grid; session availability comes from a `/menu/workshops` fetch in `loadMenu` (graceful fallback to no sessions).
+- **WorkshopsPage**: shows the full `long_description` too — the class CSS `.info-card-desc` truncates via `white-space: nowrap` + ellipsis (NOT `-webkit-line-clamp`), so the override needs `whiteSpace: 'normal'` (a clamp-only override does nothing).
+- **Content**: `long_description` populated for all 3 experiences (Omakase RM299, Turkish Sand Brew RM199, Roastery RM199) via direct DB update (admin PATCH triggers synchronous DeepSeek translation and times out — nightly translation cron picks the text up for other locales).
+- Verified via Playwright: menu experience cards (full text, per-person price, disabled CTA when no sessions), booking sheet (session required), workshops page (full text).
+
+## Dark theme — "Loka Ritual" Phase 1 (2026-07-29, late evening)
+
+Boss's direction (6 mockups in `/root/omakase`): charcoal + gold luxury look. Gold `#C9A84C` and Playfair Display were already brand tokens, so this landed as a token swap + polish, not a rewrite.
+
+- **Token scope**: `:root[data-theme="dark"]` in `styles/variables.css` — charcoal surfaces (`#16130F/#1C1813/#211B14`), warm-parchment text, dark-bronze borders, gold brand actions (olive→gold for primary in dark), black shadows, `--color-gold-gradient` for metallic CTAs. `--loka-bg-light` alias fixed to follow the scope (it was a hardcoded `#F8F5EF` and caused the light header band).
+- **Boot**: inline script in `layout.tsx` `<head>` sets `data-theme` before first paint (default **dark**, `localStorage 'loka-theme'='light'` restores light). theme-color metas → `#16130F`.
+- **Toggle**: Settings → Appearance → Dark/Light (Sun/Moon), persists to localStorage. New keys `settings.appearance/darkMode/lightMode` (en; other locales fall back until cron).
+- **Hex sweep**: 23 `.tsx` files — hardcoded brand hexes → `var(--color-*)` tokens (0 remaining).
+- Verified (Playwright @390px): home (dark header + gold-bordered cards), menu (gold Add buttons, gold-bordered thumbs), wallet (gold balance card ≈ mockup), orders, profile/login sheet, E2E smoke 5/5, tsc clean.
+- **NOT done yet (Phase 2/3)**: membership card + gold-gradient scan button + tier preview on home; Omakase bordered `[ section ]` layout + ornamental frames; dark voucher cards with barcode; "The Vault" (tier-locked items) presentation; event countdowns; Daily Brew Spotlight; kiosk/pos-disp dark variants. `--loka-white` still `#FFFFFF` in 32 files — surface outliers to fix individually as Phase 2 touches those pages.
+
+## Dark theme — Phases 2–4 COMPLETE (2026-07-29, late evening)
+
+All phases of the boss's mockups (`/root/omakase`) implemented on the customer PWA.
+
+### Phase 2 — signature surfaces
+- **Membership hero** (`components/home/MembershipHero.tsx` + `membership-hero-v2.css`): gold-bordered membership card with ornamental corners (LOKA serif, tier, current points, progress bar), gold-gradient "[ Tap to Scan at Counter ]" → `#my-card`, **Tier Status Preview** — "[ Locked ] {next tier} Perks: …" composed from `benefits_config` + `points_multiplier`. Progress math from `lifetimePoints` vs tier thresholds. Replaces `WalletCard` for authed users (guest keeps the sign-in card). New public endpoint: `GET /api/loyalty/tiers` (tier names/thresholds/multipliers/benefits — marketing info, no auth).
+- **The Vault** (menu): tier-locked items (`minimum_tier_id`) now render in a gold-bordered "The Vault — Secret Menu" section with key icon, dashed locked cards + "Unlock at {tier}" chips (under-tier/guests), solid orderable cards when unlocked. Locked items are excluded from category grids; under-tier customers now SEE them (previously hidden). Backend enforcement in `create_order_from_cart` (`services/order.py`): ordering a `minimum_tier_id` item without the tier → 403 "members-only item" (POS path bypasses — staff override; kiosk guests rejected). Verified live: Bloom→403, Origin→orderable. Seeded 2 vault items (`VAULT-COLD-BREW`, `VAULT-BAKLAVA-LATTE`, tier=Origin, category Loka Specialty).
+- **Experience journey view** (`menu/ExperienceDetailSheet.tsx` + `experience-detail-v2.css`): full-screen mockup-language page per class — ornamental gold-framed hero (corner brackets), serif title, "[ Reserve Your Seat ]" booking card (session chips + seats + location + gold Book button → customize sheet), "[ About the Experience ]" full long_description. ExperienceCard → detail → booking sheet.
+- **Voucher/reward redemption** (MyRewardsPage): detail sheets now render a scannable QR (`qrcode` lib, encodes the redemption code — staff scan endpoint accepts it) + keep the copyable code; "[ Active ]" tag on voucher cards.
+
+### Phase 3 — live elements (home, `components/home/`)
+- `EventCountdown` — "[ Next Coffee Gathering ]" with per-second `DDd:HHh:MMm:SSs` from the nearest future workshop session (`/menu/workshops`); hidden when none
+- `LuckyDrawPanel` — replaces the old banner; campaign title + "Your entries: N tickets/spins" (from `/lucky-draw/active` when authed) + "every cup is a ticket"
+- `BrewSpotlight` — "[ The Daily Brew Spotlight ]" from `/content/products` (image + story + action)
+- `BirthdayPrompt` — "[ Profile Enrichment ]" → `#account-details`, only when authed and `date_of_birth` unset
+- Order on home: hero → birthday → countdown → lucky draw → carousel → spotlight → Today's Picks
+
+### Phase 4 — rollout
+- **Kiosk stays LIGHT** (deliberate): boot script pins `data-theme='light'` on `kiosk.*` hostnames and `#kiosk` routes + AppShell pins it in the kiosk-mode effect — bright in-store LCDs read better light; a deliberate dark kiosk pass is a future option if wanted. NOTE: kiosk-v3 must be deleted+restarted after EVERY PWA rebuild (stale chunk URLs → unstyled page).
+- **pos-disp** is the staff portal (separate tokens) — untouched by the PWA flip, stays light.
+- **Translations**: all new strings are in `en.json` under `home.hero`, `homeExtras`, `experience`, `menu_page.vault_*`, `settings.appearance/darkMode/lightMode`, `myRewards.*` — other locales fall back to EN until the nightly translation cron fills them.
+- **Regression**: 42/42 backend unit, 40/40 targeted E2E, tsc clean ×1 (PWA), alembic no drift.
+
+### De-literalization pass (2026-07-29, night)
+Boss clarified the mockups are samples, not specs. Cleaned all mockup-annotation artifacts out of production copy while keeping the dark/gold/serif visual language: removed all `[ ... ]` brackets from buttons/section titles/tags (scan button, Reserve/About sections, Profile Enrichment, Next Coffee Gathering, Seasonal Lucky Draw, Brew Spotlight, Active tag, Locked/Unlocked in tier preview), fixed "1 spins" pluralization (singular/plural label in `LuckyDrawPanel`), and rewrote mockup-literal copy to accurate text ("Priority booking for members" → "Reserve early — seats are limited"; "RSVP opening soon" → "Book ahead to secure your seat"). Smoke 12/12 green. Competitor benchmark (Starbucks/ZUS/Luckin/Dutch Bros) informed the improvement roadmap below — the bracket-free copy is the production standard going forward.
+
+## PWA improvement sprints (2026-07-29, night) — benchmark-driven
+
+Competitor benchmark (Starbucks/ZUS/Luckin/Dutch Bros) → corrected gap inventory → 7 items, ALL COMPLETE. Important: an earlier draft of this plan mislabeled several existing features as gaps (reorder, welcome voucher, referral, ETA card, scheduled push all already existed) — the corrected inventory is the source of truth.
+
+### Sprint 1 — completions
+- **Welcome discovery**: registration now creates an inbox `NotificationMessage` ("Your welcome gift is here…") composed from the config-driven reward (`services/auth.py:172-196`, try/except so it never blocks signup). Home `WelcomeGiftCard` (dismissible, localStorage flag) shows while an unused `source='welcome_reward'` voucher exists.
+- **Favorites ("Your Usuals")**: `stores/favoritesStore.ts` (zustand persist `loka-favorites`, item + variant + full modifier selection). Heart toggle on every menu card (bottom-right), save-with-config heart in the customize sheet footer, "YOUR USUALS" one-tap reorder bar above the category tabs (newest first, max 24).
+- **Referral home card**: `ReferralCard` on home (authed). Verified the full chain already existed: `?ref=CODE` capture (`useAuthFlow`) → localStorage persist (`lib/referral.ts`) → `referral_code` in register payload (`usePhoneAuth`) → `ReferralEvent` → conversion on first paid order (`credit_referral_points`, 50 pts from `loyalty.referral_reward_points`).
+- **Honest pickup estimate**: `compute_estimated_ready_at(db, order, line_items)` (`services/order.py`) = max item `prep_time_minutes` + min(today's confirmed/preparing order count × 2 min, 30). Wired into customer order create + detail. `estimated_ready_at` added to `OrderOut` schema (the field previously existed only on `OrderFulfillmentOut`/model — do NOT confuse the two). ETA card shows `estimated_ready_at ?? pickup_time`.
+
+### Sprint 2 — new builds
+- **LOKA Tuesday**: `LOKA-TUESDAY` voucher definition (15% off, global, validity 1 day, max_uses 52/yr) + `scripts/grant_tuesday_vouchers.py` — upserts the definition for the upcoming Tuesday and grants a fresh 1-use voucher to every active non-opted-out member (skips already-held). Weekly cron Mon 00:23. First run: 497 granted (2026-08-04). Home `TuesdayCard` with countdown (shows "Today!" on Tuesdays).
+- **Coffee Pass**: sellable `COFFEE-PASS-12` menu item (RM120, Loka Specialty) + `PASS-CLASSIC-12` voucher definition (free_item, category_specific Café, 12 uses, 180 days). `_grant_coffee_pass_if_purchased(db, order)` (`services/payment.py`) — idempotent via source+source_id, checks `OrderLineItem.menu_item_id` directly (POS snapshots lack item_code; async lazy-load unsafe). Called at the top of `_credit_order_loyalty_points` (covers webhook/wallet/cash/admin paths) + POS paid-now path. Verified: pass purchase → capture → `customer_vouchers` row source=coffee_pass.
+
+### Sprint 3 — retention channel
+- **Morning Boost habit push**: `scripts/morning_boost_push.py` — segment = active members with ≥1 order in 60 days, skips `marketing_opt_out`, hard cap 3/member/ISO-week (tracked via `action_payload.campaign='morning_boost'` counts), inbox `NotificationMessage` + web push to subscribed devices (`CustomerDevice.web_push_subscription`). Daily cron 07:23. First run: 106 sent.
+
+## PWA full verification round (2026-07-30, ~01:00)
+
+Complete pass after the sprints: services all online; app domain + API + 5 locale JSONs + sw.js/manifest healthy; all 27 hash routes render (guest-accessible ones show no login wall — walls seen in one probe were an artifact of that probe clicking GUEST_RESTRICTED `#checkin`, which calls triggerSignIn and drops guest mode for the session; help-support/legal/workshops verified wall-free in a clean session); favorites persist across reload; theme toggle flips light↔dark correctly; coffee-pass voucher grants on capture; Tuesday card + referral card render; 30/30 smoke+lifecycle E2E.
+
+Two real bugs found and fixed:
+- **Order detail stale read**: `OrderDetailPage` skipped its refetch whenever the order was already in `orderStore` from the list — which lacks computed fields, so the ETA card showed `--:--`. Now always refetches on mount (also keeps status/payment fresh). ETA verified showing computed time.
+- **POS order-number collision (production)**: `staff/pos.py` generated `POS-MMDD-XXXX` (4 hex = 65k values/day) — birthday-paradox collisions hit `orders_order_number_key` unique violations in the live log. Widened to 8 hex (16.7M). Verified 3 consecutive POS orders, no collisions.
+
+### app.loyaltysystem.uk (Customer PWA) deep pass — 2026-07-29
+| Check | Result |
+|---|---|
+| App shell / manifest / sw.js | 200 / fullscreen, 4 icons / 200 |
+| Guest endpoints (menu, stores, content, events, banners, info, products, legal, help w/ `audience`, lucky-draw, bootstrap, splash, push key, payments config) | all 200 |
+| Protected endpoints unauthenticated (/me, wallet, orders, loyalty, notifications, cart, referrals, payments/methods, addresses, devices, checkin) | all 401 |
+| OTP login via domain + all account APIs | 200 |
+| Cart → order → detail → unpaid cancel via domain | 200/201/200/200 |
+| Rewards catalog / locale JSONs ×5 / deep-link rewrites ×5 | 13 items / all 200 / all 200 |
+| Kiosk order → guest-pay summary via app domain / wrong token | 200 / 403 |
+| Guest feedback / table scan w/o token / bogus voucher | 201 / 400 / 422 |
+| Guest-pay Stripe initiation | 201 + redirect URL (dev simulator) |
+| Guest-pay HitPay initiation | 503 — `hitpay.enabled=false` on dev (intentional; UI hides it via summary flags; live keys at go-live) |
+| Menu translations (locale=ms) / events | live / 3 events |
+| New 500s during PWA probes | 0 (only the intentional HitPay 503s) |
 
