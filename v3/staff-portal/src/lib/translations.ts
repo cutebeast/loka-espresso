@@ -194,6 +194,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "login.name_label": "Staff Name",
   "login.name_placeholder": "Select your name",
   "login.pin_label": "PIN",
+  "login.password_label": "Password",
   "login.password_placeholder": "Enter your password",
   "login.pin_placeholder": "Enter 6-digit PIN",
   "login.select_store_first": "Select a store first",

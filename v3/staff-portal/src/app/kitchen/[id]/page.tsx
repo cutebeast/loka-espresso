@@ -4,7 +4,7 @@ import { RoleGuard, canUseKitchen } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getOrderById, getOrderEinvoice, getOrders, getTables, updateOrderStatus, transferTable, mergeOrder, OrderDetail, OrderEinvoice, OrderStatus, type Order, type Table } from "@/lib/api";
+import { getOrderById, getOrderEinvoice, getOrders, getTables, updateOrderStatus, cancelOrder, transferTable, mergeOrder, OrderDetail, OrderEinvoice, OrderStatus, type Order, type Table } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
@@ -143,7 +143,14 @@ function KitchenDetailPageContent() {
   const handleUpdate = async (status: OrderStatus) => {
     setUpdating(true);
     try {
-      await updateOrderStatus(id, status, status.includes("cancelled") ? cancelReason : undefined);
+      // Cancellations must go through the dedicated cancel endpoint (it
+      // reverses loyalty/vouchers/stock and blocks captured orders) — the
+      // generic status PATCH rejects cancelled_* statuses.
+      if (status.includes("cancelled")) {
+        await cancelOrder(id, cancelReason || undefined);
+      } else {
+        await updateOrderStatus(id, status);
+      }
       setMsg(t("kitchen.order_updated", { status: t(`staff.status.${status.replace(/-/g, "_")}`) }));
       setCancelReason("");
       const updated = await getOrderById(id);

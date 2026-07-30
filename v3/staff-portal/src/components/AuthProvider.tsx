@@ -27,7 +27,13 @@ export default function AuthProvider({
     type: string;
   } | null>(null);
   const isLoginPage = pathname === "/login";
-  const isDisplayPage = pathname === "/pos/display";
+  // The dedicated display host (pos-disp.*) serves /pos/display under the
+  // root path — Caddy rewrites server-side, so the browser pathname is "/".
+  // Treat the whole host as the public display page, or the auth guard below
+  // redirects the display to /login and kills the polling.
+  const isDisplayPage =
+    pathname === "/pos/display" ||
+    (typeof window !== "undefined" && window.location.hostname.startsWith("pos-disp."));
 
   // Branding favicon
   useEffect(() => {

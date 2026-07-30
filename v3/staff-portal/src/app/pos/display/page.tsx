@@ -24,9 +24,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { subscribeToPos, pollRedisState, loadFromLocal, clearLocal, type DisplayState } from "@/components/pos/usePosBroadcast";
-import { pwaBaseUrl } from "@/lib/pwaBase";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Wallet, Maximize2, Wifi, WifiOff } from "lucide-react";
+import { Smartphone, CheckCircle, Loader2, ShoppingBag, QrCode as QrIcon, Maximize2, Wifi, WifiOff } from "lucide-react";
 
 const DEFAULT_STATE: DisplayState = {
   storeName: "Loka Espresso",
@@ -41,16 +40,24 @@ const DEFAULT_STATE: DisplayState = {
   phase: "idle",
 };
 
-const TOPUP_QR_CACHE_KEY = "pos-display-topup-qr";
+interface PromoBannerLite {
+  id: number;
+  title: string;
+  short_description: string | null;
+  image_url: string | null;
+}
+
 const STALE_TIMEOUT_MS = 30_000; // 30s — return to idle if no updates
 const STALE_WARN_MS = 5_000;     // show amber indicator after 5s
+const PROMO_ROTATE_MS = 8_000;   // idle promo carousel rotation
 
 export default function CustomerDisplayPage() {
   const { t, locale, setLocale } = useTranslation();
   const [state, setState] = useState<DisplayState>(DEFAULT_STATE);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [einvoiceQrUrl, setEinvoiceQrUrl] = useState<string | null>(null);
-  const [topUpQrUrl, setTopUpQrUrl] = useState<string | null>(null);
+  const [promoBanners, setPromoBanners] = useState<PromoBannerLite[]>([]);
+  const [promoIndex, setPromoIndex] = useState(0);
   const [now, setNow] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [storeId, setStoreId] = useState<number>(1);
@@ -165,21 +172,25 @@ export default function CustomerDisplayPage() {
     return () => { cancelled = true; };
   }, [state.einvoiceUrl, isLCD]);
 
-  // ── Generate wallet top-up QR for idle screen ──
+  // ── Idle promo carousel — fetch active promo banners once, rotate every 8s ──
   useEffect(() => {
-    const pwaBase = pwaBaseUrl();
-    const topUpUrl = `${pwaBase}/#wallet?action=topup&store=${storeId}`;
-    const cacheKey = `${TOPUP_QR_CACHE_KEY}-${storeId}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) { setTopUpQrUrl(cached); return; }
     let cancelled = false;
-    import("qrcode").then(QRCode =>
-      QRCode.toDataURL(topUpUrl, { width: isLCD ? 280 : 200, margin: 1, color: { dark: "#3B4A1A", light: "#FFFFFF" }, errorCorrectionLevel: "L" }),
-    ).then(dataUrl => {
-      if (!cancelled) { setTopUpQrUrl(dataUrl); try { sessionStorage.setItem(cacheKey, dataUrl); } catch {} }
-    }).catch(() => {});
+    fetch("/api/promos/banners")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json) return;
+        const list = (json.data || json) as PromoBannerLite[];
+        if (Array.isArray(list)) setPromoBanners(list.filter((b) => b.image_url));
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [storeId, isLCD]);
+  }, []);
+
+  useEffect(() => {
+    if (state.phase !== "idle" || promoBanners.length < 2) return;
+    const id = setInterval(() => setPromoIndex((i) => (i + 1) % promoBanners.length), PROMO_ROTATE_MS);
+    return () => clearInterval(id);
+  }, [state.phase, promoBanners.length]);
 
   // ── Fullscreen + Wake Lock ──
   const enterFullscreen = useCallback(async () => {
@@ -214,6 +225,7 @@ export default function CustomerDisplayPage() {
   if (state.phase === "idle" || (state.phase === "browsing" && state.cart.length === 0)) {
     return (
       <div ref={containerRef} style={s.container} onClick={enterFullscreen}>
+        <style>{`@keyframes posDispFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }`}</style>
         {/* Connection status dot */}
         <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 10, display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{
@@ -229,7 +241,7 @@ export default function CustomerDisplayPage() {
         {/* Language selector */}
         <div style={{ position: "absolute", top: scale(12), left: scale(12), zIndex: 10, display: "flex", gap: scale(6) }}>
           {([["en", "EN"], ["ms", "BM"], ["zh", "中文"], ["ta", "தமிழ்"], ["tr", "TR"]] as const).map(([code, label]) => (
-            <button key={code} onClick={(e) => { e.stopPropagation(); setLocale(code); try { localStorage.setItem("locale", code); } catch {} }}
+            <button key={code} aria-label={`Switch display language to ${label}`} onClick={(e) => { e.stopPropagation(); setLocale(code); try { localStorage.setItem("locale", code); } catch {} }}
               style={{
                 padding: `${scale(6)}px ${scale(10)}px`, fontSize: scale(13), fontWeight: 700, borderRadius: 8, cursor: "pointer",
                 border: locale === code ? `2px solid var(--color-primary)` : "1px solid var(--color-border-light)",
@@ -243,26 +255,45 @@ export default function CustomerDisplayPage() {
           <button style={{ position: "absolute", top: scale(12), right: scale(12), zIndex: 10, background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 8, padding: scale(8), cursor: "pointer", color: "var(--color-text-muted)" }}
             onClick={(e) => { e.stopPropagation(); enterFullscreen(); }}><Maximize2 size={scale(20)} /></button>
         )}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ fontSize: scale(36), fontWeight: 800, color: "var(--color-primary)" }}>{state.storeName}</div>
-          <div style={{ fontSize: scale(22), color: "var(--color-text-muted)", marginTop: scale(12) }}>{t("pos.display_welcome")}</div>
-          <div style={{ fontSize: scale(48), fontWeight: 300, color: "var(--color-text-secondary)", marginTop: scale(24) }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", padding: `0 ${scale(40)}px` }}>
+          <div style={{ fontSize: scale(32), fontWeight: 800, color: "var(--color-primary)" }}>{state.storeName}</div>
+          <div style={{ fontSize: scale(36), fontWeight: 300, color: "var(--color-text-secondary)", marginTop: scale(8) }}>
             {now != null ? new Date(now).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : ""}
           </div>
-          {topUpQrUrl && (
-            <div style={{ marginTop: scale(32), display: "flex", flexDirection: "column", alignItems: "center", gap: scale(8) }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: scale(160), height: scale(160), background: "white", borderRadius: 12, padding: scale(8), boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-                <img src={topUpQrUrl} alt="Top Up QR" style={{ width: "100%", height: "100%" }} />
+
+          {promoBanners.length > 0 ? (() => {
+            const promo = promoBanners[promoIndex % promoBanners.length];
+            if (!promo) return null;
+            return (
+            <div style={{ marginTop: scale(24), width: "100%", maxWidth: scale(680) }} onClick={(e) => e.stopPropagation()}>
+              <div key={promoIndex} style={{ position: "relative", width: "100%", borderRadius: scale(18), overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.10)", border: "1px solid var(--color-border-light)", animation: "posDispFadeIn 0.6s ease" }}>
+                <img
+                  src={promo.image_url!}
+                  alt={promo.title}
+                  style={{ display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }}
+                />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(20,14,8,0.78) 0%, rgba(20,14,8,0.25) 45%, transparent 70%)" }} />
+                <div style={{ position: "absolute", left: scale(20), right: scale(20), bottom: scale(16), color: "#fff" }}>
+                  <div style={{ fontSize: scale(24), fontWeight: 800, textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>{promo.title}</div>
+                  {promo.short_description && (
+                    <div style={{ fontSize: scale(14), opacity: 0.92, marginTop: scale(4), textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>{promo.short_description}</div>
+                  )}
+                </div>
               </div>
-              <div style={{ fontSize: scale(16), fontWeight: 700, color: "var(--color-primary)", display: "flex", alignItems: "center" }}>
-                <Wallet size={scale(18)} style={{ marginRight: 6 }} />{t("pos.display_topup_qr_label")}
-              </div>
-              <div style={{ fontSize: scale(13), color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>
-                <Smartphone size={scale(14)} style={{ marginRight: 4 }} />{t("pos.display_scan_to_topup")}
-              </div>
+              {promoBanners.length > 1 && (
+                <div style={{ display: "flex", justifyContent: "center", gap: scale(6), marginTop: scale(12) }}>
+                  {promoBanners.map((b, i) => (
+                    <span key={b.id} style={{ width: scale(8), height: scale(8), borderRadius: "50%", background: i === promoIndex % promoBanners.length ? "var(--color-primary)" : "var(--color-border)", transition: "background 0.3s" }} />
+                  ))}
+                </div>
+              )}
             </div>
+            );
+          })() : (
+            <div style={{ fontSize: scale(22), color: "var(--color-text-muted)", marginTop: scale(16) }}>{t("pos.display_welcome")}</div>
           )}
-          <div style={{ marginTop: scale(48), textAlign: "center" }}>
+
+          <div style={{ marginTop: scale(28), textAlign: "center" }}>
             <ShoppingBag size={scale(48)} style={{ opacity: 0.3, marginBottom: scale(16) }} />
             <div style={{ fontSize: scale(18), color: "var(--color-text-muted)" }}>{t("pos.display_scan_to_order_hint")}</div>
           </div>

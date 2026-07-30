@@ -20,10 +20,20 @@ function escapeHtml(str: string): string {
 function applyInline(html: string): string {
   // Inline code: `code`  (must run before bold/italic so ** inside `..` is preserved)
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-  // Links: [text](url)
+  // Links: [text](url) — only http(s)/mailto and local paths render as
+  // anchors; other schemes (javascript:, data:, ...) render as plain text
+  // to block stored active-content injection via help articles.
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    (_match, text, url) => {
+      const u = String(url).trim().toLowerCase();
+      const safe =
+        u.startsWith("https://") || u.startsWith("http://") ||
+        u.startsWith("mailto:") || u.startsWith("/") || u.startsWith("#");
+      return safe
+        ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`
+        : String(text);
+    }
   );
   // Bold: **text**
   html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");

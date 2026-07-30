@@ -241,7 +241,7 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label className="form-label flex items-center gap-2">
-              <Lock size={16} className="login-icon-primary" /> {t("login.pin_label")}
+              <Lock size={16} className="login-icon-primary" /> {mode === "email" ? t("login.password_label") : t("login.pin_label")}
             </label>
             <input
               type="password"
