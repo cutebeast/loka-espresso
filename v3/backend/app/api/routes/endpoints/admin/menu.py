@@ -6,6 +6,7 @@ from typing import Literal
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -111,6 +112,8 @@ class AllergenCreate(BaseSchema):
     display_name: str
     description: str | None = None
     severity: Literal["low", "medium", "high", "critical"] = "high"
+    color_hex: str | None = Field(None, max_length=7)
+    icon_url: str | None = Field(None, max_length=500)
 
 
 class AllergenUpdate(BaseSchema):
@@ -118,6 +121,8 @@ class AllergenUpdate(BaseSchema):
     display_name: str | None = None
     description: str | None = None
     severity: Literal["low", "medium", "high", "critical"] | None = None
+    color_hex: str | None = Field(None, max_length=7)
+    icon_url: str | None = Field(None, max_length=500)
 
 
 class TaxCategoryCreate(BaseSchema):

@@ -1,7 +1,7 @@
 """Menu domain schemas."""
 from decimal import Decimal
 from app.schemas.base import Money
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,10 +30,10 @@ class MenuCategoryBase(BaseSchema):
     is_available: bool = True
     is_featured: bool = False
     category_type: str = Field(default="regular", pattern="^(regular|combo)$")
-    available_from_time: str | None = None
-    available_to_time: str | None = None
-    available_from_date: str | None = None
-    available_to_date: str | None = None
+    available_from_time: time | None = None
+    available_to_time: time | None = None
+    available_from_date: date | None = None
+    available_to_date: date | None = None
 
 
 class MenuCategoryCreate(MenuCategoryBase):
@@ -49,10 +49,10 @@ class MenuCategoryUpdate(BaseSchema):
     is_available: bool | None = None
     is_featured: bool | None = None
     category_type: str | None = Field(None, pattern="^(regular|combo)$")
-    available_from_time: str | None = None
-    available_to_time: str | None = None
-    available_from_date: str | None = None
-    available_to_date: str | None = None
+    available_from_time: time | None = None
+    available_to_time: time | None = None
+    available_from_date: date | None = None
+    available_to_date: date | None = None
     parent_category_id: int | None = None
 
 
