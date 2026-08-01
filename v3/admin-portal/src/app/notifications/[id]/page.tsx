@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
+import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save, Send, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 const TYPES = ["general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"];
@@ -85,7 +86,7 @@ export default function NotificationEditPage() {
         audience_segment: d.audience_segment || "all_users",
         image_url: d.image_url || "",
         action_url: d.action_url || "",
-        scheduled_at: d.scheduled_at?.slice(0, 16) || "",
+        scheduled_at: toLocalInput(d.scheduled_at),
         status: d.status || "draft"
       });
       const x: Record<string, string> = {};
@@ -122,7 +123,7 @@ export default function NotificationEditPage() {
     try {
       await api.put(`/admin/notifications/${id}`, {
         ...form,
-        scheduled_at: form.scheduled_at || null
+        scheduled_at: localInputToISO(form.scheduled_at)
       });
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);

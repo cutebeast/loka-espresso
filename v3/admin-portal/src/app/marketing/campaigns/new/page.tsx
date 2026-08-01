@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMarketingCampaign } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
+import { localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 export default function CampaignNewPage() {
@@ -34,7 +35,7 @@ export default function CampaignNewPage() {
       await createMarketingCampaign({
         ...form,
         campaign_key: form.campaign_key || form.campaign_name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
-        scheduled_at: form.scheduled_at || undefined
+        scheduled_at: localInputToISO(form.scheduled_at) || undefined
       });
       router.push("/marketing/campaigns");
     } catch (err: any) {

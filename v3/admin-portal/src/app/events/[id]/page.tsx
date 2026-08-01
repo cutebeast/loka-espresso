@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
+import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
 const LOCALES = [{
@@ -104,7 +105,7 @@ export default function EventEditPage() {
         start_date: d.start_date?.slice(0, 10) || "",
         end_date: d.end_date?.slice(0, 10) || "",
         location: d.location || "",
-        event_datetime: d.event_datetime?.slice(0, 16) || "",
+        event_datetime: toLocalInput(d.event_datetime),
         rsvp_enabled: !!d.rsvp_enabled,
         rsvp_max_capacity: d.rsvp_max_capacity || 0,
         rsvp_count: d.rsvp_count || 0,
@@ -165,7 +166,7 @@ export default function EventEditPage() {
         rsvp_max_capacity: form.rsvp_max_capacity || null,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
-        event_datetime: form.event_datetime || null
+        event_datetime: localInputToISO(form.event_datetime)
       };
       await api.patch(`/admin/event-cards/${id}`, pl);
       setMsg(t("admin.common.saved"));

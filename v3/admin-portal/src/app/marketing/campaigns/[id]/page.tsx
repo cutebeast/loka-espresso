@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, sendCampaign } from "@/lib/api";
 import { isNotFoundError, parseApiError } from "@/lib/errors";
+import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
@@ -76,7 +77,7 @@ export default function CampaignEditPage() {
         status: d.status || "draft",
         audience_segment: d.audience_segment || "",
         body_content: d.body_content || "",
-        scheduled_at: d.scheduled_at?.slice(0, 16) || ""
+        scheduled_at: toLocalInput(d.scheduled_at)
       });
       const x: Record<string, string> = {};
       for (const lc of LOCALES) {
@@ -105,7 +106,7 @@ export default function CampaignEditPage() {
     try {
       await api.put(`/admin/marketing/campaigns/${id}`, {
         ...form,
-        scheduled_at: form.scheduled_at || null
+        scheduled_at: localInputToISO(form.scheduled_at)
       });
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);

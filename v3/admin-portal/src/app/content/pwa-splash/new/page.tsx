@@ -5,6 +5,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
+import { localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 export default function SplashScreenNewPage() {
   const {
@@ -58,8 +59,8 @@ export default function SplashScreenNewPage() {
       await api.post("/admin/content/splash-screens", {
         ...form,
         duration_ms: form.duration_ms ? Number(form.duration_ms) : undefined,
-        active_from: form.active_from || null,
-        active_until: form.active_until || null
+        active_from: localInputToISO(form.active_from),
+        active_until: localInputToISO(form.active_until)
       });
       router.push("/content/pwa-splash");
     } catch (e: any) {

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
+import { localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -63,6 +64,8 @@ export default function VoucherNewPage() {
       payload.discount_value = Number(form.discount_value);
       if (!payload.max_global_uses) payload.max_global_uses = null;else payload.max_global_uses = Number(payload.max_global_uses);
       payload.validity_days = form.validity_days ? Number(form.validity_days) : null;
+      payload.valid_from = localInputToISO(form.valid_from);
+      payload.valid_until = localInputToISO(form.valid_until);
       payload.max_uses_per_customer = Number(form.max_uses_per_customer) || 1;
       payload.minimum_order_value = Number(form.minimum_order_value) || 0;
       await api.post("/admin/vouchers", payload);

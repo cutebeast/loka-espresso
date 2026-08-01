@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { isNotFoundError } from "@/lib/errors";
+import { localInputToISO } from "@/lib/datetime";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -94,6 +95,8 @@ export default function EquipmentEditPage() {
         ...logForm
       };
       if (payload.cost) payload.cost = Number(payload.cost);
+      payload.started_at = localInputToISO(logForm.started_at);
+      payload.completed_at = localInputToISO(logForm.completed_at);
       await api.post(`/admin/equipment/${id}/maintenance-logs`, payload);
       setShowLogForm(false);
       setLogForm({

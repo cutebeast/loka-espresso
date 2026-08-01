@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
+import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
 const LOCALES = [{
@@ -72,8 +73,8 @@ export default function SplashScreenEditPage() {
         show_frequency: d.show_frequency || "once_per_session",
         dismissible: d.dismissible !== false,
         duration_ms: d.duration_ms || "",
-        active_from: d.active_from?.slice(0, 16) || "",
-        active_until: d.active_until?.slice(0, 16) || "",
+        active_from: toLocalInput(d.active_from),
+        active_until: toLocalInput(d.active_until),
         is_active: d.is_active
       });
       setImg(d.image_url || "");
@@ -126,8 +127,8 @@ export default function SplashScreenEditPage() {
       await api.patch(`/admin/content/splash-screens/${id}`, {
         ...form,
         duration_ms: form.duration_ms ? Number(form.duration_ms) : undefined,
-        active_from: form.active_from || null,
-        active_until: form.active_until || null
+        active_from: localInputToISO(form.active_from),
+        active_until: localInputToISO(form.active_until)
       });
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);

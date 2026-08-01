@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
+import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import { usePagination } from "@/hooks/usePagination";
 import { Plus, Edit2, Trash2, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -71,10 +72,6 @@ const emptySegmentForm = {
   is_active: true,
 };
 
-function toDateTimeLocal(iso: string | null): string {
-  return iso ? iso.slice(0, 16) : "";
-}
-
 export default function LuckyDrawPage() {
   const { t, locale } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -123,8 +120,8 @@ export default function LuckyDrawPage() {
         spend_per_ticket_rm: String((c.spend_per_ticket_cents ?? 5000) / 100),
         max_segments: String(c.max_segments ?? 8),
         is_active: c.is_active,
-        start_date: toDateTimeLocal(c.start_date),
-        end_date: toDateTimeLocal(c.end_date),
+        start_date: toLocalInput(c.start_date),
+        end_date: toLocalInput(c.end_date),
       });
       if (c.draw_type === "ticket_spend") fetchTicketStats(c.id);
     } else {
@@ -196,8 +193,8 @@ export default function LuckyDrawPage() {
         spend_per_ticket_cents: Math.round((parseFloat(campaignForm.spend_per_ticket_rm) || 50) * 100),
         max_segments: Math.min(12, Math.max(2, parseInt(campaignForm.max_segments, 10) || 8)),
         is_active: campaignForm.is_active,
-        start_date: campaignForm.start_date || null,
-        end_date: campaignForm.end_date || null,
+        start_date: localInputToISO(campaignForm.start_date),
+        end_date: localInputToISO(campaignForm.end_date),
       };
       const saved = campaign
         ? await api.put<LuckyDrawCampaign>(`/admin/lucky-draw/campaign/${campaign.id}`, body)

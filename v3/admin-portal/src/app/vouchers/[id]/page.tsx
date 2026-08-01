@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { isNotFoundError, parseApiError } from "@/lib/errors";
+import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
@@ -119,8 +120,8 @@ export default function VoucherEditPage() {
         max_uses_per_customer: d.max_uses_per_customer || 1,
         max_global_uses: d.max_global_uses || "",
         validity_days: d.validity_days != null ? String(d.validity_days) : "",
-        valid_from: d.valid_from?.slice(0, 16) || "",
-        valid_until: d.valid_until?.slice(0, 16) || "",
+        valid_from: toLocalInput(d.valid_from),
+        valid_until: toLocalInput(d.valid_until),
         promo_type: d.promo_type || "generic",
         minimum_tier_id: d.minimum_tier_id ?? "",
         description: d.description || "",
@@ -186,8 +187,8 @@ export default function VoucherEditPage() {
       payload.max_uses_per_customer = Number(form.max_uses_per_customer) || 1;
       payload.minimum_order_value = Number(form.minimum_order_value) || 0;
       payload.minimum_tier_id = form.minimum_tier_id ? Number(form.minimum_tier_id) : null;
-      payload.valid_from = form.valid_from || null;
-      payload.valid_until = form.valid_until || null;
+      payload.valid_from = localInputToISO(form.valid_from);
+      payload.valid_until = localInputToISO(form.valid_until);
       // Discount value stored as-is (percentage: 50 means 50%, backend divides by 100)
       payload.discount_value = Number(form.discount_value);
       await api.put(`/admin/vouchers/${voucherId}`, payload);

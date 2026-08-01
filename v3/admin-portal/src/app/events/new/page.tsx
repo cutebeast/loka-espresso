@@ -5,6 +5,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
+import { localInputToISO } from "@/lib/datetime";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 export default function EventNewPage() {
   const {
@@ -61,7 +62,7 @@ export default function EventNewPage() {
       rsvp_max_capacity: form.rsvp_max_capacity || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
-      event_datetime: form.event_datetime || null
+      event_datetime: localInputToISO(form.event_datetime)
     };
     try {
       await api.post("/admin/event-cards", pl);
