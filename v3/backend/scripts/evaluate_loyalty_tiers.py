@@ -17,10 +17,23 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from app.core.database import AsyncSessionLocal
+from app.models.iam import TokenBlacklist
 from app.models.loyalty import LoyaltyAccount, LoyaltyTier
 from app.services.commerce import _evaluate_tier_renewal
+
+
+async def purge_expired_blacklist_tokens() -> int:
+    """Delete expired rows from token_blacklist (they can never validate again)."""
+    from datetime import datetime, timezone
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            delete(TokenBlacklist).where(TokenBlacklist.expires_at < datetime.now(timezone.utc))
+        )
+        await db.commit()
+        return result.rowcount or 0
 
 
 async def evaluate_all() -> tuple[int, int]:
@@ -30,6 +43,8 @@ async def evaluate_all() -> tuple[int, int]:
     """
     evaluated = 0
     changed = 0
+
+    await purge_expired_blacklist_tokens()
 
     async with AsyncSessionLocal() as db:
         from sqlalchemy.orm import selectinload

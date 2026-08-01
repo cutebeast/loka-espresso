@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.customer import CustomerDevice
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.schemas.customer import CustomerDeviceOut
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ async def list_devices(
 public_router = APIRouter(prefix="/me", tags=["customer"])
 
 
-class DeviceRegister(BaseModel):
+class DeviceRegister(BaseSchema):
     device_fingerprint: str = Field(..., max_length=64)
     push_token: str | None = Field(None, max_length=255)
     web_push_subscription: dict | None = Field(None)

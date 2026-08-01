@@ -49,6 +49,10 @@ class Customer(Base, SoftDeleteMixin):
     order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_order_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Bumped on credential change / refresh-token reuse to revoke all sessions.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     marketing_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     marketing_opt_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)

@@ -26,6 +26,35 @@ export async function middleware(request: NextRequest) {
   }
   response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const connectHosts = ["'self'"];
+  if (process.env.NODE_ENV === "development") {
+    connectHosts.push("http://localhost:13800");
+    connectHosts.push("http://127.0.0.1:13800");
+  }
+  if (apiUrl.startsWith("http://") || apiUrl.startsWith("https://")) {
+    try {
+      const apiHost = new URL(apiUrl).host;
+      if (apiHost) connectHosts.push(`${new URL(apiUrl).protocol}//${apiHost}`);
+    } catch {
+      // ignore malformed URL
+    }
+  }
+
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' https: data: blob:; " +
+    "font-src 'self'; " +
+    `connect-src ${connectHosts.join(" ")}; ` +
+    "frame-src https://js.stripe.com; " +
+    "frame-ancestors 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+
   if (!isPublicPath(pathname)) {
     const token = request.cookies.get("staff_token")?.value;
     if (!token) {

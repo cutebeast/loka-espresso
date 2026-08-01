@@ -307,7 +307,7 @@ CREATE TABLE IF NOT EXISTS feedback_entries (
 	store_id INTEGER, 
 	title VARCHAR(200) NOT NULL, 
 	body TEXT, 
-	rating SMALLINT NOT NULL, 
+	rating SMALLINT, 
 	admin_reply TEXT, 
 	replied_at TIMESTAMP WITH TIME ZONE, 
 	replied_by BIGINT, 
@@ -315,7 +315,7 @@ CREATE TABLE IF NOT EXISTS feedback_entries (
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE, 
 	PRIMARY KEY (id), 
-	CONSTRAINT ck_feedback_rating CHECK (rating BETWEEN 1 AND 5), 
+	CONSTRAINT ck_feedback_rating CHECK (rating IS NULL OR (rating BETWEEN 1 AND 5)), 
 	FOREIGN KEY(customer_id) REFERENCES customers (id) ON DELETE CASCADE, 
 	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE SET NULL, 
 	FOREIGN KEY(replied_by) REFERENCES admin_accounts (id) ON DELETE SET NULL
@@ -457,6 +457,33 @@ CREATE TABLE IF NOT EXISTS bundle_component_modifiers (
 	FOREIGN KEY(modifier_option_id) REFERENCES menu_modifier_options (id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS einvoice_documents (
+	id BIGSERIAL NOT NULL, 
+	order_id BIGINT NOT NULL, 
+	payment_id BIGINT, 
+	store_id INTEGER NOT NULL, 
+	document_type VARCHAR(2) NOT NULL, 
+	code_number VARCHAR(50) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	ubl_document JSONB, 
+	myinvois_uuid VARCHAR(64), 
+	submission_uid VARCHAR(64), 
+	validation_link VARCHAR(500), 
+	error_message TEXT, 
+	submitted_at TIMESTAMP WITH TIME ZONE, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_einvoice_order_payment_type UNIQUE (order_id, payment_id, document_type), 
+	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE CASCADE, 
+	FOREIGN KEY(payment_id) REFERENCES payments (id) ON DELETE SET NULL, 
+	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_einvoice_documents_order_id ON einvoice_documents (order_id);
+CREATE INDEX IF NOT EXISTS ix_einvoice_documents_payment_id ON einvoice_documents (payment_id);
+CREATE INDEX IF NOT EXISTS ix_einvoice_documents_store_id ON einvoice_documents (store_id);
+
 CREATE TABLE IF NOT EXISTS lucky_draw_spins (
 	id BIGSERIAL NOT NULL, 
 	campaign_id INTEGER NOT NULL, 
@@ -536,6 +563,7 @@ CREATE INDEX IF NOT EXISTS ix_payment_line_allocations_payment_id ON payment_lin
 -- ============================================================
 
 ALTER TABLE admin_accounts ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20);
+ALTER TABLE admin_accounts ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT '0' NOT NULL;
 
 ALTER TABLE allergens ADD COLUMN IF NOT EXISTS color_hex VARCHAR(7) DEFAULT '#22C55E';
 ALTER TABLE allergens ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
@@ -549,6 +577,7 @@ ALTER TABLE cart_line_items ADD COLUMN IF NOT EXISTS class_session_id INTEGER RE
 ALTER TABLE customer_devices ADD COLUMN IF NOT EXISTS web_push_subscription JSONB;
 ALTER TABLE customer_devices ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
 
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT '0' NOT NULL;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS marketing_opt_out BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS marketing_opt_out_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255);
@@ -587,6 +616,7 @@ ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS bundle_component_id INTEGE
 ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS class_session_id INTEGER REFERENCES class_sessions (id);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_ref VARCHAR(64);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS addon_discount NUMERIC(12, 4) DEFAULT 0 NOT NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_byot BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_instructions TEXT;
@@ -612,6 +642,7 @@ ALTER TABLE splash_screens ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TI
 ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS failed_login_count INTEGER DEFAULT 0 NOT NULL;
 ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP WITH TIME ZONE;
+ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT '0' NOT NULL;
 
 ALTER TABLE staff_shifts ADD COLUMN IF NOT EXISTS shift_template_id INTEGER REFERENCES shift_templates (id);
 
@@ -638,4 +669,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'h8c9d0e1f2a3' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'k1e2f3a4b5c6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

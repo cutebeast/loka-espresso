@@ -19,7 +19,7 @@ from app.schemas.staff import (
     StaffChangePasswordRequest,
     StaffChangePinRequest,
 )
-from app.services.auth import blacklist_refresh_token
+from app.services.auth import DUMMY_PASSWORD_HASH, blacklist_refresh_token
 from app.core.auth_cookies import (
     clear_staff_auth_cookies,
     get_staff_access_token,
@@ -157,11 +157,14 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
     )
     admin = admin_result.scalar_one_or_none()
     if not admin or not admin.password_hash:
+        # Same argon2 cost as a real account — without it the response time
+        # reveals which emails belong to admin accounts.
+        verify_password(password, DUMMY_PASSWORD_HASH)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Check account lockout and increment failed login count
-    if admin.locked_until and admin.locked_until > datetime.now(timezone.utc):
-        raise HTTPException(status_code=423, detail="Account temporarily locked. Try again later.")
+    # Verify the password BEFORE evaluating the lock: a 423 on a wrong
+    # password would confirm the email belongs to an admin account and let an
+    # attacker observe the lockout taking effect.
     if not verify_password(password, admin.password_hash):
         admin.failed_login_count = (admin.failed_login_count or 0) + 1
         if admin.failed_login_count >= 5:
@@ -169,6 +172,9 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
             admin.failed_login_count = 0
         await db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Lock state is only revealed to a caller with the correct password.
+    if admin.locked_until and admin.locked_until > datetime.now(timezone.utc):
+        raise HTTPException(status_code=423, detail="Account temporarily locked. Try again later.")
     # Reset failed login count on success
     admin.failed_login_count = 0
     admin.locked_until = None
@@ -200,11 +206,11 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
         access_token = create_access_token(
             admin.id,
             token_type="staff",
-            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name}
+            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name, "token_version": admin.token_version or 0}
         )
         refresh_token = create_refresh_token(
             admin.id,
-            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id},
+            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "token_version": admin.token_version or 0},
             days=7,  # admin principals get the admin-portal lifetime, not the 30-day staff one
         )
         set_staff_auth_cookies(response, access_token, refresh_token)
@@ -215,11 +221,11 @@ async def staff_login(request: Request, response: Response, db: DBDependency, da
     access_token = create_access_token(
         admin.id,
         token_type="admin",
-        extra_claims={"admin_id": admin.id}
+        extra_claims={"admin_id": admin.id, "token_version": admin.token_version or 0}
     )
     refresh_token = create_refresh_token(
         admin.id,
-        extra_claims={"admin_id": admin.id},
+        extra_claims={"admin_id": admin.id, "token_version": admin.token_version or 0},
         days=7,  # admin principals get the admin-portal lifetime, not the 30-day staff one
     )
     set_staff_auth_cookies(response, access_token, refresh_token)
@@ -287,7 +293,7 @@ async def admin_select_store(request: Request, response: Response, db: DBDepende
     access_token = create_access_token(
         admin.id,
         token_type="staff",
-        extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name}
+        extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name, "token_version": admin.token_version or 0}
     )
     # Preserve existing refresh cookie; only set access cookie for the new scope.
     set_staff_auth_cookies(response, access_token, "")
@@ -301,11 +307,11 @@ def _make_token(staff):
     access = create_access_token(
         staff.principal_id,
         token_type="staff",
-        extra_claims={"staff_id": staff.id, "store_id": staff.store_id}
+        extra_claims={"staff_id": staff.id, "store_id": staff.store_id, "token_version": staff.token_version or 0}
     )
     refresh = create_refresh_token(
         staff.principal_id,
-        extra_claims={"staff_id": staff.id, "store_id": staff.store_id},
+        extra_claims={"staff_id": staff.id, "store_id": staff.store_id, "token_version": staff.token_version or 0},
         days=30,
     )
     return {"tokens": {"access_token": access, "refresh_token": refresh}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
@@ -374,8 +380,20 @@ async def staff_refresh_token(request: Request, response: Response, db: DBDepend
         staff = result.scalar_one_or_none()
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
+        # Session revocation: refresh tokens minted before a credential change
+        # carry a stale token_version.
+        if int(payload.get("token_version", 0)) != (staff.token_version or 0):
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
         # Revoke this refresh token so it cannot be reused (atomic)
-        await blacklist_refresh_token(db, jti, staff.principal_id, payload)
+        try:
+            await blacklist_refresh_token(db, jti, staff.principal_id, payload)
+        except HTTPException as exc:
+            if exc.status_code == 401:
+                # Refresh-token reuse — the family is compromised; revoke every
+                # token for this staff member, not just the replayed one.
+                staff.token_version = (staff.token_version or 0) + 1
+                await db.commit()
+            raise
         token_data = _make_token(staff)
         set_staff_auth_cookies(response, token_data["tokens"]["access_token"], token_data["tokens"]["refresh_token"])
         return token_data
@@ -387,21 +405,30 @@ async def staff_refresh_token(request: Request, response: Response, db: DBDepend
         admin = admin_result.scalar_one_or_none()
         if not admin:
             raise HTTPException(status_code=401, detail="Admin not found")
+        if int(payload.get("token_version", 0)) != (admin.token_version or 0):
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
         access_token = create_access_token(
             admin.id,
             token_type="staff",
-            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id, "admin_name": admin.display_name}
+            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id, "admin_name": admin.display_name, "token_version": admin.token_version or 0}
         )
         # Rotate the refresh token and return it in the JSON body as well —
         # the Next.js proxy ignores Set-Cookie, so without the body value the
         # next refresh would 401 (token is blacklisted below).
         new_refresh_token = create_refresh_token(
             admin.id,
-            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id},
+            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id, "token_version": admin.token_version or 0},
             days=7,  # admin principals get the admin-portal lifetime, not the 30-day staff one
         )
         # Revoke this refresh token so it cannot be reused (atomic)
-        await blacklist_refresh_token(db, jti, admin.principal_id, payload)
+        try:
+            await blacklist_refresh_token(db, jti, admin.principal_id, payload)
+        except HTTPException as exc:
+            if exc.status_code == 401:
+                # Refresh-token reuse — kill the admin's whole session family.
+                admin.token_version = (admin.token_version or 0) + 1
+                await db.commit()
+            raise
         set_staff_auth_cookies(response, access_token, new_refresh_token)
         return {"tokens": {"access_token": access_token, "refresh_token": new_refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
 
@@ -576,6 +603,8 @@ async def staff_change_password(
     if len(pw) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     staff.password_hash = hash_password(pw)
+    # Revoke all existing sessions — tokens carry the old token_version.
+    staff.token_version = (staff.token_version or 0) + 1
     await db.commit()
     return APIResponse(data={"updated": True})
 
@@ -605,5 +634,7 @@ async def staff_change_pin(
         raise HTTPException(status_code=400, detail="New PIN must be different")
     staff.pin_hash = hash_password(p)
     staff.pin_last_changed_at = datetime.now(timezone.utc)
+    # Revoke all existing sessions — tokens carry the old token_version.
+    staff.token_version = (staff.token_version or 0) + 1
     await db.commit()
     return APIResponse(data={"updated": True})

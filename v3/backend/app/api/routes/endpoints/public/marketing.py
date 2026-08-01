@@ -9,19 +9,19 @@ from sqlalchemy import select
 from app.api.routes.deps import ActiveCustomer, DBDependency
 from app.core.rate_limiter import limiter
 from app.models.customer import Customer, CustomerConsent
-from app.schemas.base import APIResponse
+from app.schemas.base import APIResponse, BaseSchema
 
 router = APIRouter(prefix="/public/marketing", tags=["public — marketing"])
 
 
-class MarketingOptOutRequest(BaseModel):
+class MarketingOptOutRequest(BaseSchema):
     """Unauthenticated opt-out by email or phone."""
 
     email_address: EmailStr | None = None
     phone_number: str | None = Field(None, pattern=r"^\+?[1-9]\d{7,14}$")
 
 
-class MarketingOptOutResponse(BaseModel):
+class MarketingOptOutResponse(BaseSchema):
     success: bool
     message: str
 

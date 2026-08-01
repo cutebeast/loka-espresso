@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.customer import CustomerConsent
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.schemas.customer import CustomerConsentOut
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ async def list_consents(
 public_router = APIRouter(prefix="/me", tags=["customer"])
 
 
-class ConsentGrant(BaseModel):
+class ConsentGrant(BaseSchema):
     consent_type: str
     consent_version: str = "1.0"
     ip_address: str | None = None

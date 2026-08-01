@@ -13,7 +13,7 @@ from app.models.menu import MenuItem
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.payment import Payment
 from app.models.store import Store
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.schemas.order import (
     OrderAdjustmentOut,
     OrderCreate,
@@ -27,7 +27,7 @@ from app.services.order import OrderError, create_order_from_cart, get_customer_
 from app.services.payment import cancel_pending_order_payments
 
 
-class CustomerOrderCreateRequest(BaseModel):
+class CustomerOrderCreateRequest(BaseSchema):
     """Flexible order create schema that accepts legacy PWA fields for backward compatibility."""
     model_config = ConfigDict(extra="allow")
     order_type: str = "dine_in"

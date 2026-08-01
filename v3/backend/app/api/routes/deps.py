@@ -119,7 +119,11 @@ async def get_current_customer(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    customer_id = int(payload.get("sub", 0))
+    # Domain check: only genuine customer access tokens carry a customer_id
+    # claim. Admin-portal access tokens are also type="access" with
+    # sub = admin.id — without this check an admin token authenticates as the
+    # customer with the colliding id.
+    customer_id = int(payload.get("customer_id") or 0)
     if not customer_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -143,7 +147,16 @@ async def get_current_customer(
             detail="Account deactivated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # Session revocation: tokens minted before a credential change carry a
+    # stale token_version and must no longer authenticate.
+    if int(payload.get("token_version", 0)) != (getattr(customer, "token_version", 0) or 0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return customer
 
 
@@ -236,6 +249,12 @@ async def get_current_admin(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is locked",
             )
+        if int(payload.get("token_version", 0)) != (getattr(admin, "token_version", 0) or 0):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         return admin
 
     admin_id = int(payload.get("admin_id", 0))
@@ -277,6 +296,13 @@ async def get_current_admin(
             detail="Account is inactive",
         )
 
+    if int(payload.get("token_version", 0)) != (getattr(admin, "token_version", 0) or 0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return admin
 
 
@@ -313,6 +339,8 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
                 raise HTTPException(status_code=401, detail="Admin not found or inactive")
             if admin.locked_until and admin.locked_until > datetime.now(timezone.utc):
                 raise HTTPException(status_code=403, detail="Account is locked")
+            if int(payload.get("token_version", 0)) != (getattr(admin, "token_version", 0) or 0):
+                raise HTTPException(status_code=401, detail="Session has been revoked")
             from dataclasses import dataclass
 
             @dataclass
@@ -340,6 +368,9 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
         staff = result.scalar_one_or_none()
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
+
+        if int(payload.get("token_version", 0)) != (getattr(staff, "token_version", 0) or 0):
+            raise HTTPException(status_code=401, detail="Session has been revoked")
 
         if staff.pin_last_changed_at is None:
             path = request.url.path
@@ -428,6 +459,22 @@ async def require_hq_admin(
 
 
 HQAdmin = Annotated[AdminAccount, Depends(require_hq_admin)]
+
+
+async def require_hq_write_admin(db: AsyncSession, admin: AdminAccount) -> AdminAccount:
+    """Require a global-scope write role (system_admin or regional_manager).
+
+    Unlike require_hq_admin this excludes readonly_analyst — used to gate
+    platform-wide money mutations (wallet adjustments, points, tiers,
+    customer deletion) so store_manager / readonly accounts get 403.
+    """
+    role_keys = await _get_admin_role_keys(db, admin.id, admin_obj=admin)
+    if not (role_keys & {"system_admin", "regional_manager"}):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="HQ access required",
+        )
+    return admin
 
 
 async def require_store_admin(

@@ -268,6 +268,15 @@ export default function NewItemPage() {
       p.calories = p.calories ? Number(p.calories) : null;
       p.prep_time_minutes = Number(p.prep_time_minutes) || 10;
       p.minimum_tier_id = p.minimum_tier_id ? Number(p.minimum_tier_id) : null;
+      // Add-on deal fields: send nulls when the deal is off or value is empty —
+      // the backend expects a decimal or null, never "".
+      if (!p.is_addon_deal_eligible || !form.addon_discount_value) {
+        p.addon_discount_type = null;
+        p.addon_discount_value = null;
+        p.eligible_bundle_ids = null;
+      } else {
+        p.addon_discount_value = Number(form.addon_discount_value);
+      }
       const r: any = await api.post("/admin/menu/items", p);
       const id = r?.data?.id || r?.id;
       if (id) router.push(`/menu/items/${id}`);

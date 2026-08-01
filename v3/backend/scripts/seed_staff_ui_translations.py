@@ -426,14 +426,8 @@ async def main() -> None:
                     source_text=text,
                     is_auto_translated=False,
                 )
-                .on_conflict_do_update(
+                .on_conflict_do_nothing(
                     index_elements=["namespace", "translation_key", "locale"],
-                    set_={
-                        "translated_text": text,
-                        "source_text": text,
-                        "namespace": "staff-ui",
-                        "updated_at": datetime.now(timezone.utc),
-                    },
                 )
             )
             await db.execute(stmt)

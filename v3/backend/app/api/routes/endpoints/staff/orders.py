@@ -1054,7 +1054,10 @@ async def cancel_staff_order(
 
     from app.models.payment import Payment
     has_captured = (await db.execute(
-        select(Payment.id).where(Payment.order_id == order.id, Payment.status == "captured").limit(1)
+        select(Payment.id).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        ).limit(1)
     )).scalar_one_or_none()
     if has_captured is not None:
         raise HTTPException(status_code=400, detail="Order has captured payments — issue a refund before cancelling")

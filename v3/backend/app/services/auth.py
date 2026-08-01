@@ -32,6 +32,12 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+# Precomputed argon2id hash of a dummy password, verified (and discarded) when
+# an admin login email is unknown so the response time converges with the
+# real-account path — without it, unknown emails return ~10x faster, which is
+# a live account-enumeration oracle.
+DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$o3KG7WdImIqSPHWbpO6v/g$eaUmlioy5OCd+0N6vwr/d3oe8hb+PotHUtrpj9NjKiw"
+
 
 class AuthError(Exception):
     """Authentication-related error."""
@@ -40,6 +46,20 @@ class AuthError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
+
+async def _bump_token_version(db: AsyncSession, model, principal_id: int) -> None:
+    """Bump a principal's token_version, revoking its whole session family.
+
+    Called when reuse of an already-blacklisted refresh token is detected —
+    the token was stolen, so every access/refresh token minted for this
+    principal must die, not just the replayed one.
+    """
+    result = await db.execute(select(model).where(model.id == principal_id))
+    principal = result.scalar_one_or_none()
+    if principal is not None:
+        principal.token_version = (principal.token_version or 0) + 1
+        await db.commit()
 
 
 async def blacklist_refresh_token(
@@ -230,6 +250,7 @@ async def create_customer_tokens(customer: Customer) -> TokenPair:
     extra = {
         "customer_id": customer.id,
         "display_name": customer.display_name,
+        "token_version": customer.token_version or 0,
     }
     access = create_access_token(
         subject=str(customer.id),
@@ -275,16 +296,24 @@ async def refresh_customer_tokens(
             select(TokenBlacklist).where(TokenBlacklist.jti == jti)
         )
         if blacklist_result.scalar_one_or_none():
+            # Reuse of a rotated refresh token means the session family is
+            # compromised — revoke every token for this customer.
+            await _bump_token_version(db, Customer, customer_id)
             raise AuthError("Refresh token has already been used", 401)
-    
+
     result = await db.execute(
         select(Customer).where(Customer.id == customer_id)
     )
     customer = result.scalar_one_or_none()
-    
+
     if customer is None or customer.deleted_at is not None or not customer.is_active:
         raise AuthError("Customer not found or inactive", 401)
-    
+
+    # Session revocation: refresh tokens minted before a credential change
+    # carry a stale token_version.
+    if int(payload.get("token_version", 0)) != (customer.token_version or 0):
+        raise AuthError("Invalid refresh token", 401)
+
     # Revoke this refresh token so it cannot be reused
     if jti:
         exp_ts = payload.get("exp")
@@ -299,8 +328,10 @@ async def refresh_customer_tokens(
         result = await db.execute(stmt)
         await db.commit()
         if result.rowcount == 0:
+            # Lost the race with a concurrent refresh — same reuse response.
+            await _bump_token_version(db, Customer, customer_id)
             raise AuthError("Refresh token has already been used", 401)
-    
+
     return await create_customer_tokens(customer)
 
 
@@ -313,23 +344,29 @@ async def login_admin(
         select(AdminAccount).where(AdminAccount.email == data.email)
     )
     admin = result.scalar_one_or_none()
-    
+
     if admin is None:
+        # Verify against a dummy hash so unknown emails take as long as the
+        # real argon2 path — otherwise response time reveals registered emails.
+        verify_password(data.password, DUMMY_PASSWORD_HASH)
         raise AuthError("Invalid email or password", 401)
-    
+
     if admin.deleted_at is not None:
         raise AuthError("Account deactivated", 401)
-    
-    if admin.locked_until and admin.locked_until > datetime.now(timezone.utc):
-        raise AuthError("Account is locked", 403)
-    
+
     if not verify_password(data.password, admin.password_hash):
         admin.failed_login_count += 1
         if admin.failed_login_count >= 5:
             admin.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
         await db.commit()
+        # Always the same 401 on wrong password — a 403 here would confirm
+        # the account exists and signal the lockout took effect.
         raise AuthError("Invalid email or password", 401)
-    
+
+    # Lock state is only revealed to a caller with the correct password.
+    if admin.locked_until and admin.locked_until > datetime.now(timezone.utc):
+        raise AuthError("Account is locked", 403)
+
     # Reset failed login count on success
     admin.failed_login_count = 0
     admin.last_login_at = datetime.now(timezone.utc)
@@ -345,6 +382,7 @@ async def create_admin_tokens(admin: AdminAccount) -> TokenPair:
         "principal_id": admin.principal_id,
         "email": admin.email,
         "display_name": admin.display_name,
+        "token_version": admin.token_version or 0,
     }
     access = create_access_token(
         subject=str(admin.id),
@@ -389,16 +427,24 @@ async def refresh_admin_tokens(
             select(TokenBlacklist).where(TokenBlacklist.jti == jti)
         )
         if blacklist_result.scalar_one_or_none():
+            # Reuse of a rotated refresh token means the session family is
+            # compromised — revoke every token for this admin.
+            await _bump_token_version(db, AdminAccount, admin_id)
             raise AuthError("Refresh token has already been used", 401)
-    
+
     result = await db.execute(
         select(AdminAccount).where(AdminAccount.id == admin_id)
     )
     admin = result.scalar_one_or_none()
-    
+
     if admin is None or admin.deleted_at is not None or not admin.is_active:
         raise AuthError("Admin not found", 401)
-    
+
+    # Session revocation: refresh tokens minted before a credential change
+    # carry a stale token_version.
+    if int(payload.get("token_version", 0)) != (admin.token_version or 0):
+        raise AuthError("Invalid refresh token", 401)
+
     # Revoke old refresh token
     if jti:
         exp_ts = payload.get("exp")
@@ -413,6 +459,8 @@ async def refresh_admin_tokens(
         result = await db.execute(stmt)
         await db.commit()
         if result.rowcount == 0:
+            # Lost the race with a concurrent refresh — same reuse response.
+            await _bump_token_version(db, AdminAccount, admin_id)
             raise AuthError("Refresh token has already been used", 401)
-    
+
     return await create_admin_tokens(admin)

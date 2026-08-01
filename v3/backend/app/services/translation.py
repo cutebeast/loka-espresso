@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from httpx import AsyncClient
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -86,15 +87,62 @@ def _compute_hash(source_locale: str, target_locale: str, text: str) -> str:
 
 locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
 
+# House-style glossary: manually approved translations (is_auto_translated=false)
+# injected into every prompt so future AI translations reference the team's
+# manual work (terminology + gloss format). Cached 10 min per locale.
+_glossary_cache: dict[str, tuple[float, str]] = {}
+_GLOSSARY_TTL = 600
+
+
+async def _get_style_examples(db: AsyncSession | None, target_locale: str) -> str:
+    """Build the house-style example block for a target locale from manual rows."""
+    import time as _time
+    now = _time.time()
+    hit = _glossary_cache.get(target_locale)
+    if hit and (now - hit[0]) < _GLOSSARY_TTL:
+        return hit[1]
+    examples = ""
+    if db is not None:
+        try:
+            result = await db.execute(
+                select(Translation.source_text, Translation.translated_text)
+                .where(
+                    Translation.is_auto_translated.is_(False),
+                    Translation.locale == target_locale,
+                    Translation.column_name.in_(("item_name", "title")),
+                    Translation.source_text.isnot(None),
+                    Translation.source_text != "",
+                )
+                .order_by(Translation.updated_at.desc())
+                .limit(25)
+            )
+            lines = [
+                f"- {src} → {tr}"
+                for src, tr in result.all()
+                if src and tr and src.strip() and tr.strip() and src != tr
+            ]
+            if lines:
+                examples = (
+                    "HOUSE STYLE EXAMPLES — these are the team's manually approved "
+                    "translations. Match their terminology, tone and bracket format "
+                    "exactly for similar items:\n" + "\n".join(lines) + "\n\n"
+                )
+        except Exception:
+            examples = ""
+    _glossary_cache[target_locale] = (now, examples)
+    return examples
+
 # Shared F&B/brand context — injected into every DeepSeek prompt so menu
 # translations are domain-accurate (root cause of e.g. "Beyond Coffee" →
 # 咖啡之外 instead of 非咖啡饮品).
-FNB_CONTEXT = """CONTEXT: Loka Espresso is a halal Turkish coffee house in Pavilion Kuala Lumpur. The text is F&B menu content (item names, categories, modifiers, descriptions).
+FNB_CONTEXT = """CONTEXT: Loka Espresso is a halal Turkish coffee house in Pavilion Kuala Lumpur. The text is F&B menu content (item names, categories, modifiers, descriptions) for a real restaurant menu — every translation must read naturally on an F&B menu in Malaysia, never as generic prose.
 RULES:
-- Translate as FOOD & BEVERAGE menu text, not generic prose — natural menu wording for the target language as used in Malaysia.
+- Translate as FOOD & BEVERAGE menu text, not generic prose — natural menu wording for the target language as used in Malaysia. Use F&B vocabulary (drinks, brewing, pastry, kitchen terms), not literal/dictionary renderings.
+- MENU ITEM & DRINK NAMES: keep the original English name and append the translated name in brackets — format "English Name（翻译名）" for Chinese (full-width brackets) and "English Name (Translated Name)" for Malay/Tamil/Turkish. Example: "Tropical Sunrise" → "Tropical Sunrise（热带晨曦）", "Citrus Zing" → "Citrus Zing (Sitrus Segar)". The translated part must convey the FLAVOUR/INGREDIENT feeling of the name, not a robotic literal translation.
 - Keep untranslated: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve), Turkish dish names (Gozleme, Pide, Baklava, Kahve, Meze, Shakshuka, Simit), and technical terms (SKU, QR, RM, URL).
 - "Beyond Coffee" is a menu category for NON-COFFEE beverages (teas, juices, frappes, other drinks) — translate with the meaning "non-coffee drinks", never literally as "outside/beyond coffee".
 - Coffee "beans" are coffee beans (never nuts/legumes); "shot" means an espresso shot; "single origin" refers to single-origin coffee.
+- DESCRIPTIONS: translate fully into the target language with appetizing F&B wording; keep brand and Turkish dish names as-is inside descriptions.
 
 """
 
@@ -108,19 +156,25 @@ async def _call_deepseek(text: str, target_locale: str, model: str | None = None
     if not api_key:
         return None
     lang = locale_names.get(target_locale, target_locale)
+    style_examples = await _get_style_examples(db, target_locale)
     prompt = (
         FNB_CONTEXT
+        + style_examples
         + f"Translate the following text to {lang}. "
         f"Return ONLY the translated text, nothing else:\n\n{text}"
     )
+    # Scale output budget/timeouts with input size — long texts (help-article
+    # bodies) otherwise hit the 2000-token / 30s ceiling and fail silently.
+    max_tokens = min(8000, max(2000, len(text) * 2))
+    timeout = 60 if len(text) > 1500 else 30
     try:
-        async with AsyncClient(timeout=30) as client:
+        async with AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 2000,
+                    "max_tokens": max_tokens,
                     "temperature": 0.1,
                 },
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -257,7 +311,14 @@ async def auto_translate_record(
     record_id: int,
     fields: dict[str, str],
 ) -> int:
-    """Auto-translate all fields for all supported locales on create/update.
+    """Translate only what needs translating, for all supported locales.
+
+    Contract (round 35): fills MISSING rows and refreshes STALE rows (source
+    text changed since the row was written). Rows whose translation already
+    matches the current source are never rewritten — this protects manually
+    reviewed translations (is_auto_translated=false) and avoids redundant
+    API calls on every save/cron. Stale manual rows are re-translated and
+    re-marked auto so the review cron picks them up again.
     Uses retry-on-conflict for concurrent upsert safety.
     API calls for missing translations are executed concurrently to reduce latency."""
     columns = TRANSLATABLE_ENTITIES.get(table_name, [])
@@ -276,10 +337,36 @@ async def auto_translate_record(
     if not needed:
         return 0
 
+    # Skip (column, locale) pairs that already have a translation for the
+    # CURRENT source text — auto-translate fills gaps and refreshes stale
+    # (source-changed) rows only; it never rewrites a translation that
+    # matches its source. This protects manually reviewed rows AND avoids
+    # pointless API calls on every save/cron run.
+    existing_by_pair = {}
+    for t in (await db.execute(
+        select(Translation).where(
+            Translation.table_name == table_name,
+            Translation.record_id == record_id,
+        )
+    )).scalars().all():
+        existing_by_pair[(t.column_name, t.locale)] = t
+    needed = [
+        (col, loc, text)
+        for col, loc, text in needed
+        if existing_by_pair.get((col, loc)) is None
+        or existing_by_pair[(col, loc)].source_text != text
+    ]
+
+    if not needed:
+        return 0
+
     # Load credentials once so concurrent API calls can reuse the in-memory cache.
     await _get_translation_creds(db)
 
     # Check the translation cache for all needed items in a single query.
+    # (Round 35: the cache can no longer be poisoned with source-text
+    # fallbacks — failures are skipped below, never cached — so a cached
+    # entry equal to its source is a legitimate provider keep.)
     hashes = {_compute_hash(SOURCE_LOCALE, loc, text) for _, loc, text in needed}
     cache_result = await db.execute(
         select(TranslationCache).where(TranslationCache.hash.in_(hashes))
@@ -311,7 +398,14 @@ async def auto_translate_record(
             if isinstance(translated, Exception):
                 logger.warning(f"Translation fetch failed for {loc}: {translated}")
                 translated = None
-            translated = translated or text  # Fallback to source text.
+            if translated is None:
+                # All providers failed — SKIP the row entirely. Never store the
+                # English source as the "translation" (round 35 bug: failures
+                # were persisted and cached, so they looked done and never
+                # retried). A missing row is retried by the next cron run.
+                logger.warning(f"Skipping {table_name}.{record_id}.{col} [{loc}] — translation providers failed")
+                cache_map.pop(cache_hash, None)
+                continue
             ops.append({"col": col, "loc": loc, "text": text, "translated": translated})
             cache_map[cache_hash] = translated
 
@@ -330,6 +424,14 @@ async def auto_translate_record(
                 )
                 existing = result.scalar_one_or_none()
                 if existing:
+                    if existing.source_text == op["text"]:
+                        # Defense-in-depth (races): a translation that matches
+                        # its current source is never rewritten — `needed` was
+                        # already pre-filtered above, so this should not hit.
+                        continue
+                    # Stale row (source text changed): re-translate. Manual
+                    # rows are re-marked auto so the review cron/queue picks
+                    # them up for re-review.
                     existing.translated_text = op["translated"]
                     existing.source_text = op["text"]
                     existing.updated_at = datetime.now(timezone.utc)
@@ -353,20 +455,27 @@ async def auto_translate_record(
 
             # Persist new cache entries in the same transaction.
             # Dedupe by hash — identical texts across fields/records would
-            # otherwise violate the cache's unique hash constraint.
+            # otherwise violate the cache's unique hash constraint. Failed
+            # fetches were skipped above (no cache_map entry) — never cache
+            # failures.
             seen_hashes: set[str] = set()
             for _, loc, text, cache_hash in missing_meta:
-                if cache_hash in seen_hashes:
+                if cache_hash in seen_hashes or cache_hash not in cache_map:
                     continue
                 seen_hashes.add(cache_hash)
                 translated = cache_map[cache_hash]
-                db.add(TranslationCache(
-                    source_text=text,
-                    source_locale=SOURCE_LOCALE,
-                    target_locale=loc,
-                    translated_text=translated,
-                    hash=cache_hash,
-                ))
+                # Conflict-safe: a sibling record in the same outer transaction
+                # may already have committed this hash (cache SELECTs can't see
+                # unflushed rows under autoflush=False).
+                await db.execute(
+                    pg_insert(TranslationCache).values(
+                        source_text=text,
+                        source_locale=SOURCE_LOCALE,
+                        target_locale=loc,
+                        translated_text=translated,
+                        hash=cache_hash,
+                    ).on_conflict_do_nothing(index_elements=["hash"])
+                )
 
             await db.commit()
             return count

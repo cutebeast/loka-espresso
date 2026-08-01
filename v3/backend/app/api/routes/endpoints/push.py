@@ -5,15 +5,16 @@ from pydantic import BaseModel
 
 from app.core.config import get_settings
 from app.services.web_push import get_vapid_public_key, send_web_push
+from app.schemas.base import BaseSchema
 
 public_router = APIRouter(prefix="/push", tags=["push"])
 
 
-class VapidPublicKeyResponse(BaseModel):
+class VapidPublicKeyResponse(BaseSchema):
     public_key: str
 
 
-class PushSendRequest(BaseModel):
+class PushSendRequest(BaseSchema):
     subscription: dict
     payload: dict
 

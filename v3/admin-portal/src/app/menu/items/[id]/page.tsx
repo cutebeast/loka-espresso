@@ -361,6 +361,15 @@ export default function ItemEditPage() {
       pl.calories = pl.calories ? Number(pl.calories) : null;
       pl.prep_time_minutes = Number(pl.prep_time_minutes) || 10;
       pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
+      // Add-on deal fields: send nulls when the deal is off or value is empty —
+      // the backend expects a decimal or null, never "".
+      if (!pl.is_addon_deal_eligible || !form.addon_discount_value) {
+        pl.addon_discount_type = null;
+        pl.addon_discount_value = null;
+        pl.eligible_bundle_ids = null;
+      } else {
+        pl.addon_discount_value = Number(form.addon_discount_value);
+      }
       await api.patch(`/admin/menu/items/${id}`, pl);
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);

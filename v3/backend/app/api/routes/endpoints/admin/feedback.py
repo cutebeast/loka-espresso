@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
-from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, require_store_admin
 from app.core.rate_limiter import limiter
 from app.models.customer import Customer
 from app.models.feedback import FeedbackEntry
@@ -135,6 +135,11 @@ async def reply_feedback(
     entry = result.scalar_one_or_none()
     if entry is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
+
+    # Store-scoped replies: a store_manager may only reply to feedback for
+    # their own store(s).
+    if entry.store_id is not None:
+        await require_store_admin(db, admin, entry.store_id)
 
     if data.clear_reply:
         entry.admin_reply = None

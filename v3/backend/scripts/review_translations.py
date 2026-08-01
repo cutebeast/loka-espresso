@@ -64,6 +64,7 @@ Domain rules:
 - NO wrong-word traps: coffee "beans" are coffee beans (never nuts/legumes); "shot" = espresso shot; "single origin" = single-origin coffee.
 - "Beyond Coffee" is a menu category for NON-COFFEE beverages (teas, juices, frappes) — it must read as "non-coffee drinks", never literally "outside/beyond coffee".
 - Keep untranslated: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve) and Turkish dish names (Gozleme, Pide, Baklava, Kahve, Meze, Shakshuka, Simit).
+- MENU ITEM/DRINK NAME STYLE (intended, do NOT "fix" this): names use the gloss format "English Name（翻译名）" for Chinese (full-width brackets) and "English Name (Translated Name)" for Malay/Tamil/Turkish. This format is the house style — only flag a name if the translated part is wrong/unnatural, and any "fix" must keep the same "English (Translation)" format.
 
 Items (JSON):
 {items}

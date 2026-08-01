@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Documentation
 
-*Last updated: 2026-07-29 (round 34)*
+*Last updated: 2026-07-30 (round 35)*
 
 ## Overview
 
@@ -324,3 +324,15 @@ Full fresh audit (5 parallel tracks + infra sweep; every finding verified in cod
 - **Infra**: PostgreSQL/Redis were internet-reachable (stale containers predating the compose `127.0.0.1` pin) — recreated, now localhost-only, data intact
 
 Verification: 42/42 backend unit tests, 217/217 E2E (15 skipped), tsc ×3 clean, no Alembic drift, exploit probes return 401, zero 500s during the full E2E run.
+
+## Security & reliability hardening (2026-07-30, round 35 audit)
+
+Fresh 6-track audit; every finding re-verified in code before fixing. Full details in `AGENTS.md` "Round 35 — fresh full audit & hardening". Highlights:
+
+- **Auth**: cross-domain ACCESS-token confusion closed (admin token authenticated as the colliding-id customer — round 34 had fixed refresh tokens only); F5 built — `token_version` on all principals revokes sessions on password/PIN change; F7 — refresh-reuse detection kills the whole token family; F8 — login enumeration closed (dummy argon2 verify, uniform 401, lock evaluated after password)
+- **Money**: admin payment paths no longer double-charge after partial refund; provider refunds execute after the local Refund row with idempotency keys; `reason_category` validated (was a post-provider 500); cancel guards include `partially_refunded`; Stripe dispute webhooks actually match payments now and reverse loyalty benefits
+- **Authorization**: cross-store feedback reply scoped; store_manager platform-wide money mutations (wallet adjust/topup/deduct, points, tiers, customer delete) gated to HQ roles
+- **Public surface**: kiosk no longer reactivates banned accounts; admin/staff help articles no longer publicly readable; guest-pay JWTs stripped from uvicorn/Caddy logs; chunked body-cap bypass closed (411); Pillow decompression-bomb cap
+- **Infra**: staff portal has a CSP now; `09_schema_sync.sql` regenerated (head `k1e2f3a4b5c6`); `check-all.sh` gates alembic + pytest + lint
+
+Verification: 42/42 backend unit tests, full E2E re-run green, tsc ×3 clean, single Alembic head with no drift, live exploit probes all blocked.

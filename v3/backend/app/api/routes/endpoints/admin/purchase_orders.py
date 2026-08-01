@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, PurchaseOrder, PurchaseOrderLine, Supplier
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 
@@ -18,14 +18,14 @@ router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 # Inline schemas
 # ---------------------------------------------------------------------------
 
-class PurchaseOrderLineCreate(BaseModel):
+class PurchaseOrderLineCreate(BaseSchema):
     inventory_item_id: int
     quantity_ordered: float = Field(..., gt=0)
     unit_cost: float = Field(..., gt=0)
     line_total: float | None = None
 
 
-class PurchaseOrderLineOut(BaseModel):
+class PurchaseOrderLineOut(BaseSchema):
     model_config = {"from_attributes": True}
 
     id: int
@@ -38,7 +38,7 @@ class PurchaseOrderLineOut(BaseModel):
     created_at: datetime
 
 
-class PurchaseOrderCreate(BaseModel):
+class PurchaseOrderCreate(BaseSchema):
     store_id: int
     supplier_id: int
     po_number: str = Field(..., max_length=50)
@@ -48,7 +48,7 @@ class PurchaseOrderCreate(BaseModel):
     lines: list[PurchaseOrderLineCreate] = []
 
 
-class PurchaseOrderUpdate(BaseModel):
+class PurchaseOrderUpdate(BaseSchema):
     supplier_id: int | None = None
     po_number: str | None = Field(None, max_length=50)
     total_amount: float | None = Field(None, ge=0)
@@ -56,7 +56,7 @@ class PurchaseOrderUpdate(BaseModel):
     notes: str | None = Field(None, max_length=500)
 
 
-class PurchaseOrderOut(BaseModel):
+class PurchaseOrderOut(BaseSchema):
     model_config = {"from_attributes": True}
 
     id: int
@@ -79,12 +79,12 @@ class PurchaseOrderDetailOut(PurchaseOrderOut):
     lines: list[PurchaseOrderLineOut] = []
 
 
-class ReceiveLine(BaseModel):
+class ReceiveLine(BaseSchema):
     line_id: int
     quantity_received: float = Field(..., ge=0)
 
 
-class PurchaseOrderReceive(BaseModel):
+class PurchaseOrderReceive(BaseSchema):
     lines: list[ReceiveLine] = []
 
 

@@ -321,9 +321,9 @@ UPSERT = text(
     INSERT INTO translations (namespace, translation_key, locale, translated_text, source_text, is_auto_translated)
     VALUES (:namespace, :key, :locale, :translated_text, :source_text, false)
     ON CONFLICT (namespace, translation_key, locale)
-    DO UPDATE SET translated_text = EXCLUDED.translated_text,
-                  source_text = EXCLUDED.source_text,
-                  is_auto_translated = false
+    DO NOTHING
+    -- round 35: never overwrite existing rows; Translations-page edits are manual
+    -- (is_auto_translated=false) and sacred. Dictionary changes need a manual update.
     """
 )
 

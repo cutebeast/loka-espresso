@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.money import to_decimal
 from app.models.bundle_product import BundleProduct, BundleProductComponent
 from app.models.cart import CartLineItem, CustomerCart
-from app.models.menu import MenuCategory, MenuItem, MenuModifierOption, MenuVariant
+from app.models.menu import MenuCategory, MenuItem, MenuModifierGroup, MenuModifierOption, MenuVariant
 from app.schemas.cart import CartLineItemCreate, CartLineItemUpdate
 
 
@@ -86,6 +86,10 @@ async def _get_menu_item_price(
         )
         variant = variant_result.scalar_one_or_none()
         if variant:
+            # The variant must belong to this menu item — blindly accepting the
+            # id lets a customer attach another item's price adjustment.
+            if variant.parent_item_id != menu_item_id:
+                raise CartError("Variant does not belong to this menu item", 400)
             unit_price += to_decimal(variant.price_adjustment)
 
     # Calculate modifier total (batch option lookup to avoid N+1)
@@ -104,7 +108,21 @@ async def _get_menu_item_price(
         opts_result = await db.execute(
             select(MenuModifierOption).where(MenuModifierOption.id.in_(all_option_ids))
         )
-        option_prices = {opt.id: to_decimal(opt.price_adjustment) for opt in opts_result.scalars().all()}
+        options = opts_result.scalars().all()
+        # Each option must belong to a modifier group attached to this menu
+        # item — otherwise a customer could attach another item's options.
+        group_ids = {opt.modifier_group_id for opt in options}
+        valid_group_result = await db.execute(
+            select(MenuModifierGroup.id).where(
+                MenuModifierGroup.id.in_(group_ids),
+                MenuModifierGroup.menu_item_id == menu_item_id,
+            )
+        )
+        valid_group_ids = set(valid_group_result.scalars().all())
+        for opt in options:
+            if opt.modifier_group_id not in valid_group_ids:
+                raise CartError("Modifier option does not belong to this menu item", 400)
+        option_prices = {opt.id: to_decimal(opt.price_adjustment) for opt in options}
         modifier_total = sum(option_prices.get(opt_id, Decimal(0)) for opt_id in all_option_ids)
 
     return unit_price, modifier_total

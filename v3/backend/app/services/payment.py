@@ -277,6 +277,7 @@ async def _create_stripe_refund(
     payment: Payment,
     amount: Decimal,
     api_key: str,
+    idempotency_key: str | None = None,
 ) -> stripe.Refund:
     """Create a real Stripe refund."""
     assert payment.provider_transaction_id is not None
@@ -310,7 +311,7 @@ async def _create_stripe_refund(
 
     try:
         return await anyio.to_thread.run_sync(
-            lambda: stripe.Refund.create(**params, api_key=api_key)
+            lambda: stripe.Refund.create(**params, api_key=api_key, idempotency_key=idempotency_key)
         )
     except StripeError as exc:
         logger.error("Stripe refund creation failed: %s", exc)
@@ -1403,29 +1404,11 @@ async def refund_payment(
         raise PaymentError(f"Refund amount exceeds available balance ({max_refund})", 400)
 
     provider_refund_id = f"re_sim_{uuid4().hex}"
-    refund_status = "pending"
-    completed_at: datetime | None = None
 
-    stripe_enabled = await _stripe_enabled(db)
-    is_real_provider = (payment.provider == "stripe" and stripe_enabled) or (
-        payment.provider == "hitpay" and await hitpay_enabled(db)
-    )
-    if payment.provider == "stripe" and stripe_enabled:
-        api_key = await _get_stripe_secret_key(db)
-        stripe_refund = await _create_stripe_refund(payment, refund_amount, api_key)
-        provider_refund_id = stripe_refund.id
-        refund_status = "completed" if stripe_refund.status == "succeeded" else "pending"
-    elif payment.provider == "hitpay" and await hitpay_enabled(db):
-        hitpay_refund = await create_hitpay_refund(db, payment, refund_amount)
-        provider_refund_id = hitpay_refund["id"]
-        refund_status = "completed" if hitpay_refund.get("status") == "completed" else "pending"
-    elif payment.provider in ("internal_wallet", "cash", "store_credit"):
-        # Wallet/store-credit/cash refunds are settled the moment they're
-        # recorded — there is no external provider to confirm later (cash is
-        # handed back at the counter), so complete them immediately.
-        refund_status = "completed"
-        completed_at = datetime.now(timezone.utc)
-
+    # Insert the Refund row FIRST (status "pending") so it has an id before the
+    # provider is contacted — a DB failure after a provider refund would strand
+    # real money with no local record, and the row id doubles as the provider
+    # idempotency key so admin retries cannot double-refund.
     refund = Refund(
         payment_id=payment_id,
         order_id=payment.order_id,
@@ -1434,12 +1417,42 @@ async def refund_payment(
         reason_category=reason_category,
         approved_by=approved_by,
         provider_refund_id=provider_refund_id,
-        status=refund_status,
-        completed_at=completed_at,
+        status="pending",
     )
     db.add(refund)
     await db.flush()
     await db.refresh(refund)
+
+    stripe_enabled = await _stripe_enabled(db)
+    is_real_provider = (payment.provider == "stripe" and stripe_enabled) or (
+        payment.provider == "hitpay" and await hitpay_enabled(db)
+    )
+    try:
+        if payment.provider == "stripe" and stripe_enabled:
+            api_key = await _get_stripe_secret_key(db)
+            stripe_refund = await _create_stripe_refund(
+                payment, refund_amount, api_key, idempotency_key=f"refund_{refund.id}"
+            )
+            refund.provider_refund_id = stripe_refund.id
+            refund.status = "completed" if stripe_refund.status == "succeeded" else "pending"
+        elif payment.provider == "hitpay" and await hitpay_enabled(db):
+            hitpay_refund = await create_hitpay_refund(
+                db, payment, refund_amount, request_id=f"refund_{refund.id}"
+            )
+            refund.provider_refund_id = hitpay_refund["id"]
+            refund.status = "completed" if hitpay_refund.get("status") == "completed" else "pending"
+        elif payment.provider in ("internal_wallet", "cash", "store_credit"):
+            # Wallet/store-credit/cash refunds are settled the moment they're
+            # recorded — there is no external provider to confirm later (cash is
+            # handed back at the counter), so complete them immediately.
+            refund.status = "completed"
+            refund.completed_at = datetime.now(timezone.utc)
+    except Exception:
+        # Provider call failed after the local row exists — mark it failed and
+        # commit so the failure (and its idempotency key) survives the re-raise.
+        refund.status = "failed"
+        await db.commit()
+        raise
 
     # Audit trail — refunds are money movement and must be attributable.
     db.add(AuditLog(
@@ -1454,7 +1467,7 @@ async def refund_payment(
             "reason": reason,
             "reason_category": reason_category,
             "provider": payment.provider,
-            "status": refund_status,
+            "status": refund.status,
         },
     ))
 
@@ -1479,7 +1492,7 @@ async def refund_payment(
     )
     await db.flush()
 
-    if payment.provider == "internal_wallet" and refund_status == "completed":
+    if payment.provider == "internal_wallet" and refund.status == "completed":
         await _credit_wallet_for_refund(db, payment, refund, refund_amount, precision, rounding_mode)
 
     await _reverse_order_benefits_on_refund(
@@ -1777,6 +1790,11 @@ async def _handle_stripe_dispute_webhook(
     payment.refunded_amount = new_total
     payment.refund_count = (payment.refund_count or 0) + 1
 
+    # Mirror _handle_stripe_refund_webhook: disputes withdraw funds like a
+    # refund, so reverse loyalty points / vouchers / annual spend too.
+    is_full = bool(payment.captured_amount) and new_total >= payment.captured_amount
+    await _reverse_order_benefits_on_refund(db, payment, refund_delta, is_full)
+
     order_result = await db.execute(select(Order).where(Order.id == payment.order_id).with_for_update())
     order = order_result.scalar_one_or_none()
     if order and order.status not in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"):
@@ -1830,6 +1848,24 @@ async def process_webhook_event(
                 select(Payment).where(Payment.provider_transaction_id == charge_id).with_for_update()
             )
             payment = result.scalar_one_or_none()
+            if payment is None:
+                # Disputes reference a Charge id, but provider_transaction_id
+                # holds a PaymentIntent/Checkout Session id — resolve via
+                # payment_intent or metadata before giving up (same fallback as
+                # the charge.* branch below).
+                pi_id = data.get("payment_intent")
+                if pi_id:
+                    result = await db.execute(
+                        select(Payment).where(Payment.provider_transaction_id == pi_id).with_for_update()
+                    )
+                    payment = result.scalar_one_or_none()
+                metadata = data.get("metadata", {})
+                payment_id = metadata.get("payment_id")
+                if payment is None and payment_id:
+                    result = await db.execute(
+                        select(Payment).where(Payment.id == int(payment_id)).with_for_update()
+                    )
+                    payment = result.scalar_one_or_none()
             if payment is None:
                 logger.warning("Payment not found for dispute charge_id %s", charge_id)
                 return None

@@ -10,14 +10,14 @@ from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, CurrentStaff, require_store_admin
 from app.models.staff import StaffProfile, StaffTimeEvent
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 
 
 # ---------------------------------------------------------------------------
 # Inline schemas
 # ---------------------------------------------------------------------------
 
-class TimeEventBase(BaseModel):
+class TimeEventBase(BaseSchema):
     staff_id: int
     store_id: int
     event_type: Literal["clock_in", "clock_out", "break_start", "break_end", "overtime_start"]
@@ -32,12 +32,12 @@ class TimeEventCreate(TimeEventBase):
     pass
 
 
-class TimeEventVerify(BaseModel):
+class TimeEventVerify(BaseSchema):
     approved: bool = True
     notes: str | None = Field(None, max_length=255)
 
 
-class TimeEventOut(BaseModel):
+class TimeEventOut(BaseSchema):
     model_config = {"from_attributes": True}
 
     id: int

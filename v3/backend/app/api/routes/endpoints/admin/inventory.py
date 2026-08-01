@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.inventory import InventoryCategory, InventoryItem, InventoryStock, Supplier
+from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.inventory import (
     InventoryCategoryCreate,
@@ -525,8 +526,14 @@ async def create_supplier(
     data: SupplierCreate,
 ):
     """Create a new supplier."""
-    if data.store_id is not None:
-        await require_store_admin(db, admin, data.store_id)
+    if not data.store_id:
+        raise HTTPException(status_code=400, detail="store_id is required")
+    store_exists = (await db.execute(
+        select(Store.id).where(Store.id == data.store_id, Store.deleted_at.is_(None))
+    )).scalar_one_or_none()
+    if store_exists is None:
+        raise HTTPException(status_code=400, detail=f"Store {data.store_id} not found")
+    await require_store_admin(db, admin, data.store_id)
     supplier_data = data.model_dump()
     field_map = {"phone_number": "phone", "email_address": "email"}
     mapped = {field_map.get(k, k): v for k, v in supplier_data.items()}

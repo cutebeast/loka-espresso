@@ -1,20 +1,63 @@
 """Base Pydantic schemas and common patterns."""
 
+import types
+import typing
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
 T = TypeVar("T")
 
 Money = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float, when_used="json")]
 
 
+def _allows_none(annotation: Any) -> bool:
+    if annotation is None or annotation is type(None):
+        return True
+    origin = typing.get_origin(annotation)
+    if origin in (typing.Union, types.UnionType):
+        return type(None) in typing.get_args(annotation)
+    return False
+
+
 class BaseSchema(BaseModel):
     """Base schema with ORM mode enabled."""
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _empty_strings_to_none(cls, data: Any) -> Any:
+        """Treat empty/whitespace-only strings as absent (None) — but ONLY
+        for fields whose type allows None.
+
+        HTML forms submit untouched optional fields as "" — without this,
+        optional Decimal/int/datetime fields 422 with e.g. decimal_parsing
+        (round 35: menu item add/edit broke on addon_discount_value="").
+        Required-str fields must keep "" (e.g. UI translations use
+        table_name=""/column_name="" as the not-table-bound convention).
+        """
+        if not isinstance(data, dict):
+            return data
+        try:
+            fields = cls.model_fields
+        except Exception:
+            return data
+        # Map payload keys (field name, alias, validation_alias) → nullable?
+        nullable_keys: set[str] = set()
+        for name, f in fields.items():
+            if _allows_none(f.annotation):
+                nullable_keys.add(name)
+                if f.alias:
+                    nullable_keys.add(f.alias)
+                if f.validation_alias and isinstance(f.validation_alias, str):
+                    nullable_keys.add(f.validation_alias)
+        return {
+            k: (None if isinstance(v, str) and not v.strip() and k in nullable_keys else v)
+            for k, v in data.items()
+        }
 
 
 class TimestampedSchema(BaseSchema):

@@ -44,6 +44,7 @@ function clearAuthStorage(): void {
   localStorage.removeItem("staffEmail");
   localStorage.removeItem("staffName");
   localStorage.removeItem("staffId");
+  localStorage.removeItem("staffStoreId");
 }
 
 

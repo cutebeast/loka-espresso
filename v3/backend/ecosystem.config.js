@@ -8,7 +8,10 @@ module.exports = {
       // limiter's proxy-chain detection (loopback ⇒ Caddy) works; without
       // this uvicorn rewrites client from XFF and per-IP keys shard across
       // Cloudflare edge nodes.
-      args: "-m uvicorn app.main:app --host 0.0.0.0 --port 13800 --no-proxy-headers",
+      // --no-access-log: guest-pay URLs carry 24h JWTs in the query string;
+      // uvicorn's access log writes full URLs. The app's own
+      // RequestLoggingMiddleware already logs method+path (no query).
+      args: "-m uvicorn app.main:app --host 0.0.0.0 --port 13800 --no-proxy-headers --no-access-log",
       instances: 1,
       autorestart: true,
       watch: false,

@@ -97,7 +97,7 @@ async def staff_customer_search(staff: CurrentStaff, db: DBDependency, request: 
     return APIResponse(data={"items": items})
 
 
-class FindOrCreateCustomerRequest(BaseModel):
+class FindOrCreateCustomerRequest(BaseSchema):
     phone_number: str = Field(..., min_length=5, max_length=25)
     display_name: str = Field(..., min_length=1, max_length=100)
 

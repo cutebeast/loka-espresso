@@ -52,6 +52,10 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Bumped on credential change / refresh-token reuse to revoke all sessions.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     principal: Mapped["IAMPrincipal"] = relationship("IAMPrincipal", back_populates="staff_profile")
     store: Mapped["Store"] = relationship("Store")

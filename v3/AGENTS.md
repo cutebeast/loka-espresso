@@ -1,6 +1,6 @@
 # FNB Super App v3 — Agent Notes
 
-*Last updated: 2026-07-29*
+*Last updated: 2026-07-30*
 
 ## Active code
 
@@ -130,7 +130,7 @@ Pending decisions / tasks before switching to `*.lokaespresso.com` (see checklis
 - Voucher eligibility is enforced server-side: `max_global_uses`, `max_uses_per_customer`, `first_order_only`, `stackable`, store/item/category scope
 - Loyalty tier `points_multiplier` is applied on order points (customer + POS paths); `annual_spend` accrues on payment capture. Tier validity/downgrade EVALUATION job does not exist yet (fields are stored only)
 - Staff with `pin_last_changed_at IS NULL` are blocked (`403 must_change_pin`) on all staff endpoints except auth/me, change-pin/password, refresh, logout — E2E conftest rotates the Test Staff PIN (123456→654321→123456) to clear it
-- Alembic head: `9e63748a26c8` (lucky draw tables; previously `b6729f513c8f`). Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
+- Alembic head: `k1e2f3a4b5c6` (token_version session revocation, round 35). Fresh docker deploys: `infra/db/01-07` + generated `09_schema_sync.sql` + `10_seed_data.sql`; regenerate 09 with `v3/scripts/dump_schema_sql.py` after model changes; `Dockerfile.backend` also runs `alembic upgrade head` on boot
 
 ## What's been done (as of 2026-07-11)
 
@@ -1308,3 +1308,78 @@ Two real bugs found and fixed:
 | Menu translations (locale=ms) / events | live / 3 events |
 | New 500s during PWA probes | 0 (only the intentional HitPay 503s) |
 
+
+## Round 35 — fresh full audit & hardening (2026-07-30)
+
+6-track fresh audit (auth/session, authz/store-scoping, money, public surface, frontends ×3, infra) with every finding re-verified in code before fixing. Round-34 regression checks all PASS except the two noted below. ~25 fixes.
+
+### Critical / High
+- **Cross-domain ACCESS-token confusion (new, live-proven pre-fix)** — round 34 fixed refresh tokens only; `get_current_customer` trusted any `type="access"` JWT's `sub`, so an admin token authenticated as the customer with the colliding id (admin id 1 → demo customer 1, wallet/orders exposed). Fixed: customer identity now requires the `customer_id` claim (deps.py `get_current_customer` + `_get_optional_customer` in public/content.py + the local `get_optional_customer` in public/lucky_draw.py). Admin/staff mints unchanged (they carry `admin_id`/`staff_id`, never `customer_id`).
+- **F5 session revocation — BUILT**: `token_version` column (int, default 0) on `admin_accounts`/`staff_profiles`/`customers` (migration `k1e2f3a4b5c6`); claim minted in all access+refresh tokens; enforced in `get_current_customer`/`get_current_admin`/`get_current_staff` + all refresh flows; bumped on admin change-password, staff change-password, staff change-pin. Missing claim = 0, so pre-existing sessions survive until a credential change. Live-verified: old access+refresh 401 after password change.
+- **F7 refresh-family revocation** — refresh-reuse detection now bumps the principal's `token_version` (both reuse points in customer/admin refresh; staff refresh wraps `blacklist_refresh_token`), killing the whole stolen family, not just one JTI.
+- **Admin double-charge after partial refund (live-proven pre-fix)** — `admin/orders.py` payment + wallet-pay computed already-paid from `status="captured"` only; now `in_("captured","partially_refunded")` summing `captured_amount` (round-34 staff mirror had been fixed; admin mirrors missed).
+- **Refund safety** — provider refund now executes AFTER the local Refund row exists (status pending → completed/failed), with Stripe idempotency key `refund_{id}` (+ HitPay `X-REQUEST-ID`); provider exception marks the refund failed instead of stranding money. `RefundCreate.reason_category` is now a `Literal[...]` of the 6 DB-CHECK values (was free `str` → 500 *after* provider contact).
+
+### Medium
+- Cancel guards (`staff/orders.py`, `admin/orders.py` ×2) now include `partially_refunded` — an order holding captured funds can no longer be cancelled.
+- Stripe dispute webhooks resolve the payment via `payment_intent`/metadata fallback (lookup by charge id never matched — every `charge.dispute.*` was silently dropped); dispute handler now also reverses loyalty/voucher/annual-spend benefits like the refund path.
+- **F8 login enumeration** — `login_admin` + staff-login mode 3: dummy argon2 verify for unknown emails (timing), lock evaluated AFTER password verification, uniform 401 for bad credentials (403 locked only after a correct password on a locked account).
+- Cross-store feedback reply now store-scoped (`require_store_admin`).
+- **store_manager money powers revoked** — new `require_hq_write_admin` (system_admin/regional_manager only) on wallet adjust/topup/deduct (incl. the `/admin/wallet` alias) and customer adjust-points/set-tier/soft-delete.
+- Kiosk order creation no longer flips `is_active=True` on a phone match — a banned account stayed banned; order falls back to the walk-in guest profile.
+- Help articles gated: `audience=customer` public; `admin`/`staff` require a matching valid token (cookie or bearer); unknown audience 400; slug endpoint enforces per-article.
+- Guest-pay JWTs no longer logged: uvicorn `--no-access-log` (app middleware logs path only) + Caddy `format filter` stripping `?...` from request URIs on all 6 vhosts; 33 historical `token=eyJ` lines trimmed from pm2/Caddy logs.
+
+### Lows
+- Body-cap chunked bypass closed: `/api/*` requests with `Transfer-Encoding` but no `Content-Length` get 411 (empty-body mutations without either header pass — first version 411'd them and broke 20 E2E tests; RULE: require Content-Length only when Transfer-Encoding is present).
+- Pillow decompression-bomb window closed (`MAX_IMAGE_PIXELS = 40M` + pre-`load()` size check).
+- Lucky-draw free-spin TOCTOU closed with `pg_advisory_xact_lock(campaign_id, customer_id)`.
+- `AdminRegisterRequest.email` now `EmailStr` (was `str` — accounts that could never log in); admin change-password rate-limited 5/min.
+- TokenBlacklist purge added to the daily loyalty-tier cron.
+- Cart validates variant/modifier options belong to the menu item (latent price manipulation).
+- Admin payment capture now grants lucky-draw tickets (staff/POS already did).
+- Staff portal: CSP added (mirrors admin + Stripe script/frame), `staffStoreId` cleared on logout.
+- `.env` files chmod 600; `check-all.sh` now gates alembic check + backend pytest + portal lint (lint last — portals carry pre-existing eslint errors).
+- `09_schema_sync.sql` regenerated (was 3 migrations stale); head is `k1e2f3a4b5c6`.
+
+### Verification
+42/42 backend unit tests; full E2E re-run after the 411 fix (first run 20 failed on the over-broad 411 — all 411-caused, fixed and re-verified); exploit probes: admin-token-as-customer 401 ×2, password-change revocation end-to-end, `reason_category` 422, help gating matrix (401/400/200), chunked 411, login-timing gap collapsed (unknown email now pays argon2 cost); tsc ×3 clean; staff portal rebuilt via rebuild-portal.sh + pos-disp restarted; all 6 pm2 services healthy.
+
+### Still open (documented, next rounds / owner decisions)
+- F-10 store_manager cross-store READS (writes were scoped in r34; money mutations gated to HQ in r35); F-11 store_manager minting own-role admins — restrict at go-live.
+- L1 duplicate payment sessions per order, L2 reward-cap race (customer path), L3 webhook amount/currency cross-check, L4/L5 webhook status edges, L6 voucher oracle (mitigated: 10/min + random codes), L8 store_credit refund void.
+- Stripe "pending" refunds never resolve (no `charge.refund.updated` handling); unpaid kiosk orders hold deducted stock (no abandonment sweep); PWA CSP `unsafe-eval` removal (needs build test); `display_key` in query string (header move at go-live).
+- Policy questions for owner: lucky-draw tickets not clawed back on refund; stock not restored on refund; add-on items sold standalone at kiosk/POS; bundle prices unconfirmed.
+
+### Round 35 follow-up — manual translation overwrite root-caused & fixed (2026-07-30)
+
+User-reported: manually reviewed menu translations kept getting overwritten. Root cause: `auto_translate_record` (`services/translation.py`) runs on EVERY admin create/update of ~20 entity types AND is called for every record by the daily `translate_missing_content.py` cron (04:23) — its upsert overwrote existing rows unconditionally and flipped `is_auto_translated` to True, after which the Sunday `review_translations.py` cron also rewrote them. Fix: the upsert now SKIPS rows with `is_auto_translated=false` whose `source_text` is unchanged (manual review is sacred); a manual row whose source changed IS re-translated and re-marked auto (stale source → needs re-review). Verified live (sentinel row survived auto_translate_record; other fields still translate). DB currently holds 5,537 manual + 21,402 auto rows. RULE: never write to `translations` outside `auto_translate_record` and the admin translation endpoints; the `is_auto_translated=false` + unchanged-`source_text` pair is the manual-review contract — any new writer must honor it.
+
+### Round 35 follow-up 2 — auto-translate contract tightened (2026-07-30)
+
+`auto_translate_record` now translates ONLY missing rows and stale rows (source_text changed since the row was written) — fresh rows (translation matches current source) are skipped BEFORE any DeepSeek API call, regardless of the is_auto_translated flag. Previously it re-translated every field of every record on every save and every daily cron run (wasteful + the overwrite vector). The manual-review contract is subsumed: manual rows with unchanged source are fresh rows → skipped; manual rows with changed source are stale → re-translated + re-marked auto (queue for re-review). Verified live: fresh=0 ops, manual-unchanged untouched, stale re-translated. 42/42 unit, 38/38 translation/content/bundle E2E.
+
+### Round 35 follow-up 3 — untranslated-content audit & repair (2026-07-30)
+
+User-reported: some menu items "reverted" / never properly translated. Three root causes: (1) PROMPT keep-rule — DeepSeek is instructed to keep brand/Turkish/proper names (Coca-Cola, Kahve-i Türk, Baklava, store names) — most identical rows are intended; (2) API-FAILURE FALLBACK BUG — `_fetch_translation` failures stored the EN source as the "translation" AND cached it (`translated or text`), so failures looked done and never retried; (3) batch-concurrency EN echoes + cache re-poisoning between runs (sequential calls translate fine). Fixes: failures now SKIP the row (never store source, never cache — retried by next cron); cache writes conflict-safe (`pg_insert.on_conflict_do_nothing` — autoflush=False hid pending cache rows from sibling records, crashing bulk runs with uq_translation_cache_hash); max_tokens scales to 8000 / timeout 60s for long texts (help bodies). Data repair: purged 1,228 poisoned cache rows; re-translated 73 stale rows (34 real fixes incl. 9 help bodies, 37 provider-kept names, 2 transient retries). RULE: never store source text as a translation; a missing row is always better than a wrong one. OPEN STYLE QUESTION for owner: drink names get plain DeepSeek translations (热带日出) — the team's manual style is "English（中文）" gloss (热带晨曦); if preferred, add the style rule to FNB_CONTEXT and re-run item names.
+
+### Round 35 follow-up 4 — F&B naming-style prompt rule + item-name restyle (2026-07-30)
+
+Owner decision: menu item/drink names use the gloss style "English Name（翻译名）" for zh (full-width brackets) and "English Name (Translated Name)" for ms/ta/tr — added to FNB_CONTEXT with the instruction that the translated part conveys flavour/ingredient feeling, not literal translation; descriptions translate fully with appetizing F&B wording. FNB_CONTEXT also strengthened: "every translation must read naturally on an F&B menu in Malaysia". Cache purged (2,772 rows) per the prompt-change rule. Restyle job re-translated all AUTO item_name rows (648); 16 MANUAL item_name rows were left untouched (protected contract). NOTE: restyle was run sequentially — bulk runs can echo EN under concurrency (see follow-up 3).
+
+### Round 35 follow-up 5 — cron protection matrix verified (2026-07-30)
+
+All 4 translation crons audited against the "never touch good translations" requirement: daily fill (04:23) — only missing/stale rows (fresh-skip contract, verified 0 writes on fresh tables); Sunday menu review (03:17) — auto rows only, and its prompt now documents the gloss naming style as house style so it can't "fix" names back to plain translations (any fix must keep "English (Translation)" format); monthly admin-ui review — auto rows only, UI namespace only; Sunday sync-to-JSON (05:41) — read-only export. Manual rows (is_auto_translated=false, set by any admin Translations-page edit) are untouchable by every cron and by auto_translate_record.
+
+Restyle completed (same day): 648/648 auto item_name rows now in gloss format (644 + 4 transient retries). Verified samples: 'Tropical Sunrise（热带晨曦）' (matches the team's manual style exactly), 'Matcha Latte（抹茶拿铁）', 'Cappuccino (Kappuccino)' ms, 'Pain au Chocolat (Çikolatalı Kruvasan)' tr. 16 manual item_name rows untouched.
+
+### Round 35 follow-up 6 — menu add/edit 422, CRM manual import, seed audit, style glossary (2026-08-01)
+
+- **Menu add/edit 422 (user-reported, screenshots)**: forms sent `addon_discount_value: ""` → decimal_parsing 422. Fixed two ways: (a) SYSTEMIC — `BaseSchema` now has a `model_validator(mode="before")` converting empty/whitespace strings to None for ALL schemas (fixes every optional Decimal/int/datetime field across every endpoint; required fields correctly report "Field required"); all 8 inline `BaseModel` request schemas in admin endpoints converted to `BaseSchema`; (b) menu item new/[id] pages send proper nulls for add-on deal fields. Verified live: create+PATCH with empty decimals 200. RULE: never send "" for optional numeric fields; the backend now tolerates it, but forms should still null them.
+- **CRM manual Chinese menu imported** (`/root/CRM Menu_Chi 2.xlsx`): 112 items imported as PROTECTED manual translations (is_auto_translated=false, gloss format `EN（中文）`, 起司→芝士 normalized, names+descriptions); 24 skipped (16 already re-entered manually by the team — import never clobbers existing manual rows; 8 fuzzy mismatches incl. baklava 双/三/四拼 boxes + 炭烤鸡肉Gözleme which appear NOT to exist in the DB menu — flagged to owner). One fuzzy mismatch self-caught and reverted (36-pc set). Backup: `v3/backup_zh_translations_pre_crm_import.csv`. Comparison report: `v3/translation_review_crm_vs_ai.csv`.
+- **Seed-file audit**: `seed_einvoice_ui_translations.py`, `seed_staff_ui_translations.py`, `seed_staff_ui_offline_translations.py` had ON CONFLICT DO UPDATE on translated_text — would clobber Translations-page edits on re-run. All three now ON CONFLICT DO NOTHING (matching the sync_* scripts, which were already safe). RULE: any future translation seed/migration must use DO NOTHING or honor is_auto_translated=false.
+- **Style glossary**: `_get_style_examples()` in services/translation.py injects up to 25 recent MANUAL translations per locale into every DeepSeek prompt ("HOUSE STYLE EXAMPLES") so future AI translations reference the team's manual work (10-min cache). Verified: new names come out in the exact house style (蜂蜜柚子气泡饮).
+
+### Round 35 follow-up 7 — add/edit sweep across all portals (2026-08-01)
+
+User asked whether ALL add/edit issues (admin/staff/PWA) are solved. Actions: remaining inline BaseModel schemas converted to BaseSchema (staff/customer_ops, staff/equipment, payment GuestPayRequest, kiosk ×3, marketing ×2, customer/order, push ×2) — every request schema in the codebase now gets the empty-string→None validator. Live probe sweep across admin surfaces (menu, vouchers, rewards, inventory, equipment, campaigns, bundles, tax, staff, dietary, allergens, info-cards, stores, tiers): zero decimal_parsing/int_parsing 422s; required-field empties correctly 422 with clear errors. Found+fixed one pre-existing 500: supplier create without store_id (schema allowed None, DB NOT NULL) — now 400 with store-existence check. Probe data cleaned up. Full E2E re-run gated after.

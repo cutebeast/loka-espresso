@@ -276,6 +276,7 @@ async def create_hitpay_refund(
     db: AsyncSession,
     payment: Payment,
     amount: Decimal,
+    request_id: str | None = None,
 ) -> dict:
     """Create a partial or full refund with HitPay.
 
@@ -322,7 +323,7 @@ async def create_hitpay_refund(
                 400,
             )
 
-    request_id = str(uuid4())
+    request_id = request_id or str(uuid4())
     body = {
         "payment_id": hitpay_payment_id,
         "amount": _fmt_amount(amount),

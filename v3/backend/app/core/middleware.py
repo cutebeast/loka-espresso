@@ -42,6 +42,17 @@ class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.url.path.startswith("/api/"):
             content_length = request.headers.get("content-length")
+            transfer_encoding = request.headers.get("transfer-encoding", "")
+            if content_length is None and transfer_encoding:
+                # Chunked/unknown-length bodies bypass the declared-size cap
+                # while handlers buffer them unbounded — reject. Requests with
+                # neither header carry no body (empty-body DELETEs/POSTs are
+                # legitimate) and pass through.
+                return Response(
+                    content='{"detail":"Content-Length header required"}',
+                    status_code=411,
+                    media_type="application/json",
+                )
             if content_length:
                 try:
                     declared = int(content_length)

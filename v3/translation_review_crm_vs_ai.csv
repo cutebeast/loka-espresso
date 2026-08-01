@@ -1,0 +1,145 @@
+﻿Sheet,CRM Manual Name,CRM Description (first 80c),Matched EN Item,Current AI Translation,AI Description (first 80c),Status
+Cat_Drinks,巧克力可颂,层层酥脆的可颂，包裹浓郁黑巧克力。,Pain au Chocolat,Pain au Chocolat（巧克力可颂）,酥皮黑巧克力棒,MATCH
+Cat_Drinks,粉红豹,粉红甜橘冷饮，搭配一份意式浓缩咖啡，酸甜与咖啡完美融合。,Pink Panther,Pink Panther（粉红莓果）,粉红柑橘冷饮，配一杯浓缩咖啡。,DIFF
+Cat_Drinks,鲜榨柠檬水,新鲜柠檬现调，清爽解渴。,Lemonade,Lemonade（柠檬水）,新鲜柠檬水,DIFF
+Cat_Drinks,大地之母,Loka招牌层次特调饮品，风味丰富，层层递进。,Mother Earth,Mother Earth（大地之母）,招牌分层特饮,MATCH
+Cat_Drinks,草莓抹茶,草莓与抹茶交织出层次丰富的风味。,Strawberry Matcha,Strawberry Matcha（草莓抹茶）,草莓抹茶分层,MATCH
+Cat_Drinks,椰香特调,椰香与抹茶融合，打造热带风味。,Coco Loco,Coco Loco（椰疯）,椰子抹茶特饮,HAND-MAPPED
+Cat_Drinks,抹茶汤力,抹茶遇上汤力，清爽有层次。,Matcha Tonic,Matcha Tonic（抹茶汤力）,抹茶分层汤力水,MATCH
+Cat_Drinks,黑啤风味咖啡,黑啤酒风味灵感，咖啡新体验 （不含酒精）。,Stout Brew,Stout Brew（黑啤咖啡）,黑啤风格特制咖啡（无酒精）,DIFF
+Cat_Drinks,阳光气泡饮,柑橘气泡，清爽明亮。,Sparkling Sunshine,Sparkling Sunshine（阳光气泡饮）,柑橘气泡特调,MATCH
+Cat_Drinks,白巧抹茶,抹茶、牛奶与白巧克力交融， 搭配鲜奶油、抹茶粉籍麻薯丁。,Dirty Matcha,Dirty Matcha（脏抹茶）,抹茶搭配浓郁浓缩咖啡层。,DIFF
+Cat_Drinks,草莓起司蛋糕,草莓与奶油起司交融，点缀饼干碎、草莓酱及鲜奶油。,Strawberry Cheesecake,Strawberry Cheesecake（草莓芝士蛋糕）,牛奶、草莓、奶油芝士、饼干碎、草莓酱、鲜奶油。,DIFF
+Cat_Drinks,花生巧克力,花生酱亦巧克力融合，搭配鲜奶油及花生碎。,Peanut Butter Choco,Peanut Butter Choco（花生酱巧克力）,牛奶、花生酱、巧克力糖浆、可可粉、鲜奶油、碎花生。,MATCH
+Cat_Drinks,芒果椰香,芒果与椰香融合，加入香草冰淇淋·，点缀烤椰子片与鲜奶油。,Mango Coconut,Mango Coconut（芒果椰子）,牛奶、芒果、椰奶、香草冰淇淋、打发奶油、烤椰片。,DIFF
+Cat_Drinks,海盐焦糖,焦糖与海盐交织出甜咸风味，搭配脆饼碎、鲜奶油及焦糖淋酱。,Le Caramel,Le Caramel（焦糖）,焦糖慕斯,DIFF
+Cat_Drinks,香蕉Biscoff,香蕉与Biscoff 抹酱交织，搭配肉桂香、Biscoff饼干碎玉鲜奶油。,,,,CONFIRM
+Cat_Drinks,蜂蜜燕麦焦糖,蜂蜜与焦糖交织，搭配香脆燕麦，点缀鲜奶油及焦糖淋酱。,Honey Oat Caramel,Honey Oat Caramel（蜂蜜燕麦焦糖）,牛奶、蜂蜜、焦糖、燕麦粒、香草、鲜奶油、焦糖淋酱。,MATCH
+Cat_Drinks,曲奇奶油,巧克力曲奇与香草冰淇淋融合，淋上巧克力酱，点缀曲奇碎与鲜奶油。,Cookie n' Cream,Cookie n' Cream（曲奇奶油）,牛奶，巧克力饼干，香草冰淇淋，巧克力糖浆，鲜奶油，饼干碎。,MATCH
+Cat_Drinks,苹果汁,鲜榨苹果汁。,Apple,苹果汁,鲜榨苹果汁,MATCH
+Cat_Drinks,橙汁,鲜榨橙汁。,Orange,橙汁,鲜榨橙汁。,MATCH
+Cat_Drinks,西瓜汁,鲜榨西瓜汁。,Watermelon,西瓜汁,鲜榨西瓜汁,MATCH
+Cat_Drinks,菠萝汁,鲜榨菠萝汁。,Pineapple,菠萝汁,鲜榨菠萝汁。,MATCH
+Cat_Drinks,胡萝卜汁,鲜榨胡萝卜汁。,Carrot,胡萝卜汁,鲜榨胡萝卜汁,MATCH
+Cat_Drinks,黄瓜汁,鲜榨黄瓜汁。,Cucumber,黄瓜汁,鲜榨黄瓜汁,MATCH
+Cat_Drinks,任选两种鲜果现榨,任选两种新鲜水果现榨，调配住与您的专属果汁。,Mix of any 2,任选两种鲜果现榨,任选两种新鲜水果现榨，调配住与您的专属果汁。,MATCH
+Cat_Drinks,热带晨曦,橙子、菠萝与百香果交织，点缀一抹红石榴糖浆，洋溢热带风情。,Tropical Sunrise,Tropical Sunrise（热带晨曦）,橙、菠萝、百香果，加少许石榴糖浆。,MATCH
+Cat_Drinks,绿巨人,苹果、小黄瓜与奇艺果融合，点缀薄荷，清新爽口。,The Hulk,The Hulk（绿巨人）,苹果、黄瓜、奇异果，带一丝薄荷清香。,MATCH
+Cat_Drinks,莓果微风,草莓、蓝莓与蔓越莓融合，加入一抹柠檬，酸甜清爽。,Berry Breeze,Berry Breeze（莓果微风）,草莓、蓝莓、蔓越莓，加少许柠檬汁。,MATCH
+Cat_Drinks,Arnold Palmer,冰红茶与鲜榨柠檬水经典调和，点缀薄荷，清爽怡人。,Arnold Palmer,Arnold Palmer（柠檬茶特调）,半冰茶半柠檬水，加薄荷。,DIFF
+Cat_Drinks,柑橘活力,橙子、葡萄柚与青柠融合，佐一抹蜂蜜，清新酸甜。,Citrus Zing,Citrus Zing（柑橘鲜爽）,橙子、葡萄柚、青柠，微带蜂蜜。,DIFF
+Cat_Drinks,Evian气泡矿泉水（罐装）,罐装天然气泡矿泉水。,Evian Sparkling Water (Can),Evian 气泡矿泉水（罐装）,罐装天然气泡矿泉水。,MATCH
+Cat_Drinks,可口可乐Zero,无糖可口可乐。,Coca-Cola Zero,可口可乐Zero,无糖可口可乐。,MATCH
+Cat_Drinks,经典可口可乐,经典可口可乐,Coca-Cola Asli,经典可口可乐,经典可口可乐,MATCH
+Cat_Drinks,Evian天然矿泉水,天然矿泉水。,Evian Mineral Water,Evian 天然矿泉水,天然矿泉水。,MATCH
+Cat_Drinks,亚拉河谷苹果汁,气泡苹果汁,Yarra Valley Apple,亚拉河谷苹果汁,气泡苹果汁,MATCH
+Cat_Drinks,亚拉河谷橙汁,气泡橙汁,Yarra Valley Orange,亚拉河谷橙汁,气泡橙汁,MATCH
+Cat_Drinks,Spritzer 矿泉水,天然矿泉水。,Spritzer Mineral Water,Spritzer Mineral Water（Spritzer矿泉水）,天然矿泉水。,MATCH
+Cat_Drinks,Spritzer 气泡水,气泡水。,Spritzer Sparkling Water,Spritzer Sparkling Water（Spritzer气泡水）,气泡水,MATCH
+Cat_Drinks,Spritzer 柠檬气泡水,气泡柠檬水。,Spritzer Sparkling Lemon,Spritzer 柠檬气泡水,气泡柠檬水。,MATCH
+Cat_Drinks,Ben有机橙汁,有机橙汁。,Ben Organic Orange,Ben有机橙汁,有机橙汁。,MATCH
+Drinks,Nano-Nano 特调,香橙与浓香咖啡层层交融，呈现独特风味。,Nano-Nano,Nano-Nano（迷你迷你）,分层橙子浓缩咖啡特调,HAND-MAPPED
+Drinks,Lotus Biscoff Espresso con Panna,浓缩咖啡搭配绵密鲜奶油， 并佐以Lotus Biscoff焦糖饼干。,Lotus Biscoff Espresso con Panna,Lotus Biscoff Espresso con Panna（Lotus Biscoff 意式浓缩配奶油）,浓缩咖啡配鲜奶油和Lotus Biscoff。,DIFF
+Drinks,吉子酸梅气泡饮,吉子与酸梅调制的清爽气泡饮，酸甜开胃，沁凉解渴。,Katchai Suenmui Fizz,Katchai Suenmui Fizz（Katchai酸梅气泡饮）,冰柑橘梅子气泡特饮,DIFF
+Drinks,亚拉河谷黑加仑汁,黑加仑气泡果汁。,Yarra Valley Blackcurrant,Yarra Valley Blackcurrant（雅拉谷黑加仑）,黑加仑气泡果汁。,DIFF
+Food,土耳其综合面包,菲达起司、莫扎瑞拉起司、橄榄、番茄与黄瓜、搭配果酱、奶油和Simit土耳其芝麻面包。,Turkish Mixed Bread,Turkish Mixed Bread（土耳其混合面包）,菲达奶酪、马苏里拉奶酪、橄榄、番茄、黄瓜、果酱、黄油和Simit。,DIFF
+Food,青酱手撕鸡三明治,酥香可颂或手工面包，搭配鲜嫩手撕鸡、香浓罗勒青酱鸡新鲜生菜。,Pulled Chicken Pesto Shack,Pulled Chicken Pesto Shack（手撕鸡青酱小屋）,酥脆的黄油可颂或手工面包，内含嫩滑手撕鸡肉、香气四溢的罗勒青酱和新鲜生菜。,HAND-MAPPED
+Food,经典鸡蛋鸡肉起司三明治,烤制面包或可颂，层层铺上松软蛋卷、优质鸡肉片、香浓融化起司，及爽脆新鲜生菜。,"Classic Egg, Chicken Slice & Cheese Stack","Classic Egg, Chicken Slice & Cheese Stack（经典鸡蛋、鸡肉片与芝士堆）",烤面包或可颂层层叠上松软蛋卷、优质鸡肉片和浓郁融化芝士，佐以新鲜生菜，口感平衡。,DIFF
+Food,烟熏三文鱼奶油起司三明治,烟熏三文鱼与丝滑奶油起司的经典搭配，佐以酸豆、新鲜莳萝、黄瓜薄片以及鲜榨柠檬汁。,Smoked Salmon & Cream Cheese Sandwich,Smoked Salmon & Cream Cheese Sandwich（烟熏三文鱼奶油芝士三明治）,经典搭配：细腻的烟熏三文鱼与丝滑的奶油芝士，配以酸爽的酸豆、新鲜的莳萝、黄瓜丝带以及清新的鲜柠檬汁。,DIFF
+Food,烤牛肉蘑菇起司三明治,薄切烤牛肉与香煎蘑菇，搭配融化切达起司及黄芥末酱，可自选面包搭配。,Roast Beef & Mushroom Melts,Roast Beef & Mushroom Melts（烤牛肉蘑菇熔岩）,薄切烤牛肉与口感醇厚的平底锅煎蘑菇层层叠加，佐以浓郁融化的切达奶酪和一抹酸爽黄芥末，热食，搭配自选面包。,DIFF
+Food,地中海橄榄菲达起司沙拉,综合生菜搭配Kalamata黑橄榄、绿橄榄、樱桃番茄与酸豆，撒上碎菲达起司，佐以蜂蜜意大利黑醋酱。可加购：手撕鸡肉 +RM 12,Mediterranean Olive & Feta Garden Salad,Mediterranean Olive & Feta Garden Salad（地中海橄榄与菲达奶酪花园沙拉）,脆嫩混合生菜，拌以咸香的卡拉马塔橄榄与绿橄榄、多汁樱桃番茄和酸爽刺山柑，撒上碎菲达奶酪，淋上蜂蜜巴萨米克醋汁。加料：手撕鸡肉 +RM 12,DIFF
+Food,手工面包篮,精选土耳其 simit芝麻面包与 achma 面包，搭配酥脆法拉费、za'atar 香料面包、香浓鹰嘴豆泥、奶油及果酱。,Artisan Bread Basket,Artisan Bread Basket（手工面包篮）,精选的传统土耳其 simit 和 achma 糕点，搭配酥脆 falafel、za'atar 面包、浓郁 hummus 以及丝滑黄油与甜果酱。,MATCH
+Food,辣味奶油玉米排,香烤玉米排拌入辣椒碎和奶油，甜香中带烟熏风味，微辣酥脆。,Chilli Butter Corn Ribs,Chilli Butter Corn Ribs（辣椒黄油玉米肋）,烤甜玉米丝拌以浓郁的辣椒片和黄油，甜香酥脆中带一丝火热辣味。,DIFF
+Food,松露黄金马铃薯,香脆黄金马铃薯，搭配三种起司、希腊优格与鸡肉培根碎，淋上白松露油，香气浓郁。,Truffle Gold Potato,Truffle Gold Potato（松露黄金薯）,脆皮褐皮马铃薯，内填熔融三重芝士，搭配酸味希腊酸奶与咸香鸡肉培根碎，最后淋上奢华白松露油。,DIFF
+Food,经典梅泽拼盘,精选鹰嘴豆泥、烟熏茄子泥、番茄炖茄子、香辣番茄梅泽及土耳其风味顿四季豆，搭配Lavash (土耳其薄饼）。,Grand Meze Feast,Grand Meze Feast（豪华Meze盛宴）,鹰嘴豆泥 · 巴巴甘努什 · Patlıcan Soslu · 辣番茄Meze · 土耳其风味四季豆 · 拉瓦什面包,HAND-MAPPED
+Food,鹰嘴豆泥,经典鹰嘴豆泥，搭配Lavash薄饼。,Hummus,Hummus（鹰嘴豆泥）,经典鹰嘴豆泥，配拉瓦什面包。,MATCH
+Food,烟熏茄子泥,烟熏茄子泥，搭配Lavash薄饼。,Baba Ganoush (Eggplant Dip),Baba Ganoush（烤茄子蘸酱）,烟熏烤茄子蘸酱，配以拉瓦什饼。,HAND-MAPPED
+Food,番茄炖茄子,茄子以番茄酱慢火炖煮，搭配Lavash薄饼。,Patlıcan Soslu,Patlıcan Soslu,番茄酱炖茄子，配以拉瓦什饼。,HAND-MAPPED
+Food,香辣番茄梅泽,番茄、小黄瓜、辣椒及香菜细切拌制，搭配Lavash薄饼。,Spicy Tomato Meze,Spicy Tomato Meze（辣番茄Meze）,切碎的番茄、黄瓜、辣椒和香菜。搭配拉瓦什面包。,HAND-MAPPED
+Food,土耳其风味炖四季豆,四季豆以番茄酱慢火炖煮，搭配Lavash薄饼。,Turkish-style Green Beans,Turkish-style Green Beans（土耳其风味青豆）,青豆用番茄酱慢炖。搭配拉瓦什面包。,DIFF
+Food,伊斯坦堡风味Lahmacun,薄脆手工薄饼，铺上细绞牛肉、新鲜香草及烤甜椒，呈现道地土耳其街头风味。,Istanbul Street Lahmacun,Istanbul Street Lahmacun（伊斯坦布尔街头 Lahmacun）,薄如蝉翼的手工扁面包，铺上香碎牛肉、田园香草与烤甜椒。,DIFF
+Food,菠菜菲达起司 Gözleme,传统手工Yufka薄饼，包裹菠菜、菲达起司及新鲜香草，香煎至外酥内软。,Garden Spinach Gözleme,Garden Spinach Gözleme（田园菠菜 Gözleme）,传统手工卷制的尤夫卡面皮，包裹着由菠菜、碎菲达芝士和新鲜香草制成的咸香馅料。,DIFF
+Food,炭烤鸡肉Gözleme,传统手工Yufka薄饼，包裹腌制炭烤鸡肉与起司，香煎至金黄酥脆。,Garden Spinach Gözleme,Garden Spinach Gözleme（田园菠菜 Gözleme）,传统手工卷制的尤夫卡面皮，包裹着由菠菜、碎菲达芝士和新鲜香草制成的咸香馅料。,DIFF
+Food,伊斯坦堡市集炖时蔬,精选时蔬搭配番茄、甜椒及洋葱慢火炖煮，呈现温暖浓郁的家常风味。,Istanbul Market Vegetable Braise,Istanbul Market Vegetable Braise（伊斯坦布尔市集蔬菜烩）,丰盛的蔬菜炖菜，以熟番茄、甜椒和洋葱慢火熬煮，味道浓郁暖心。,DIFF
+Food,博斯普鲁斯炖鲜虾,鲜虾以番茄、甜椒及洋葱慢火炖煮，佐以少许醋提味，酸香浓郁，层次丰富。,Bosphorus Braised Shrimp,Bosphorus Braised Shrimp（博斯普鲁斯焖虾）,鲜虾慢炖砂锅，以藤上熟透的番茄、甜椒和洋葱浓缩酱汁焖煮，口感浓郁。,DIFF
+Food,土耳其碳烤鸡肉串,两串炭烤鸡肉串，肉质鲜嫩多汁，带有迷人碳香，风味浓郁。,Turkish Flame-Grilled Chicken Skewers,Turkish Flame-Grilled Chicken Skewers（土耳其火焰烤鸡肉串）,两串多汁鸡肉串，经完美烤制，作为一道令人满足的主食呈现——肉质柔嫩，烟熏味浓郁，风味十足。,DIFF
+Food,奥斯曼牛肉Pide,手工拉伸的船形Pide，铺上香料牛肉馅，烘烤至金黄酥脆。,Ottoman Beef Pide,Ottoman Beef Pide（奥斯曼牛肉皮德）,手工拉伸的船形皮德饼，搭配香料牛肉。,DIFF
+Food,安纳托利亚鸡肉Pide,手工拉伸的船形Pide，铺上鲜嫩鸡肉馅，烘烤至金黄酥脆。,Anatolian Chicken Pide,Anatolian Chicken Pide（安纳托利亚鸡肉Pide）,手工拉伸的船形Pide配鸡肉,MATCH
+Food,黄金芝士Pide,手工拉伸的船形Pide，铺满香浓融化起司，烘烤至金黄酥脆。,Golden Cheese Pide,Golden Cheese Pide（黄金芝士Pide）,手工拉伸的船形Pide，搭配融化的金黄色芝士。,MATCH
+Food,鹰嘴豆泥浓香焗通心粉,通心粉裹上以鹰嘴豆泥、鲜奶油及希腊优格调制的酱汁，搭配三种起司焗烤，并加入新鲜西兰花。,Creamy Hummus Mac & Cheese,Creamy Hummus Mac & Cheese（奶油鹰嘴豆泥芝士通心粉）,通心粉拌入以传统鹰嘴豆泥、鲜奶油和少许希腊酸奶调制的超浓郁丝滑酱汁，搭配焗烤三层浓郁芝士脆皮与新鲜西兰花小朵。,DIFF
+Food,蒜香鲜虾香辣意面,意大利面拌入特级橄榄油、香蒜、辣椒碎及新鲜欧芹， 搭配五只香煎鲜虾与炙烤樱桃番茄。,Garlic Prawn Aglio Olio Peperoncino,Garlic Prawn Aglio Olio Peperoncino（蒜香虾仁辣椒意面）,用优质橄榄油拌制的弹牙意大利面，融合烤蒜、香辣辣椒碎和新鲜欧芹， topped with 五只香煎多汁大虾和爆炒樱桃番茄。,DIFF
+Food,烟熏三文鱼香辣番茄意面,意大利面拌入香辣番茄Arrabbiata酱汁，融合蒜香和辣椒碎，搭配优质烟熏三文鱼，并淋上特级初榨橄榄油。,Smoked Salmon Arrabiata Rosso,Smoked Salmon Arrabiata Rosso（烟熏三文鱼辣番茄红酱）,意大利面拌入浓郁的辛辣番茄Mezze酱，带有大蒜和辣椒碎的风味，搭配优质烟熏三文鱼薄片，淋上特级初榨橄榄油。,DIFF
+Food,热那亚青酱意面佐波特菇排,意大利面裹上香浓那亚罗勒青酱，搭配奶油香煎波特菇排，并撒上熟成帕玛森起司。,Pesto Genovese with Portobello Steak,Pesto Genovese with Portobello Steak（香蒜酱配波特菇牛排）,弹牙意大利面条裹上浓郁芳香的罗勒青酱，搭配多汁的黄油浇淋波特菇扒及现磨陈年帕玛森干酪。,HAND-MAPPED
+Food,安纳托利亚烤鸡佐Baba Ganoush,四分之一烤鸡搭配烟熏baba ganoush茄子泥，佐以综合生菜，饼淋上冷压特级初榨橄榄油。加购手撕鸡肉 +RM 12。,Anatolian Roast Chicken with Baba Ganoush,Anatolian Roast Chicken with Baba Ganoush（安纳托利亚烤鸡配巴巴加努什）,四分之一烤鸡搭配烟熏奶油味baba ganoush茄子泥，佐以调味mesclun生菜，淋上冷压初榨橄榄油。附加手撕鸡肉 +RM 12。,HAND-MAPPED
+Food,土耳其香料鸡肉焗饭,香米饭铺上莫扎瑞拉和切达起司焗烤，搭配Patlıcan Soslu番茄炖茄子及碳烤鸡肉丁。,Turkish Spiced Chicken Baked Rice,Turkish Spiced Chicken Baked Rice（土耳其香料鸡焗饭）,香米饭在浓郁的熔化莫扎里拉和切达芝士覆盖下烘烤，配上咸香茄子Patlıcan Soslu和烤鸡肉丁。,MATCH
+Food,土耳其香料牛肉焗饭,香米饭铺上莫扎瑞拉和切达起司焗烤，搭配Patlıcan Soslu番茄炖茄子及鲜嫩牛肉丁。,Turkish Spiced Beef Baked Rice,Turkish Spiced Beef Baked Rice（土耳其香料牛肉焗饭）,香米饭焗烤，覆盖浓郁融化的莫扎瑞拉和车达芝士。佐以咸香茄子酱（Patlıcan Soslu）与嫩烤牛肉块。,MATCH
+baklava,开心果,层层酥脆菲罗（Filo)酥皮，包裹香浓开心果馅。RM 36 / 100g · RM 9 / 件,Lemon Pistachio,Lemon Pistachio（柠檬开心果）,柠檬开心果蛋糕,DIFF
+baklava,核桃,层层酥脆菲罗（Filo)酥皮，包裹香浓核桃馅。RM 36 / 100g · RM 9 / 件,,,,CONFIRM
+baklava,巧克力,层层酥脆菲罗（Filo)酥皮，包裹香浓巧克力馅。RM 36 / 100g · RM 9 / 件,Chocolate,Chocolate（巧克力）,经典浓郁巧克力。,MATCH
+baklava,开心果卷,手工卷制菲罗（Filo)酥皮，包裹香浓开心果馅。RM 36 / 100g · RM 9 / 件,Pistachio Roll Bun,Pistachio Roll Bun（开心果卷面包）,开心果面包卷,DIFF
+baklava,巴克拉瓦双拼礼盒,精选综合巴克拉瓦，2件装。,Baklava Set 36 pcs,Baklava Set 36 pcs（巴克拉瓦拼盘36块）,什锦Baklava，36块装,DIFF
+baklava,巴克拉瓦三拼礼盒,精选综合巴克拉瓦，3件装。,Baklava Set 36 pcs,Baklava Set 36 pcs（巴克拉瓦拼盘36块）,什锦Baklava，36块装,DIFF
+baklava,巴克拉瓦四拼礼盒,精选综合巴克拉瓦，4件装。,Baklava Set 36 pcs,Baklava Set 36 pcs（巴克拉瓦拼盘36块）,什锦Baklava，36块装,DIFF
+baklava,巴克拉瓦精选礼盒 （6件装）,精选综合巴克拉瓦，6件装。,Baklava Set 6 pcs,Baklava Set 6 pcs（巴克拉瓦6件套）,什锦Baklava，6块装,DIFF
+baklava,巴克拉瓦精选礼盒 （8件装）,精选综合巴克拉瓦，8件装。,Baklava Set 8 pcs,Baklava Set 8 pcs（Baklava 8件套装）,什锦Baklava，8块装。,HAND-MAPPED
+baklava,巴克拉瓦精选礼盒 （9件装）,精选综合巴克拉瓦，9件装。,Baklava Set 9 pcs,Baklava Set 9 pcs（巴克拉瓦9件套餐）,各式巴克拉瓦，9块装,DIFF
+baklava,巴克拉瓦精选礼盒 （12件装）,精选综合巴克拉瓦，12件装。,,,,CONFIRM
+baklava,巴克拉瓦精选礼盒 （20件装）,精选综合巴克拉瓦，20件装。,Baklava Set 20 pcs,Baklava Set（巴克拉瓦拼盘 20 块）,什锦Baklava，20片装。,DIFF
+baklava,巴克拉瓦精选礼盒 （24件装）,精选综合巴克拉瓦，24件装。,,,,CONFIRM
+baklava,巴克拉瓦精选礼盒 （25件装）,精选综合巴克拉瓦，25件装。,,,,CONFIRM
+baklava,巴克拉瓦精选礼盒 （36件装）,精选综合巴克拉瓦，36件装。,Baklava Set 6 pcs,Baklava Set 6 pcs（巴克拉瓦6件套）,什锦Baklava，6块装,DIFF
+Cake,覆盖子起司蛋糕,香浓起司蛋糕，搭配酸甜覆盖子。,Raspberry Cheesecake,Raspberry Cheesecake（覆盆子芝士蛋糕）,香滑芝士蛋糕配覆盆子,DIFF
+Cake,经典提拉米苏,经典意式咖啡提拉米苏， 香醇细腻。,Classic Tiramisu,Classic Tiramisu（经典提拉米苏）,经典咖啡提拉米苏。,MATCH
+Cake,巧克力姜饼方块,浓郁巧克力姜饼，香料风味丰富。,Chocolate Gingerbread Bar,Chocolate Gingerbread Bar（巧克力姜饼条）,巧克力姜饼条,DIFF
+Cake,花生布朗尼方块,经典布朗尼搭配香脆花生，浓郁满足。,Brownie Peanut Bar,Brownie Peanut Bar（布朗尼花生条）,花生布朗尼条,HAND-MAPPED
+Cake,百香果优格蛋糕,百香果与优格交织，酸甜清爽。,Passionfruit Yogurt,Passionfruit Yogurt（百香果酸奶）,百香果酸奶蛋糕,DIFF
+Cake,黑莓荔枝蛋糕,黑莓与荔枝完美融合，果香细致。,Blackberry Lychee,Blackberry Lychee（黑莓荔枝）,黑莓荔枝蛋糕,DIFF
+Cake,咖啡榛果蛋糕,浓郁咖啡结合香醇榛果，风味丰富。,,,,CONFIRM
+Cake,煎蕊瑞士卷,灵感来自马拉西亚经典煎蕊风味。,Cendol Roll,Cendol Roll（煎蕊卷）,煎蕊风味卷蛋糕,DIFF
+Cake,粗粒小麦labneh蛋糕,粗粒小麦蛋糕搭配Labneh中东酸乳酪，口感细腻柔润。,Semolina Labneh,Semolina Labneh（粗粒小麦酸奶乳酪）,粗粒小麦粉蛋糕配labneh,HAND-MAPPED
+Cake,库内法起司蛋糕,香滑起司蛋糕结合酥脆Kunafa细面，口感层次丰富。,Kunafa Cheesecake,Kunafa Cheesecake（Kunafa 芝士蛋糕）,Kunafa芝士蛋糕,HAND-MAPPED
+Cake,土耳其三奶蛋糕,经典土耳其三奶蛋糕，湿润绵密，奶香浓郁。,Trileçe,Trileçe,土耳其三奶蛋糕,HAND-MAPPED
+Cake,巧克力开心果蛋糕,浓郁巧克力搭配香醇开心果，层次丰富。,Chocolate Pistachio,Chocolate Pistachio（巧克力开心果）,巧克力开心果蛋糕,DIFF
+Cake,黑莓慕斯蛋糕,轻盈黑莓慕斯，酸甜优雅。,La Mûre,La Mûre（黑莓）,黑莓慕斯蛋糕。,DIFF
+Cake,经典巧克力布朗尼,浓郁巧克力布朗尼，香醇扎实。,Chocolate Brownie,Chocolate Brownie（巧克力布朗尼）,经典巧克力布朗尼,DIFF
+Cake,巧克力起司蛋糕,浓郁巧克力与香滑起司的经典组合。,Chocolate Cheesecake,Chocolate Cheesecake（巧克力芝士蛋糕）,巧克力芝士蛋糕。,DIFF
+Cake,焦糖慕斯蛋糕,丝滑焦糖慕斯，甜而不腻。,Le Caramel,Le Caramel（焦糖）,焦糖慕斯,DIFF
+Cake,柠檬慕斯蛋糕,清新柠檬慕斯，酸甜平衡。,,,,CONFIRM
+Cake,煎蕊蛋糕,灵感来自马拉西亚经典煎蕊风味。,Cendol Roll,Cendol Roll（煎蕊卷）,煎蕊风味卷蛋糕,DIFF
+Cake,菠萝塔蛋糕,融合菠萝塔风味的创意蛋糕。,Tarta de Piña,Tarta de Piña（菠萝挞）,菠萝挞蛋糕,DIFF
+Cake,柠檬开心果蛋糕,清新柠檬搭配香醇开心果，风味细腻。,Lemon Pistachio,Lemon Pistachio（柠檬开心果）,柠檬开心果蛋糕,DIFF
+Pastry_scone,巧克力可颂,层层酥脆的可颂，包裹浓郁黑巧克力。,Pain au Chocolat,Pain au Chocolat（巧克力可颂）,酥皮黑巧克力棒,MATCH
+Pastry_scone,双倍黑巧克力曲奇,浓郁双倍黑巧克力曲奇，香醇酥脆。,Double Dark Cookies,Double Dark Cookies（双倍黑巧曲奇）,双倍黑巧克力曲奇,DIFF
+Pastry_scone,经典厚块曲奇,经典厚块曲奇，外酥内软。,OG Chunk Cookies,OG Chunk Cookies（经典大块曲奇）,经典厚切曲奇,DIFF
+Pastry_scone,法式牛角可颂,经典法式奶油可颂，层层酥香。,French Croissant,French Croissant（法式可颂）,经典黄油法式可颂。,DIFF
+Pastry_scone,Nutella 贝涅甜甜圈,松软贝涅甜甜圈，内馅满满 Nutella 榛果巧克力酱。,Nutella Beignet,Nutella Beignet（榛子巧克力贝涅特）,Nutella夹心贝涅饼。,HAND-MAPPED
+Pastry_scone,卡士达贝涅甜甜圈,松软贝涅甜甜圈，包裹香滑卡士达内馅。,Custard Beignet,Custard Beignet（卡仕达炸面饼）,卡仕达馅贝涅饼,HAND-MAPPED
+Pastry_scone,杜拜巧克力卷,柔软面包卷，包裹杜拜风味巧克力内馅。,Dubai Chocolate Roll,Dubai Chocolate Roll（迪拜巧克力卷）,迪拜风格巧克力馅卷,DIFF
+Pastry_scone,花生丹麦酥,香酥丹麦酥皮，包裹浓郁花生内馅。,Peanut Danish,Peanut Danish（花生丹麦酥）,花生馅丹麦酥,MATCH
+Pastry_scone,芋泥面包卷,柔软面包卷，包裹香浓芋泥内馅。,Taro Roll,Taro Roll（香芋卷）,香芋软卷,DIFF
+Pastry_scone,香草可丽露,经典法式可丽露，散发淡雅香草香气。,Vanilla Canelé,Vanilla Canelé（香草可露丽）,经典法式香草可露丽,DIFF
+Pastry_scone,海盐焦糖可丽露,经典法式可丽露，融合香浓海盐焦糖。,Salted Caramel Canelé,Salted Caramel Canelé（咸焦糖可丽露）,海盐焦糖可丽露,DIFF
+Pastry_scone,覆盆子可丽露,经典法式可丽露，点缀酸甜覆盆子风味。,Raspberry Canelé,Raspberry Canelé（覆盆子可丽露）,覆盆子可露丽,MATCH
+Pastry_scone,开心果可丽露,经典法式可丽露，融合香醇开心果风味。,Pistachio Canelé,Pistachio Canelé（开心果可露丽）,开心果可丽露,DIFF
+Pastry_scone,香草蛋挞,酥脆挞皮搭配香滑香草蛋奶馅。,Vanilla Egg Tart,Vanilla Egg Tart（香草蛋挞）,酥皮香草蛋奶塔,MATCH
+Pastry_scone,蒜香奶油乳酪面包,松软面包搭配香浓蒜香奶油乳酪。,Garlic Cream Cheese,Garlic Cream Cheese（蒜香奶油芝士）,大蒜奶油芝士酥皮,DIFF
+Pastry_scone,蒜香起司丹麦酥,香酥丹麦酥皮，搭配蒜香与浓郁起司。,Garlic Cheese Danish,Garlic Cheese Danish（蒜香芝士丹麦）,蒜香芝士丹麦酥,DIFF
+Pastry_scone,开心果面包卷,柔软面包卷，包裹香浓开心果内馅。,Pistachio Roll Bun,Pistachio Roll Bun（开心果卷面包）,开心果面包卷,DIFF
+Pastry_scone,德式起司塔,经典德式烘焙起司塔，奶香浓郁。,,,,CONFIRM
+Pastry_scone,蒜香鸡肉片面包,香烤蒜香面包，搭配鲜嫩鸡肉片。,Garlic Bread with Chicken Slice,Garlic Bread with Chicken Slice（蒜香面包配鸡肉片）,蒜香面包配鸡肉片。,DIFF
+Pastry_scone,鸡肉起司酥,酥香面包搭配鸡肉片与浓郁起司。,Chicken Slice & Cheese,Chicken Slice & Cheese（鸡肉片芝士）,鸡肉芝士酥皮饼,HAND-MAPPED
+Pastry_scone,优格奶霜 Cruffin,可颂与玛芬结合的 Cruffin，内馅为香滑优格奶霜。,,,,CONFIRM
+Pastry_scone,抹茶熔心 Cruffin,可颂与玛芬结合的 Cruffin，包裹浓郁抹茶熔心内馅。,Matcha Lava Cruffin,Matcha Lava Cruffin（抹茶熔岩可芬）,可颂马芬混合体，抹茶熔岩内馅。,HAND-MAPPED
+Pastry_scone,樱桃番茄丹麦酥,香酥丹麦酥皮，搭配新鲜樱桃番茄。,Cherry Tomato Danish,Cherry Tomato Danish（樱桃番茄丹麦酥）,丹麦酥配樱桃番茄,MATCH
+Pastry_scone,鸡肉香肠面包,柔软面包搭配鸡肉香肠。,Sausage Bun,Sausage Bun（香肠包）,鸡肉香肠软包,DIFF
+Pastry_scone,经典肉桂卷,经典肉桂卷，香甜浓郁。,Cinnamon Roll,Cinnamon Roll（肉桂卷）,经典肉桂卷,DIFF
+Pastry_scone,蔓越莓司康,奶香浓郁的奶油司康，搭配酸甜蔓越莓,Cranberry Scone,Cranberry Scone（蔓越莓司康）,黄油蔓越莓司康,MATCH
+Pastry_scone,葡萄干司康,奶香浓郁的奶油司康，加入香甜葡萄干。,Raisin Scone,Raisin Scone（葡萄干司康）,牛油葡萄干司康,MATCH
+Pastry_scone,柑橘果皮司康,奶香浓郁的奶油司康，加入精选糖渍柑橘果皮。,Mixed Peel Scone,Mixed Peel Scone（杂果皮司康）,牛油司康配混合柑橘皮。,DIFF
+Combo,Loka 经典搭配,任选一款精选三明治，搭配任一特色咖啡。 经典组合，风味加倍。,Loka Pair Set,Loka 双人套餐,任选一款精选美食三明治与任意一款特色咖啡——完美搭配，相得益彰。,HAND-MAPPED
+Combo,主餐 × 甜点时光,任选一款主餐，再搭配一款特色饮品、甜点或欧式烘焙，随心搭配，享受属于你的完美组合。,Main & Treat,主菜与甜品,任选一款主餐，再犒赏自己——一杯特色饮品、一份甜品或一份糕点。由你决定。,HAND-MAPPED
+Combo,双人下午茶,任选两杯饮品及两款欧式烘焙，与好友共享，或独享也无妨。,Tea Time for Two,双人下午茶,您自选的两杯饮品和两份糕点——专为分享而设（当然，独自享用也无妨，我们不会评判）。,MATCH
+Combo,双人早餐组合,土耳其综合面包搭配两杯任选特色咖啡，为一天开启美好序曲。,Breakfast Duo,早餐双拼,我们的黎凡特式土耳其混合面包搭配任意两种特色咖啡——早晨，轻松搞定。,HAND-MAPPED
+Experience_workshop,土耳其沙煮咖啡工作坊,亲手体验土耳其传统沙煮咖啡艺术，品尝经典土耳其。4人成团。价格以每位计算，未含税。,Turkish Sand Brew Workshop,Turkish Sand Brew Workshop（土耳其沙煮咖啡工坊）,亲手沙煮咖啡课程，搭配土耳其软糖品尝。4人套餐。价格按每位计算，不含税。,MATCH
+Experience_workshop,咖啡Omakase品鉴体验,由咖啡师精心策划的多道式咖啡品鉴体验，搭配精选餐点。套餐内容：双人套餐（2 pax) 包含单一产地咖啡豆、限量版马克杯及专属优惠礼券；VIP单人套餐（1 pax,Coffee Omakase Experience,Coffee Omakase Experience（咖啡主理精选体验）,精心策划的多道式咖啡品鉴体验，佐以标准食品搭配，由我们的咖啡师全程引导。双人套餐包含免费的单品咖啡豆、限量版马克杯及专属优惠券；单人VIP套餐则升级为高级食品搭,HAND-MAPPED
+Experience_workshop,咖啡烘焙工坊,探索咖啡烘培过程，亲身体验专业设备，并参与咖啡品鉴。4人成团。价格以每位计算，未含税。,Roastery Workshop,烘焙工坊,烘焙工坊演示，含设备体验与咖啡品鉴。4人套餐。每人价格，不含税。,DIFF

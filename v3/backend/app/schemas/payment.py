@@ -90,7 +90,7 @@ class PaymentIntentRequest(BaseSchema):
 class RefundCreate(BaseSchema):
     amount: Money = Field(..., gt=0)
     reason: str = Field(..., min_length=1)
-    reason_category: str = "other"
+    reason_category: Literal["customer_request", "item_unavailable", "quality_issue", "wrong_order", "late_delivery", "other"] = "other"
 
 
 class PaymentIntentResponse(BaseSchema):

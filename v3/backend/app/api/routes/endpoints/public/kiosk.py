@@ -16,7 +16,7 @@ from app.models.cart import CartLineItem, CustomerCart
 from app.models.customer import Customer
 from app.models.menu import MenuItem
 from app.models.store import DiningTable, Store
-from app.schemas.base import APIResponse, Money
+from app.schemas.base import APIResponse, Money, BaseSchema
 from app.schemas.order import OrderCreate
 from app.services.order import OrderError, create_order_from_cart
 from app.services.platform_config import PlatformConfigService
@@ -24,14 +24,14 @@ from app.services.platform_config import PlatformConfigService
 public_router = APIRouter(prefix="/kiosk", tags=["kiosk"])
 
 
-class KioskOrderItem(BaseModel):
+class KioskOrderItem(BaseSchema):
     menu_item_id: int = Field(..., gt=0)
     quantity: int = Field(..., ge=1, le=99)
     modifier_option_ids: list[int] | None = Field(None, max_length=50)
     variant_id: int | None = None
 
 
-class KioskOrderCreateRequest(BaseModel):
+class KioskOrderCreateRequest(BaseSchema):
     model_config = ConfigDict(extra="ignore")
     store_id: int = Field(..., gt=0)
     order_type: str = Field(..., pattern="^(dine_in|takeaway)$")
@@ -40,7 +40,7 @@ class KioskOrderCreateRequest(BaseModel):
     customer_phone: str | None = Field(None, max_length=20, description="Optional phone to link order to an existing or new customer profile")
 
 
-class KioskOrderOut(BaseModel):
+class KioskOrderOut(BaseSchema):
     order_id: int
     order_number: str
     status: str
@@ -72,12 +72,17 @@ async def _get_or_create_walkin_customer(db) -> Customer:
     return walkin
 
 
-async def _find_or_create_kiosk_customer(db, raw_phone: str) -> Customer:
+async def _find_or_create_kiosk_customer(db, raw_phone: str) -> Customer | None:
     """Find customer by phone or create a minimal profile. Normalises Malaysian formats.
 
     Unlike the staff find-or-create, this skips OTP — the customer is at the kiosk
     in person and verified by staff at the counter. When the customer later registers
     with the same phone via OTP they take over the same profile.
+
+    Returns None when the phone matches a deactivated (banned) account: the
+    unauthenticated kiosk endpoint must never reactivate it, and the phone's
+    uniqueness constraint forbids creating a duplicate — the caller falls
+    back to the walk-in guest profile instead.
     """
     import re
     phone = re.sub(r"[^\d+]", "", raw_phone.strip())
@@ -101,7 +106,7 @@ async def _find_or_create_kiosk_customer(db, raw_phone: str) -> Customer:
     customer = result.scalar_one_or_none()
     if customer:
         if not customer.is_active:
-            customer.is_active = True
+            return None
         return customer
 
     customer = Customer(
@@ -219,9 +224,13 @@ async def create_kiosk_order(
         for v in v_result.scalars().all():
             variants_map[v.id] = v
 
-    # Get or create customer — phone-based if provided, else walk-in
+    # Get or create customer — phone-based if provided, else walk-in.
+    # A phone matching a deactivated account yields None (never reactivates
+    # it, never duplicates the unique phone row) → order as walk-in guest.
     if data.customer_phone:
         kiosk_customer = await _find_or_create_kiosk_customer(db, data.customer_phone)
+        if kiosk_customer is None:
+            kiosk_customer = await _get_or_create_walkin_customer(db)
     else:
         kiosk_customer = await _get_or_create_walkin_customer(db)
 

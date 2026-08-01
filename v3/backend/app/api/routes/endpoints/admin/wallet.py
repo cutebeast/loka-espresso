@@ -11,12 +11,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, require_hq_write_admin
 from app.core.money import money_round, to_decimal
 from app.models.platform import AuditLog
 from app.models.wallet import Wallet, WalletLedgerEntry, WalletTopupSession
 from app.services.platform_config import PlatformConfigService
-from app.schemas.base import APIResponse, Money, PaginatedResponse
+from app.schemas.base import APIResponse, Money, PaginatedResponse, BaseSchema
 from app.schemas.wallet import (
     AdminTopupRequest,
     TopUpRequest,
@@ -192,7 +192,7 @@ async def list_wallet_ledger(
     )
 
 
-class WalletAdjustRequest(BaseModel):
+class WalletAdjustRequest(BaseSchema):
     amount: Money = Field(..., gt=0)
     entry_type: str = Field(..., pattern=r"^(credit|debit|adjustment)$")
     description: str | None = Field(None, max_length=255)
@@ -206,6 +206,9 @@ async def adjust_wallet(
     data: WalletAdjustRequest,
 ):
     """Manually adjust wallet balance (credit/debit)."""
+    # Platform-wide money mutation — HQ roles only (store_manager/readonly → 403).
+    await require_hq_write_admin(db, admin)
+
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
@@ -262,6 +265,9 @@ async def adjust_wallet(
 @admin_router.post("/topup", response_model=APIResponse[dict])
 async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupRequest):
     """Admin wallet top-up by customer_id."""
+    # Platform-wide money mutation — HQ roles only (store_manager/readonly → 403).
+    await require_hq_write_admin(db, admin)
+
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
@@ -313,7 +319,7 @@ async def admin_topup_alias(db: DBDependency, admin: CurrentAdmin, data: AdminTo
 
 
 
-class AdminDeductRequest(BaseModel):
+class AdminDeductRequest(BaseSchema):
     customer_id: int = Field(..., gt=0)
     amount: Money = Field(..., gt=0)
     reason: str | None = Field(None, max_length=255)
@@ -322,6 +328,9 @@ class AdminDeductRequest(BaseModel):
 @admin_router.post("/deduct", response_model=APIResponse[dict])
 async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductRequest):
     """Admin wallet deduction by customer_id."""
+    # Platform-wide money mutation — HQ roles only (store_manager/readonly → 403).
+    await require_hq_write_admin(db, admin)
+
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()

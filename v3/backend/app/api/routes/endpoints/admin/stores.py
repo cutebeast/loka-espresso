@@ -21,7 +21,7 @@ from app.models.store import (
     StoreSpecialHours,
     TableStatusSnapshot,
 )
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.store import (
     DiningTableOut,
@@ -56,14 +56,14 @@ class StoreDetailOut(StoreOut):
     dining_tables: list[DiningTableOut] = []
 
 
-class DiningTableCreate(BaseModel):
+class DiningTableCreate(BaseSchema):
     table_number: str = Field(..., max_length=20)
     display_name: str | None = Field(None, max_length=50)
     capacity: int = Field(..., ge=1, le=50)
     qr_code_token: str | None = Field(None, max_length=64)
 
 
-class DiningTableUpdate(BaseModel):
+class DiningTableUpdate(BaseSchema):
     table_number: str | None = Field(None, max_length=20)
     display_name: str | None = Field(None, max_length=50)
     capacity: int | None = Field(None, ge=1, le=50)

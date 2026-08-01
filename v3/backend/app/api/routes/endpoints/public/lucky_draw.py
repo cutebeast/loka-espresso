@@ -45,12 +45,16 @@ async def get_optional_customer(
         return None
     if payload.get("type") != "access":
         return None
-    customer_id = int(payload.get("sub", 0))
+    # Domain check: only genuine customer tokens carry a customer_id claim;
+    # admin tokens (type "access", sub=admin.id) must not resolve to a customer.
+    customer_id = int(payload.get("customer_id", 0) or 0)
     if not customer_id:
         return None
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     customer = result.scalar_one_or_none()
     if customer is None or customer.deleted_at is not None or not customer.is_active:
+        return None
+    if int(payload.get("token_version", 0) or 0) != (getattr(customer, "token_version", 0) or 0):
         return None
     return customer
 
@@ -167,6 +171,12 @@ async def spin_wheel(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No active lucky draw campaign",
         )
+
+    # Serialize spins per (campaign, customer) so the free-spin count check and
+    # insert below cannot race — concurrent requests would otherwise exceed
+    # spins_per_day (TOCTOU). The ticket-spend path is already race-safe via
+    # consume_oldest_ticket, and this lock now covers it too.
+    await db.execute(select(func.pg_advisory_xact_lock(campaign.id, customer.id)))
 
     result = await db.execute(
         select(LuckyDrawSegment)

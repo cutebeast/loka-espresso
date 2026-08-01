@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 # Inline schemas
 # ---------------------------------------------------------------------------
 
-class MovementLogCreate(BaseModel):
+class MovementLogCreate(BaseSchema):
     inventory_item_id: int
     store_id: int
     movement_type: str
@@ -29,7 +29,7 @@ class MovementLogCreate(BaseModel):
     unit_cost_at_movement: float | None = Field(None, ge=0)
 
 
-class MovementLogOut(BaseModel):
+class MovementLogOut(BaseSchema):
     model_config = {"from_attributes": True}
 
     id: int

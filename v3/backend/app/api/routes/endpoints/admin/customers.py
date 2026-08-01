@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_hq_write_admin
 from app.models.customer import Customer, CustomerAddress, CustomerConsent, CustomerDevice
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.models.order import Order
@@ -309,6 +309,9 @@ async def delete_customer(
     customer_id: int,
 ):
     """Soft-delete a customer."""
+    # Platform-wide account mutation — HQ roles only (store_manager/readonly → 403).
+    await require_hq_write_admin(db, admin)
+
     result = await db.execute(
         select(Customer).where(Customer.id == customer_id, Customer.deleted_at.is_(None))
     )
@@ -325,6 +328,9 @@ async def delete_customer(
 @router.post("/{customer_id}/adjust-points", response_model=APIResponse[dict])
 async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: AdjustPointsRequest):
     """Award or deduct loyalty points."""
+    # Platform-wide points mutation — HQ roles only (store_manager/readonly → 403).
+    await require_hq_write_admin(db, admin)
+
     points = data.points
     reason = data.reason
     if points == 0:
@@ -507,6 +513,9 @@ async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, v
 @router.post("/{customer_id}/set-tier", response_model=APIResponse[dict])
 async def set_tier(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: SetTierRequest):
     """Override customer tier."""
+    # Platform-wide tier mutation — HQ roles only (store_manager/readonly → 403).
+    await require_hq_write_admin(db, admin)
+
     tier_key = data.tier.lower()
     reason = data.reason
 

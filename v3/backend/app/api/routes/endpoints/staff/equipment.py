@@ -12,7 +12,7 @@ from app.api.routes.deps import CurrentStaff, DBDependency
 from app.core.config import get_settings
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.hygiene import HygieneReport
-from app.schemas.base import APIResponse
+from app.schemas.base import APIResponse, BaseSchema
 
 router = APIRouter(tags=["staff — equipment"])
 
@@ -48,7 +48,7 @@ def _save_uploaded_images(files: list[UploadFile]) -> list[str]:
     return urls
 
 
-class EquipmentReportRequest(BaseModel):
+class EquipmentReportRequest(BaseSchema):
     status: str = Field(..., description="Status: operational, maintenance, or broken")
     description: str = Field(..., min_length=5, max_length=500)
 

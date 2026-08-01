@@ -337,7 +337,10 @@ async def update_order_status(
     if is_cancellation:
         from app.models.payment import Payment
         has_captured = (await db.execute(
-            select(Payment.id).where(Payment.order_id == order.id, Payment.status == "captured").limit(1)
+            select(Payment.id).where(
+                Payment.order_id == order.id,
+                Payment.status.in_(("captured", "partially_refunded")),
+            ).limit(1)
         )).scalar_one_or_none()
         if has_captured is not None:
             raise HTTPException(status_code=400, detail="Order has captured payments — issue a refund before cancelling")
@@ -397,10 +400,13 @@ async def process_order_payment(
     # summing captured payments. (Order has no denormalized captured_amount
     # column, so the Payment table is the source of truth.)
     existing_payments = await db.execute(
-        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
     )
     captured_from_payments = money_round(
-        sum(to_decimal(p.amount) for p in existing_payments.scalars().all()),
+        sum(to_decimal(p.captured_amount or 0) for p in existing_payments.scalars().all()),
         precision,
         rounding_mode,
     )
@@ -546,6 +552,10 @@ async def process_order_payment(
     # Grant loyalty points on capture (idempotent — this endpoint sets the
     # status directly instead of going through _sync_order_payment_status).
     if order.payment_status == "captured":
+        # Spend-based lucky draw: grant tickets whenever the order ends up
+        # captured (idempotent per order) — same as the staff/POS paths.
+        from app.services.lucky_draw import grant_tickets_for_order
+        await grant_tickets_for_order(db, order)
         from app.services.payment import _credit_order_loyalty_points
         await _credit_order_loyalty_points(db, order)
 
@@ -928,10 +938,13 @@ async def pay_with_wallet(
     # Prevent overpayment: compute already-captured amount for this order
     from app.models.payment import Payment
     payment_result = await db.execute(
-        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
     )
     already_paid = money_round(
-        sum(to_decimal(p.amount) for p in payment_result.scalars().all()),
+        sum(to_decimal(p.captured_amount or 0) for p in payment_result.scalars().all()),
         precision,
         rounding_mode,
     )
@@ -1173,7 +1186,10 @@ async def cancel_order_staff(
 
     from app.models.payment import Payment
     has_captured = (await db.execute(
-        select(Payment.id).where(Payment.order_id == order.id, Payment.status == "captured").limit(1)
+        select(Payment.id).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        ).limit(1)
     )).scalar_one_or_none()
     if has_captured is not None:
         raise HTTPException(status_code=400, detail="Order has captured payments — issue a refund before cancelling")

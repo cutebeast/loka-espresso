@@ -1,0 +1,369 @@
+﻿id,table_name,record_id,column_name,locale,source_text,translated_text,is_auto_translated
+2942,menu_items,21,item_name,zh,Matcha Tonic,Matcha Tonic（抹茶汤力）,True
+2934,menu_items,20,item_name,zh,Coco Loco,Coco Loco（椰疯）,True
+3314,menu_items,66,description,zh,"Crisp mesclun greens tossed with briny Kalamata and green olives, juicy cherry tomatoes, and sharp capers, finished with crumbled feta cheese and a honey-balsamic dressing. Add-on Pulled Chicken +RM 12.",脆嫩混合生菜，拌以咸香的卡拉马塔橄榄与绿橄榄、多汁樱桃番茄和酸爽刺山柑，撒上碎菲达奶酪，淋上蜂蜜巴萨米克醋汁。加料：手撕鸡肉 +RM 12,True
+2830,menu_items,6,item_name,zh,Café Latté,Café Latté（咖啡拿铁）,True
+2834,menu_items,6,description,zh,Double espresso with steamed milk & a thin layer of foam.,双份浓缩咖啡配蒸奶和薄奶泡。,True
+2814,menu_items,4,item_name,zh,Piccolo,Piccolo（小拿铁）,True
+2822,menu_items,5,item_name,zh,Americano,Americano（美式咖啡）,True
+2862,menu_items,10,item_name,zh,Caramel Macchiato,Caramel Macchiato（焦糖玛奇朵）,True
+2870,menu_items,11,item_name,zh,Dirty Latté,Dirty Latté（脏拿铁）,True
+2874,menu_items,11,description,zh,Chilled milk with a bold espresso layer.,冰牛奶搭配浓郁浓缩咖啡层。,True
+2910,menu_items,17,item_name,zh,Double Rich Chocolate,Double Rich Chocolate（双倍浓郁巧克力）,True
+2894,menu_items,15,item_name,zh,Matcha Latte,Matcha Latte（抹茶拿铁）,True
+2902,menu_items,16,item_name,zh,Dirty Matcha,Dirty Matcha（脏抹茶）,True
+2914,menu_items,17,description,zh,Extra rich double chocolate.,超浓郁双倍巧克力。,True
+2906,menu_items,16,description,zh,Matcha with a bold espresso layer.,抹茶搭配浓郁浓缩咖啡层。,True
+2986,menu_items,26,description,zh,Layered orange and espresso specialty.,分层橙子浓缩咖啡特调,True
+2974,menu_items,25,item_name,zh,Arnold Palmer,Arnold Palmer（柠檬茶特调）,True
+2982,menu_items,26,item_name,zh,Nano-Nano,Nano-Nano（迷你迷你）,True
+3006,menu_items,29,item_name,zh,Katchai Suenmui Fizz,Katchai Suenmui Fizz（Katchai酸梅气泡饮）,True
+3090,menu_items,39,description,zh,Freshly squeezed orange juice.,鲜榨橙汁。,False
+3086,menu_items,39,item_name,zh,Orange,橙汁,False
+3118,menu_items,43,item_name,zh,Cucumber,黄瓜汁,False
+3134,menu_items,45,item_name,zh,Mix of any 2,任选两种鲜果现榨,False
+3138,menu_items,45,description,zh,Any two fresh juices combined.,任选两种新鲜水果现榨，调配住与您的专属果汁。,False
+3166,menu_items,122,item_name,zh,Chocolate Cheesecake,Chocolate Cheesecake（巧克力芝士蛋糕）,True
+3182,menu_items,50,item_name,zh,Evian Sparkling Water (Can),Evian 气泡矿泉水（罐装）,False
+3170,menu_items,122,description,zh,Chocolate cheesecake.,巧克力芝士蛋糕。,True
+3222,menu_items,55,item_name,zh,Yarra Valley Blackcurrant,Yarra Valley Blackcurrant（雅拉谷黑加仑）,True
+3226,menu_items,55,description,zh,Sparkling blackcurrant juice.,黑加仑气泡果汁。,True
+3270,menu_items,61,item_name,zh,Turkish Mixed Bread,Turkish Mixed Bread（土耳其混合面包）,True
+3486,menu_items,86,item_name,zh,Garlic Prawn Aglio Olio Peperoncino,Garlic Prawn Aglio Olio Peperoncino（蒜香虾仁辣椒意面）,True
+3322,menu_items,123,description,zh,Tiramisu.,提拉米苏,True
+3318,menu_items,123,item_name,zh,Tiramisu,Tiramisu（提拉米苏）,True
+3366,menu_items,72,item_name,zh,Baba Ganoush (Eggplant Dip),Baba Ganoush（烤茄子蘸酱）,True
+3358,menu_items,71,item_name,zh,Hummus,Hummus（鹰嘴豆泥）,True
+3398,menu_items,76,item_name,zh,Istanbul Street Lahmacun,Istanbul Street Lahmacun（伊斯坦布尔街头 Lahmacun）,True
+2946,menu_items,21,description,zh,Matcha layered over tonic.,抹茶分层汤力水,True
+3054,menu_items,35,item_name,zh,Banana Biscoff,Banana Biscoff（香蕉比斯考夫）,True
+3526,menu_items,91,item_name,zh,Turkish Spiced Beef Baked Rice,Turkish Spiced Beef Baked Rice（土耳其香料牛肉焗饭）,True
+3078,menu_items,38,item_name,zh,Apple,苹果汁,False
+3110,menu_items,42,item_name,zh,Carrot,胡萝卜汁,False
+3082,menu_items,38,description,zh,Freshly pressed apple juice.,鲜榨苹果汁,False
+3114,menu_items,42,description,zh,Fresh carrot juice.,鲜榨胡萝卜汁,False
+3438,menu_items,124,item_name,zh,Le Caramel,Le Caramel（焦糖）,True
+3174,menu_items,49,item_name,zh,Citrus Zing,Citrus Zing（柑橘鲜爽）,True
+3206,menu_items,53,item_name,zh,Evian Mineral Water,Evian 天然矿泉水,False
+3726,menu_items,116,item_name,zh,Semolina Labneh,Semolina Labneh（粗粒小麦酸奶乳酪）,True
+3294,menu_items,64,item_name,zh,Smoked Salmon & Cream Cheese Sandwich,Smoked Salmon & Cream Cheese Sandwich（烟熏三文鱼奶油芝士三明治）,True
+3558,menu_items,95,item_name,zh,Pistachio Roll Baklava,Pistachio Roll Baklava（开心果卷Baklava）,True
+3598,menu_items,100,item_name,zh,Baklava Set 8 pcs,Baklava Set 8 pcs（Baklava 8件套装）,True
+3582,menu_items,98,item_name,zh,Baklava Set 4 pcs,Baklava Set 4 pcs（四件巴克拉瓦套餐）,True
+3590,menu_items,99,item_name,zh,Baklava Set 6 pcs,Baklava Set 6 pcs（巴克拉瓦6件套）,True
+3594,menu_items,99,description,zh,"Assorted baklava, box of 6 pieces.",什锦Baklava，6块装,True
+3630,menu_items,104,item_name,zh,Baklava Set 24 pcs,Baklava Set 24 pcs（Baklava 24件套餐）,True
+3638,menu_items,105,item_name,zh,Baklava Set 25 pcs,Baklava Set 25 pcs（果仁蜜饼套餐25件）,True
+38591,menu_items,1387,item_name,zh,Off-menu Baklava Latté,Off-menu Baklava Latté（隐藏菜单Baklava拿铁）,True
+3634,menu_items,104,description,zh,"Assorted baklava, box of 24 pieces.",什锦Baklava，24块装。,True
+3378,menu_items,73,description,zh,Eggplant stewed in tomato sauce. Served with lavash bread.,番茄酱炖茄子，配以拉瓦什饼。,True
+3670,menu_items,109,item_name,zh,Chocolate Gingerbread Bar,Chocolate Gingerbread Bar（巧克力姜饼条）,True
+3390,menu_items,75,item_name,zh,Turkish-style Green Beans,Turkish-style Green Beans（土耳其风味青豆）,True
+3678,menu_items,110,item_name,zh,Brownie Peanut Bar,Brownie Peanut Bar（布朗尼花生条）,True
+3674,menu_items,109,description,zh,Chocolate gingerbread bar.,巧克力姜饼条,True
+3718,menu_items,115,item_name,zh,Cendol Roll,Cendol Roll（煎蕊卷）,True
+3702,menu_items,113,item_name,zh,Café Noisette,Café Noisette（榛果咖啡）,True
+3710,menu_items,114,item_name,zh,Lemon Pistachio,Lemon Pistachio（柠檬开心果）,True
+3714,menu_items,114,description,zh,Lemon pistachio cake.,柠檬开心果蛋糕,True
+3422,menu_items,79,item_name,zh,Istanbul Market Vegetable Braise,Istanbul Market Vegetable Braise（伊斯坦布尔市集蔬菜烩）,True
+3454,menu_items,82,item_name,zh,Ottoman Beef Pide,Ottoman Beef Pide（奥斯曼牛肉皮德）,True
+3758,menu_items,120,item_name,zh,La Mûre,La Mûre（黑莓）,True
+3766,menu_items,121,item_name,zh,Chocolate Brownie,Chocolate Brownie（巧克力布朗尼）,True
+3426,menu_items,79,description,zh,"Hearty vegetable stew, slowly simmered with ripe tomatoes, sweet peppers, and onions for deep, comforting flavour.",丰盛的蔬菜炖菜，以熟番茄、甜椒和洋葱慢火熬煮，味道浓郁暖心。,True
+3770,menu_items,121,description,zh,Classic chocolate brownie.,经典巧克力布朗尼,True
+3478,menu_items,85,item_name,zh,Creamy Hummus Mac & Cheese,Creamy Hummus Mac & Cheese（奶油鹰嘴豆泥芝士通心粉）,True
+3798,menu_items,128,item_name,zh,Double Dark Cookies,Double Dark Cookies（双倍黑巧曲奇）,True
+3806,menu_items,129,item_name,zh,OG Chunk Cookies,OG Chunk Cookies（经典大块曲奇）,True
+3814,menu_items,130,item_name,zh,French Croissant,French Croissant（法式可颂）,True
+3810,menu_items,129,description,zh,Classic chunky cookies.,经典厚切曲奇,True
+3818,menu_items,130,description,zh,Classic buttery French croissant.,经典黄油法式可颂。,True
+3854,menu_items,135,item_name,zh,Peanut Danish,Peanut Danish（花生丹麦酥）,True
+2998,menu_items,28,item_name,zh,Lotus Biscoff Einspanner,Lotus Biscoff Einspanner（莲花比斯考夫奶油咖啡）,True
+3846,menu_items,134,item_name,zh,Dubai Chocolate Roll,Dubai Chocolate Roll（迪拜巧克力卷）,True
+3902,menu_items,141,item_name,zh,Garlic Cheese Danish,Garlic Cheese Danish（蒜香芝士丹麦）,True
+3858,menu_items,135,description,zh,Danish pastry with peanut filling.,花生馅丹麦酥,True
+3894,menu_items,140,item_name,zh,Garlic Cream Cheese,Garlic Cream Cheese（蒜香奶油芝士）,True
+3010,menu_items,29,description,zh,Iced citrus plum fizzy specialty.,冰柑橘梅子气泡特饮,True
+3934,menu_items,145,item_name,zh,Chicken Slice & Cheese,Chicken Slice & Cheese（鸡肉片芝士）,True
+3942,menu_items,146,item_name,zh,Yogurt Cream Cruffin,Yogurt Cream Cruffin（酸奶奶油可颂松饼）,True
+3974,menu_items,150,item_name,zh,Cinnamon Roll,Cinnamon Roll（肉桂卷）,True
+3982,menu_items,151,item_name,zh,Raspberry Canelé,Raspberry Canelé（覆盆子可丽露）,True
+6663,menu_items,887,description,zh,"A curated multi-course coffee tasting with standard food pairing, guided by our baristas. 2-pax package includes FREE single-origin beans, limited edition mugs and exclusive vouchers; 1-pax VIP includes upgraded premium food pairing, limited edition beans and an exclusive gift pack. Price per person, excludes taxes.",精心策划的多道式咖啡品鉴体验，佐以标准食品搭配，由我们的咖啡师全程引导。双人套餐包含免费的单品咖啡豆、限量版马克杯及专属优惠券；单人VIP套餐则升级为高级食品搭配、限量版咖啡豆及独家礼包。价格按每位计算，不含税费。,True
+4014,menu_items,155,item_name,zh,Mixed Peel Scone,Mixed Peel Scone（杂果皮司康）,True
+4022,menu_items,156,item_name,zh,Pulled Chicken (Add-on),Pulled Chicken (Add-on)（手撕鸡附加）,True
+4054,menu_items,160,item_name,zh,Soy Milk (Add-on),Soy Milk (Add-on)（豆奶加料）,True
+3550,menu_items,94,item_name,zh,Chocolate Baklava,Chocolate Baklava（巧克力巴克拉瓦）,True
+3554,menu_items,94,description,zh,Layered filo with chocolate. RM 36 / 100g · RM 9 / pc.,巧克力层层酥皮。RM 36 / 100克 · RM 9 / 块,True
+2918,menu_items,18,item_name,zh,Mother Earth,Mother Earth（大地之母）,True
+3014,menu_items,30,item_name,zh,Matcha White Choco,Matcha White Choco（抹茶白巧克力）,True
+2826,menu_items,5,description,zh,Classic double espresso on hot water.,经典双份浓缩咖啡加热水。,True
+2854,menu_items,9,item_name,zh,Dark Cocoa Mocha,Dark Cocoa Mocha（黑可可摩卡）,True
+3186,menu_items,50,description,zh,"Sparkling natural mineral water, canned.",罐装天然气泡矿泉水。,False
+3622,menu_items,103,item_name,zh,Baklava Set 20 pcs,Baklava Set（巴克拉瓦拼盘 20 块）,True
+3586,menu_items,98,description,zh,"Assorted baklava, box of 4 pieces.",什锦Baklava，四块装。,True
+3626,menu_items,103,description,zh,"Assorted baklava, box of 20 pieces.",什锦Baklava，20片装。,True
+3402,menu_items,76,description,zh,"Wafer-thin artisanal flatbread topped with finely minced aromatic beef, garden herbs and roasted peppers.",薄如蝉翼的手工扁面包，铺上香碎牛肉、田园香草与烤甜椒。,True
+3410,menu_items,77,description,zh,"Traditional hand-rolled yufka pastry, folded over a savoury filling of wilted spinach, crumbled feta and fresh herbs.",传统手工卷制的尤夫卡面皮，包裹着由菠菜、碎菲达芝士和新鲜香草制成的咸香馅料。,True
+3662,menu_items,108,item_name,zh,Classic Tiramisu,Classic Tiramisu（经典提拉米苏）,True
+3434,menu_items,80,description,zh,"Rich, slow-cooked casserole of fresh water shrimp simmered in a reduction of vine-ripened tomatoes, peppers and onions.",鲜虾慢炖砂锅，以藤上熟透的番茄、甜椒和洋葱浓缩酱汁焖煮，口感浓郁。,True
+3666,menu_items,108,description,zh,Classic coffee tiramisu.,经典咖啡提拉米苏。,True
+3466,menu_items,83,description,zh,Hand-stretched boat-shaped pide with chicken.,手工拉伸的船形Pide配鸡肉,True
+3482,menu_items,85,description,zh,"Macaroni tossed in an ultra-creamy, velvet sauce crafted from traditional hummus, whipping cream, and a touch of Greek yogurt, baked with a sharp three-cheese crust and fresh broccoli florets.",通心粉拌入以传统鹰嘴豆泥、鲜奶油和少许希腊酸奶调制的超浓郁丝滑酱汁，搭配焗烤三层浓郁芝士脆皮与新鲜西兰花小朵。,True
+3750,menu_items,119,item_name,zh,Chocolate Pistachio,Chocolate Pistachio（巧克力开心果）,True
+3722,menu_items,115,description,zh,Cendol-inspired roll cake.,煎蕊风味卷蛋糕,True
+3762,menu_items,120,description,zh,Blackberry mousse cake.,黑莓慕斯蛋糕。,True
+3838,menu_items,133,item_name,zh,Pain au Chocolat,Pain au Chocolat（巧克力可颂）,True
+3886,menu_items,139,item_name,zh,Vanilla Egg Tart,Vanilla Egg Tart（香草蛋挞）,True
+3850,menu_items,134,description,zh,Roll with Dubai-style chocolate filling.,迪拜风格巧克力馅卷,True
+2890,menu_items,14,description,zh,Classic rich chocolate.,经典浓郁巧克力。,True
+2866,menu_items,10,description,zh,"Layered espresso, milk, and caramel.",浓缩咖啡、牛奶与焦糖层层叠加。,True
+3978,menu_items,150,description,zh,Classic cinnamon roll.,经典肉桂卷,True
+3938,menu_items,145,description,zh,Pastry with chicken slice and cheese.,鸡肉芝士酥皮饼,True
+3690,menu_items,111,description,zh,Passionfruit yogurt cake.,百香果酸奶蛋糕,True
+3774,menu_items,125,item_name,zh,Le Citron,Le Citron（柠檬之韵）,True
+3738,menu_items,117,description,zh,Cheesecake with kunafa.,Kunafa芝士蛋糕,True
+3954,menu_items,147,description,zh,Croissant-muffin hybrid with matcha lava filling.,可颂马芬混合体，抹茶熔岩内馅。,True
+3986,menu_items,151,description,zh,Canelé with raspberry.,覆盆子可露丽,True
+3994,menu_items,152,description,zh,Canelé with pistachio.,开心果可丽露,True
+3946,menu_items,146,description,zh,Croissant-muffin hybrid with yogurt cream.,可颂玛芬混搭，配酸奶奶油。,True
+39620,bundle_products,382,title,zh,E2E Combo Meal,E2E Combo Meal（E2E套餐）,True
+39624,menu_items,1476,item_name,zh,E2E Item UPDATE-7D09B461,E2E Item UPDATE-7D09B461（E2E 项目更新-7D09B461）,True
+39628,bundle_products,383,title,zh,E2E Updated Combo,E2E Updated Combo（E2E升级套餐）,True
+39632,menu_items,1477,item_name,zh,E2E Item DELETE-3A3A829D,E2E Item DELETE-3A3A829D,True
+39640,menu_items,1478,item_name,zh,E2E Item FRIES-965591D7,E2E Item FRIES-965591D7,True
+39644,bundle_products,385,title,zh,E2E Pick 2 Combo,E2E Pick 2 Combo（任选两款套餐）,True
+39648,menu_items,1479,item_name,zh,E2E Item PX1-3DDD4C40,E2E Item PX1-3DDD4C40,True
+39652,menu_items,1480,item_name,zh,E2E Item PX2-B2B294C6,E2E Item PX2-B2B294C6,True
+39656,bundle_products,386,title,zh,E2E Pick 2 Multi,E2E Pick 2 Multi（任选两款组合）,True
+39660,menu_items,1481,item_name,zh,E2E Item COMBO-A-9B292F15,E2E Item COMBO-A-9B292F15,True
+39664,menu_items,1482,item_name,zh,E2E Item COMBO-B-8BAC9E65,E2E Item COMBO-B-8BAC9E65,True
+39668,bundle_products,387,title,zh,E2E Incomplete Combo,E2E Incomplete Combo（未完成套餐）,True
+39672,menu_items,1483,item_name,zh,E2E Item PXD-A-AFC2BC6F,E2E Item PXD-A-AFC2BC6F,True
+39676,menu_items,1484,item_name,zh,E2E Item PXD-B-63D0E778,E2E Item PXD-B-63D0E778,True
+39680,bundle_products,388,title,zh,E2E Pick 2 Distinct,E2E Pick 2 Distinct（自选两款）,True
+39684,menu_items,1485,item_name,zh,E2E Item MC-APP-25301B2B,E2E Item MC-APP-25301B2B,True
+39688,menu_items,1486,item_name,zh,E2E Item MC-MAIN-6DA4041E,E2E Item MC-MAIN-6DA4041E,True
+39692,bundle_products,389,title,zh,E2E Multi-Course,E2E Multi-Course（全程多道菜）,True
+39696,menu_items,1487,item_name,zh,E2E Item ADDON-ITEM-9CFE7658,E2E Item ADDON-ITEM-9CFE7658,True
+39700,bundle_products,390,title,zh,E2E Addon Eligible Bundle,E2E Addon Eligible Bundle（E2E可加购套餐）,True
+39704,menu_items,1488,item_name,zh,E2E Item CAP-A-4F902E9D,E2E Item CAP-A-4F902E9D,True
+39708,menu_items,1489,item_name,zh,E2E Item CAP-B-38B42AD9,E2E Item CAP-B-38B42AD9,True
+3022,menu_items,31,item_name,zh,Strawberry Cheesecake,Strawberry Cheesecake（草莓芝士蛋糕）,True
+3026,menu_items,31,description,zh,"Milk, strawberries, cream cheese, biscuit crumble, strawberry sauce, whipped cream.",牛奶、草莓、奶油芝士、饼干碎、草莓酱、鲜奶油。,True
+3430,menu_items,80,item_name,zh,Bosphorus Braised Shrimp,Bosphorus Braised Shrimp（博斯普鲁斯焖虾）,True
+3150,menu_items,47,item_name,zh,The Hulk,The Hulk（绿巨人）,True
+3074,menu_items,37,description,zh,"Milk, chocolate cookies, vanilla ice cream, chocolate syrup, whipped cream, cookie crumble.",牛奶，巧克力饼干，香草冰淇淋，巧克力糖浆，鲜奶油，饼干碎。,True
+3154,menu_items,47,description,zh,"Apple, cucumber, kiwi, hint of mint.",苹果、黄瓜、奇异果，带一丝薄荷清香。,True
+3278,menu_items,62,item_name,zh,Pulled Chicken Pesto Shack,Pulled Chicken Pesto Shack（手撕鸡青酱小屋）,True
+3290,menu_items,63,description,zh,"Toasted bakery bread or croissant layered with a fluffy egg fold with premium chicken slices, and a rich melted cheese blend, balanced with fresh lettuce.",烤面包或可颂层层叠上松软蛋卷、优质鸡肉片和浓郁融化芝士，佐以新鲜生菜，口感平衡。,True
+3342,menu_items,69,item_name,zh,Truffle Gold Potato,Truffle Gold Potato（松露黄金薯）,True
+3406,menu_items,77,item_name,zh,Garden Spinach Gözleme,Garden Spinach Gözleme（田园菠菜 Gözleme）,True
+3418,menu_items,78,description,zh,"Traditional hand-rolled yufka pastry, folded over a savoury filling of marinated chicken & cheese.",传统手工卷制的yufka面皮，包裹着腌制鸡肉和奶酪的咸香馅料。,True
+2810,menu_items,3,description,zh,Single espresso shot with steamed milk.,单份浓缩咖啡配蒸奶。,True
+3494,menu_items,87,item_name,zh,Smoked Salmon Arrabiata Rosso,Smoked Salmon Arrabiata Rosso（烟熏三文鱼辣番茄红酱）,True
+3474,menu_items,84,description,zh,Hand-stretched boat-shaped pide with melted golden cheese.,手工拉伸的船形Pide，搭配融化的金黄色芝士。,True
+3522,menu_items,90,description,zh,Fragrant rice baked under a rich blanket of molten mozzarella and cheddar. Topped with savory eggplant Patlıcan Soslu and grilled chicken cubes.,香米饭在浓郁的熔化莫扎里拉和切达芝士覆盖下烘烤，配上咸香茄子Patlıcan Soslu和烤鸡肉丁。,True
+2798,menu_items,2,item_name,zh,Ristretto,Ristretto（芮斯崔朵）,True
+3534,menu_items,92,item_name,zh,Pistachio Baklava,Pistachio Baklava（开心果Baklava）,True
+2886,menu_items,14,item_name,zh,Chocolate,Chocolate（巧克力）,True
+3646,menu_items,106,item_name,zh,Baklava Set 36 pcs,Baklava Set 36 pcs（巴克拉瓦拼盘36块）,True
+3602,menu_items,100,description,zh,"Assorted baklava, box of 8 pieces.",什锦Baklava，8块装。,True
+3566,menu_items,96,item_name,zh,Baklava Set 2 pcs,Baklava Set（巴克拉瓦套餐2块）,True
+3606,menu_items,101,item_name,zh,Baklava Set 9 pcs,Baklava Set 9 pcs（巴克拉瓦9件套餐）,True
+3822,menu_items,131,item_name,zh,Nutella Beignet,Nutella Beignet（榛子巧克力贝涅特）,True
+3734,menu_items,117,item_name,zh,Kunafa Cheesecake,Kunafa Cheesecake（Kunafa 芝士蛋糕）,True
+3782,menu_items,126,item_name,zh,Cendol,Cendol（珍多冰）,True
+3698,menu_items,112,description,zh,Blackberry lychee cake.,黑莓荔枝蛋糕,True
+3746,menu_items,118,description,zh,Turkish tres leches milk cake.,土耳其三奶蛋糕,True
+3834,menu_items,132,description,zh,Beignet filled with custard.,卡仕达馅贝涅饼,True
+3826,menu_items,131,description,zh,Beignet filled with Nutella.,Nutella夹心贝涅饼。,True
+3950,menu_items,147,item_name,zh,Matcha Lava Cruffin,Matcha Lava Cruffin（抹茶熔岩可芬）,True
+4030,menu_items,157,item_name,zh,Extra Shot (Add-on),Extra Shot (Add-on)（额外浓缩咖啡）,True
+3990,menu_items,152,item_name,zh,Pistachio Canelé,Pistachio Canelé（开心果可露丽）,True
+3910,menu_items,142,item_name,zh,Pistachio Roll Bun,Pistachio Roll Bun（开心果卷面包）,True
+3962,menu_items,148,description,zh,Danish topped with cherry tomatoes.,丹麦酥配樱桃番茄,True
+4002,menu_items,153,description,zh,Buttery scone with cranberries.,黄油蔓越莓司康,True
+2882,menu_items,13,description,zh,Specialty Turkish brew coffee.,特色土耳其冲泡咖啡,True
+3450,menu_items,81,description,zh,"Two juicy chicken skewers, perfectly grilled and served as a satisfying meal — tender, smoky, and full of flavour.",两串多汁鸡肉串，经完美烤制，作为一道令人满足的主食呈现——肉质柔嫩，烟熏味浓郁，风味十足。,True
+3570,menu_items,96,description,zh,"Assorted baklava, box of 2 pieces.",什锦Baklava，两片装,True
+3650,menu_items,106,description,zh,"Assorted baklava, box of 36 pieces.",什锦Baklava，36块装,True
+2838,menu_items,7,item_name,zh,Cappuccino,Cappuccino（卡布奇诺）,True
+2850,menu_items,8,description,zh,Double espresso + steamed milk + sweetened condensed milk.,双份浓缩咖啡 + 蒸牛奶 + 加糖炼乳,True
+17272,bundle_products,2,title,zh,Main & Treat,主菜与甜品,True
+7829,bundle_products,3,description,zh,"Two drinks and two pastries of your choice — made for sharing (or not, we won't judge).",您自选的两杯饮品和两份糕点——专为分享而设（当然，独自享用也无妨，我们不会评判）。,True
+4062,menu_items,12,item_name,zh,Affogato,Affogato（浓缩咖啡冰淇淋）,True
+3030,menu_items,32,item_name,zh,Peanut Butter Choco,Peanut Butter Choco（花生酱巧克力）,True
+3018,menu_items,30,description,zh,"Matcha, milk, white chocolate, whipped cream, matcha dust, mochi cubes.",抹茶、牛奶、白巧克力、鲜奶油、抹茶粉、麻糬丁,True
+2790,menu_items,1,item_name,zh,Espresso,Espresso（浓缩咖啡）,True
+2926,menu_items,19,item_name,zh,Strawberry Matcha,Strawberry Matcha（草莓抹茶）,True
+2950,menu_items,22,item_name,zh,Stout Brew,Stout Brew（黑啤咖啡）,True
+2958,menu_items,23,item_name,zh,Sparkling Sunshine,Sparkling Sunshine（阳光气泡饮）,True
+2938,menu_items,20,description,zh,Coconut and matcha specialty.,椰子抹茶特饮,True
+2966,menu_items,24,item_name,zh,Pink Panther,Pink Panther（粉红莓果）,True
+2954,menu_items,22,description,zh,Dark stout-style specialty brew (non-alcoholic).,黑啤风格特制咖啡（无酒精）,True
+3130,menu_items,44,description,zh,Fresh lemonade.,新鲜柠檬水,True
+2962,menu_items,23,description,zh,Sparkling citrus specialty.,柑橘气泡特调,True
+3070,menu_items,37,item_name,zh,Cookie n' Cream,Cookie n' Cream（曲奇奶油）,True
+3066,menu_items,36,description,zh,"Milk, honey, caramel, oat bits, vanilla, whipped cream, caramel drizzle.",牛奶、蜂蜜、焦糖、燕麦粒、香草、鲜奶油、焦糖淋酱。,True
+3158,menu_items,48,item_name,zh,Berry Breeze,Berry Breeze（莓果微风）,True
+3106,menu_items,41,description,zh,Fresh pineapple juice.,鲜榨菠萝汁。,False
+3214,menu_items,54,item_name,zh,Yarra Valley Apple,亚拉河谷苹果汁,False
+3242,menu_items,57,item_name,zh,Spritzer Mineral Water,Spritzer Mineral Water（Spritzer矿泉水）,True
+3246,menu_items,58,item_name,zh,Spritzer Sparkling Water,Spritzer Sparkling Water（Spritzer气泡水）,True
+3190,menu_items,51,item_name,zh,Coca-Cola Zero,可口可乐Zero,False
+3198,menu_items,52,item_name,zh,Coca-Cola Asli,经典可口可乐,False
+3202,menu_items,52,description,zh,Classic Coca-Cola.,经典可口可乐,False
+3218,menu_items,54,description,zh,Sparkling apple juice.,气泡苹果汁,False
+3230,menu_items,56,item_name,zh,Yarra Valley Orange,亚拉河谷橙汁,False
+3250,menu_items,58,description,zh,Sparkling water.,气泡水,True
+3286,menu_items,63,item_name,zh,"Classic Egg, Chicken Slice & Cheese Stack","Classic Egg, Chicken Slice & Cheese Stack（经典鸡蛋、鸡肉片与芝士堆）",True
+3310,menu_items,66,item_name,zh,Mediterranean Olive & Feta Garden Salad,Mediterranean Olive & Feta Garden Salad（地中海橄榄与菲达奶酪花园沙拉）,True
+3302,menu_items,65,item_name,zh,Roast Beef & Mushroom Melts,Roast Beef & Mushroom Melts（烤牛肉蘑菇熔岩）,True
+3282,menu_items,62,description,zh,"Flaky, buttery croissant or artisanal bread packed with tender pulled chicken, a vibrant, aromatic basil pesto, and fresh lettuce.",酥脆的黄油可颂或手工面包，内含嫩滑手撕鸡肉、香气四溢的罗勒青酱和新鲜生菜。,True
+3350,menu_items,70,item_name,zh,Grand Meze Feast,Grand Meze Feast（豪华Meze盛宴）,True
+3334,menu_items,68,item_name,zh,Chilli Butter Corn Ribs,Chilli Butter Corn Ribs（辣椒黄油玉米肋）,True
+3362,menu_items,71,description,zh,Classic mashed garbanzo beans dip. Served with lavash bread.,经典鹰嘴豆泥，配拉瓦什面包。,True
+3462,menu_items,83,item_name,zh,Anatolian Chicken Pide,Anatolian Chicken Pide（安纳托利亚鸡肉Pide）,True
+3414,menu_items,78,item_name,zh,Chargrilled Chicken Gözleme,Chargrilled Chicken Gözleme（炭烤鸡肉戈兹莱梅）,True
+3446,menu_items,81,item_name,zh,Turkish Flame-Grilled Chicken Skewers,Turkish Flame-Grilled Chicken Skewers（土耳其火焰烤鸡肉串）,True
+3394,menu_items,75,description,zh,Green beans slowly stewed in tomato sauce. Served with lavash bread.,青豆用番茄酱慢炖。搭配拉瓦什面包。,True
+3498,menu_items,87,description,zh,"Spaghetti tossed in a rich, spicy tomato mezze sauce with a kick of garlic and chili flakes, together with delicate cuts of premium smoked salmon and a drizzle of extra virgin olive oil.",意大利面拌入浓郁的辛辣番茄Mezze酱，带有大蒜和辣椒碎的风味，搭配优质烟熏三文鱼薄片，淋上特级初榨橄榄油。,True
+3510,menu_items,89,item_name,zh,Anatolian Roast Chicken with Baba Ganoush,Anatolian Roast Chicken with Baba Ganoush（安纳托利亚烤鸡配巴巴加努什）,True
+3502,menu_items,88,item_name,zh,Pesto Genovese with Portobello Steak,Pesto Genovese with Portobello Steak（香蒜酱配波特菇牛排）,True
+2858,menu_items,9,description,zh,"Rich dark cocoa, espresso, and milk.",浓郁黑可可、浓缩咖啡与牛奶。,True
+2990,menu_items,27,item_name,zh,Lotus Biscoff Espresso con Panna,Lotus Biscoff Espresso con Panna（Lotus Biscoff 意式浓缩配奶油）,True
+3518,menu_items,90,item_name,zh,Turkish Spiced Chicken Baked Rice,Turkish Spiced Chicken Baked Rice（土耳其香料鸡焗饭）,True
+6659,menu_items,887,item_name,zh,Coffee Omakase Experience,Coffee Omakase Experience（咖啡主理精选体验）,True
+3002,menu_items,28,description,zh,Viennese-style espresso with cream and Lotus Biscoff.,维也纳式浓缩咖啡配奶油和Lotus Biscoff。,True
+2806,menu_items,3,item_name,zh,Minomo,Minomo（蜜诺摩）,True
+3542,menu_items,93,item_name,zh,Walnut Baklava,Walnut Baklava（核桃Baklava）,True
+2846,menu_items,8,item_name,zh,Spanish Latté,Spanish Latté（西班牙拿铁）,True
+2818,menu_items,4,description,zh,Single ristretto shot with steamed milk.,单份ristretto浓缩咖啡配蒸奶。,True
+3682,menu_items,110,description,zh,Brownie bar with peanut.,花生布朗尼条,True
+3574,menu_items,97,item_name,zh,Baklava Set 3 pcs,Baklava Set 3 pcs（Baklava套餐3块）,True
+3614,menu_items,102,item_name,zh,Baklava Set 12 pcs,Baklava Set 12 pcs（Baklava 12块套餐）,True
+3654,menu_items,107,item_name,zh,Raspberry Cheesecake,Raspberry Cheesecake（覆盆子芝士蛋糕）,True
+3642,menu_items,105,description,zh,"Assorted baklava, box of 25 pieces.",什锦Baklava，25块装,True
+3830,menu_items,132,item_name,zh,Custard Beignet,Custard Beignet（卡仕达炸面饼）,True
+3790,menu_items,127,item_name,zh,Tarta de Piña,Tarta de Piña（菠萝挞）,True
+3742,menu_items,118,item_name,zh,Trileçe,Trileçe,True
+3754,menu_items,119,description,zh,Chocolate pistachio cake.,巧克力开心果蛋糕,True
+3442,menu_items,124,description,zh,Caramel entremet.,焦糖慕斯,True
+3842,menu_items,133,description,zh,Flaky pastry with dark chocolate batons.,酥皮黑巧克力棒,True
+3706,menu_items,113,description,zh,Coffee hazelnut cake.,咖啡榛子蛋糕,True
+3958,menu_items,148,item_name,zh,Cherry Tomato Danish,Cherry Tomato Danish（樱桃番茄丹麦酥）,True
+3970,menu_items,149,description,zh,Soft bun with chicken sausage.,鸡肉香肠软包,True
+3906,menu_items,141,description,zh,Danish with garlic and cheese.,蒜香芝士丹麦酥,True
+3918,menu_items,143,item_name,zh,German Cheese Tart,German Cheese Tart（德国芝士挞）,True
+3930,menu_items,144,description,zh,Garlic bread topped with chicken slice.,蒜香面包配鸡肉片。,True
+3998,menu_items,153,item_name,zh,Cranberry Scone,Cranberry Scone（蔓越莓司康）,True
+3870,menu_items,137,item_name,zh,Vanilla Canelé,Vanilla Canelé（香草可露丽）,True
+3914,menu_items,142,description,zh,Roll bun with pistachio.,开心果面包卷,True
+2878,menu_items,13,item_name,zh,Kahve-i Türk,Kahve-i Türk（土耳其咖啡）,True
+4038,menu_items,158,item_name,zh,Single Origin Bean (Add-on),Single Origin Bean（单源咖啡豆）,True
+4034,menu_items,157,description,zh,Extra espresso shot for any coffee.,任何咖啡均可加额外浓缩咖啡。,True
+2898,menu_items,15,description,zh,Smooth matcha with steamed milk.,顺滑抹茶搭配蒸奶。,True
+4042,menu_items,158,description,zh,Upgrade to single origin beans.,升级为单一产地咖啡豆。,True
+4050,menu_items,159,description,zh,Swap to oat milk.,换成燕麦奶。,True
+7828,bundle_products,3,title,zh,Tea Time for Two,双人下午茶,True
+17284,bundle_products,4,description,zh,"Our Levantine-style Turkish Mixed Bread plus any two specialty coffees — mornings, sorted.",我们的黎凡特式土耳其混合面包搭配任意两种特色咖啡——早晨，轻松搞定。,True
+2794,menu_items,1,description,zh,"Single shot, longer extraction, creamy.",单份浓缩，长萃取，口感绵密。,True
+6667,menu_items,888,item_name,zh,Turkish Sand Brew Workshop,Turkish Sand Brew Workshop（土耳其沙煮咖啡工坊）,True
+3050,menu_items,34,description,zh,"Milk, caramel sauce, sea salt, pretzel bits, whipped cream, caramel drizzle.",牛奶、焦糖酱、海盐、椒盐脆饼碎、鲜奶油、焦糖淋酱。,True
+3038,menu_items,33,item_name,zh,Mango Coconut,Mango Coconut（芒果椰子）,True
+3254,menu_items,59,item_name,zh,Spritzer Sparkling Lemon,Spritzer 柠檬气泡水,False
+3258,menu_items,59,description,zh,Sparkling lemon water.,气泡柠檬水。,False
+3042,menu_items,33,description,zh,"Milk, mango, coconut cream, vanilla ice cream, whipped cream, toasted coconut flakes.",牛奶、芒果、椰奶、香草冰淇淋、打发奶油、烤椰片。,True
+3514,menu_items,89,description,zh,"Quarter roast chicken served over a smoky, creamy baba ganoush eggplant purée, accompanied by dressed mesclun greens and a drizzle of cold-pressed extra virgin olive oil. Add-on Pulled Chicken +RM 12.",四分之一烤鸡搭配烟熏奶油味baba ganoush茄子泥，佐以调味mesclun生菜，淋上冷压初榨橄榄油。附加手撕鸡肉 +RM 12。,True
+3470,menu_items,84,item_name,zh,Golden Cheese Pide,Golden Cheese Pide（黄金芝士Pide）,True
+3162,menu_items,48,description,zh,"Strawberry, blueberry, cranberry, splash of lemon.",草莓、蓝莓、蔓越莓，加少许柠檬汁。,True
+3210,menu_items,53,description,zh,Natural mineral water.,天然矿泉水。,False
+3178,menu_items,49,description,zh,"Orange, grapefruit, lime, touch of honey.",橙子、葡萄柚、青柠，微带蜂蜜。,True
+3562,menu_items,95,description,zh,Rolled filo with pistachio. RM 36 / 100g · RM 9 / pc.,开心果酥皮卷。RM 36 / 每100克 · RM 9 / 每块。,True
+6671,menu_items,888,description,zh,"Hands-on sand brewing class with food tasting of Turkish delights. 4-pax package. Price per person, excludes taxes.",亲手沙煮咖啡课程，搭配土耳其软糖品尝。4人套餐。价格按每位计算，不含税。,True
+3922,menu_items,143,description,zh,Baked German-style cheese tart.,烤德式芝士挞,True
+3874,menu_items,137,description,zh,Classic French canelé with vanilla.,经典法式香草可露丽,True
+3262,menu_items,60,item_name,zh,Ben Organic Orange,Ben有机橙汁,False
+3266,menu_items,60,description,zh,Organic orange juice.,有机橙汁。,False
+3578,menu_items,97,description,zh,"Assorted baklava, box of 3 pieces.",什锦Baklava，3块装。,True
+3346,menu_items,69,description,zh,"Crispy russet potato loaded with a molten three-cheese blend, tangy Greek yogurt, and savory chicken bacon bits, finished with a decadent drizzle of white truffle oil.",脆皮褐皮马铃薯，内填熔融三重芝士，搭配酸味希腊酸奶与咸香鸡肉培根碎，最后淋上奢华白松露油。,True
+3802,menu_items,128,description,zh,Double dark chocolate cookies.,双倍黑巧克力曲奇,True
+3898,menu_items,140,description,zh,Pastry with garlic cream cheese.,大蒜奶油芝士酥皮,True
+2842,menu_items,7,description,zh,"Double espresso with less milk, foam on top with cocoa powder.",双份浓缩咖啡，少奶，顶部奶泡撒上可可粉。,True
+3094,menu_items,40,item_name,zh,Watermelon,西瓜汁,False
+3098,menu_items,40,description,zh,Fresh watermelon juice.,鲜榨西瓜汁,False
+3146,menu_items,46,description,zh,"Orange, pineapple, passionfruit, a dash of grenadine.",橙、菠萝、百香果，加少许石榴糖浆。,True
+3102,menu_items,41,item_name,zh,Pineapple,菠萝汁,False
+3142,menu_items,46,item_name,zh,Tropical Sunrise,Tropical Sunrise（热带晨曦）,True
+3062,menu_items,36,item_name,zh,Honey Oat Caramel,Honey Oat Caramel（蜂蜜燕麦焦糖）,True
+3238,menu_items,57,description,zh,Natural mineral water.,天然矿泉水。,True
+2930,menu_items,19,description,zh,Strawberry layered with matcha.,草莓抹茶分层,True
+3034,menu_items,32,description,zh,"Milk, peanut butter, chocolate syrup, cocoa powder, whipped cream, crushed peanuts.",牛奶、花生酱、巧克力糖浆、可可粉、鲜奶油、碎花生。,True
+3354,menu_items,70,description,zh,Hummus · Baba Ganoush · Patlıcan Soslu · Spicy Tomato Meze · Turkish-style Green Beans · Lavash Bread.,鹰嘴豆泥 · 巴巴甘努什 · Patlıcan Soslu · 辣番茄Meze · 土耳其风味四季豆 · 拉瓦什面包,True
+3046,menu_items,34,item_name,zh,Salted Caramel Pretzel,Salted Caramel Pretzel（盐焦糖蝴蝶饼）,True
+3658,menu_items,107,description,zh,Creamy cheesecake with raspberry.,香滑芝士蛋糕配覆盆子,True
+3506,menu_items,88,description,zh,"Al dente spaghetti coated in a rich, aromatic basil pesto genovese, served alongside a juicy, butter-basted Portobello mushroom steak and freshly grated aged parmesan.",弹牙意大利面条裹上浓郁芳香的罗勒青酱，搭配多汁的黄油浇淋波特菇扒及现磨陈年帕玛森干酪。,True
+3386,menu_items,74,description,zh,"Finely chopped tomatoes, cucumbers, chilli & coriander. Served with lavash bread.",切碎的番茄、黄瓜、辣椒和香菜。搭配拉瓦什面包。,True
+3490,menu_items,86,description,zh,"Al dente spaghetti tossed in premium olive oil infused with toasted garlic, fiery chili flakes, and fresh Italian parsley, topped with five succulent pan-seared prawns and blistered cherry tomatoes.",用优质橄榄油拌制的弹牙意大利面，融合烤蒜、香辣辣椒碎和新鲜欧芹， topped with 五只香煎多汁大虾和爆炒樱桃番茄。,True
+4010,menu_items,154,description,zh,Buttery scone with raisins.,牛油葡萄干司康,True
+3686,menu_items,111,item_name,zh,Passionfruit Yogurt,Passionfruit Yogurt（百香果酸奶）,True
+2994,menu_items,27,description,zh,Espresso with whipped cream and Lotus Biscoff.,浓缩咖啡配鲜奶油和Lotus Biscoff。,True
+3786,menu_items,126,description,zh,Cendol-inspired cake.,Cendol风味蛋糕,True
+38571,menu_items,888,long_description,zh,"Hands-on sand brewing class with food tasting of Turkish delicacies. Discover the centuries-old art of Turkish coffee brewed on hot sand — learn to control heat, foam, and timing to pull the perfect cezve. Along the way you'll taste Turkish delights, baklava, and gözleme paired with each brew, and leave with the technique (and confidence) to recreate the ritual at home. Approximately 2 hours, no experience needed.",手作沙煮咖啡课程，配土耳其美食品鉴。探索传承数百年的热沙冲泡土耳其咖啡艺术 —— 学习掌控火候、泡沫与时间，萃取出完美的 Cezve。期间您将品尝土耳其软糖、Baklava 和 Gözleme，与每一杯咖啡相得益彰，并掌握重现家中冲泡仪式的技巧与自信。时长约 2 小时，无需经验。,True
+38575,menu_items,889,long_description,zh,"Roastery demo with equipment experience and coffee tasting. Step behind the bar into our roastery: watch green beans transform through the roast, listen for first crack, and compare roast profiles side by side. You'll get hands-on time with our brewing equipment — grinder calibration, espresso extraction, and milk texturing — followed by a guided tasting of the coffees you roasted. Perfect for home baristas. Approximately 2.5 hours, all equipment and beans provided.",烘焙工坊体验，包括设备操作和咖啡品鉴。走进吧台后的烘焙工坊：观察生豆在烘焙过程中的变化，聆听第一次爆裂声，并对比不同烘焙曲线。您将亲手操作我们的冲泡设备——磨豆机校准、意式浓缩萃取和奶泡打发——随后在指导下品尝您自己烘焙的咖啡。适合家庭咖啡师。时长约2.5小时，提供所有设备和咖啡豆。,True
+37973,menu_items,887,long_description,zh,"A curated multi-course coffee tasting with standard food pairing. Guided by our head barista, you'll journey through rare single-origin coffees brewed several ways — espresso, filter, and slow immersion — each course paired with a complementary bite from the kitchen. Learn how origin, roast level, and brew method shape flavour, then finish with a guided cupping so you can taste like a professional. Approximately 2 hours. Small groups only — reserve your seat early.",精选多道咖啡品鉴体验，含标准食物搭配。由首席咖啡师带领，探索稀有单品咖啡的多种冲泡方式——意式浓缩、手冲及慢浸——每道咖啡均搭配厨房精心准备的小食。了解产地、烘焙度及冲泡方法如何塑造风味，最后以专业杯测收尾，让您像行家一样品鉴。时长约2小时。仅限小团体，请尽早预订座位。,True
+38579,menu_items,1386,item_name,zh,Micro-lot Experimental Cold Brew,Micro-lot Experimental Cold Brew（微批次实验冷萃）,True
+38583,menu_items,1386,description,zh,"A rotating micro-lot, cold-brewed for 18 hours. Small batch, members only.",轮换的微批次咖啡，冷萃18小时。小批量，仅供会员。,True
+38587,menu_items,1386,long_description,zh,"A rotating experimental micro-lot, steeped cold for 18 hours and bottled in small batches. Expect unusual processing methods — anaerobic ferments, honey processes, rare varietals — chosen by our roaster each month. Members only: unlocks at Origin tier.",轮换实验性微批次咖啡，冷泡18小时，小批量装瓶。采用不寻常的处理方式——厌氧发酵、蜜处理、稀有品种——由我们的烘焙师每月精选。仅限会员：Origin等级解锁。,True
+38607,menu_items,1405,description,zh,Prepaid bundle: 12 classic drinks for the price of 10. Valid 6 months.,预付套餐：12杯经典饮品，仅需支付10杯的价格。有效期6个月。,True
+6675,menu_items,889,item_name,zh,Roastery Workshop,烘焙工坊,True
+6679,menu_items,889,description,zh,"Roastery demo with equipment experience and coffee tasting. 4-pax package. Price per person, excludes taxes.",烘焙工坊演示，含设备体验与咖啡品鉴。4人套餐。每人价格，不含税。,True
+3126,menu_items,44,item_name,zh,Lemonade,Lemonade（柠檬水）,True
+2922,menu_items,18,description,zh,Signature layered specialty drink.,招牌分层特饮,True
+3058,menu_items,35,description,zh,"Milk, banana, biscoff spread, cinnamon, whipped cream, biscoff crumble.",牛奶，香蕉，Biscoff酱，肉桂，鲜奶油，Biscoff碎,True
+3298,menu_items,64,description,zh,"A classic pairing of delicate smoked salmon and velvety cream cheese, accented with sharp capers, fresh dill, cucumber ribbons, and a bright squeeze of fresh lemon.",经典搭配：细腻的烟熏三文鱼与丝滑的奶油芝士，配以酸爽的酸豆、新鲜的莳萝、黄瓜丝带以及清新的鲜柠檬汁。,True
+3306,menu_items,65,description,zh,"Thinly sliced roast beef and earthy pan-seared mushrooms layered with sharp melted cheddar and a hint of tangy yellow mustard, served hot on your choice of bread.",薄切烤牛肉与口感醇厚的平底锅煎蘑菇层层叠加，佐以浓郁融化的切达奶酪和一抹酸爽黄芥末，热食，搭配自选面包。,True
+3194,menu_items,51,description,zh,Zero-sugar Coca-Cola.,无糖可口可乐。,False
+3234,menu_items,56,description,zh,Sparkling orange juice.,气泡橙汁,False
+3274,menu_items,61,description,zh,"Feta, mozzarella, olives, tomato, cucumber, jam, butter and simit.",菲达奶酪、马苏里拉奶酪、橄榄、番茄、黄瓜、果酱、黄油和Simit。,True
+3326,menu_items,67,item_name,zh,Artisan Bread Basket,Artisan Bread Basket（手工面包篮）,True
+3330,menu_items,67,description,zh,"A curated selection of traditional Turkish simit and achma pastries paired with crispy falafel, za'atar bread, rich hummus and velvety butter with sweet jam.",精选的传统土耳其 simit 和 achma 糕点，搭配酥脆 falafel、za'atar 面包、浓郁 hummus 以及丝滑黄油与甜果酱。,True
+3338,menu_items,68,description,zh,"Roasted sweet corn ribbons tossed in a decadent chilli flakes and butter, balancing a sweet, smoky crunch with a touch of fiery heat.",烤甜玉米丝拌以浓郁的辣椒片和黄油，甜香酥脆中带一丝火热辣味。,True
+3370,menu_items,72,description,zh,Smoky grilled eggplant dip. Served with lavash bread.,烟熏烤茄子蘸酱，配以拉瓦什饼。,True
+3374,menu_items,73,item_name,zh,Patlıcan Soslu,Patlıcan Soslu,True
+3458,menu_items,82,description,zh,Hand-stretched boat-shaped pide with spiced beef.,手工拉伸的船形皮德饼，搭配香料牛肉。,True
+3610,menu_items,101,description,zh,"Assorted baklava, box of 9 pieces.",各式巴克拉瓦，9块装,True
+3618,menu_items,102,description,zh,"Assorted baklava, box of 12 pieces.",什锦Baklava，12块装,True
+3546,menu_items,93,description,zh,Layered filo with walnut. RM 36 / 100g · RM 9 / pc.,层层酥皮配核桃。RM 36 / 100克 · RM 9 / 件。,True
+3530,menu_items,91,description,zh,Fragrant rice baked under a rich blanket of molten mozzarella and cheddar. Topped with savory eggplant Patlıcan Soslu and tender roasted beef cubes.,香米饭焗烤，覆盖浓郁融化的莫扎瑞拉和车达芝士。佐以咸香茄子酱（Patlıcan Soslu）与嫩烤牛肉块。,True
+3538,menu_items,92,description,zh,Layered filo with pistachio. RM 36 / 100g · RM 9 / pc.,开心果千层酥皮。RM 36 / 100克 · RM 9 / 个,True
+2802,menu_items,2,description,zh,"Single shot, shorter extraction, strong & dense.",单份浓缩，短时间萃取，浓郁醇厚。,True
+3878,menu_items,138,item_name,zh,Salted Caramel Canelé,Salted Caramel Canelé（咸焦糖可丽露）,True
+3694,menu_items,112,item_name,zh,Blackberry Lychee,Blackberry Lychee（黑莓荔枝）,True
+3862,menu_items,136,item_name,zh,Taro Roll,Taro Roll（香芋卷）,True
+3730,menu_items,116,description,zh,Semolina cake with labneh.,粗粒小麦粉蛋糕配labneh,True
+3778,menu_items,125,description,zh,Lemon entremet.,柠檬慕斯蛋糕,True
+3890,menu_items,139,description,zh,Flaky tart with vanilla egg custard.,酥皮香草蛋奶塔,True
+3926,menu_items,144,item_name,zh,Garlic Bread with Chicken Slice,Garlic Bread with Chicken Slice（蒜香面包配鸡肉片）,True
+3794,menu_items,127,description,zh,Pineapple tart cake.,菠萝挞蛋糕,True
+3882,menu_items,138,description,zh,Canelé with salted caramel.,海盐焦糖可丽露,True
+4046,menu_items,159,item_name,zh,Oat Milk (Add-on),Oat Milk（加料燕麦奶）,True
+3966,menu_items,149,item_name,zh,Sausage Bun,Sausage Bun（香肠包）,True
+4006,menu_items,154,item_name,zh,Raisin Scone,Raisin Scone（葡萄干司康）,True
+4018,menu_items,155,description,zh,Buttery scone with mixed citrus peel.,牛油司康配混合柑橘皮。,True
+4058,menu_items,160,description,zh,Swap to soy milk.,换豆奶,True
+38611,menu_items,1405,long_description,zh,"Twelve classic drinks (any Café — Specialty Coffee item) for the price of ten. Buy once, redeem any time within 6 months — at the counter via QR or in the app at checkout. One redemption per visit.",十二款经典饮品（任选咖啡厅精品咖啡类饮品）以十杯价格出售。一次性购买，6个月内可随时兑换——可在柜台出示二维码核销，或在应用程序结算时使用。每次到访限兑换一份。,True
+17276,bundle_products,2,description,zh,"Pick any main, then treat yourself — a specialty drink, a dessert, or a pastry. Your call.",任选一款主餐，再犒赏自己——一杯特色饮品、一份甜品或一份糕点。由你决定。,True
+17280,bundle_products,4,title,zh,Breakfast Duo,早餐双拼,True
+17268,bundle_products,1,description,zh,"Pick any gourmet sandwich and any specialty coffee — the perfect pair, better together.",任选一款精选美食三明治与任意一款特色咖啡——完美搭配，相得益彰。,True
+2970,menu_items,24,description,zh,Pink citrus cooler served with a shot.,粉红柑橘冷饮，配一杯浓缩咖啡。,True
+3382,menu_items,74,item_name,zh,Spicy Tomato Meze,Spicy Tomato Meze（辣番茄Meze）,True
+2978,menu_items,25,description,zh,"Half iced tea, half lemonade with mint.",半冰茶半柠檬水，加薄荷。,True
+3866,menu_items,136,description,zh,Soft roll with taro filling.,香芋软卷,True
+4066,menu_items,12,description,zh,A scoop of premium vanilla ice cream with a shot of espresso.,一球顶级香草冰淇淋配一份浓缩咖啡。,True
+4026,menu_items,156,description,zh,Add-on for salads and Anatolian chicken.,沙拉和安纳托利亚鸡肉的加料,True
+3122,menu_items,43,description,zh,Fresh cucumber juice.,鲜榨黄瓜汁,False
+17264,bundle_products,1,title,zh,Loka Pair Set,Loka 双人套餐,True
+38595,menu_items,1387,description,zh,"Our secret baklava-spiced latté — pistachio, honey, and espresso. Members only.",我们的秘密Baklava风味拿铁 — 开心果、蜂蜜和浓缩咖啡。仅限会员。,True
+38599,menu_items,1387,long_description,zh,"An off-menu creation from our Turkish kitchen: double espresso folded with pistachio cream, wild honey, and a hint of cinnamon — finished with crushed baklava pieces on top. Never printed on the counter menu. Members only: unlocks at Origin tier.",来自土耳其厨房的隐藏菜单特调：双份浓缩咖啡融合开心果酱、野生蜂蜜及少许肉桂，顶部撒上碎Baklava。从未印在柜台菜单上。仅限会员：在Origin等级解锁。,True
+38603,menu_items,1405,item_name,zh,Coffee Pass — 12 Classic Drinks,Coffee Pass — 12 Classic Drinks（咖啡通行证 — 12款经典饮品）,True

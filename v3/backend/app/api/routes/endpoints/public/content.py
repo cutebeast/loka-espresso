@@ -60,12 +60,17 @@ async def _get_optional_customer(
         return None
     if payload.get("type") != "access":
         return None
-    customer_id = int(payload.get("sub", 0))
+    # Domain check (same as get_current_customer): only genuine customer
+    # tokens carry a customer_id claim — an admin token must never resolve
+    # to a customer identity.
+    customer_id = int(payload.get("customer_id") or 0)
     if not customer_id:
         return None
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     customer = result.scalar_one_or_none()
     if customer is None or customer.deleted_at is not None:
+        return None
+    if int(payload.get("token_version", 0)) != (getattr(customer, "token_version", 0) or 0):
         return None
     return customer
 

@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from pydantic import Field
+from pydantic import EmailStr, Field
 from sqlalchemy import delete, select
 
 from app.api.routes.deps import DBDependency, CurrentAdmin
@@ -36,7 +36,7 @@ class AdminMeOut(BaseSchema):
 
 
 class AdminRegisterRequest(BaseSchema):
-    email: str
+    email: EmailStr
     password: str = Field(min_length=8)
     display_name: str
     phone_number: str | None = None
@@ -452,7 +452,8 @@ class ChangePasswordRequest(BaseSchema):
 
 
 @router.post("/change-password", response_model=APIResponse[dict])
-async def change_admin_password(db: DBDependency, admin: CurrentAdmin, data: ChangePasswordRequest):
+@limiter.limit("5/minute")
+async def change_admin_password(request: Request, db: DBDependency, admin: CurrentAdmin, data: ChangePasswordRequest):
     """Change the current admin's password."""
     if len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
@@ -460,6 +461,8 @@ async def change_admin_password(db: DBDependency, admin: CurrentAdmin, data: Cha
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     admin.password_hash = hash_password(data.password)
     admin.password_algorithm = "argon2id"
+    # Revoke all existing sessions — tokens carry the old token_version.
+    admin.token_version = (admin.token_version or 0) + 1
     await db.commit()
     return APIResponse(data={"updated": True})
 

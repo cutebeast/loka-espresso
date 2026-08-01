@@ -29,7 +29,7 @@ from app.models.order import Order
 from app.models.customer import Customer
 from app.models.payment import Payment, PaymentMethod, Refund
 from app.services.platform_config import PlatformConfigService
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.core.security import decode_guest_pay_token, create_guest_pay_token
 from app.schemas.payment import (
     CheckoutSessionRequest,
@@ -193,7 +193,7 @@ async def guest_pay_summary(
     })
 
 
-class GuestPayRequest(BaseModel):
+class GuestPayRequest(BaseSchema):
     """Schema for guest pay request — defined inline to avoid import cycles."""
     pass
 

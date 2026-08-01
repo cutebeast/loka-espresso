@@ -35,8 +35,18 @@ def compress_image(contents: bytes, ext: str, max_edge: int = MAX_EDGE_DEFAULT, 
         logger.warning("Pillow unavailable — saving upload uncompressed")
         return contents, ext
 
+    # Decompression-bomb guard: a small compressed PNG can decode to GBs of
+    # RAM. Make Pillow hard-error past the pixel budget and reject oversize
+    # images ourselves (returned unchanged — this is an optimizer, not a
+    # validator).
+    Image.MAX_IMAGE_PIXELS = 40_000_000
+
     try:
         img = Image.open(io.BytesIO(contents))
+        w, h = img.size
+        if w * h > Image.MAX_IMAGE_PIXELS:
+            logger.warning("Oversize image (%dx%d pixels) — saving unchanged", w, h)
+            return contents, ext
         img.load()
     except Exception:
         return contents, ext  # not decodable — save as-is
