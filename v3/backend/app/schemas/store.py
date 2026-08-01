@@ -27,7 +27,8 @@ class StoreSpecialHoursBase(BaseSchema):
     open_time: time | None = None
     close_time: time | None = None
     is_closed: bool = False
-    reason: str | None = Field(None, max_length=100)
+    # DB column is NOT NULL — required so a missing reason fails with 422.
+    reason: str = Field(..., max_length=100)
 
 
 class StoreSpecialHoursOut(StoreSpecialHoursBase):
@@ -76,7 +77,7 @@ class StoreBase(BaseSchema):
 
 
 class StoreCreate(StoreBase):
-    pass
+    operating_hours: list[StoreOperatingHoursBase] | None = None
 
 
 class StoreUpdate(BaseSchema):
@@ -106,6 +107,7 @@ class StoreUpdate(BaseSchema):
     is_accepting_orders: bool | None = None
     position: int | None = Field(None, ge=0)
     operating_hours: list[dict] | None = None
+    special_hours: list[StoreSpecialHoursBase] | None = None
 
 
 class StoreOut(StoreBase, TimestampedSchema):
@@ -159,7 +161,7 @@ class DiningTableOut(DiningTableBase, TimestampedSchema):
     store_id: int
     qr_code_token: str | None = None
     qr_generated_at: datetime | None = None
-    current_status: Literal["available", "occupied", "reserved", "cleaning", "maintenance"] = "available"
+    current_status: Literal["available", "occupied", "reserved", "cleaning"] = "available"
     active_order_id: int | None = None
     active_order: dict | None = None
 

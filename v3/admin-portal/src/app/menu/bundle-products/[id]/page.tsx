@@ -148,6 +148,7 @@ export default function BundleProductEditPage() {
                 cat_filter: "",
                 default_quantity: c.default_quantity ?? 1,
                 sort_order: c.sort_order ?? 0,
+                modifier_overrides: c.modifier_overrides || [],
                 bundle_group_id: groupIdx
               });
             }
@@ -168,6 +169,7 @@ export default function BundleProductEditPage() {
               cat_filter: "",
               default_quantity: c.default_quantity ?? 1,
               sort_order: c.sort_order ?? 0,
+              modifier_overrides: c.modifier_overrides || [],
               bundle_group_id: c.bundle_group_id != null && groupIdToIndex.has(c.bundle_group_id) ? groupIdToIndex.get(c.bundle_group_id) : null
             });
           }
@@ -302,7 +304,13 @@ export default function BundleProductEditPage() {
           menu_item_id: Number(c.menu_item_id),
           default_quantity: c.default_quantity,
           sort_order: c.sort_order,
-          modifier_overrides: []
+          // Preserve existing modifier overrides — the backend deletes and
+          // recreates components on PATCH, so omitting them would wipe them.
+          modifier_overrides: (c.modifier_overrides || []).map((mo: any) => ({
+            modifier_option_id: mo.modifier_option_id,
+            price_adjustment: mo.price_adjustment ?? null,
+            is_default: mo.is_default ?? false
+          }))
         };
         if (isMultiCourse && c.bundle_group_id !== null && c.bundle_group_id !== undefined) {
           entry.bundle_group_id = c.bundle_group_id;

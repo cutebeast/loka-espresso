@@ -1436,6 +1436,49 @@ async def staff_transfer_table(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Validate the target table belongs to this store, then move table-status
+    # snapshots too (was: order moved only, leaving the old table stuck
+    # "occupied" and the new one unmarked — and no occupancy check at all).
+    from app.models.store import DiningTable, TableStatusSnapshot
+
+    table_ids = [new_table_id] + ([order.dining_table_id] if order.dining_table_id else [])
+    tables = (await db.execute(
+        select(DiningTable).where(
+            DiningTable.id.in_(table_ids),
+            DiningTable.store_id == staff.store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+    )).scalars().all()
+    if new_table_id not in {t.id for t in tables}:
+        raise HTTPException(status_code=404, detail="Table not found in this store")
+
+    snaps = {s.table_id: s for s in (await db.execute(
+        select(TableStatusSnapshot).where(TableStatusSnapshot.table_id.in_(table_ids)).with_for_update()
+    )).scalars().all()}
+    new_snap = snaps.get(new_table_id)
+    if new_snap and new_snap.status == "occupied" and new_snap.current_order_id != order.id:
+        raise HTTPException(status_code=400, detail="Target table is occupied by a different order")
+
+    old_table_id = order.dining_table_id
     order.dining_table_id = new_table_id
+    order.updated_at = datetime.now(timezone.utc)
+
+    if old_table_id and old_table_id in snaps:
+        old_snap = snaps[old_table_id]
+        old_snap.status = "available"
+        old_snap.current_order_id = None
+        old_snap.updated_at = datetime.now(timezone.utc)
+
+    if new_snap:
+        new_snap.status = "occupied"
+        new_snap.current_order_id = order.id
+        new_snap.updated_at = datetime.now(timezone.utc)
+    else:
+        db.add(TableStatusSnapshot(
+            table_id=new_table_id, store_id=staff.store_id,
+            status="occupied", current_order_id=order.id,
+        ))
+
     await db.commit()
     return APIResponse(data={"id": order.id, "table_id": new_table_id})

@@ -379,6 +379,16 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
             detail="components must be provided when groups are updated",
         )
 
+    # Groups only exist on multi_course bundles. Without this guard, sending
+    # groups for any other bundle_type would delete the existing groups below
+    # and never recreate them (recreation is multi_course-only).
+    effective_type = update_data.get("bundle_type") or bp.bundle_type
+    if groups_data is not None and effective_type != "multi_course":
+        raise HTTPException(
+            status_code=400,
+            detail="groups can only be updated on multi_course bundles",
+        )
+
     for field, value in update_data.items():
         setattr(bp, field, value)
     setattr(bp, "updated_at", datetime.now(timezone.utc))

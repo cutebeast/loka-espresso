@@ -180,7 +180,7 @@ export default function PromotionEditPage() {
     try {
       const p: Record<string, unknown> = {
         ...form,
-        voucher_id: Number(form.voucher_id),
+        voucher_id: form.voucher_id ? Number(form.voucher_id) : null,
         survey_id: form.survey_id ? Number(form.survey_id) : null,
         start_date: form.start_date || null,
         end_date: form.end_date || null

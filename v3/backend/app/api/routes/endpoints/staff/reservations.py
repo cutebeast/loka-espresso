@@ -36,10 +36,18 @@ async def staff_list_reservations(
         stmt = stmt.where(Reservation.status == status_filter)
     if date_from:
         from datetime import date as date_cls
-        stmt = stmt.where(Reservation.reservation_date >= date_cls.fromisoformat(date_from))
+        try:
+            parsed_from = date_cls.fromisoformat(date_from)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date")
+        stmt = stmt.where(Reservation.reservation_date >= parsed_from)
     if date_to:
         from datetime import date as date_cls
-        stmt = stmt.where(Reservation.reservation_date <= date_cls.fromisoformat(date_to))
+        try:
+            parsed_to = date_cls.fromisoformat(date_to)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date")
+        stmt = stmt.where(Reservation.reservation_date <= parsed_to)
     stmt = stmt.order_by(Reservation.reservation_date.desc(), Reservation.reservation_time.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
     rows = result.all()

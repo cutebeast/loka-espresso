@@ -2,10 +2,24 @@
 from decimal import Decimal
 from app.schemas.base import Money
 from datetime import date, datetime, time
+from typing import Literal
 
 from pydantic import Field
 
 from app.schemas.base import BaseSchema, TimestampedSchema
+
+# Role keys allowed by ck_staff_profiles_role (models/staff.py)
+StaffRoleKey = Literal[
+    "system_admin",
+    "regional_manager",
+    "store_manager",
+    "shift_supervisor",
+    "cashier",
+    "server",
+    "kitchen_staff",
+    "delivery_coordinator",
+    "readonly_analyst",
+]
 
 
 class StaffProfileBase(BaseSchema):
@@ -29,10 +43,11 @@ class StaffProfileCreate(StaffProfileBase):
 
 class StaffProfileUpdate(BaseSchema):
     # all fields optional
+    employee_id: str | None = None
     display_name: str | None = None
     email_address: str | None = None
     phone_number: str | None = None
-    role: str | None = None
+    role: StaffRoleKey | None = None
     hire_date: date | None = None
     termination_date: date | None = None
     hourly_rate: Money | None = None
@@ -145,7 +160,7 @@ class StaffCreateRequest(BaseSchema):
     display_name: str
     store_id: int
     phone_number: str | None = None
-    role: str = "server"
+    role: StaffRoleKey = "server"
 
 
 class ShiftFlatCreate(BaseSchema):
@@ -155,7 +170,7 @@ class ShiftFlatCreate(BaseSchema):
     shift_template_id: int | None = None
     planned_start: datetime | None = None
     planned_end: datetime | None = None
-    status: str = "scheduled"
+    status: Literal["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"] = "scheduled"
     notes: str | None = None
 
 
@@ -175,8 +190,8 @@ class StaffTaskBase(BaseSchema):
     staff_id: int
     title: str = Field(..., max_length=200)
     description: str | None = None
-    status: str = "pending"
-    priority: str = "normal"
+    status: Literal["pending", "in_progress", "completed", "cancelled"] = "pending"
+    priority: Literal["low", "normal", "high", "urgent"] = "normal"
     due_date: date | None = None
     recur_interval_days: int | None = Field(
         None,
@@ -192,8 +207,8 @@ class StaffTaskCreate(StaffTaskBase):
 class StaffTaskUpdate(BaseSchema):
     title: str | None = Field(None, max_length=200)
     description: str | None = None
-    status: str | None = None
-    priority: str | None = None
+    status: Literal["pending", "in_progress", "completed", "cancelled"] | None = None
+    priority: Literal["low", "normal", "high", "urgent"] | None = None
     due_date: date | None = None
     recur_interval_days: int | None = Field(None, ge=1)
 

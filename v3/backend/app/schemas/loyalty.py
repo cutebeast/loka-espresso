@@ -10,7 +10,7 @@ from app.schemas.base import BaseSchema, TimestampedSchema
 
 
 class LoyaltyTierBase(BaseSchema):
-    tier_key: str = Field(..., max_length=50)
+    tier_key: str = Field(..., max_length=20)
     display_name: str = Field(..., max_length=50)
     min_lifetime_points: int = Field(..., ge=0)
     points_multiplier: float = Field(default=1.0, ge=1.0)
@@ -18,7 +18,7 @@ class LoyaltyTierBase(BaseSchema):
     color_hex: str | None = Field(None, max_length=7)
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
-    validity_months: int | None = Field(None, ge=0)
+    validity_months: int | None = Field(None, gt=0)
     renewal_annual_spend: int | None = Field(None, ge=0)
     downgrade_to_tier_key: str | None = Field(None, max_length=20)
 

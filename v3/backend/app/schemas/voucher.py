@@ -5,7 +5,7 @@ from app.schemas.base import Money
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.base import BaseSchema, TimestampedSchema
 
@@ -40,6 +40,13 @@ class VoucherDefinitionBase(BaseSchema):
     promo_type: str | None = Field(None, max_length=50)
     validity_days: int | None = None
     is_active: bool = True
+
+    @model_validator(mode="after")
+    def _check_validity_window(self):
+        # Mirrors ck_voucher_definitions_valid_until — 422 instead of a DB 500.
+        if self.valid_until <= self.valid_from:
+            raise ValueError("valid_until must be after valid_from")
+        return self
 
 
 class VoucherDefinitionCreate(VoucherDefinitionBase):

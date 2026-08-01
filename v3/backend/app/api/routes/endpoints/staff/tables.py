@@ -1,6 +1,7 @@
 """Staff-scoped dining table endpoints."""
 
 from datetime import datetime, timezone
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query
@@ -93,7 +94,7 @@ async def staff_update_table_status(
     staff: CurrentStaff,
     db: DBDependency,
     table_id: int,
-    current_status: str = Query(..., alias="current_status"),
+    current_status: Literal["available", "occupied", "reserved", "cleaning"] = Query(..., alias="current_status"),
 ):
     """Update a table's status (staff endpoint)."""
     result = await db.execute(
@@ -115,7 +116,7 @@ async def staff_update_table_status(
         snap.status = current_status
         snap.updated_at = datetime.now(timezone.utc)
     else:
-        snap = TableStatusSnapshot(table_id=table_id, status=current_status)
+        snap = TableStatusSnapshot(table_id=table_id, store_id=staff.store_id, status=current_status)
         db.add(snap)
     await db.commit()
     return APIResponse(data={"id": table.id, "current_status": current_status})

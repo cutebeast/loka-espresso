@@ -17,7 +17,7 @@ from app.models.menu import MenuItem, MenuCategory
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
-from app.models.store import DiningTable
+from app.models.store import DiningTable, TableStatusSnapshot
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
@@ -1262,22 +1262,42 @@ async def transfer_table(
     if not new_table:
         raise HTTPException(status_code=404, detail="Table not found in this store")
 
-    if new_table.status == "occupied" and new_table.active_order_id != order.id:
+    # Table occupancy lives in table_status_snapshot (DiningTable has no status columns).
+    snap_result = await db.execute(
+        select(TableStatusSnapshot).where(
+            TableStatusSnapshot.table_id.in_(table_ids)
+        ).with_for_update()
+    )
+    snap_map = {s.table_id: s for s in snap_result.scalars().all()}
+
+    new_snap = snap_map.get(new_table_id)
+    if new_snap and new_snap.status == "occupied" and new_snap.current_order_id != order.id:
         raise HTTPException(status_code=400, detail="Target table is occupied by a different order")
 
     old_table_id = order.dining_table_id
     order.dining_table_id = new_table_id
     order.updated_at = datetime.now(timezone.utc)
 
-    # Free old table
+    # Free old table's snapshot
     if old_table_id:
-        old_table = locked_tables.get(old_table_id)
-        if old_table:
-            old_table.status = "available"
-            old_table.active_order_id = None
+        old_snap = snap_map.get(old_table_id)
+        if old_snap:
+            old_snap.status = "available"
+            old_snap.current_order_id = None
+            old_snap.updated_at = datetime.now(timezone.utc)
 
-    new_table.status = "occupied"
-    new_table.active_order_id = order.id
+    # Occupy the new table's snapshot
+    if new_snap:
+        new_snap.status = "occupied"
+        new_snap.current_order_id = order.id
+        new_snap.updated_at = datetime.now(timezone.utc)
+    else:
+        db.add(TableStatusSnapshot(
+            table_id=new_table_id,
+            store_id=order.store_id,
+            status="occupied",
+            current_order_id=order.id,
+        ))
 
     await db.commit()
     return APIResponse(data={

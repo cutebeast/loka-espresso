@@ -1,6 +1,7 @@
 """Tip allocation endpoints."""
 from decimal import Decimal
 from datetime import date, datetime, time, timezone
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -24,7 +25,7 @@ class TipAllocationCreate(BaseSchema):
     staff_id: int
     tip_amount: Money = Field(..., ge=0)
     tip_percentage: float | None = Field(None, ge=0, le=1)
-    allocation_type: str = "even_split"
+    allocation_type: Literal["even_split", "percentage", "fixed"] = "even_split"
 
 
 class TipAllocationOut(BaseSchema):

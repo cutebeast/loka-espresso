@@ -165,6 +165,8 @@ async def report_grease_trap(
     """Staff reports grease trap cleaning with before and after images."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+    if not store_id:
+        raise HTTPException(status_code=400, detail="Staff account has no store assigned")
 
     before_urls = _save_uploaded_images(before_images) if before_images else []
     after_urls = _save_uploaded_images(after_images) if after_images else []
@@ -200,6 +202,8 @@ async def report_garbage(
     """Staff reports garbage disposal task completion with images."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+    if not store_id:
+        raise HTTPException(status_code=400, detail="Staff account has no store assigned")
 
     image_urls = _save_uploaded_images(images) if images else []
 

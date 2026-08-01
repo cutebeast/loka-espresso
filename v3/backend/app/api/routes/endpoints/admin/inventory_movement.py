@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 class MovementLogCreate(BaseSchema):
     inventory_item_id: int
     store_id: int
-    movement_type: str
+    movement_type: Literal["in", "out", "adjustment", "waste", "return", "transfer_in", "transfer_out"]
     quantity_delta: float
     reason: str = Field(..., max_length=500)
     reference_type: str | None = Field(None, max_length=50)

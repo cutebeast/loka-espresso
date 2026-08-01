@@ -1,5 +1,6 @@
 """Inventory domain schemas."""
 from decimal import Decimal
+from typing import Literal
 from app.schemas.base import Money
 from pydantic import ConfigDict, Field
 
@@ -41,11 +42,12 @@ class InventoryItemBase(BaseSchema):
     item_code: str
     item_name: str
     description: str | None = None
+    image_url: str | None = None
     unit_of_measure: str
-    unit_cost: Money | None = None
-    shelf_life_days: int | None = None
+    unit_cost: Money | None = Field(None, ge=0)
+    shelf_life_days: int | None = Field(None, gt=0)
     supplier_id: int | None = None
-    item_type: str = "fnb"
+    item_type: Literal["fnb", "non_fnb"] = "fnb"
     is_active: bool = True
     is_direct_sale: bool = False
 
@@ -59,11 +61,12 @@ class InventoryItemUpdate(BaseSchema):
     item_code: str | None = None
     item_name: str | None = None
     description: str | None = None
+    image_url: str | None = None
     unit_of_measure: str | None = None
-    unit_cost: Money | None = None
-    shelf_life_days: int | None = None
+    unit_cost: Money | None = Field(None, ge=0)
+    shelf_life_days: int | None = Field(None, gt=0)
     supplier_id: int | None = None
-    item_type: str | None = None
+    item_type: Literal["fnb", "non_fnb"] | None = None
     is_active: bool | None = None
     is_direct_sale: bool | None = None
 

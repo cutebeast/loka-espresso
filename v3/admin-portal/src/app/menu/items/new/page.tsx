@@ -241,6 +241,16 @@ export default function NewItemPage() {
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.category_id) {
+      setError("Category is required");
+      return;
+    }
+    for (const [i, rc] of (form.recipes || []).entries()) {
+      if (!rc.inventory_item_id) {
+        setError(`Recipe row ${i + 1}: select an inventory item`);
+        return;
+      }
+    }
     if (form.is_addon_deal_eligible) {
       const dv = Number(form.addon_discount_value);
       if (!dv || dv <= 0) {

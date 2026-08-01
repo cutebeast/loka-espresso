@@ -1,6 +1,7 @@
 """Customer consent endpoints (admin read-only + customer self-service)."""
 
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
@@ -72,7 +73,15 @@ public_router = APIRouter(prefix="/me", tags=["customer"])
 
 
 class ConsentGrant(BaseSchema):
-    consent_type: str
+    # Values mirror ck_customer_consents_consent_type (models/customer.py)
+    consent_type: Literal[
+        "marketing_email",
+        "marketing_sms",
+        "marketing_push",
+        "data_sharing",
+        "location_tracking",
+        "third_party",
+    ]
     consent_version: str = "1.0"
     ip_address: str | None = None
     user_agent: str | None = None

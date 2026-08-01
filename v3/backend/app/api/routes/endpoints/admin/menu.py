@@ -123,16 +123,18 @@ class AllergenUpdate(BaseSchema):
     severity: Literal["low", "medium", "high", "critical"] | None = None
     color_hex: str | None = Field(None, max_length=7)
     icon_url: str | None = Field(None, max_length=500)
+    is_active: bool | None = None
 
 
 class TaxCategoryCreate(BaseSchema):
     category_name: str
-    rate: float
+    rate: float = Field(..., ge=0, le=1)
 
 
 class TaxCategoryUpdate(BaseSchema):
     category_name: str | None = None
-    rate: float | None = None
+    rate: float | None = Field(None, ge=0, le=1)
+    is_active: bool | None = None
 
 
 class TaxCategoryOut(TimestampedSchema):
@@ -554,6 +556,41 @@ async def update_item(
     allergen_ids_data = update_data.pop("allergen_ids", None)
     dietary_tag_ids_data = update_data.pop("dietary_tag_ids", None)
     recipes_data = update_data.pop("recipes", None)
+
+    # Validate raw-dict sub-payloads up front — they bypass pydantic (typed as
+    # list[dict]), so missing keys KeyError-500 and bad values CHECK-500 later.
+    if modifier_groups_data is not None:
+        for group_data in modifier_groups_data:
+            if not isinstance(group_data, dict) or not group_data.get("group_name"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Each modifier group must include a non-empty 'group_name'",
+                )
+    if recipes_data is not None:
+        for r_data in recipes_data:
+            if not isinstance(r_data, dict) or r_data.get("inventory_item_id") is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Each recipe must include 'inventory_item_id'",
+                )
+            try:
+                quantity_required = float(r_data.get("quantity_required", 1.0))
+                waste_factor = float(r_data.get("waste_factor", 0.05))
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Recipe 'quantity_required' and 'waste_factor' must be numbers",
+                )
+            if quantity_required <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Recipe 'quantity_required' must be greater than 0",
+                )
+            if not 0 <= waste_factor <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Recipe 'waste_factor' must be between 0 and 1",
+                )
 
     for field, value in update_data.items():
         setattr(item, field, value)

@@ -1,5 +1,6 @@
 """Admin customer management endpoints."""
 
+import re
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -287,6 +288,9 @@ async def create_customer(
     email = (data.email_address or "").strip()
     if not phone and not email:
         raise HTTPException(status_code=400, detail="At least phone_number or email_address is required")
+    # Mirror ck_customers_phone_number — reject before the DB CHECK turns it into a 500.
+    if phone and not re.fullmatch(r"^\+?[0-9]{7,20}$", phone):
+        raise HTTPException(status_code=422, detail="Invalid phone_number format")
 
     customer = Customer(
         phone_number=phone or None,

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
@@ -60,6 +60,8 @@ class DiningTableCreate(BaseSchema):
     table_number: str = Field(..., max_length=20)
     display_name: str | None = Field(None, max_length=50)
     capacity: int = Field(..., ge=1, le=50)
+    section: str | None = Field(None, max_length=50)
+    is_active: bool = True
     qr_code_token: str | None = Field(None, max_length=64)
 
 
@@ -67,8 +69,10 @@ class DiningTableUpdate(BaseSchema):
     table_number: str | None = Field(None, max_length=20)
     display_name: str | None = Field(None, max_length=50)
     capacity: int | None = Field(None, ge=1, le=50)
+    section: str | None = Field(None, max_length=50)
+    is_active: bool | None = None
     qr_code_token: str | None = Field(None, max_length=64)
-    current_status: str | None = Field(None, max_length=20)
+    current_status: Literal["available", "occupied", "reserved", "cleaning"] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -152,23 +156,44 @@ async def create_store(
     data: StoreCreate,
 ):
     """Create a new store with default operating hours and configuration."""
-    store = Store(**data.model_dump())
+    payload = data.model_dump()
+    create_hours = payload.pop("operating_hours", None)
+    store = Store(**payload)
     db.add(store)
     await db.flush()
     await db.refresh(store)
 
-    # Default operating hours (Mon–Sun 09:00–22:00)
-    for day in range(7):
-        db.add(
-            StoreOperatingHours(
-                store_id=store.id,
-                day_of_week=day,
-                open_time=time(9, 0),
-                close_time=time(22, 0),
-                is_closed=False,
-                is_24_hours=False,
+    if create_hours:
+        # Use operating hours provided by the client (times already parsed by schema)
+        for h in create_hours:
+            db.add(
+                StoreOperatingHours(
+                    store_id=store.id,
+                    day_of_week=h["day_of_week"],
+                    open_time=time.fromisoformat(h["open_time"]) if isinstance(h["open_time"], str) else h["open_time"],
+                    close_time=time.fromisoformat(h["close_time"]) if isinstance(h["close_time"], str) else h["close_time"],
+                    is_closed=h.get("is_closed", False),
+                    is_24_hours=h.get("is_24_hours", False),
+                    last_order_time=(
+                        time.fromisoformat(h["last_order_time"])
+                        if isinstance(h.get("last_order_time"), str)
+                        else h.get("last_order_time")
+                    ),
+                )
             )
-        )
+    else:
+        # Default operating hours (Mon–Sun 09:00–22:00)
+        for day in range(7):
+            db.add(
+                StoreOperatingHours(
+                    store_id=store.id,
+                    day_of_week=day,
+                    open_time=time(9, 0),
+                    close_time=time(22, 0),
+                    is_closed=False,
+                    is_24_hours=False,
+                )
+            )
 
     # Default configuration entries
     db.add(
@@ -283,6 +308,7 @@ async def update_store(
 
     update_data = data.model_dump(exclude_unset=True)
     hours_data = update_data.pop("operating_hours", None)
+    special_data = update_data.pop("special_hours", None)
 
     for field, value in update_data.items():
         setattr(store, field, value)
@@ -307,6 +333,21 @@ async def update_store(
                 is_closed=h.get("is_closed", False),
                 is_24_hours=h.get("is_24_hours", False),
                 last_order_time=time.fromisoformat(lot_str) if isinstance(lot_str, str) and lot_str else (lot_str if lot_str else None),
+            ))
+
+    # Update special hours if provided (full replace, like operating_hours)
+    if special_data is not None:
+        await db.execute(
+            delete(StoreSpecialHours).where(StoreSpecialHours.store_id == store.id)
+        )
+        for item in special_data:
+            db.add(StoreSpecialHours(
+                store_id=store.id,
+                special_date=item["special_date"],
+                open_time=item.get("open_time"),
+                close_time=item.get("close_time"),
+                is_closed=item.get("is_closed", False),
+                reason=item["reason"],
             ))
 
     store.updated_at = datetime.now(timezone.utc)
@@ -545,6 +586,8 @@ async def create_table(
         table_number=data.table_number,
         display_name=data.display_name,
         capacity=data.capacity,
+        section=data.section,
+        is_active=data.is_active,
         qr_code_token=qr_token,
     )
     db.add(table)

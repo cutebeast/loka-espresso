@@ -50,6 +50,7 @@ class InventoryItem(Base, SoftDeleteMixin, TimestampMixin):
     item_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     unit_of_measure: Mapped[str] = mapped_column(String(20), nullable=False)
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     supplier_id: Mapped[int | None] = mapped_column(

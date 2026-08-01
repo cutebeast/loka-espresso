@@ -264,7 +264,23 @@ async def create_modification(
     db: DBDependency,
     admin: CurrentAdmin,
 ):
-    log = OrderModificationLog(**payload.model_dump(), staff_id=admin.id)
+    # staff_id FKs to staff_profiles.id, but `admin` is an AdminAccount — an
+    # admin without a staff profile would violate the FK and 500. Resolve the
+    # admin's staff profile (same lookup as staff/auth.py); the column is
+    # nullable, so fall back to NULL when the admin has no profile.
+    from app.models.staff import StaffProfile
+    staff_profile = (
+        await db.execute(
+            select(StaffProfile).where(
+                StaffProfile.principal_id == admin.principal_id,
+                StaffProfile.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    log = OrderModificationLog(
+        **payload.model_dump(),
+        staff_id=staff_profile.id if staff_profile is not None else None,
+    )
     db.add(log)
     await db.commit()
     await db.refresh(log)

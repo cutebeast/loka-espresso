@@ -36,7 +36,7 @@ async def create_tag(db: DBDependency, admin: CurrentAdmin, data: DietaryTagCrea
     await db.commit()
     await db.refresh(tag)
     await auto_translate_record(db, "dietary_tags", tag.id, {"display_name": tag.display_name})
-    return APIResponse(data={"id": tag.id, "tag_key": tag.tag_key, "display_name": tag.display_name})
+    return APIResponse(data={"id": tag.id, "tag_key": tag.tag_key, "display_name": tag.display_name, "icon": tag.icon, "color_hex": tag.color_hex, "description": tag.description, "is_active": tag.is_active})
 
 
 @router.patch("/{id}", response_model=APIResponse[dict])
@@ -49,7 +49,7 @@ async def update_tag(db: DBDependency, admin: CurrentAdmin, id: int, data: Dieta
         setattr(tag, field, value)
     await db.commit()
     await auto_translate_record(db, "dietary_tags", id, {"display_name": tag.display_name or ""})
-    return APIResponse(data={"id": tag.id, "display_name": tag.display_name, "message": "Updated"})
+    return APIResponse(data={"id": tag.id, "tag_key": tag.tag_key, "display_name": tag.display_name, "icon": tag.icon, "color_hex": tag.color_hex, "description": tag.description, "is_active": tag.is_active})
 
 
 @router.delete("/{id}", response_model=APIResponse[dict])
