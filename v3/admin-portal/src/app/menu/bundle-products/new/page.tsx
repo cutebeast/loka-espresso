@@ -645,7 +645,8 @@ export default function BundleProductNewPage() {
               gap: 4
             }}><Plus size={14} />{t("menu_bundle-products_new.add")}</button>
               </div>
-              {components.length === 0 && <p style={{
+              {components.length === 0 && menuItems.length === 0 && <div className="alert alert-error" style={{ marginBottom: 12 }}>No bundle-eligible menu items found. Mark items as &quot;bundle eligible&quot; in the menu item editor first, then return here.</div>}
+              {components.length === 0 && menuItems.length > 0 && <p style={{
             fontSize: 13,
             color: "var(--color-text-muted)"
           }}>{mode === "pick_n" ? "No items in pool. Click &quot;Add&quot; to include selectable items." : "No components added. Click &quot;Add&quot; to include menu items in this bundle."}</p>}

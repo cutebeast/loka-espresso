@@ -18,15 +18,18 @@ export default function NewAllergenPage() {
     color_hex: "#EF4444"
   });
   const [s, setS] = useState(false);
+  const [err, setErr] = useState("");
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setS(true);
+    setErr("");
     try {
       const x: any = await api.post("/admin/menu/allergens", f);
       const id = x?.data?.id || x?.id;
       if (id) r.push(`/menu/allergens/${id}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setErr(e.message || t("admin.errors.saveFailed"));
     } finally {
       setS(false);
     }
@@ -46,6 +49,7 @@ export default function NewAllergenPage() {
       }}>{t("menu_allergens_new.new_allergen")}</h1>
       </div>
       <form onSubmit={submit}>
+        {err && <div className="alert alert-error" style={{ marginBottom: 16, maxWidth: 500 }}>{err}</div>}
         <div className="card" style={{
         padding: 24,
         maxWidth: 500

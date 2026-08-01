@@ -770,6 +770,14 @@ async def create_allergen(
     data: AllergenCreate,
 ):
     """Create a new allergen."""
+    dup = await db.execute(
+        select(Allergen.id).where(
+            Allergen.allergen_key == data.allergen_key,
+            Allergen.deleted_at.is_(None),
+        )
+    )
+    if dup.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail=f"Allergen key '{data.allergen_key}' already exists")
     allergen = Allergen(**data.model_dump())
     db.add(allergen)
     await db.commit()

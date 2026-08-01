@@ -31,6 +31,9 @@ async def get_tag(db: DBDependency, admin: CurrentAdmin, id: int):
 
 @router.post("", response_model=APIResponse[dict])
 async def create_tag(db: DBDependency, admin: CurrentAdmin, data: DietaryTagCreate):
+    dup = await db.execute(select(DietaryTag.id).where(DietaryTag.tag_key == data.tag_key))
+    if dup.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail=f"Tag key '{data.tag_key}' already exists")
     tag = DietaryTag(**data.model_dump(exclude_unset=True))
     db.add(tag)
     await db.commit()
