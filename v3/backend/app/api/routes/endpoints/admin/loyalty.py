@@ -288,9 +288,23 @@ async def list_ledger_entries(
                      "tier_bonus", "promo_bonus", "social_share", "review_submitted"],
             "redeem": ["reward_redemption", "voucher_conversion"],
             "expire": ["points_expired"],
-            "adjustment": ["manual_adjustment", "return_deduction"],
+            "adjustment": ["manual_adjustment", "return_deduction", "account_merge"],
         }
-        types = category_map.get(event_type.lower(), [event_type])
+        key = event_type.lower()
+        if key in category_map:
+            types = category_map[key]
+        else:
+            # Raw event types are allowed, but validate against the enum — an
+            # unknown/empty value otherwise fails the Postgres enum cast (500).
+            valid = {
+                "order_earned", "referral_bonus", "birthday_bonus", "welcome_bonus",
+                "tier_bonus", "promo_bonus", "social_share", "review_submitted",
+                "manual_adjustment", "reward_redemption", "voucher_conversion",
+                "points_expired", "return_deduction", "account_merge",
+            }
+            if event_type not in valid:
+                raise HTTPException(status_code=400, detail=f"Invalid event_type '{event_type}'")
+            types = [event_type]
         base_stmt = base_stmt.where(LoyaltyPointsLedger.event_type.in_(types))
         count_stmt = count_stmt.where(LoyaltyPointsLedger.event_type.in_(types))
 
