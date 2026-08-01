@@ -655,3 +655,20 @@ def cleanup_registry():
             _purge_customer_records(leftover_ids)
     except Exception:
         logger.warning("[cleanup] Failed to purge leftover test customers", exc_info=True)
+
+    # Safety net: soft-delete E2E-titled bundle products — bundle tests create
+    # ~11 per run and nothing else cleans them (265 accumulated by round 35).
+    try:
+        sync_url = _get_database_url()
+        conn = psycopg2.connect(sync_url)
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE bundle_products SET is_active=false, deleted_at=now() "
+            "WHERE deleted_at IS NULL AND (title LIKE 'E2E %%' OR title LIKE 'Seal Check%%')"
+        )
+        if cur.rowcount:
+            logger.info("[cleanup] Soft-deleted %d E2E bundle products", cur.rowcount)
+        conn.commit()
+        conn.close()
+    except Exception:
+        logger.warning("[cleanup] Failed to purge E2E bundle products", exc_info=True)
