@@ -4,6 +4,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMyShifts, type StaffShift } from "@/lib/api";
+import { localDateISO } from "@/lib/datetime";
 import { ChevronLeft, CalendarDays, Clock } from "lucide-react";
 function formatTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -52,8 +53,8 @@ export default function ShiftsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const today = localDateISO();
+    const future = localDateISO(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
     getMyShifts(today, future).then(data => setShifts(data || [])).catch(e => {
       console.error(e);
       setError(t("shifts.err_load_failed"));

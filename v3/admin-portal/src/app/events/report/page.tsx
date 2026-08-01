@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { formatLocalDateTime } from "@/lib/datetime";
 import { ArrowLeft, Mail, Users, X } from "lucide-react";
 interface Event {
   id: number;
@@ -148,7 +149,7 @@ export default function EventRsvpReportPage() {
               <td>{e.location || "—"}</td>
               <td style={{
                 fontSize: 12
-              }}>{e.event_datetime?.slice(0, 16)?.replace("T", " ") || "—"}</td>
+              }}>{formatLocalDateTime(e.event_datetime)}</td>
               <td>{e.rsvp_max_capacity || "∞"}</td>
               <td style={{
                 fontWeight: 600

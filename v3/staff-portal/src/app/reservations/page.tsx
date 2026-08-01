@@ -4,6 +4,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getReservations, updateReservationStatus, getTables, Reservation, ReservationStatus, type Table } from "@/lib/api";
+import { localDateISO } from "@/lib/datetime";
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
@@ -89,7 +90,7 @@ export default function ReservationsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filter, setFilter] = useState<ReservationStatus | "all" | "cancelled">("all");
-  const [dateFilter, setDateFilter] = useState<string>(() => new Date().toISOString().split("T")[0]!);
+  const [dateFilter, setDateFilter] = useState<string>(() => localDateISO());
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {

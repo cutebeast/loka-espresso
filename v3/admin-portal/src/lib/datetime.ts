@@ -32,3 +32,16 @@ export function localInputToISO(value: string): string | null {
   if (isNaN(d.getTime())) return null;
   return d.toISOString();
 }
+
+/**
+ * Format an API ISO datetime for display in the browser's LOCAL timezone:
+ * `YYYY-MM-DD HH:MM`. Returns "—" for null/undefined/invalid input.
+ * Use instead of `iso.slice(0, 16)` (which displays UTC wall-clock).
+ */
+export function formatLocalDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

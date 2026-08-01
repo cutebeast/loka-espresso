@@ -3,6 +3,7 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { clockIn, clockOut, startBreak, endBreak, getMyTimeEvents, api, type TimeEvent } from "@/lib/api";
+import { localDateISO } from "@/lib/datetime";
 import { parseApiError } from "@/lib/errors";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePolling } from "@/hooks/usePolling";
@@ -68,7 +69,7 @@ export default function TimeClockPage() {
   const [attemptCount, setAttemptCount] = useState(0);
   const breakAccumulatedRef = useRef(0);
   const breakStartMsRef = useRef<number | null>(null);
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateISO();
   const fetchEvents = useCallback(async () => {
     try {
       const data = await getMyTimeEvents(today);

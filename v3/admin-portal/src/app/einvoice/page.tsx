@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { api } from "@/lib/api";
+import { formatLocalDateTime } from "@/lib/datetime";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
@@ -141,7 +142,7 @@ export default function EinvoicePage() {
               <td style={{ fontSize: 12, fontFamily: "monospace" }}>{d.code_number}</td>
               <td>{sb(d.status)}</td>
               <td style={{ fontSize: 11, fontFamily: "monospace" }} title={d.myinvois_uuid || undefined}>{truncUuid(d.myinvois_uuid)}</td>
-              <td style={{ fontSize: 12 }}>{d.submitted_at?.slice(0, 16).replace("T", " ") || "—"}</td>
+              <td style={{ fontSize: 12 }}>{formatLocalDateTime(d.submitted_at)}</td>
               <td style={{ textAlign: "right" }}>
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => toggleDetail(d.id)}>{detailId === d.id ? t("einvoice.hide") : t("einvoice.view")}</button>
                 {RETRIABLE.includes(d.status) && (

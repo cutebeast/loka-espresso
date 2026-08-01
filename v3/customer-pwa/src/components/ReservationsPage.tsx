@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { localDateISO } from '@/lib/datetime';
 import { ArrowLeft, CalendarCheck, Plus, Users, Clock, MapPin, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
@@ -217,7 +218,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.date')}</label>
-                    <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary" />
+                    <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} min={localDateISO()} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.time')}</label>

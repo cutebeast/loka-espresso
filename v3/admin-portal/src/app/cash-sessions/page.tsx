@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { api } from "@/lib/api";
+import { formatLocalDateTime } from "@/lib/datetime";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -168,7 +169,7 @@ export default function CashSessionsPage() {
               <td style={{ fontWeight: 600 }}>#{s.id}</td>
               <td style={{ fontSize: 12 }}>{storeFor(s.terminal_id)?.store_name || "—"}<br /><span style={{ opacity: 0.5 }}>{terminalFor(s.terminal_id)?.name || `#${s.terminal_id}`}</span></td>
               <td style={{ fontSize: 12 }}>{s.staff_id ? staffMap[s.staff_id] || `#${s.staff_id}` : "—"}</td>
-              <td style={{ fontSize: 12 }}>{s.opened_at?.slice(0, 16).replace("T", " ")}</td>
+              <td style={{ fontSize: 12 }}>{formatLocalDateTime(s.opened_at)}</td>
               <td>{sb(s.status)}</td>
               <td style={{ textAlign: "right" }}>{format(s.opening_cash)}</td>
               <td style={{ textAlign: "right" }}>{s.status === "open" ? "—" : format(s.total_sales_cash)}</td>
@@ -216,7 +217,7 @@ export default function CashSessionsPage() {
                           <th style={{ textAlign: "right" }}>{t("cash_sessions.col_refunded")}</th>
                         </tr></thead>
                         <tbody>{detail.payments.map(p => <tr key={p.id}>
-                          <td style={{ fontSize: 12 }}>{p.created_at?.slice(0, 16).replace("T", " ")}</td>
+                          <td style={{ fontSize: 12 }}>{formatLocalDateTime(p.created_at)}</td>
                           <td style={{ fontSize: 12 }}>{p.order_number}</td>
                           <td style={{ fontSize: 12 }}>{p.provider}</td>
                           <td>{sb(p.status)}</td>
