@@ -164,6 +164,12 @@ async def create_survey(
     payload = data.model_dump()
     questions_data = payload.pop("questions", [])
 
+    dup = await db.execute(
+        select(SurveyDefinition.id).where(SurveyDefinition.survey_key == payload.get("survey_key"))
+    )
+    if dup.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail=f"Survey key '{payload.get('survey_key')}' already exists")
+
     survey = SurveyDefinition(**payload, created_by=admin.id)
     db.add(survey)
     await db.flush()

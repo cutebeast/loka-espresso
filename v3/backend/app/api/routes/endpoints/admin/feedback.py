@@ -17,6 +17,21 @@ router = APIRouter(prefix="/admin/feedback", tags=["admin — feedback"])
 public_router = APIRouter(tags=["feedback"])
 
 
+def _parse_filter_date(value: str | None, end_of_day: bool = False):
+    """Parse a feedback date filter ('2026-08-01' or ISO datetime) to a
+    datetime — raw strings crash against the timestamptz column
+    ('operator does not exist: timestamptz >= character varying')."""
+    if not value:
+        return None
+    try:
+        if len(value) == 10:
+            dt = datetime.fromisoformat(value)
+            return dt.replace(hour=23, minute=59, second=59) if end_of_day else dt
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid date filter '{value}'")
+
+
 @router.get("", response_model=APIResponse[PaginatedResponse[FeedbackEntryOut]])
 async def list_feedback(
     admin: CurrentAdmin,
@@ -34,12 +49,14 @@ async def list_feedback(
     if store_id is not None:
         base = base.where(FeedbackEntry.store_id == store_id)
         cnt = cnt.where(FeedbackEntry.store_id == store_id)
-    if from_date:
-        base = base.where(FeedbackEntry.created_at >= from_date)
-        cnt = cnt.where(FeedbackEntry.created_at >= from_date)
-    if to_date:
-        base = base.where(FeedbackEntry.created_at <= to_date)
-        cnt = cnt.where(FeedbackEntry.created_at <= to_date)
+    from_dt = _parse_filter_date(from_date)
+    to_dt = _parse_filter_date(to_date, end_of_day=True)
+    if from_dt:
+        base = base.where(FeedbackEntry.created_at >= from_dt)
+        cnt = cnt.where(FeedbackEntry.created_at >= from_dt)
+    if to_dt:
+        base = base.where(FeedbackEntry.created_at <= to_dt)
+        cnt = cnt.where(FeedbackEntry.created_at <= to_dt)
 
     total = (await db.execute(cnt)).scalar() or 0
 
@@ -95,14 +112,16 @@ async def feedback_stats(
         base = base.where(FeedbackEntry.store_id == store_id)
         avg_stmt = avg_stmt.where(FeedbackEntry.store_id == store_id)
         count_stmt = count_stmt.where(FeedbackEntry.store_id == store_id)
-    if from_date:
-        base = base.where(FeedbackEntry.created_at >= from_date)
-        avg_stmt = avg_stmt.where(FeedbackEntry.created_at >= from_date)
-        count_stmt = count_stmt.where(FeedbackEntry.created_at >= from_date)
-    if to_date:
-        base = base.where(FeedbackEntry.created_at <= to_date)
-        avg_stmt = avg_stmt.where(FeedbackEntry.created_at <= to_date)
-        count_stmt = count_stmt.where(FeedbackEntry.created_at <= to_date)
+    from_dt = _parse_filter_date(from_date)
+    to_dt = _parse_filter_date(to_date, end_of_day=True)
+    if from_dt:
+        base = base.where(FeedbackEntry.created_at >= from_dt)
+        avg_stmt = avg_stmt.where(FeedbackEntry.created_at >= from_dt)
+        count_stmt = count_stmt.where(FeedbackEntry.created_at >= from_dt)
+    if to_dt:
+        base = base.where(FeedbackEntry.created_at <= to_dt)
+        avg_stmt = avg_stmt.where(FeedbackEntry.created_at <= to_dt)
+        count_stmt = count_stmt.where(FeedbackEntry.created_at <= to_dt)
 
     base = base.group_by(FeedbackEntry.rating)
 

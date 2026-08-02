@@ -44,8 +44,9 @@ def _has_admin_identity(request: Request) -> bool:
 
 
 def _has_staff_identity(request: Request) -> bool:
-    """True when the request carries a valid staff-portal token."""
-    for token in _candidate_tokens(request, "staff_token"):
+    """True when the request carries a valid staff-portal token (or an admin —
+    admins manage and read all audiences)."""
+    for token in _candidate_tokens(request, "staff_token", "admin_token"):
         try:
             payload = decode_token(token)
         except Exception:
@@ -55,6 +56,9 @@ def _has_staff_identity(request: Request) -> bool:
             return True
         # Admins browsing the staff portal before store selection
         if token_type == "admin" and payload.get("admin_id"):
+            return True
+        # Admin-portal access tokens — admins can read staff-audience articles
+        if token_type == "access" and payload.get("admin_id"):
             return True
     return False
 

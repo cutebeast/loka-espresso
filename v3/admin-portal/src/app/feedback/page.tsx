@@ -36,6 +36,8 @@ export default function FeedbackPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [fromDate, setFromDate] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [stores, setStores] = useState<{ id: number; store_name: string }[]>([]);
   const [toDate, setToDate] = useState("");
 
   // Reply modal
@@ -51,6 +53,7 @@ export default function FeedbackPage() {
       });
       if (fromDate) params.set("from_date", fromDate + "T00:00:00");
       if (toDate) params.set("to_date", toDate + "T23:59:59");
+      if (storeId) params.set("store_id", storeId);
       const d = await api.getRaw<{
         items: FeedbackItem[];
         total: number;
@@ -65,16 +68,20 @@ export default function FeedbackPage() {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, storeId]);
   const fetchStats = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (fromDate) params.set("from_date", fromDate + "T00:00:00");
       if (toDate) params.set("to_date", toDate + "T23:59:59");
+      if (storeId) params.set("store_id", storeId);
       const s = await api.getRaw<FeedbackStats>(`/admin/feedback/stats?${params}`);
       setStats(s);
     } catch (e: any) {console.error("Failed to load feedback stats:", e); setError(e.message || t("admin.errors.loadFailed")); }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, storeId]);
+  useEffect(() => {
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(d?.items || [])).catch(() => {});
+  }, []);
   useEffect(() => {
     (async () => {
       fetchData(1);
@@ -227,13 +234,26 @@ export default function FeedbackPage() {
           </div>
         </div>}
 
-      {/* Date filter */}
+      {/* Date + store filter */}
       <div style={{
       display: "flex",
       gap: 8,
       alignItems: "center",
-      marginBottom: 16
+      marginBottom: 16,
+      flexWrap: "wrap"
     }}>
+        <select value={storeId} onChange={e => {
+        setStoreId(e.target.value);
+        setPage(1);
+      }} style={{
+        padding: "6px 8px",
+        fontSize: 12,
+        borderRadius: "var(--radius-sm)",
+        width: 180
+      }}>
+          <option value="">{t("feedback.all_stores")}</option>
+          {stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+        </select>
         <input type="date" value={fromDate} onChange={e => {
         setFromDate(e.target.value);
         setPage(1);

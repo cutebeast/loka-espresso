@@ -2,19 +2,19 @@
   "accountDetails": {
     "account": "账户",
     "accountCreated": "账户已创建",
-    "contactInfo": "联系信息",
+    "contactInfo": "联络资料",
     "dateOfBirth": "出生日期",
     "dobPlaceholder": "出生日期...",
     "email": "邮箱",
     "emailPlaceholder": "邮箱...",
     "fullName": "全名",
-    "memberSince": "加入时间",
+    "memberSince": "会员加入日期",
     "membershipTier": "会员等级",
     "namePlaceholder": "姓名...",
-    "personalInfo": "个人信息",
-    "phone": "电话",
-    "profilePhotoAlt": "个人资料照片替代文本",
-    "saveChanges": "保存更改",
+    "personalInfo": "个人资料",
+    "phone": "电话号码",
+    "profilePhotoAlt": "个人头像",
+    "saveChanges": "保存变更",
     "saveSuccess": "保存成功",
     "title": "个人资料",
     "uploadPhoto": "上传照片"
@@ -316,6 +316,11 @@
     "welcome": "欢迎",
     "year": "年",
     "yourCode": "您的会员码"
+  },
+  "e2e": {
+    "test": {
+      "eba3ce46": "测试"
+    }
   },
   "errorBoundary": {
     "message": "发生意外错误，请重试。",

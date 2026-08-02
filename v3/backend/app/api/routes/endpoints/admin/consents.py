@@ -37,8 +37,24 @@ async def list_consents(
         base_stmt = base_stmt.where(CustomerConsent.customer_id == customer_id)
         count_stmt = count_stmt.where(CustomerConsent.customer_id == customer_id)
     if consent_type is not None:
-        base_stmt = base_stmt.where(CustomerConsent.consent_type == consent_type)
-        count_stmt = count_stmt.where(CustomerConsent.consent_type == consent_type)
+        # UI buckets → enum values; consent_type is a CHECKed string, and an
+        # unknown value 500s. "marketing" covers all marketing channels.
+        consent_map: dict[str, list[str]] = {
+            "marketing": ["marketing_email", "marketing_sms", "marketing_push"],
+            "data": ["data_sharing", "location_tracking", "third_party"],
+        }
+        valid = {
+            "marketing_email", "marketing_sms", "marketing_push",
+            "data_sharing", "location_tracking", "third_party",
+        }
+        if consent_type in consent_map:
+            types = consent_map[consent_type]
+        elif consent_type in valid:
+            types = [consent_type]
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid consent_type '{consent_type}'")
+        base_stmt = base_stmt.where(CustomerConsent.consent_type.in_(types))
+        count_stmt = count_stmt.where(CustomerConsent.consent_type.in_(types))
     if status is not None:
         base_stmt = base_stmt.where(CustomerConsent.status == status)
         count_stmt = count_stmt.where(CustomerConsent.status == status)

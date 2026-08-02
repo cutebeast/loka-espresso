@@ -317,6 +317,11 @@
     "year": "Tahun",
     "yourCode": "Kod anda"
   },
+  "e2e": {
+    "test": {
+      "eba3ce46": "Ujian Kemas Kini"
+    }
+  },
   "errorBoundary": {
     "message": "Ralat tidak dijangka berlaku. Sila cuba lagi.",
     "reload": "Muat Semula Halaman"
