@@ -65,7 +65,9 @@ export default function CustomerDisplayPage() {
   const [isLCD, setIsLCD] = useState(false);
   const [connStatus, setConnStatus] = useState<"live" | "stale" | "disconnected">("live");
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastUpdateRef = useRef<number>(Date.now());
+  // Init 0 — Date.now() during render is impure (React Compiler lint); the
+  // value is set on first poll anyway and only used for elapsed-time checks.
+  const lastUpdateRef = useRef<number>(0);
 
   // ── Determine store ID + display key + LCD mode from URL ──
   useEffect(() => {

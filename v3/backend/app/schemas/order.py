@@ -166,6 +166,7 @@ class OrderListParams(BaseSchema):
 
 class UpdateOrderStatusRequest(BaseSchema):
     status: str
+    reason: str | None = None
 
 
 class PaymentLineAllocationIn(BaseSchema):

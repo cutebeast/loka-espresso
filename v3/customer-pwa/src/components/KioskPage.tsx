@@ -110,7 +110,7 @@ export default function KioskPage() {
   const [error, setError] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
   const [payUrl, setPayUrl] = useState('');
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   const [orientation, setOrientation] = useState<Orientation>('landscape');
   const [inactivityWarn, setInactivityWarn] = useState(false);
   const [showCallStaff, setShowCallStaff] = useState(false);

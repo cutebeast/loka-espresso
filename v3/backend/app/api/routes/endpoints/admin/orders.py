@@ -348,6 +348,9 @@ async def update_order_status(
     await db.execute(text("SET LOCAL app.current_actor_type = 'staff'"))
     order.status = status_value
     order.updated_at = now
+    if is_cancellation and data.reason:
+        order.cancellation_reason = data.reason
+        order.cancelled_by = "merchant" if status_value == "cancelled_by_merchant" else "customer"
     await db.flush()
 
     cancelled_payment_ids: list[int] = []

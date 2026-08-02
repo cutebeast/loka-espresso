@@ -18,6 +18,10 @@ echo "=== Backend Unit Tests ==="
 (cd "$BASE/backend" && source .venv/bin/activate && pytest tests/ -q)
 
 echo ""
+echo "=== Form ↔ Schema Contract ==="
+(cd "$BASE" && source backend/.venv/bin/activate && python3 scripts/check_form_schema_contract.py && python3 scripts/check_form_schema_contract.py --portal staff-portal)
+
+echo ""
 echo "=== Route Validation ==="
 if curl -s -o /dev/null -w "%{http_code}" http://localhost:13800/health | grep -q 200; then
   (cd "$BASE" && python3 scripts/validate-routes.py)
