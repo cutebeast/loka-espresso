@@ -102,7 +102,7 @@ export default function BundleProductEditPage() {
     } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     try {
       const d = await api.getRaw<any>("/admin/menu/categories?per_page=100");
-      setCategories(d?.items || []);
+      setCategories((d?.items || []).filter((c: any) => c.category_type !== "combo"));
     } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
   };
   const selectedItemIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));

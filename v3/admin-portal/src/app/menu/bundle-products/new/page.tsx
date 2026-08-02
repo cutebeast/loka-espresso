@@ -69,7 +69,7 @@ export default function BundleProductNewPage() {
   const nextTempId = () => ++_tempIdCounter.current;
   useEffect(() => {
     api.getRaw<any>("/admin/menu/items?per_page=500").then(d => setMenuItems((d?.items || []).filter((mi: any) => mi.is_bundle_eligible))).catch((e: any) => { console.error('menu items:', e); setError(e.message || t("admin.errors.loadFailed")); });
-    api.getRaw<any>("/admin/menu/categories?per_page=100").then(d => setCategories(d?.items || [])).catch((e: any) => { console.error('menu categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    api.getRaw<any>("/admin/menu/categories?per_page=100").then(d => setCategories((d?.items || []).filter((c: any) => c.category_type !== "combo"))).catch((e: any) => { console.error('menu categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
   const selectMode = (m: BundleMode) => {
     setMode(m);
