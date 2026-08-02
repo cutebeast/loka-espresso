@@ -1393,3 +1393,11 @@ After the menu-item 422 and the availability/color bugs, user asked for a proper
 - **Data shapes**: `inventory_items.image_url` added end-to-end (migration `l2f3a4b5c6d7` — the admin UI upload button was dead); bundle edit no longer wipes component modifier_overrides (form round-trips them; groups guarded to multi_course); survey update passes min/max rating/labels/conditional_logic; dietary create/update responses include color_hex/description.
 - **Validation → 422 instead of 500**: prep_time 1-120, loyalty tier validity/key, staff role/task/shift Literals, movement types, tip allocation types, voucher date order, inventory shelf_life/item_type/unit_cost, consent types, customer phone regex, staff reservation dates, staff equipment store guard, POS modification-log staff FK (principal lookup, nullable).
 - Verified: all probes round-trip live; 42/42 unit; tsc clean; single alembic head; 09_schema_sync regenerated. RULE for future endpoints: request schema fields must map 1:1 to model columns (setattr drops silently), Literal-type anything with a DB CHECK, never hand-build response dicts missing editable fields, Time/Date columns need typed schema fields not str.
+
+### Round 35 follow-up 9 — permanent preventions (2026-08-02)
+
+User asked WHY the bug classes kept happening, then approved systemic fixes:
+- **Global IntegrityError→409** (`app/main.py`): uncaught unique/FK/NOT NULL/CHECK violations return clean 409/400 with constraint name. Any future duplicate-key bug can no longer 500.
+- **Form↔schema contract check** (`v3/scripts/check_form_schema_contract.py`, wired into check-all.sh): statically diffs every admin/staff form payload against the FastAPI request schemas — the pydantic extra=ignore silent-drop class is now CI-gated (0 drops across 150 calls). Extend ALLOWLIST_PAIRS with a comment when a finding is verified benign. Known checker limitation: same-named payload variables in one file merge (lucky-draw `body`, equipment `payload` — allowlisted).
+- **ESLint was never broken**: the "hundreds of pre-existing errors" were stale `.next-previous`/`.next-fresh` build dirs. Real count was 2 (render-purity `useRef(Date.now())`/`useState(Date.now())` — fixed). All 3 portals now lint clean (0 errors); check-all.sh passes end-to-end.
+- Checker found one real drop: order status reason now persists as cancellation_reason.
