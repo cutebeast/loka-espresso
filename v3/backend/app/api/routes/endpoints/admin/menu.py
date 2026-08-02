@@ -194,6 +194,14 @@ async def create_category(
     data: MenuCategoryCreate,
 ):
     """Create a new menu category."""
+    dup = await db.execute(
+        select(MenuCategory.id).where(
+            MenuCategory.slug == data.slug,
+            MenuCategory.deleted_at.is_(None),
+        )
+    )
+    if dup.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail=f"Category slug '{data.slug}' already exists")
     category = MenuCategory(**data.model_dump())
     db.add(category)
     await db.commit()
@@ -397,6 +405,14 @@ async def create_item(
     data: MenuItemCreateRequest,
 ):
     """Create a menu item with optional modifiers, variants, and allergens."""
+    dup = await db.execute(
+        select(MenuItem.id).where(
+            MenuItem.item_code == data.item_code,
+            MenuItem.deleted_at.is_(None),
+        )
+    )
+    if dup.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail=f"Item code '{data.item_code}' already exists")
     item_data = data.model_dump(
         exclude={"modifier_groups", "variants", "allergen_ids", "dietary_tag_ids", "recipes"},
         exclude_unset=False,
