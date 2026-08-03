@@ -128,6 +128,8 @@ async def feedback_stats(
     dist_result = await db.execute(base)
     distribution: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
     for rating, cnt in dist_result.all():
+        if rating is None:
+            continue  # unrated entries (support tickets / guest feedback) — no star bucket
         distribution[rating] = cnt
 
     avg_val = (await db.execute(avg_stmt)).scalar()

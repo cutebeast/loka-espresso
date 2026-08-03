@@ -2,7 +2,7 @@
 
 import types
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated, Any, Generic, TypeVar
 
@@ -58,6 +58,22 @@ class BaseSchema(BaseModel):
             k: (None if isinstance(v, str) and not v.strip() and k in nullable_keys else v)
             for k, v in data.items()
         }
+
+    @model_validator(mode="after")
+    def _naive_datetimes_to_utc(self) -> "BaseSchema":
+        """Pin naive datetimes to UTC.
+
+        The app stores timestamptz, but the host TZ is NOT UTC (Europe/Berlin)
+        and asyncpg encodes naive datetimes with the host offset — a date-only
+        input like "2026-08-05" silently stored as 2026-08-04 22:00Z (the
+        promo-banner date-drift bug). Treating naive as UTC makes date-only
+        values round-trip exactly.
+        """
+        for name in type(self).model_fields:
+            v = getattr(self, name, None)
+            if isinstance(v, datetime) and v.tzinfo is None:
+                object.__setattr__(self, name, v.replace(tzinfo=timezone.utc))
+        return self
 
 
 class TimestampedSchema(BaseSchema):

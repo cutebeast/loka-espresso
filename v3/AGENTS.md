@@ -1401,3 +1401,11 @@ User asked WHY the bug classes kept happening, then approved systemic fixes:
 - **Form↔schema contract check** (`v3/scripts/check_form_schema_contract.py`, wired into check-all.sh): statically diffs every admin/staff form payload against the FastAPI request schemas — the pydantic extra=ignore silent-drop class is now CI-gated (0 drops across 150 calls). Extend ALLOWLIST_PAIRS with a comment when a finding is verified benign. Known checker limitation: same-named payload variables in one file merge (lucky-draw `body`, equipment `payload` — allowlisted).
 - **ESLint was never broken**: the "hundreds of pre-existing errors" were stale `.next-previous`/`.next-fresh` build dirs. Real count was 2 (render-purity `useRef(Date.now())`/`useState(Date.now())` — fixed). All 3 portals now lint clean (0 errors); check-all.sh passes end-to-end.
 - Checker found one real drop: order status reason now persists as cancellation_reason.
+
+### Round 35 follow-up 10 — host-TZ datetime drift + remaining tester issues (2026-08-03)
+
+- **THE BIG ONE: host TZ is Europe/Berlin (UTC+2), and asyncpg encodes NAIVE datetimes with the host offset.** Date-only form inputs parse to naive datetimes → stored shifted -2h (promo "2026-08-05" became 2026-08-04 22:00Z → list showed one day early). Fix: BaseSchema `_naive_datetimes_to_utc` pins every naive datetime field to UTC at validation. RULE: never let a naive datetime reach the DB; if the host TZ ever changes, this validator keeps dates stable. Existing shifted rows (+22:00Z signature) were unshifted.
+- Feedback stats 500 on page load: NULL ratings (round-33 optional rating) crashed rating_distribution — unrated entries now skipped. (Earlier fix only handled the date-filter path.)
+- Consents page: dropdown values "analytics"/"data_processing"/status "revoked" didn't map to the enums — backend now maps them (analytics→location_tracking, data_processing→data_sharing/third_party, revoked→withdrawn) and validates cleanly.
+- Splash edit error banner: per-locale translation prefill failures set the page error banner — now console-only. Splash save verified 200.
+- NOTE for go-live: server TZ is Europe/Berlin — cron times in crontab are Berlin-local (loyalty eval "02:00" = 08:00 MYT). Decide intended timezone at migration.
