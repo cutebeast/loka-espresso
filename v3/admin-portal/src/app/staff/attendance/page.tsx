@@ -3,6 +3,7 @@
 import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { verifyTimeEvent, type StaffTimeEvent } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { api } from "@/lib/api";
 interface St {
   id: number;
@@ -16,7 +17,7 @@ export default function StaffTimeEventsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stores, setStores] = useState<St[]>([]);
-  const [storeId, setStoreId] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:attendance.storeId", "");
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   useEffect(() => {

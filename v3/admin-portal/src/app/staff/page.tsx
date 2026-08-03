@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 interface Staff {
@@ -33,7 +34,7 @@ export default function StaffPage() {
   const [items, setItems] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:staff.storeId", "");
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const fetchStores = useCallback(async () => {

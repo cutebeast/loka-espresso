@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { useTranslation } from "@/lib/i18n";
 interface Res {
   id: number;
@@ -23,7 +24,7 @@ export default function ReservationsPage() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [date, setDate] = useState("");
-  const [storeId, setStoreId] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:reservations.storeId", "");
   const [stores, setStores] = useState<{
     id: number;
     store_name: string;

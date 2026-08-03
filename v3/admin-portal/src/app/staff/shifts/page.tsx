@@ -3,6 +3,7 @@
 import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { Plus, Trash2 } from "lucide-react";
 interface Shift {
   id: number;
@@ -39,7 +40,7 @@ export default function StaffShiftsPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:shifts.storeId", "");
   const [showForm, setShowForm] = useState(false);
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [form, setForm] = useState({

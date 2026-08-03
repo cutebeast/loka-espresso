@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { Edit2 } from "lucide-react";
 interface Store {
   id: number;
@@ -42,8 +43,8 @@ export default function InventoryStocksPage() {
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [storeId, setStoreId] = useState("");
-  const [catFilter, setCatFilter] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:stocks.storeId", "");
+  const [catFilter, setCatFilter] = usePersistedState("list:stocks.catFilter", "");
   const [stocks, setStocks] = useState<StockRecord[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,9 @@ export default function InventoryStocksPage() {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => {
       const list = d.items || [];
       setStores(list);
+      // Default to the first store so stock levels show immediately —
+      // returning from an edit no longer dumps users at "Please Select".
+      if (!storeId && list.length > 0) setStoreId(String(list[0].id));
     }).catch((e: any) => setError(e.message || "Failed to load stores"));
     api.getRaw<any>("/admin/inventory/categories?per_page=100").then(d => {
       setCategories(d.items || (Array.isArray(d) ? d : []));

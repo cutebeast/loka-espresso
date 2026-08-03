@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { api } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { formatLocalDateTime } from "@/lib/datetime";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
@@ -63,7 +64,7 @@ export default function CashSessionsPage() {
   const [staffMap, setStaffMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [storeId, setStoreId] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:cash.storeId", "");
   const [statusFilter, setStatusFilter] = useState("");
   const [closeId, setCloseId] = useState<number | null>(null);
   const [closeCash, setCloseCash] = useState("");

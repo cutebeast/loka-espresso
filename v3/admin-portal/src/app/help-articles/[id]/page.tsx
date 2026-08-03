@@ -27,6 +27,7 @@ export default function EditHelpArticlePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
   const [form, setForm] = useState<Partial<HelpArticle>>({});
 
   const load = useCallback(async () => {
@@ -52,7 +53,9 @@ export default function EditHelpArticlePage() {
         ...form,
         category: form.category || null,
       });
-      router.push("/help-articles");
+      // Stay on the item so the editor can see the update landed
+      setMsg(t("admin.common.saved"));
+      setTimeout(() => setMsg(""), 2000);
     } catch (e) {
       console.error(e);
       alert(t("help.save_failed"));
@@ -84,6 +87,7 @@ export default function EditHelpArticlePage() {
 
   return (
     <div style={{ padding: 32 }}>
+      {msg && <div className="alert alert-success" style={{ marginBottom: 16 }}>{msg}</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <button onClick={() => router.push("/help-articles")} className="btn btn-ghost btn-sm">
           <ArrowLeft size={18} />

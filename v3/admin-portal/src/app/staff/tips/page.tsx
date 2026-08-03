@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getTipAllocations, type TipAllocation } from "@/lib/api";
+import { usePersistedState } from "@/lib/usePersistedState";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -19,7 +20,7 @@ export default function StaffTipsPage() {
   const [items, setItems] = useState<TipAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [storeId, setStoreId] = useState("");
+  const [storeId, setStoreId] = usePersistedState("list:tips.storeId", "");
   const [stores, setStores] = useState<Store[]>([]);
   // rows map over the variable `t`, which shadows the translation fn there
   const pooledLabel = t("staff_tips.pooled");
