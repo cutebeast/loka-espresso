@@ -88,7 +88,7 @@ export default function InfoCardEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
+        } catch (e: any) { console.error("translation prefill:", e); }
       }
       setTr(x);
     } catch (e) {

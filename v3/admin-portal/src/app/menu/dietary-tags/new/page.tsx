@@ -19,15 +19,18 @@ export default function NewDietaryTagPage() {
   });
   const [saving, setSaving] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [err, setErr] = useState("");
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setErr("");
     try {
       const x: any = await api.post("/admin/dietary-tags", f);
       const id = x?.data?.id || x?.id;
       if (id) r.push(`/menu/dietary-tags/${id}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setErr(e.message || t("admin.errors.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -47,6 +50,7 @@ export default function NewDietaryTagPage() {
       }}>{t("menu_dietary-tags_new.new_dietary_tag")}</h1>
       </div>
       <form onSubmit={submit}>
+        {err && <div className="alert alert-error" style={{ marginBottom: 16, maxWidth: 500 }}>{err}</div>}
         <div className="card" style={{
         padding: 24,
         maxWidth: 500

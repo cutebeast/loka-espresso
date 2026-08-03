@@ -15,9 +15,11 @@ export default function TaxCategoryNewPage() {
     rate: ""
   });
   const [s, setS] = useState(false);
+  const [err, setErr] = useState("");
   const sub = async (e: React.FormEvent) => {
     e.preventDefault();
     setS(true);
+    setErr("");
     try {
       const payload: any = {
         category_name: f.category_name,
@@ -26,8 +28,9 @@ export default function TaxCategoryNewPage() {
       const result: any = await api.post("/admin/menu/tax-categories", payload);
       const id = result?.data?.id || result?.id;
       if (id) r.push(`/menu/tax-categories/${id}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setErr(e.message || t("admin.errors.saveFailed"));
     } finally {
       setS(false);
     }
@@ -49,6 +52,7 @@ export default function TaxCategoryNewPage() {
       }}>{t("menu_tax-categories_new.new_tax_category")}</h1>
       </div>
       <form onSubmit={sub}>
+        {err && <div className="alert alert-error" style={{ marginBottom: 16, maxWidth: 500 }}>{err}</div>}
         <div className="card" style={{
         padding: 24,
         maxWidth: 500

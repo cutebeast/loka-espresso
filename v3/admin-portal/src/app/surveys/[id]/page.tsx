@@ -96,7 +96,7 @@ export default function SurveyEditPage() {
             const f = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${f}`] = t.translated_text || "";
           }
-        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
+        } catch (e: any) { console.error("translation prefill:", e); }
         try {
           const qt = await api.getRaw<any>(`/admin/translations?table_name=survey_questions&locale=${lc.code}&per_page=100`);
           if (qt?.items) for (const t of qt.items) {

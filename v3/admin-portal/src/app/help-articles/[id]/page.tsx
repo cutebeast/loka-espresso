@@ -66,9 +66,7 @@ export default function EditHelpArticlePage() {
     try {
       await api.del(`/admin/help-articles/${id}`);
       router.push("/help-articles");
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e: any) { console.error(e); }
   };
 
   if (notFound) {

@@ -156,7 +156,7 @@ export default function RewardEditPage() {
               allTr[`${loc.code}:${field}`] = t.translated_text || "";
             }
           }
-        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
+        } catch (e: any) { console.error("translation prefill:", e); }
       }
       setTranslations(allTr);
     } catch (e) {

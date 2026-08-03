@@ -198,7 +198,10 @@ export default function TierEditPage() {
             const fk = t.translation_key.split(".").pop() || "";
             x[`${lc.code}:${fk}`] = t.translated_text || "";
           }
-        } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
+        } catch (e: any) {
+          // Translation prefill is best-effort — never surface as a page error.
+          console.error("translation prefill:", e);
+        }
       }
       setTr(x);
     } catch (e) {

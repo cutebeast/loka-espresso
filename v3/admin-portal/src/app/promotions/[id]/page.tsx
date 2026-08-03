@@ -103,7 +103,7 @@ export default function PromotionEditPage() {
     try {
       const d = await api.getRaw<any>("/admin/vouchers?per_page=100&is_active=true");
       setVouchers(Array.isArray(d) ? d : d.items || []);
-    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
+    } catch (e: any) { console.error("translation prefill:", e); }
     try {
       const d = await api.getRaw<any>("/admin/surveys?per_page=100");
       setSurveys(Array.isArray(d) ? d : d.items || []);

@@ -668,7 +668,28 @@ def cleanup_registry():
         )
         if cur.rowcount:
             logger.info("[cleanup] Soft-deleted %d E2E bundle products", cur.rowcount)
+        # Same treatment for other E2E-titled content (splash, cards, promos,
+        # campaigns, notifications, system pages) — round-35 junk sweep.
+        # Column names/soft-delete support vary per table, so introspect first.
+        cur.execute(
+            "SELECT table_name, column_name FROM information_schema.columns "
+            "WHERE table_name IN ('splash_screens','promo_banners','information_cards','product_cards',"
+            "'event_cards','admin_notifications','system_pages','marketing_campaigns') "
+            "AND column_name IN ('deleted_at','title','campaign_name')"
+        )
+        meta: dict[str, set[str]] = {}
+        for tname, cname in cur.fetchall():
+            meta.setdefault(tname, set()).add(cname)
+        for table, cols in meta.items():
+            title_col = "title" if "title" in cols else "campaign_name"
+            if "deleted_at" in cols:
+                cur.execute(
+                    f"UPDATE {table} SET deleted_at=now() WHERE deleted_at IS NULL "
+                    f"AND ({title_col} LIKE 'E2E %%' OR {title_col} LIKE 'Freq Test%%')"
+                )
+            else:
+                cur.execute(f"DELETE FROM {table} WHERE {title_col} LIKE 'E2E %%'")
         conn.commit()
         conn.close()
     except Exception:
-        logger.warning("[cleanup] Failed to purge E2E bundle products", exc_info=True)
+        logger.warning("[cleanup] Failed to purge E2E test content", exc_info=True)

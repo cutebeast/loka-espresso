@@ -16,9 +16,7 @@ export default function LoyaltyTiersPage() {
     try {
       const d = await api.getRaw<any>("/admin/loyalty/tiers?per_page=50");
       setItems(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
+    } catch (e: any) { console.error(e); } finally {
       setLoading(false);
     }
   }, []);

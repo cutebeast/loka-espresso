@@ -147,9 +147,7 @@ export default function SurveyReportPage() {
           a.download = `survey-${selectedId}-responses.json`;
           a.click();
           URL.revokeObjectURL(url);
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e: any) { console.error(e); }
       }}>
             <Download size={14} />{t("surveys_report.export_json")}</button>}
       </div>
