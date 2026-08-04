@@ -1,12 +1,14 @@
 """Bundle product schemas."""
 
 from datetime import datetime
-from app.schemas.base import Money
-from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
-from app.schemas.base import BaseSchema, TimestampedSchema
+from app.schemas.base import BaseSchema, Money, TimestampedSchema
+from decimal import Decimal
+
+VALID_BUNDLE_TYPES = Literal["combo", "value_meal", "family_meal", "breakfast_set", "promotional", "pick_x", "multi_course"]
 
 
 class BundleCategoryBase(BaseSchema):
@@ -98,7 +100,7 @@ class BundleProductComponentOut(BaseSchema):
 
 
 class BundleProductCreate(BaseSchema):
-    bundle_type: str = Field(default="combo", max_length=30)
+    bundle_type: VALID_BUNDLE_TYPES = Field(default="combo", max_length=30)
     title: str = Field(..., max_length=255)
     description: str | None = None
     image_url: str | None = None
@@ -120,7 +122,7 @@ class BundleProductCreate(BaseSchema):
 
 
 class BundleProductUpdate(BaseSchema):
-    bundle_type: str | None = Field(None, max_length=30)
+    bundle_type: VALID_BUNDLE_TYPES | None = Field(None, max_length=30)
     title: str | None = Field(None, max_length=255)
     description: str | None = None
     image_url: str | None = None

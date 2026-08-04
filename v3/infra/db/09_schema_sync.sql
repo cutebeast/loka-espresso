@@ -166,6 +166,7 @@ CREATE TABLE IF NOT EXISTS bundle_products (
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	deleted_at TIMESTAMP WITH TIME ZONE, 
 	PRIMARY KEY (id), 
+	CONSTRAINT ck_bundle_products_bundle_type CHECK (bundle_type = ANY (ARRAY['combo','value_meal','family_meal','breakfast_set','promotional','pick_x','multi_course'])), 
 	FOREIGN KEY(category_id) REFERENCES menu_categories (id) ON DELETE SET NULL, 
 	FOREIGN KEY(bundle_category_id) REFERENCES bundle_categories (id) ON DELETE SET NULL, 
 	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE SET NULL

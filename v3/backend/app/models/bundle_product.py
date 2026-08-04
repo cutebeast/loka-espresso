@@ -57,6 +57,13 @@ class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
         "BundleGroup", back_populates="bundle_product", cascade="all, delete-orphan"
     )
 
+    __table_args__ = (
+        CheckConstraint(
+            "bundle_type = ANY (ARRAY['combo','value_meal','family_meal','breakfast_set','promotional','pick_x','multi_course'])",
+            name="ck_bundle_products_bundle_type",
+        ),
+    )
+
 
 class BundleGroup(Base):
     __tablename__ = "bundle_groups"
