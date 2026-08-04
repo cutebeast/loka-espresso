@@ -413,10 +413,6 @@ export default function BundleProductNewPage() {
               ...form,
               bundle_price: e.target.value
             })} placeholder="0.00" /></div>
-            <div className="df-field"><label className="df-label">{t("menu_bundle-products_new.marketing_label")}</label><select value={form.bundle_type} onChange={e => setForm({
-              ...form,
-              bundle_type: e.target.value
-            })}><option value="combo">{t("menu_bundle-products_new.combo")}</option><option value="value_meal">{t("menu_bundle-products_new.value_meal")}</option><option value="family_meal">{t("menu_bundle-products_new.family_meal")}</option><option value="breakfast_set">{t("menu_bundle-products_new.breakfast_set")}</option><option value="promotional">{t("menu_bundle-products_new.promotional")}</option>{mode === "pick_n" && <option value="pick_x">{t("menu_bundle-products_new.pick_choose")}</option>}{mode === "multi_course" && <option value="multi_course">{t("menu_bundle-products_new.multi_course")}</option>}</select></div>
             <div className="df-field"><label className="df-label">{t("menu_bundle-products_new.bundle_category")}</label><select value={form.bundle_category_id} onChange={e => setForm({
               ...form,
               bundle_category_id: e.target.value

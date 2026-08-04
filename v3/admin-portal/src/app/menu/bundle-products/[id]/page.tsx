@@ -573,7 +573,7 @@ export default function BundleProductEditPage() {
           <div className="df-field"><label className="df-label">{t("menu_bundle-products_[id].bundle_type")}</label><select value={form.bundle_type} onChange={e => setForm({
             ...form,
             bundle_type: e.target.value
-          })}><option value="combo">{t("menu_bundle-products_[id].combo")}</option><option value="value_meal">{t("menu_bundle-products_[id].value_meal")}</option><option value="family_meal">{t("menu_bundle-products_[id].family_meal")}</option><option value="breakfast_set">{t("menu_bundle-products_[id].breakfast_set")}</option><option value="promotional">{t("menu_bundle-products_[id].promotional")}</option><option value="pick_x">{t("menu_bundle-products_[id].pick_x_build_your_own")}</option><option value="multi_course">{t("menu_bundle-products_[id].multi_course")}</option></select></div>
+          })}><option value="combo">{t("menu_bundle-products_[id].combo")}</option><option value="pick_x">{t("menu_bundle-products_[id].pick_x_build_your_own")}</option><option value="multi_course">{t("menu_bundle-products_[id].multi_course")}</option></select></div>
           <div className="df-field"><label className="df-label">{t("menu_bundle-products_[id].bundle_category")}</label><select value={form.bundle_category_id || ""} onChange={e => setForm({
             ...form,
             bundle_category_id: e.target.value

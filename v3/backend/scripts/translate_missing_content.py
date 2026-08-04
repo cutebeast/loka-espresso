@@ -27,7 +27,7 @@ from sqlalchemy import select, text
 
 from app.core.database import AsyncSessionLocal
 from app.models.base import SoftDeleteMixin
-from app.models.bundle_product import BundleProduct
+from app.models.bundle_product import BundleCategory, BundleProduct
 from app.models.help import HelpArticle
 from app.models.info_card import EventCard, InformationCard, ProductCard, PromoBanner, SplashScreen, SystemPage
 from app.models.inventory import InventoryCategory, InventoryItem
@@ -36,6 +36,7 @@ from app.models.marketing import MarketingCampaign
 from app.models.menu import (
     Allergen,
     DietaryTag,
+    EventCategory,
     MenuCategory,
     MenuItem,
     MenuModifierGroup,
@@ -78,6 +79,8 @@ MODEL_MAP = {
     "survey_definitions": SurveyDefinition,
     "survey_questions": SurveyQuestion,
     "bundle_products": BundleProduct,
+    "bundle_categories": BundleCategory,
+    "event_categories": EventCategory,
 }
 
 
