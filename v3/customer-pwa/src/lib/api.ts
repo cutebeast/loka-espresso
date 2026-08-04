@@ -640,6 +640,24 @@ export interface Reservation {
 
 // ---------- Bundles ----------
 
+/** Bundle grouping category from GET /api/bundle-categories */
+export interface BundleCategory {
+  id: number;
+  name: string;
+  slug?: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+/** Event grouping category from GET /api/event-categories */
+export interface EventCategory {
+  id: number;
+  name: string;
+  slug?: string;
+  display_order: number;
+  is_active: boolean;
+}
+
 export interface BundleProduct {
   id: number;
   bundle_type: string;
@@ -648,6 +666,7 @@ export interface BundleProduct {
   image_url: string | null;
   bundle_price: number;
   category_id: number | null;
+  bundle_category_id?: number | null;
   display_order: number;
   is_active: boolean;
   pick_count?: number | null;

@@ -10,6 +10,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
+class BundleCategory(Base, TimestampMixin, SoftDeleteMixin):
+    """Bundle grouping, separate from menu categories."""
+
+    __tablename__ = "bundle_categories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
 class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "bundle_products"
 
@@ -21,6 +33,9 @@ class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
     bundle_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_categories.id", ondelete="SET NULL"), nullable=True
+    )
+    bundle_category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bundle_categories.id", ondelete="SET NULL"), nullable=True
     )
     store_id: Mapped[int | None] = mapped_column(
         ForeignKey("stores.id", ondelete="SET NULL"), nullable=True, index=True

@@ -38,6 +38,7 @@ class MenuCategory(Base, TimestampMixin, SoftDeleteMixin):
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     category_type: Mapped[str] = mapped_column(String(20), nullable=False, default="regular")
     available_from_time: Mapped[str | None] = mapped_column(Time, nullable=True)
     available_to_time: Mapped[str | None] = mapped_column(Time, nullable=True)
@@ -72,12 +73,27 @@ class MenuCategory(Base, TimestampMixin, SoftDeleteMixin):
     )
 
 
+class EventCategory(Base, TimestampMixin, SoftDeleteMixin):
+    """Event/workshop grouping, separate from menu categories."""
+
+    __tablename__ = "event_categories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
 class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "menu_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     category_id: Mapped[int] = mapped_column(
         ForeignKey("menu_categories.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("event_categories.id", ondelete="SET NULL"), nullable=True
     )
     item_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)

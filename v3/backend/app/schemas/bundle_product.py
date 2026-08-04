@@ -9,6 +9,29 @@ from pydantic import Field, model_validator
 from app.schemas.base import BaseSchema, TimestampedSchema
 
 
+class BundleCategoryBase(BaseSchema):
+    name: str = Field(..., min_length=1, max_length=100)
+    slug: str = Field(..., max_length=50)
+    display_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class BundleCategoryCreate(BundleCategoryBase):
+    pass
+
+
+class BundleCategoryUpdate(BaseSchema):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    slug: str | None = Field(None, max_length=50)
+    display_order: int | None = Field(None, ge=0)
+    is_active: bool | None = None
+
+
+class BundleCategoryOut(BundleCategoryBase):
+    id: int
+    created_at: datetime
+
+
 class BundleGroupIn(BaseSchema):
     group_label: str = Field(..., max_length=100)
     group_description: str | None = None
@@ -81,6 +104,7 @@ class BundleProductCreate(BaseSchema):
     image_url: str | None = None
     bundle_price: Money = Field(..., ge=0)
     category_id: int | None = None
+    bundle_category_id: int | None = None
     store_id: int | None = None
     is_active: bool = True
     display_order: int = 0
@@ -102,6 +126,7 @@ class BundleProductUpdate(BaseSchema):
     image_url: str | None = None
     bundle_price: Money | None = Field(None, ge=0)
     category_id: int | None = None
+    bundle_category_id: int | None = None
     store_id: int | None = None
     is_active: bool | None = None
     display_order: int | None = None
@@ -125,6 +150,7 @@ class BundleProductOut(TimestampedSchema):
     bundle_price: Money
     category_id: int | None = None
     category_name: str | None = None
+    bundle_category_id: int | None = None
     is_active: bool
     display_order: int
     start_date: datetime | None = None

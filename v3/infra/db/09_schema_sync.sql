@@ -10,6 +10,19 @@ SET client_min_messages = warning;
 -- Tables present in app models but missing from 03_tables.sql
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS bundle_categories (
+	id SERIAL NOT NULL, 
+	name VARCHAR(100) NOT NULL, 
+	slug VARCHAR(50) NOT NULL, 
+	display_order INTEGER NOT NULL, 
+	is_active BOOLEAN NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	deleted_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (slug)
+);
+
 CREATE TABLE IF NOT EXISTS dietary_tags (
 	id SERIAL NOT NULL, 
 	tag_key VARCHAR(50) NOT NULL, 
@@ -21,6 +34,19 @@ CREATE TABLE IF NOT EXISTS dietary_tags (
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	PRIMARY KEY (id), 
 	UNIQUE (tag_key)
+);
+
+CREATE TABLE IF NOT EXISTS event_categories (
+	id SERIAL NOT NULL, 
+	name VARCHAR(100) NOT NULL, 
+	slug VARCHAR(50) NOT NULL, 
+	display_order INTEGER NOT NULL, 
+	is_active BOOLEAN NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	deleted_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	UNIQUE (slug)
 );
 
 CREATE TABLE IF NOT EXISTS help_articles (
@@ -125,6 +151,7 @@ CREATE TABLE IF NOT EXISTS bundle_products (
 	image_url VARCHAR(500), 
 	bundle_price NUMERIC(10, 2) NOT NULL, 
 	category_id INTEGER, 
+	bundle_category_id INTEGER, 
 	store_id INTEGER, 
 	is_active BOOLEAN NOT NULL, 
 	display_order INTEGER NOT NULL, 
@@ -140,6 +167,7 @@ CREATE TABLE IF NOT EXISTS bundle_products (
 	deleted_at TIMESTAMP WITH TIME ZONE, 
 	PRIMARY KEY (id), 
 	FOREIGN KEY(category_id) REFERENCES menu_categories (id) ON DELETE SET NULL, 
+	FOREIGN KEY(bundle_category_id) REFERENCES bundle_categories (id) ON DELETE SET NULL, 
 	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE SET NULL
 );
 
@@ -599,12 +627,14 @@ ALTER TABLE loyalty_tiers ADD COLUMN IF NOT EXISTS validity_months INTEGER;
 ALTER TABLE loyalty_tiers ADD COLUMN IF NOT EXISTS renewal_annual_spend INTEGER;
 ALTER TABLE loyalty_tiers ADD COLUMN IF NOT EXISTS downgrade_to_tier_key VARCHAR(20);
 
+ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(20) DEFAULT 'regular' NOT NULL;
 ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS available_from_time TIME WITHOUT TIME ZONE;
 ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS available_to_time TIME WITHOUT TIME ZONE;
 ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS available_from_date DATE;
 ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS available_to_date DATE;
 
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS event_category_id INTEGER REFERENCES event_categories (id);
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS minimum_tier_id INTEGER REFERENCES loyalty_tiers (id);
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_bundle_eligible BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_addon_deal_eligible BOOLEAN DEFAULT FALSE NOT NULL;
@@ -670,4 +700,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'l2f3a4b5c6d7' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'm3a4b5c6d7e8' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

@@ -20,12 +20,17 @@ interface ExperienceItem {
   base_price: number;
   image_url: string | null;
   is_available: boolean;
+  event_category_id?: number | null;
   variants?: Variant[];
 }
 interface Category {
   id: number;
   category_name: string;
   slug: string;
+}
+interface EventCategory {
+  id: number;
+  name: string;
 }
 interface BookingOrder {
   id: number;
@@ -56,6 +61,7 @@ export default function ExperiencesPage() {
   const router = useRouter();
   const { format } = useCurrency();
   const [items, setItems] = useState<ExperienceItem[]>([]);
+  const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [classesTotal, setClassesTotal] = useState(0);
   const [classPage, setClassPage] = useState(1);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -72,7 +78,11 @@ export default function ExperiencesPage() {
     setLoading(true);
     setError("");
     try {
-      const cats = await api.getRaw<{ items: Category[] }>("/admin/menu/categories?per_page=50");
+      const [cats, evCats] = await Promise.all([
+        api.getRaw<{ items: Category[] }>("/admin/menu/categories?per_page=50"),
+        api.getRaw<{ items: EventCategory[] }>("/admin/event-categories?per_page=100"),
+      ]);
+      setEventCategories(evCats.items || []);
       const expCat = (cats.items || []).find(c => c.slug === "experiences");
       if (!expCat) {
         setItems([]);
@@ -135,6 +145,16 @@ export default function ExperiencesPage() {
       setError(e.message || t("menu_experiences.session_save_failed", "Failed to save session"));
     } finally {
       setSessionSaving(null);
+    }
+  };
+
+  const saveEventCategory = async (item: ExperienceItem, value: string) => {
+    const event_category_id = value ? Number(value) : null;
+    try {
+      await api.patch(`/admin/menu/items/${item.id}`, { event_category_id });
+      setItems(prev => prev.map(i => (i.id === item.id ? { ...i, event_category_id } : i)));
+    } catch (e: any) {
+      setError(e.message || t("admin.errors.saveFailed", "Failed to save"));
     }
   };
 
@@ -227,6 +247,7 @@ export default function ExperiencesPage() {
               <th>{t("menu_experiences.class_col", "Class")}</th>
               <th>{t("menu_experiences.price_col", "Price")}</th>
               <th>{t("menu_experiences.status", "Status")}</th>
+              <th>{t("menu_experiences.category", "Category")}</th>
               <th>{t("menu_experiences.sessions", "Sessions")}</th>
               <th style={{ width: 150 }}>{t("menu_experiences.actions", "Actions")}</th>
             </tr></thead>
@@ -257,6 +278,12 @@ export default function ExperiencesPage() {
                       </td>
                       <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{minP === maxP ? format(minP) : `${format(minP)} – ${format(maxP)}`}</td>
                       <td><span className={`badge ${item.is_available ? "badge-success" : "badge-muted"}`}>{item.is_available ? t("menu_experiences.available", "Available") : t("menu_experiences.unavailable", "Unavailable")}</span></td>
+                      <td>
+                        <select value={item.event_category_id ?? ""} onChange={e => saveEventCategory(item, e.target.value)} style={{ fontSize: 12, padding: "4px 8px", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", maxWidth: 160 }}>
+                          <option value="">{t("menu_experiences.no_category", "— None —")}</option>
+                          {eventCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </td>
                       <td style={{ fontSize: 12 }}>
                         {upcoming ? (
                           <span>{new Date(`${upcoming.session_date}T${upcoming.start_time}`).toLocaleDateString(locale, { month: "short", day: "numeric" })} {upcoming.start_time.slice(0, 5)} · <span className={`badge ${upcoming.capacity - upcoming.booked_pax <= 0 ? "badge-muted" : "badge-success"}`}>{upcoming.booked_pax}/{upcoming.capacity}</span>{sess.length > 1 ? ` +${sess.length - 1} ${t("menu_experiences.more", "more")}` : ""}</span>
@@ -275,7 +302,7 @@ export default function ExperiencesPage() {
                     </tr>
                     {expanded && (
                       <tr>
-                        <td colSpan={5} style={{ background: "var(--color-bg-muted)", padding: "12px 16px" }}>
+                        <td colSpan={6} style={{ background: "var(--color-bg-muted)", padding: "12px 16px" }}>
                           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{t("menu_experiences.sessions", "Sessions")}</div>
                           {renderSessionManager(item)}
                         </td>

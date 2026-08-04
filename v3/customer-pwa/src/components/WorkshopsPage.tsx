@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, Calendar, GraduationCap, MapPin, Users } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
-import api, { type MenuItem } from '@/lib/api';
+import api, { type MenuItem, type EventCategory } from '@/lib/api';
 import { resolveAssetUrl, formatPrice } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
@@ -35,6 +35,7 @@ interface Workshop {
   image_url: string | null;
   base_price: string;
   minimum_tier_id: number | null;
+  event_category_id?: number | null;
   variants: WorkshopVariant[];
   sessions: WorkshopSession[];
   total_remaining: number;
@@ -55,6 +56,7 @@ export default function WorkshopsPage({ onBack }: WorkshopsPageProps) {
   const { showToast, selectedStore } = useUIStore();
   const addItem = useCartStore((s) => s.addItem);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [bookingItem, setBookingItem] = useState<MenuItem | null>(null);
@@ -62,8 +64,13 @@ export default function WorkshopsPage({ onBack }: WorkshopsPageProps) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/menu/workshops?locale=${getLocale()}`);
+      const [res, ecRes] = await Promise.all([
+        api.get(`/menu/workshops?locale=${getLocale()}`),
+        api.get(`/event-categories?locale=${getLocale()}`).catch(() => null),
+      ]);
       setWorkshops(Array.isArray(res.data) ? res.data : []);
+      const ecBody = ecRes?.data as { data?: { categories?: EventCategory[] }; categories?: EventCategory[] } | undefined;
+      setEventCategories(ecBody?.data?.categories || ecBody?.categories || []);
     } catch {
       setWorkshops([]);
       showToast(t('workshops.loadFailed'), 'error');
@@ -73,6 +80,20 @@ export default function WorkshopsPage({ onBack }: WorkshopsPageProps) {
   }, [showToast, t]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Group workshops under their event category (ordered by display_order);
+  // workshops without a known event category go last, untitled.
+  const workshopGroups = useMemo(() => {
+    const groups: { id: number | null; name: string | null; items: Workshop[] }[] = [];
+    const sorted = [...eventCategories].sort((a, b) => a.display_order - b.display_order);
+    for (const ec of sorted) {
+      const items = workshops.filter(w => w.event_category_id === ec.id);
+      if (items.length > 0) groups.push({ id: ec.id, name: ec.name, items });
+    }
+    const rest = workshops.filter(w => !sorted.some(ec => ec.id === w.event_category_id));
+    if (rest.length > 0) groups.push({ id: null, name: null, items: rest });
+    return groups;
+  }, [eventCategories, workshops]);
 
   const priceText = (w: Workshop): string => {
     const prices = w.variants.length > 0
@@ -157,7 +178,15 @@ export default function WorkshopsPage({ onBack }: WorkshopsPageProps) {
             <p className="info-empty-desc">{t('workshops.checkBackSoon')}</p>
           </div>
         ) : (
-          workshops.map((w) => {
+          workshopGroups.map((group) => (
+          <div key={group.id ?? 'other'}>
+            {group.name && (
+              <div className="menu-category-header">
+                <div className="menu-category-accent" />
+                <h2 className="menu-category-title">{group.name}</h2>
+              </div>
+            )}
+            {group.items.map((w) => {
             const img = resolveAssetUrl(w.image_url);
             const nextSessions = w.sessions.slice(0, 3);
             return (
@@ -209,7 +238,9 @@ export default function WorkshopsPage({ onBack }: WorkshopsPageProps) {
                 </button>
               </div>
             );
-          })
+            })}
+          </div>
+          ))
         )}
       </div>
 

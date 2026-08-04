@@ -74,6 +74,7 @@ from app.models.menu import (
     DietaryTag,
     MenuItemDietaryTag,
     TaxCategory,
+    EventCategory,
 )
 from app.models.inventory import (
     InventoryCategory,
@@ -161,6 +162,7 @@ from app.models.bundle_product import (
     BundleProductComponent,
     BundleComponentModifier,
     BundleGroup,
+    BundleCategory,
 )
 from app.models.lucky_draw import (
     LuckyDrawCampaign,

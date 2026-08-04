@@ -124,6 +124,7 @@ class MenuItemBase(BaseSchema):
     calories: int | None = Field(None, ge=0)
     minimum_tier_id: int | None = None
     tax_category_id: int | None = None
+    event_category_id: int | None = None
     is_bundle_eligible: bool = False
     is_addon_deal_eligible: bool = False
     addon_discount_type: str | None = None
@@ -158,6 +159,7 @@ class MenuItemUpdate(BaseSchema):
     addon_discount_value: Money | None = None
     eligible_bundle_ids: list | None = None
     category_id: int | None = None
+    event_category_id: int | None = None
     modifier_groups: list[dict] | None = None
     allergen_ids: list[int] | None = None
     dietary_tag_ids: list[int] | None = None
@@ -180,6 +182,7 @@ class MenuItemPublicOut(BaseSchema):
 
     id: int
     category_id: int
+    event_category_id: int | None = None
     item_code: str
     item_name: str
     description: str | None
@@ -253,5 +256,27 @@ class DietaryTagUpdate(BaseSchema):
     is_active: bool | None = None
 
 class DietaryTagOut(DietaryTagBase):
+    id: int
+    created_at: datetime
+
+
+# ── Event Category ──
+
+class EventCategoryBase(BaseSchema):
+    name: str = Field(..., min_length=1, max_length=100)
+    slug: str = Field(..., max_length=50)
+    display_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+class EventCategoryCreate(EventCategoryBase):
+    pass
+
+class EventCategoryUpdate(BaseSchema):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    slug: str | None = Field(None, max_length=50)
+    display_order: int | None = Field(None, ge=0)
+    is_active: bool | None = None
+
+class EventCategoryOut(EventCategoryBase):
     id: int
     created_at: datetime

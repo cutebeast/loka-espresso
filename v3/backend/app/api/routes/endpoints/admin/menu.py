@@ -156,11 +156,11 @@ async def list_categories(
     per_page: int = Query(50, ge=1, le=200),
 ):
     """List menu categories for a store (excluding soft-deleted)."""
-    total_result = await db.execute(select(func.count(MenuCategory.id)).where(MenuCategory.deleted_at.is_(None)))
+    total_result = await db.execute(select(func.count(MenuCategory.id)).where(MenuCategory.deleted_at.is_(None), MenuCategory.is_system.is_(False)))
     total = total_result.scalar() or 0
     result = await db.execute(
         select(MenuCategory)
-        .where(MenuCategory.deleted_at.is_(None))
+        .where(MenuCategory.deleted_at.is_(None), MenuCategory.is_system.is_(False))
         .order_by((MenuCategory.category_type != "combo"), MenuCategory.display_order, MenuCategory.id)
         .offset((page - 1) * per_page)
         .limit(per_page)

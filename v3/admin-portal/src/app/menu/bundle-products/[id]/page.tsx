@@ -55,6 +55,10 @@ interface CategoryOption {
   id: number;
   category_name: string;
 }
+interface BundleCategoryOption {
+  id: number;
+  name: string;
+}
 export default function BundleProductEditPage() {
   const {
     t
@@ -87,6 +91,7 @@ export default function BundleProductEditPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [bundleCategories, setBundleCategories] = useState<BundleCategoryOption[]>([]);
   const [form, setForm] = useState<Record<string, any>>({});
   const [tr, setTr] = useState<Record<string, string>>({});
   const [components, setComponents] = useState<Array<any>>([]);
@@ -104,6 +109,10 @@ export default function BundleProductEditPage() {
       const d = await api.getRaw<any>("/admin/menu/categories?per_page=100");
       setCategories((d?.items || []).filter((c: any) => c.category_type !== "combo"));
     } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
+    try {
+      const d = await api.getRaw<any>("/admin/bundle-categories?per_page=100");
+      setBundleCategories(d?.items || []);
+    } catch (e: any) {console.error(e); }
   };
   const selectedItemIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));
   const itemsForComponent = (catFilter: string) => {
@@ -123,7 +132,8 @@ export default function BundleProductEditPage() {
         display_order: d.display_order ?? 0,
         pick_count: d.pick_count?.toString() || "",
         allow_duplicates: d.allow_duplicates || false,
-        max_per_order: d.max_per_order?.toString() || "1"
+        max_per_order: d.max_per_order?.toString() || "1",
+        bundle_category_id: d.bundle_category_id ? String(d.bundle_category_id) : ""
       });
       setImg(d.image_url || "");
       const loadedGroups: Group[] = [];
@@ -290,7 +300,8 @@ export default function BundleProductEditPage() {
         image_url: form.image_url || undefined,
         is_active: form.is_active,
         display_order: form.display_order ?? 0,
-        max_per_order: Number(form.max_per_order) || 1
+        max_per_order: Number(form.max_per_order) || 1,
+        bundle_category_id: form.bundle_category_id ? Number(form.bundle_category_id) : null
       };
       if (isPickX) {
         payload.pick_count = Number(form.pick_count);
@@ -563,6 +574,10 @@ export default function BundleProductEditPage() {
             ...form,
             bundle_type: e.target.value
           })}><option value="combo">{t("menu_bundle-products_[id].combo")}</option><option value="value_meal">{t("menu_bundle-products_[id].value_meal")}</option><option value="family_meal">{t("menu_bundle-products_[id].family_meal")}</option><option value="breakfast_set">{t("menu_bundle-products_[id].breakfast_set")}</option><option value="promotional">{t("menu_bundle-products_[id].promotional")}</option><option value="pick_x">{t("menu_bundle-products_[id].pick_x_build_your_own")}</option><option value="multi_course">{t("menu_bundle-products_[id].multi_course")}</option></select></div>
+          <div className="df-field"><label className="df-label">{t("menu_bundle-products_[id].bundle_category")}</label><select value={form.bundle_category_id || ""} onChange={e => setForm({
+            ...form,
+            bundle_category_id: e.target.value
+          })}><option value="">{t("menu_bundle-products_[id].none")}</option>{bundleCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           <div className="df-field"><label className="df-label">{t("menu_bundle-products_[id].bundle_price")}{symbol}) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({
             ...form,
             bundle_price: e.target.value

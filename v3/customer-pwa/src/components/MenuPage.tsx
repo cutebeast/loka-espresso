@@ -9,7 +9,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
-import type { MenuItem, BundleProduct, MenuCategory } from '@/lib/api';
+import type { MenuItem, BundleProduct, BundleCategory, EventCategory, MenuCategory } from '@/lib/api';
 import { deriveCustomizationOptions } from '@/lib/storeHelpers';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
@@ -21,6 +21,13 @@ import ExperienceDetailSheet from '@/components/menu/ExperienceDetailSheet';
 import { bundleIdsInCart } from '@/lib/addonDeal';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { getLocale } from '@/stores/localeStore';
+
+// Synthetic section ids for bundle-category sections — kept far outside the
+// real menu-category id space so the scroll-spy/nav chips can treat bundle
+// sections like ordinary category sections.
+const BUNDLE_SECTION_ID_BASE = 900000;
+const UNCATEGORIZED_BUNDLE_SECTION_ID = 999999;
+
 export default function MenuPage() {
   const {
     t
@@ -75,7 +82,11 @@ export default function MenuPage() {
     showToast(t('menu.addedToCart'), 'success');
   }, [menuItems, addItem, selectedStore?.id, showToast, t]);
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
+  const [bundleCategories, setBundleCategories] = useState<BundleCategory[]>([]);
+  const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [workshopSessions, setWorkshopSessions] = useState<Record<number, ExperienceSession[]>>({});
+  // menu_item_id -> event_category_id, captured from the workshops payload
+  const [workshopEventCatMap, setWorkshopEventCatMap] = useState<Record<number, number | null>>({});
   const [pendingAddonBundle, setPendingAddonBundle] = useState<BundleProduct | null>(null);
   const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
   const [multiCourseBundle, setMultiCourseBundle] = useState<BundleProduct | null>(null);
@@ -88,7 +99,7 @@ export default function MenuPage() {
     setLoadError(false);
     try {
       const storeId = selectedStore?.id;
-      const [catRes, itemRes, bpRes, wsRes] = await Promise.all([api.get(`/menu/categories`, {
+      const [catRes, itemRes, bpRes, wsRes, bcRes, ecRes] = await Promise.all([api.get(`/menu/categories`, {
         signal
       }), api.get(`/menu/items`, {
         signal,
@@ -105,6 +116,16 @@ export default function MenuPage() {
         params: { locale: getLocale() }
       }).catch(() => ({
         data: []
+      })), api.get(`/bundle-categories`, {
+        signal,
+        params: { locale: getLocale() }
+      }).catch(() => ({
+        data: { data: { categories: [] } }
+      })), api.get(`/event-categories`, {
+        signal,
+        params: { locale: getLocale() }
+      }).catch(() => ({
+        data: { data: { categories: [] } }
       }))]);
       const catData = catRes.data;
       const itemData = itemRes.data;
@@ -114,13 +135,23 @@ export default function MenuPage() {
       setBundleProducts((bpRes as {
         data?: BundleProduct[];
       })?.data || []);
+      // Bundle/event grouping categories: { data: { categories: [...] } }
+      const bcBody = (bcRes as { data?: { data?: { categories?: BundleCategory[] }; categories?: BundleCategory[] } }).data;
+      setBundleCategories(bcBody?.data?.categories || bcBody?.categories || []);
+      const ecBody = (ecRes as { data?: { data?: { categories?: EventCategory[] }; categories?: EventCategory[] } }).data;
+      setEventCategories(ecBody?.data?.categories || ecBody?.categories || []);
       // Session availability for experience (class/workshop) cards
       const wsList = Array.isArray((wsRes as { data?: unknown }).data)
-        ? (wsRes as { data: { id: number; sessions?: ExperienceSession[] }[] }).data
+        ? (wsRes as { data: { id: number; sessions?: ExperienceSession[]; event_category_id?: number | null }[] }).data
         : [];
       const wsMap: Record<number, ExperienceSession[]> = {};
-      for (const w of wsList) wsMap[w.id] = w.sessions || [];
+      const wsEventCat: Record<number, number | null> = {};
+      for (const w of wsList) {
+        wsMap[w.id] = w.sessions || [];
+        wsEventCat[w.id] = w.event_category_id ?? null;
+      }
       setWorkshopSessions(wsMap);
+      setWorkshopEventCatMap(wsEventCat);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setCategories([]);
@@ -138,6 +169,20 @@ export default function MenuPage() {
       controller.abort();
     };
   }, [loadMenu]);
+
+  // Bundle sections: one per bundle category that has bundles (ordered by
+  // display_order), plus an uncategorized bucket for bundles without one.
+  const bundleSections = useMemo(() => {
+    const sections: { id: number; name: string; bundles: BundleProduct[] }[] = [];
+    const sorted = [...bundleCategories].sort((a, b) => a.display_order - b.display_order);
+    for (const bc of sorted) {
+      const bundles = bundleProducts.filter(bp => bp.bundle_category_id === bc.id);
+      if (bundles.length > 0) sections.push({ id: BUNDLE_SECTION_ID_BASE + bc.id, name: bc.name, bundles });
+    }
+    const uncategorized = bundleProducts.filter(bp => bp.bundle_category_id == null || !sorted.some(bc => bc.id === bp.bundle_category_id));
+    if (uncategorized.length > 0) sections.push({ id: UNCATEGORIZED_BUNDLE_SECTION_ID, name: t('menu.bundles'), bundles: uncategorized });
+    return sections;
+  }, [bundleCategories, bundleProducts, t]);
 
   /* intersection observer for active category */
   useEffect(() => {
@@ -169,7 +214,7 @@ export default function MenuPage() {
       cancelAnimationFrame(rafId);
       observerRef.current?.disconnect();
     };
-  }, [categories, menuItems]);
+  }, [categories, menuItems, bundleSections]);
   const openItem = useCallback((item: MenuItem) => {
     if ((item.modifier_groups?.length ?? 0) > 0 || (item.variants?.length ?? 0) > 0) {
       setCustomizeItem(item);
@@ -303,7 +348,10 @@ export default function MenuPage() {
   }, ...categories.map(c => ({
     id: c.id,
     name: c.category_name
-  }))], [categories, t]);
+  })), ...bundleSections.map(s => ({
+    id: s.id,
+    name: s.name
+  }))], [categories, bundleSections, t]);
   const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
     if (categoryId === null) {      const firstCatId = categories[0]?.id;
@@ -330,6 +378,65 @@ export default function MenuPage() {
       setDeepLinkCategoryId(null);
     }
   }, [deepLinkCategoryId, categories, scrollToCategory, setDeepLinkCategoryId]);
+
+  // Group experience/workshop items by their event category (ordered by
+  // display_order); items without a known event category go last, untitled.
+  const groupExperienceItems = useCallback((items: MenuItem[]) => {
+    const groups: { id: number | null; name: string | null; items: MenuItem[] }[] = [];
+    const sorted = [...eventCategories].sort((a, b) => a.display_order - b.display_order);
+    for (const ec of sorted) {
+      const catItems = items.filter(item => workshopEventCatMap[item.id] === ec.id);
+      if (catItems.length > 0) groups.push({ id: ec.id, name: ec.name, items: catItems });
+    }
+    const rest = items.filter(item => !sorted.some(ec => ec.id === workshopEventCatMap[item.id]));
+    if (rest.length > 0) groups.push({ id: null, name: null, items: rest });
+    return groups;
+  }, [eventCategories, workshopEventCatMap]);
+
+  const renderExperienceCard = (item: MenuItem) => <ExperienceCard
+      key={item.id}
+      item={item}
+      sessions={workshopSessions[item.id] || []}
+      imageBroken={brokenImages.has(item.id)}
+      onImageError={() => setBrokenImages(prev => new Set(prev).add(item.id))}
+      onBook={() => setExperienceDetailItem(item)}
+    />;
+
+  // Bundle card markup — same look as the old inline bundle cards
+  const renderBundleCard = (bp: BundleProduct) => {
+    const bpImg = resolveAssetUrl(bp.image_url);
+    return <div key={`bp-${bp.id}`} className="menu-product-card" onClick={() => handleAddBundle(bp)}>
+        <div className="menu-product-img">
+          {bpImg ? <img src={bpImg} alt={bp.title} loading="lazy" className="menu-product-img-bg" /> : <div className="menu-img-fallback">
+              <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
+            </div>}
+          <span className="menu-img-badge" style={{
+            background: 'var(--color-success-light)',
+            color: 'var(--color-success)',
+            fontSize: 10,
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: 20,
+            left: 4
+          }}>
+            {bp.pick_count && bp.pick_count > 0 ? t('menu.pickXBadge', {
+              count: bp.pick_count
+            }) : t('menu.comboBadge')}
+          </span>
+        </div>
+        <div className="menu-product-info">
+          <div className="menu-product-name">{bp.title}</div>
+          <div className="menu-product-desc" style={{
+            fontSize: 11
+          }}>
+            {bp.pick_count && bp.pick_count > 0 ? t('menu.pickXSubtitle', {
+              count: bp.pick_count
+            }) : `${(bp.components || []).slice(0, 3).map(c => c.menu_item_name || t('menu.itemFallback')).join(" + ")}${(bp.components || []).length > 3 ? t('menu.moreCount', { count: (bp.components || []).length - 3 }) : ""}`}
+          </div>
+          <div className="menu-product-price">{formatPrice(bp.bundle_price)}</div>
+        </div>
+      </div>;
+  };
 
   // Auto-scroll active tab into view in the horizontal category bar
   useEffect(() => {
@@ -478,17 +585,19 @@ export default function MenuPage() {
                 </h2>
               </div>
               {/* Classes/workshops get a rich booking card, not a product card —
-                  they need the full description, schedule and a Book CTA. */}
-              {category.slug === 'experiences' ? <div className="menu-experience-list">
-                  {items.map(item => <ExperienceCard
-                    key={item.id}
-                    item={item}
-                    sessions={workshopSessions[item.id] || []}
-                    imageBroken={brokenImages.has(item.id)}
-                    onImageError={() => setBrokenImages(prev => new Set(prev).add(item.id))}
-                    onBook={() => setExperienceDetailItem(item)}
-                  />)}
-                </div> : <>
+                  they need the full description, schedule and a Book CTA.
+                  Grouped by event category (Workshops, Experiences, ...). */}
+              {category.slug === 'experiences' ? <>
+                  {groupExperienceItems(items).map(group => <div key={group.id ?? 'uncategorized'}>
+                      {group.name && <div className="menu-category-header">
+                          <div className="menu-category-accent" />
+                          <h3 className="menu-category-title">{group.name}</h3>
+                        </div>}
+                      <div className="menu-experience-list">
+                        {group.items.map(renderExperienceCard)}
+                      </div>
+                    </div>)}
+                </> : <>
               <div className="menu-items-grid">
                 {items.map(item => {
             const imgSrc = resolveAssetUrl(item.image_url);
@@ -585,47 +694,23 @@ export default function MenuPage() {
                     </div>;
           })}
               </div>
-              {/* Bundle products for this category — shown inline like menu items */}
-              {bundleProducts.filter(bp => bp.category_id === category.id).length > 0 && <div className="menu-items-grid" style={{
-          marginTop: 8
-        }}>
-                  {bundleProducts.filter(bp => bp.category_id === category.id).map(bp => {
-            const bpImg = resolveAssetUrl(bp.image_url);
-            return <div key={`bp-${bp.id}`} className="menu-product-card" onClick={() => handleAddBundle(bp)}>
-                        <div className="menu-product-img">
-                          {bpImg ? <img src={bpImg} alt={bp.title} loading="lazy" className="menu-product-img-bg" /> : <div className="menu-img-fallback">
-                              <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
-                            </div>}
-                          <span className="menu-img-badge" style={{
-                  background: 'var(--color-success-light)',
-                  color: 'var(--color-success)',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 20,
-                  left: 4
-                }}>
-                            {bp.pick_count && bp.pick_count > 0 ? t('menu.pickXBadge', {
-                    count: bp.pick_count
-                  }) : t('menu.comboBadge')}
-                          </span>
-                        </div>
-                        <div className="menu-product-info">
-                          <div className="menu-product-name">{bp.title}</div>
-                          <div className="menu-product-desc" style={{
-                  fontSize: 11
-                }}>
-                            {bp.pick_count && bp.pick_count > 0 ? t('menu.pickXSubtitle', {
-                    count: bp.pick_count
-                  }) : `${(bp.components || []).slice(0, 3).map(c => c.menu_item_name || t('menu.itemFallback')).join(" + ")}${(bp.components || []).length > 3 ? t('menu.moreCount', { count: (bp.components || []).length - 3 }) : ""}`}
-                          </div>
-                          <div className="menu-product-price">{formatPrice(bp.bundle_price)}</div>
-                        </div>
-                      </div>;
-          })}
-                </div>}
               </>}
             </div>)}
+
+        {/* Bundle sections — grouped by bundle category, after the F&B categories.
+            data-category-id hooks them into the same scroll-spy as F&B sections. */}
+        {!loading && !debouncedSearch ? bundleSections.map(section => <div key={section.id} ref={el => {
+          // eslint-disable-next-line react-hooks/refs -- same ref-callback pattern as the F&B category sections above; runs at commit time, not during render
+          sectionRefs.current.set(section.id, el);
+        }} data-category-id={section.id}>
+            <div className="menu-category-header">
+              <div className="menu-category-accent" />
+              <h2 className="menu-category-title">{section.name}</h2>
+            </div>
+            <div className="menu-items-grid">
+              {section.bundles.map(renderBundleCard)}
+            </div>
+          </div>) : null}
       </div>
 
       {customizeItem && <ItemCustomizeSheet item={customizeItem} isOpen={customizeItem !== null} onClose={() => setCustomizeItem(null)} onAdd={handleCustomizeAdd} customizations={deriveCustomizationOptions(customizeItem)} />}

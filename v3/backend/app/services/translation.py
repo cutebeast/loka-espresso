@@ -283,6 +283,8 @@ TRANSLATABLE_ENTITIES: dict[str, list[str]] = {
     "notification_templates": ["title", "body"],
     "admin_notifications": ["title", "body"],
     "bundle_products": ["title", "description"],
+    "bundle_categories": ["name"],
+    "event_categories": ["name"],
 }
 
 # Map DB table names to UI namespace (used in admin Translations page filter)
@@ -302,6 +304,8 @@ TABLE_TO_NAMESPACE = {
     "survey_definitions": "survey",
     "marketing_campaigns": "campaign",
     "bundle_products": "bundle",
+    "bundle_categories": "bundle-category",
+    "event_categories": "event-category",
 }
 
 

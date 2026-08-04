@@ -255,6 +255,7 @@ async def get_store_menu(
             "image_url": bp.image_url,
             "bundle_price": str(bp.bundle_price),
             "category_id": bp.category_id,
+            "bundle_category_id": bp.bundle_category_id,
             "display_order": bp.display_order,
             "pick_count": bp.pick_count,
             "allow_duplicates": bp.allow_duplicates,
@@ -391,6 +392,7 @@ async def list_menu_categories(db: DBDependency, locale: OptionalLocale):
     cat_stmt = select(MenuCategory).where(
         MenuCategory.is_available.is_(True),
         MenuCategory.deleted_at.is_(None),
+        MenuCategory.is_system.is_(False),
     ).order_by(
         (MenuCategory.category_type != "combo"),
         MenuCategory.display_order,
@@ -668,6 +670,7 @@ async def list_bundle_products_public(
             "image_url": bp.image_url,
             "bundle_price": str(bp.bundle_price),
             "category_id": bp.category_id,
+            "bundle_category_id": bp.bundle_category_id,
             "display_order": bp.display_order,
             "pick_count": bp.pick_count,
             "allow_duplicates": bp.allow_duplicates,
