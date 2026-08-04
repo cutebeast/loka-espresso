@@ -41,8 +41,8 @@ const navItems: NavItem[] = [
     children: [
       { id: "menuCategories", labelKey: "admin.nav.menu.categories", href: "/menu/categories" },
       { id: "menuItems", labelKey: "admin.nav.menu.items", href: "/menu/items" },
-      { id: "menuBundles", labelKey: "admin.nav.menu.bundleProducts", href: "/menu/bundle-products" },
       { id: "menuBundleCategories", labelKey: "admin.nav.menu.bundleCategories", href: "/menu/bundle-categories" },
+      { id: "menuBundles", labelKey: "admin.nav.menu.bundleProducts", href: "/menu/bundle-products" },
       { id: "menuAllergens", labelKey: "admin.nav.menu.allergens", href: "/menu/allergens" },
       { id: "menuDietary", labelKey: "admin.nav.menu.dietaryTags", href: "/menu/dietary-tags" },
       { id: "menuTax", labelKey: "admin.nav.menu.taxCategories", href: "/menu/tax-categories" },
@@ -60,8 +60,8 @@ const navItems: NavItem[] = [
   {
     id: "eventsClasses", labelKey: "admin.nav.eventsClasses", href: "/events", icon: GraduationCap,
     children: [
-      { id: "eventsClassesWorkshops", labelKey: "admin.nav.eventsClasses.workshops", href: "/events/workshops" },
       { id: "eventsCategories", labelKey: "admin.nav.events.categories", href: "/events/categories" },
+      { id: "eventsClassesWorkshops", labelKey: "admin.nav.eventsClasses.workshops", href: "/events/workshops" },
       { id: "eventsClassesCards", labelKey: "admin.nav.eventsClasses.eventCards", href: "/events" },
       { id: "eventsClassesReport", labelKey: "admin.nav.eventsClasses.rsvpReport", href: "/events/report" },
     ],
