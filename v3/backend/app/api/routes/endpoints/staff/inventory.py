@@ -275,21 +275,34 @@ async def staff_report_waste(
                 ).with_for_update()
             )
             stock_row = stock_result.scalar_one_or_none()
-            if stock_row:
-                new_stock = max(Decimal(0), stock_row.current_stock - total_qty)
-                stock_row.current_stock = new_stock
-                stock_row.updated_at = now
-                movement = InventoryMovementLog(
+            if stock_row is None:
+                # No stock row yet (e.g. freshly linked item) — create one so the
+                # deduction is still recorded; stock clamps at 0.
+                stock_row = InventoryStock(
                     inventory_item_id=inv_id,
                     store_id=store_id,
-                    movement_type="waste",
-                    quantity_delta=-total_qty,
-                    stock_after=new_stock,
-                    reason=f"[Menu item waste: {menu_item.item_name}] {reason}",
-                    image_urls=image_urls or None,
+                    current_stock=0,
+                    reserved_stock=0,
+                    reorder_level=0,
+                    reorder_quantity=0,
+                    par_level=0,
                 )
-                db.add(movement)
-                deducted_items.append({"item_id": inv_id, "qty": total_qty})
+                db.add(stock_row)
+                await db.flush()
+            new_stock = max(Decimal(0), stock_row.current_stock - total_qty)
+            stock_row.current_stock = new_stock
+            stock_row.updated_at = now
+            movement = InventoryMovementLog(
+                inventory_item_id=inv_id,
+                store_id=store_id,
+                movement_type="waste",
+                quantity_delta=-total_qty,
+                stock_after=new_stock,
+                reason=f"[Menu item waste: {menu_item.item_name}] {reason}",
+                image_urls=image_urls or None,
+            )
+            db.add(movement)
+            deducted_items.append({"item_id": inv_id, "qty": total_qty})
 
         # Always record the report itself — movement rows only exist when the
         # menu item has recipes; without this the report would vanish.

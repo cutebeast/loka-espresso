@@ -309,6 +309,66 @@ export default function ItemEditPage() {
       setInventoryItems([]);
     }
   };
+  // 1:1 items (a can of Coke sells as "Coke") — create the matching inventory
+  // item and pre-fill a recipe row (qty 1 per serving) in one click. The recipe
+  // still persists via the normal Save, which is what makes wastage deduct stock.
+  const [copyingToInventory, setCopyingToInventory] = useState(false);
+  const copyToInventoryAndLink = async () => {
+    if (copyingToInventory || !form.item_name) return;
+    setCopyingToInventory(true);
+    setMsg("");
+    try {
+      const code = `MI-${id}`;
+      let invId: number | null = null;
+      let invName = form.item_name;
+      try {
+        const d = await api.post<any>("/admin/inventory/items", {
+          item_code: code,
+          item_name: form.item_name,
+          unit_of_measure: "unit",
+          item_type: "fnb",
+          image_url: form.image_url || null
+        });
+        invId = Number(d?.id);
+      } catch (e: any) {
+        // 409 = an inventory item with this code already exists — reuse it
+        const list = await api.getRaw<any>("/admin/inventory/items?per_page=500");
+        const items = Array.isArray(list) ? list : list.items || [];
+        const found = items.find((i: any) => i.item_code === code);
+        if (!found) throw e;
+        invId = found.id;
+        invName = found.item_name;
+      }
+      if (!invId) throw new Error(t("menu_items_[id].inventory_create_failed"));
+      if (!inventoryItems.some((i: any) => Number(i.id) === Number(invId))) {
+        setInventoryItems([...inventoryItems, {
+          id: invId,
+          item_name: invName,
+          unit_of_measure: "unit"
+        }]);
+      }
+      if ((form.recipes || []).some((r: any) => Number(r.inventory_item_id) === Number(invId))) {
+        setMsg(t("menu_items_[id].inventory_link_exists"));
+      } else {
+        setForm({
+          ...form,
+          recipes: [...(form.recipes || []), {
+            inventory_item_id: invId,
+            quantity_required: 1,
+            unit_of_measure: "unit",
+            waste_factor: 0,
+            is_primary_component: true
+          }]
+        });
+        setMsg(t("menu_items_[id].inventory_created_linked"));
+      }
+    } catch (e: any) {
+      console.error(e);
+      setMsg(e.message || t("menu_items_[id].inventory_create_failed"));
+    } finally {
+      setCopyingToInventory(false);
+    }
+  };
   const addRecipe = () => setForm({
     ...form,
     recipes: [...(form.recipes || []), {
@@ -849,6 +909,9 @@ export default function ItemEditPage() {
                 <button type="button" onClick={() => loadInventoryForStore()} className="btn btn-sm btn-ghost" style={{
               fontSize: 11
             }}>{t("menu_items_[id].load_inventory_items")}</button>
+                <button type="button" onClick={copyToInventoryAndLink} disabled={copyingToInventory} className="btn btn-sm btn-outline" style={{
+              fontSize: 11
+            }}>{copyingToInventory ? "..." : t("menu_items_[id].copy_to_inventory")}</button>
                 <span style={{
               fontSize: 11,
               color: "var(--color-text-muted)"

@@ -1433,3 +1433,11 @@ User asked to audit the staff-operations loop end-to-end (staff reports → admi
 - **Admin review UI**: new `/inventory/wastage` page (sidebar: Inventory → Wastage Reports) with store/status/date filters, photo viewer, verify/flag + notes. `GET/PATCH /admin/inventory/wastage-reports`.
 - **Date filters were wrong everywhere the same way**: equipment logs compared timestamptz against bare dates (date_to excluded the whole day); movements/hygiene/tips/time-events/audit/referrals used UTC-midnight boundaries (MYT 00:00–08:00 rows land on the previous day). Fix: `app/core/business_time.py` (`BUSINESS_TZ = Asia/Kuala_Lumpur`, `day_start_utc`/`day_end_utc`) applied to ALL those endpoints; hygiene admin UI gained the missing date inputs. Shift-template planned start/end now combine in BUSINESS_TZ (a 09:00 shift displayed as 17:00 before); lucky-draw daily reset rolls at MYT midnight. `reservation_date` is a Date column — untouched (already correct). RULE: any date-only filter on a timestamptz column goes through business_time helpers.
 - Smoke-tested full loop (menu-item waste w/o recipes, inventory-item waste, admin list/date/review, hygiene date filter); probe data cleaned.
+
+### Round 35 follow-up 14 — menu↔inventory linking for wastage (2026-08-07)
+
+User direction: wastage is mainly reported against MENU items; 1:1 items (menu "Coke" = inventory "Coke") needed an easy link path.
+- **Recipe chain verified working** (was never used — 0 rows): menu-item waste deducts via `menu_item_recipes` (qty × (1+waste_factor)), writes movement + wastage_reports row.
+- **Copy to Inventory + Link** button on menu-item edit recipe section: creates the matching inventory item (`item_code = MI-<menu_item_id>`, unit `unit`, copies image) and pre-fills a qty-1 primary recipe row; persists via normal Save. 409 on re-click → reuses the existing item.
+- **Recipe-path waste no longer silently skips** items with no stock row at the store — creates the row and records the movement (stock clamps at 0), matching the direct inventory-item path.
+- New inventory items have NO per-store stock row until admin sets stock (Inventory → Stock Levels) — they don't appear in the staff inventory list until then (pre-existing behavior, applies to copied items too).
