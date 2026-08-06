@@ -142,7 +142,9 @@ const navItems: NavItem[] = [
       { id: "helpAdmin", labelKey: "admin.nav.help.admin", href: "/help?audience=admin" },
       { id: "helpStaff", labelKey: "admin.nav.help.staff", href: "/help?audience=staff" },
       { id: "helpPwa", labelKey: "admin.nav.help.pwa", href: "/help?audience=customer" },
-      { id: "helpManage", labelKey: "admin.nav.help.manage", href: "/help-articles" },
+      { id: "helpManageAdmin", labelKey: "admin.nav.help.manageAdmin", href: "/help-articles?audience=admin" },
+      { id: "helpManageStaff", labelKey: "admin.nav.help.manageStaff", href: "/help-articles?audience=staff" },
+      { id: "helpManagePwa", labelKey: "admin.nav.help.managePwa", href: "/help-articles?audience=customer" },
     ],
   },
 

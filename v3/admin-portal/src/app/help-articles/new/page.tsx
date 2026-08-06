@@ -2,7 +2,7 @@
 
 import { useTranslation } from "@/lib/i18n";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
 
@@ -15,7 +15,7 @@ export default function NewHelpArticlePage() {
   const [form, setForm] = useState({
     slug: "",
     title: "",
-    audience: "admin" as "admin" | "staff" | "customer",
+    audience: ((["admin", "staff", "customer"] as const).includes(useSearchParams().get("audience") as any) ? useSearchParams().get("audience") : "admin") as "admin" | "staff" | "customer",
     category: "",
     body_text: "",
     position: 0,

@@ -186,5 +186,11 @@
   "content_home-banner_new.new_home_banner": "New Home Banner",
   "admin.nav.menu.categories": "Menu Item Categories",
   "admin.nav.help.manage": "Manage Articles",
-  "help.manage_articles_btn": "Manage articles"
+  "help.manage_articles_btn": "Manage articles",
+  "admin.nav.help.manageAdmin": "Admin Articles",
+  "admin.nav.help.manageStaff": "Staff Articles",
+  "admin.nav.help.managePwa": "PWA Articles",
+  "help.manage_title_admin": "Admin Articles",
+  "help.manage_title_staff": "Staff Articles",
+  "help.manage_title_customer": "Customer (PWA) Articles"
 }

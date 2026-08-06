@@ -2,7 +2,7 @@
 
 import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, BookOpen } from "lucide-react";
 
@@ -20,6 +20,13 @@ interface HelpArticle {
 export default function HelpArticlesPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlAudience = searchParams.get("audience");
+  const [audience] = useState<HelpAudience>(
+    (["admin", "staff", "customer"] as const).includes(urlAudience as HelpAudience)
+      ? (urlAudience as HelpAudience)
+      : "admin",
+  );
   const [items, setItems] = useState<HelpArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,11 +34,11 @@ export default function HelpArticlesPage() {
   const fetch = useCallback(() => {
     setLoading(true);
     api
-      .get<{ items: HelpArticle[] }>("/admin/help-articles?per_page=500")
+      .get<{ items: HelpArticle[] }>(`/admin/help-articles?per_page=500&audience=${audience}`)
       .then((d) => setItems(Array.isArray(d) ? d : d.items || []))
       .catch((e) => setError(typeof e === "object" && e && "message" in e ? (e as Error).message : String(e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [audience]);
 
   useEffect(() => {
     fetch();
@@ -49,14 +56,19 @@ export default function HelpArticlesPage() {
     <div style={{ padding: 32 }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t("help.help_center")}</h1>
+          <h1 className="page-title">{t(`help.manage_title_${audience}`)}</h1>
           <p className="page-subtitle">{t("help.manage_articles")}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => router.push("/help")} className="btn btn-outline btn-sm">
+          <select value={audience} onChange={(e) => router.push(`/help-articles?audience=${e.target.value}`)} style={{ alignSelf: "center" }}>
+            <option value="admin">{t("help.manage_title_admin")}</option>
+            <option value="staff">{t("help.manage_title_staff")}</option>
+            <option value="customer">{t("help.manage_title_customer")}</option>
+          </select>
+          <button onClick={() => router.push(`/help?audience=${audience}`)} className="btn btn-outline btn-sm">
             <BookOpen size={16} /> {t("help.preview")}
           </button>
-          <button onClick={() => router.push("/help-articles/new")} className="btn btn-primary btn-sm">
+          <button onClick={() => router.push(`/help-articles/new?audience=${audience}`)} className="btn btn-primary btn-sm">
             <Plus size={16} /> {t("help.add_article")}
           </button>
         </div>
