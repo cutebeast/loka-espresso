@@ -78,12 +78,9 @@ class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
         "BundleGroup", back_populates="bundle_product", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (
-        CheckConstraint(
-            "bundle_type = ANY (ARRAY['combo','value_meal','family_meal','breakfast_set','promotional','pick_x','multi_course'])",
-            name="ck_bundle_products_bundle_type",
-        ),
-    )
+    # NOTE: no CHECK on bundle_type — admin-defined bundle types live in the
+    # bundle_types table and are validated at the API layer (422). A hardcoded
+    # CHECK here would reject admin-invented keys on insert.
 
 
 class BundleGroup(Base):

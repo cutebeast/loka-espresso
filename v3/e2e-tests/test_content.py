@@ -331,12 +331,12 @@ async def test_public_legal_page(
 async def test_public_splash_screen(
     client: httpx.AsyncClient, base_url: str, admin_headers: dict
 ):
-    screen_name = _uniq("e2e-splash")
+    # screen_name is now a 2-value discriminator: pre_login feeds /splash
     create_r = await client.post(
         f"{base_url}/admin/content/splash-screens",
         headers=admin_headers,
         json={
-            "screen_name": screen_name,
+            "screen_name": "pre_login",
             "image_url": "https://example.com/splash.png",
             "title": "E2E Splash",
             "is_active": True,
@@ -349,7 +349,7 @@ async def test_public_splash_screen(
     assert r.status_code == 200, f"Splash screen failed: {r.text}"
     data = r.json()["data"]
     assert data is not None
-    assert data["screen_name"] == screen_name
+    assert data["screen_name"] == "pre_login"
 
     await client.delete(f"{base_url}/admin/content/splash-screens/{screen_id}", headers=admin_headers)
 
@@ -482,7 +482,7 @@ async def test_admin_promo_banner_lifecycle(client: httpx.AsyncClient, base_url:
 
 @pytest.mark.asyncio
 async def test_admin_splash_screen_lifecycle(client: httpx.AsyncClient, base_url: str, admin_headers: dict):
-    screen_name = _uniq("e2e-splash-admin")
+    screen_name = "home_banner"  # 2-value discriminator after the splash split
     create_payload = {
         "screen_name": screen_name,
         "image_url": "https://example.com/splash-admin.png",

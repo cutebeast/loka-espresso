@@ -147,6 +147,14 @@ export default function MenuPage() {
       setBundleCategories(bcBody?.data?.categories || bcBody?.categories || []);
       const ecBody = (ecRes as { data?: { data?: { categories?: EventCategory[] }; categories?: EventCategory[] } }).data;
       setEventCategories(ecBody?.data?.categories || ecBody?.categories || []);
+      // Bundle types: array of { type_key, mechanic, ... } (tolerate { items })
+      const btBody = (btRes as { data?: unknown }).data;
+      const btList = Array.isArray(btBody) ? btBody : (btBody as { items?: { type_key: string; mechanic: string }[] })?.items || [];
+      const mechMap: Record<string, string> = {};
+      for (const bt of btList as { type_key: string; mechanic: string }[]) {
+        if (bt?.type_key && bt?.mechanic) mechMap[bt.type_key] = bt.mechanic;
+      }
+      setBundleTypeMechanics(mechMap);
       // Session availability for experience (class/workshop) cards
       const wsList = Array.isArray((wsRes as { data?: unknown }).data)
         ? (wsRes as { data: { id: number; sessions?: ExperienceSession[]; event_category_id?: number | null }[] }).data
@@ -277,7 +285,11 @@ export default function MenuPage() {
     setCustomizeItem(null);
   }, [addItem, selectedStore?.id]);
   const handleAddBundle = useCallback((bp: BundleProduct) => {
-    if (bp.bundle_type === 'multi_course') {
+    // Resolve the engine mechanic via the loaded bundle types so custom
+    // marketing types route to the right sheet; fall back to the legacy
+    // built-in keys when the types list is unavailable.
+    const mechanic = bundleTypeMechanics[bp.bundle_type] || (bp.bundle_type === 'multi_course' ? 'multi_course' : bp.bundle_type === 'pick_x' ? 'pick_x' : 'combo');
+    if (mechanic === 'multi_course') {
       setMultiCourseBundle(bp);
       return;
     }
@@ -314,7 +326,7 @@ export default function MenuPage() {
     }
     showToast(`${bp.title} ${t('menu.addedToCartToast')}`, 'success');
     setPendingAddonBundle(bp);
-  }, [addItem, selectedStore?.id, showToast, t]);
+  }, [addItem, selectedStore?.id, showToast, t, bundleTypeMechanics]);
   const debouncedSearch = useDebounce(searchQuery, 150);
   useEffect(() => {
     setInputValue(searchQuery);

@@ -120,12 +120,20 @@ function consumedItemsPrice(
  * Mirrors backend logic in services/order.py. Only the items that actually
  * form complete sets are discounted; extras are charged at regular price.
  * Voucher/reward discounts are NOT included here (those come from the selector).
+ * `bundleTypes` (from /api/bundle-types) resolves each bundle's mechanic —
+ * admin-invented types with mechanic multi_course get multi_course math.
  */
 export function previewCartDiscounts(
   cartItems: CartItem[],
   menuItems: MenuItem[],
   bundleProducts: BundleProduct[],
+  bundleTypes?: Array<{ type_key: string; mechanic: string }>,
 ): CartDiscountBreakdown {
+  const mechanicOf = (typeKey: string): string => {
+    const hit = bundleTypes?.find((bt) => bt.type_key === typeKey)?.mechanic;
+    if (hit) return hit;
+    return typeKey === 'multi_course' ? 'multi_course' : typeKey === 'pick_x' ? 'pick_x' : 'combo';
+  };
   const bundleMap = new Map<number, BundleProduct>();
   for (const bp of bundleProducts) bundleMap.set(bp.id, bp);
   const cartBundleIds = new Set<number>();
@@ -141,7 +149,7 @@ export function previewCartDiscounts(
 
     let numSets = 0;
     let bundledSum = 0;
-    if (bp.bundle_type === 'multi_course' && bp.groups && bp.groups.length > 0) {
+    if (mechanicOf(bp.bundle_type) === 'multi_course' && bp.groups && bp.groups.length > 0) {
       const componentGroupMap = new Map<number, { groupId: number; pickCount: number; minPick: number; maxPick: number }>();
       for (const g of bp.groups) {
         for (const comp of g.components || []) {

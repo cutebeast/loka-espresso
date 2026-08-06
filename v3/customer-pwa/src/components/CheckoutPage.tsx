@@ -92,6 +92,7 @@ export default function CheckoutPage() {
   const [showRewardSheet, setShowRewardSheet] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
+  const [bundleTypes, setBundleTypes] = useState<Array<{ type_key: string; mechanic: string }>>([]);
   const [draftSaved, setDraftSaved] = useState(false);
   const [gatewayOrder, setGatewayOrder] = useState<Order | null>(null);
   const [gatewayIntent, setGatewayIntent] = useState<{
@@ -126,12 +127,15 @@ export default function CheckoutPage() {
       setRecipientPhone(user.phone_number || '');
     }
   }, [user, checkoutDraft.recipientName, recipientName]);
-  // Fetch bundle products for discount preview
+  // Fetch bundle products + bundle types (mechanic resolution) for discount preview
   useEffect(() => {
     let cancelled = false;
     api.get('/menu/bundle-products').then(res => {
       if (!cancelled) setBundleProducts(Array.isArray(res.data) ? res.data : res.data?.items || []);
     }).catch((e: unknown) => { console.error("Bundle products fetch failed:", e); showToast(t('toast.loadBundleProductsFailed'), 'error'); });
+    api.get('/bundle-types').then(res => {
+      if (!cancelled) setBundleTypes(Array.isArray(res.data) ? res.data : res.data?.items || []);
+    }).catch(() => { /* mechanic resolution falls back to legacy keys */ });
     return () => {
       cancelled = true;
     };
@@ -157,7 +161,7 @@ export default function CheckoutPage() {
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
   const voucherDiscount = discountValue;
-  const bundleBreakdown = previewCartDiscounts(items, menuItems, bundleProducts);
+  const bundleBreakdown = previewCartDiscounts(items, menuItems, bundleProducts, bundleTypes);
   const totalDiscount = voucherDiscount + bundleBreakdown.total;
   const total = Math.max(0, subtotal + deliveryFee - totalDiscount);
   const itemCount = getItemCount();

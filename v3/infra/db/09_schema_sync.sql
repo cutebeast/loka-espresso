@@ -23,6 +23,22 @@ CREATE TABLE IF NOT EXISTS bundle_categories (
 	UNIQUE (slug)
 );
 
+CREATE TABLE IF NOT EXISTS bundle_types (
+	id SERIAL NOT NULL, 
+	type_key VARCHAR(30) NOT NULL, 
+	name VARCHAR(100) NOT NULL, 
+	description VARCHAR(500), 
+	mechanic VARCHAR(20) NOT NULL, 
+	display_order INTEGER NOT NULL, 
+	is_active BOOLEAN NOT NULL, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	deleted_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_bundle_types_mechanic CHECK (mechanic IN ('combo','pick_x','multi_course')), 
+	UNIQUE (type_key)
+);
+
 CREATE TABLE IF NOT EXISTS dietary_tags (
 	id SERIAL NOT NULL, 
 	tag_key VARCHAR(50) NOT NULL, 
@@ -166,7 +182,6 @@ CREATE TABLE IF NOT EXISTS bundle_products (
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	deleted_at TIMESTAMP WITH TIME ZONE, 
 	PRIMARY KEY (id), 
-	CONSTRAINT ck_bundle_products_bundle_type CHECK (bundle_type = ANY (ARRAY['combo','value_meal','family_meal','breakfast_set','promotional','pick_x','multi_course'])), 
 	FOREIGN KEY(category_id) REFERENCES menu_categories (id) ON DELETE SET NULL, 
 	FOREIGN KEY(bundle_category_id) REFERENCES bundle_categories (id) ON DELETE SET NULL, 
 	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE SET NULL
@@ -701,4 +716,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'm3a4b5c6d7e8' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'p6d7e8f9a0b1' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
