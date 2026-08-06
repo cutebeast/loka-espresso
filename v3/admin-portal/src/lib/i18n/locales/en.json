@@ -184,5 +184,7 @@
   "content_home-banner.banners": "banners",
   "content_home-banner.add_banner": "Add Banner",
   "content_home-banner_new.new_home_banner": "New Home Banner",
-  "admin.nav.menu.categories": "Menu Item Categories"
+  "admin.nav.menu.categories": "Menu Item Categories",
+  "admin.nav.help.manage": "Manage Articles",
+  "help.manage_articles_btn": "Manage articles"
 }

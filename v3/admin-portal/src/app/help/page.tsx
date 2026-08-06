@@ -52,6 +52,11 @@ export default function AdminHelpReaderPage() {
           <ArrowLeft size={18} />
         </button>
         <h1 className="page-title" style={{ margin: 0 }}>{t("help.help_center")}</h1>
+        <div style={{ marginLeft: "auto" }}>
+          <button onClick={() => router.push("/help-articles")} className="btn btn-outline btn-sm">
+            <BookOpen size={16} /> {t("help.manage_articles_btn")}
+          </button>
+        </div>
       </div>
       <div style={{ marginBottom: 20 }}>
         <label style={{ marginRight: 8 }}>{t("help.audience")}:</label>
