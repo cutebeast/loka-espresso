@@ -7,8 +7,8 @@ import Alert from "@/components/Alert";
 import Drawer from "@/components/Drawer";
 import NumericKeypad from "@/components/NumericKeypad";
 import PosSplitBillSection from "./PosSplitBillSection";
-import { X, QrCode, User, Gift, CreditCard, Banknote, Smartphone } from "lucide-react";
-import { type Customer, type CustomerWallet } from "@/lib/api";
+import { X, QrCode, User, Gift, CreditCard, Banknote, Smartphone, UtensilsCrossed } from "lucide-react";
+import { api, type Customer, type CustomerWallet } from "@/lib/api";
 import { PaymentMethod } from "./usePosState";
 interface PosCheckoutLineItem {
   menu_item_id?: number;
@@ -121,6 +121,27 @@ export default function PosCheckoutPanel({
   const preTipDue = Math.max(0, orderBase - manualDisc - walletPaid);
   const checkoutTotal = Math.max(0, preTipDue + tipAmount);
   const discountPresets = discountType === "percentage" ? [5, 10, 15, 20] : [5, 10, 20, 50];
+  // Staff meal — one-tap discount configured by the boss (staffmeal.* platform config)
+  const [staffMealLoading, setStaffMealLoading] = useState(false);
+  const applyStaffMeal = async () => {
+    setStaffMealLoading(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cfg = await api.getRaw<any>("/staff/config/staff-meal");
+      const v = Number(cfg?.discount_value || 0);
+      if (!v || v <= 0) {
+        onSetError(t("pos.staff_meal_unavailable"));
+        return;
+      }
+      onSetDiscountType(cfg?.discount_type === "fixed" ? "fixed" : "percentage");
+      onSetDiscountAmount(v);
+      onSetMsg(t("pos.staff_meal_applied"));
+    } catch {
+      onSetError(t("pos.staff_meal_unavailable"));
+    } finally {
+      setStaffMealLoading(false);
+    }
+  };
   // Split bill — when active, the payment covers only the selected share
   const [split, setSplit] = useState<import("./PosSplitBillSection").SplitSelection>({ mode: "full", allocations: [], chargeAmount: null, shareTotal: checkoutTotal });
   const splitActive = split.mode !== "full";
@@ -320,6 +341,14 @@ export default function PosCheckoutPanel({
             </button>)}
           <button className={`btn btn-sm ${discountAmount === 0 ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetDiscountAmount(0)}>{t("pos.none")}</button>
         </div>
+        <button className="btn btn-outline btn-sm" disabled={staffMealLoading} style={{
+        marginTop: 10,
+        display: "flex",
+        alignItems: "center",
+        gap: 6
+      }} onClick={applyStaffMeal}>
+          <UtensilsCrossed size={14} />{staffMealLoading ? "..." : t("pos.staff_meal")}
+        </button>
       </div>
 
       {/* Tip */}

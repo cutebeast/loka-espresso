@@ -23,10 +23,10 @@ router = APIRouter(tags=["staff — equipment"])
 _ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
-def _save_uploaded_images(files: list[UploadFile]) -> list[str]:
+def _save_uploaded_images(files: list[UploadFile], subdir: str = "equipment") -> list[str]:
     """Save uploaded image files and return URL paths."""
     settings = get_settings()
-    upload_dir = settings.upload_dir / "equipment"
+    upload_dir = settings.upload_dir / subdir
     upload_dir.mkdir(parents=True, exist_ok=True)
     urls: list[str] = []
     for f in files:
@@ -44,7 +44,7 @@ def _save_uploaded_images(files: list[UploadFile]) -> list[str]:
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = upload_dir / filename
         filepath.write_bytes(contents)
-        urls.append(f"/uploads/equipment/{filename}")
+        urls.append(f"/uploads/{subdir}/{filename}")
     return urls
 
 

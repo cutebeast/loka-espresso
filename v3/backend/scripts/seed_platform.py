@@ -99,6 +99,10 @@ CONFIGS = [
     ("upload.max_size_mb", "10", "integer", "all", False, True),
     ("accounting.decimal_places", "2", "integer", "all", False, True),
     ("accounting.rounding_mode", '"ROUND_HALF_UP"', "string", "all", False, True),
+    # Staff meal discount at POS — % or fixed RM off, set by the boss here and
+    # applied by cashier/supervisor via the "Staff Meal" button at checkout.
+    ("staffmeal.discount_type", '"percentage"', "string", "all", False, True),
+    ("staffmeal.discount_value", "10", "decimal", "all", False, True),
     # KDS station routing — category slugs per station; "*" = every category
     # not explicitly claimed by another station (catches uncategorized items).
     (

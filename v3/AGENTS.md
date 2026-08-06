@@ -1409,3 +1409,19 @@ User asked WHY the bug classes kept happening, then approved systemic fixes:
 - Consents page: dropdown values "analytics"/"data_processing"/status "revoked" didn't map to the enums — backend now maps them (analytics→location_tracking, data_processing→data_sharing/third_party, revoked→withdrawn) and validates cleanly.
 - Splash edit error banner: per-locale translation prefill failures set the page error banner — now console-only. Splash save verified 200.
 - NOTE for go-live: server TZ is Europe/Berlin — cron times in crontab are Berlin-local (loyalty eval "02:00" = 08:00 MYT). Decide intended timezone at migration.
+
+### Round 35 follow-up 11 — categories split, bundle types, splash split, help center split (2026-08-04/06)
+
+- **Category separation**: menu-item categories renamed "Items Categories" in nav; bundle products get their own **Bundle Categories** (`type='bundle'`, hidden from item lists) and events/workshops get **Event Categories** (`type='event'`) — seeded "Combo"/"Experiences & Workshops" rows re-typed. Customer-facing category endpoints exclude both new types.
+- **Bundle types admin-editable** (`/bundles/types`): `bundle_types` table + admin CRUD; hardcoded CHECK constraint dropped (migration `p6d7e8f9a0b1`); engine mechanics mapped per type (e.g. pick_x → pick_n pricing).
+- **Splash screens split**: `splash_screen_type` discriminator (`pre_login` vs `home_banner`, migration `n4b5c6d7e8f9`) — two separate admin pages; pre-login no longer required to edit a home banner.
+- **Help center**: reader split into 3 audience pages (Admin/Staff/PWA deep links `?audience=`); Manage Articles split per audience with in-page switcher; 14 articles rewritten + 3 "What's New"; guide is preview-by-default with an Edit toggle for admins.
+- **Tester accounts**: store-manager + per-store role variants (see "Test accounts"); ops duty pages (wastage/inventory/garbage/grease-trap) widened to ALL staff roles (backend already allowed any authenticated staff).
+
+### Round 35 follow-up 12 — photo evidence on ops reports + staff meal discount (2026-08-07)
+
+Mirrors the outlet's WhatsApp ops flow (photos accompany every report):
+- **Wastage + stock update take photos**: `inventory_movement_log.image_urls` JSONB (migration `q7e8f9a0b1c2`); `POST /staff/inventory/waste` and `/staff/inventory/update` are now **multipart** (Form fields + `images[]`, saved via shared `_save_uploaded_images(files, subdir)` under `uploads/inventory/`, compressed like equipment photos). Staff UI: wastage ≤5 photos, inventory update 1 photo — both optional. Admin inventory-movements page shows photo thumbnails (new "Photos" column).
+- **Fixed latent 500** in staff stock update: `float - Decimal` on existing stock rows (Form float vs Numeric column) — all arithmetic now Decimal at the boundary.
+- **Staff meal discount (Option B)**: `staffmeal.discount_type` (percentage|fixed) + `staffmeal.discount_value` in platform_config (seeded percentage/10, `ON CONFLICT DO NOTHING`); `GET /staff/config/staff-meal` (staff token) reads it; POS checkout "Staff Meal" button (UtensilsCrossed icon, in the Staff Discount card) one-tap applies it through the existing server-side discount path (recomputed server-side, capped at 100%). Boss edits values in Settings → Staff Meal section (new prefix section; remember: new platform_config prefixes are invisible in Settings until a SECTIONS entry is added).
+- Help articles updated (staff-operations photo steps, staff-pos-checkout Staff Meal); new translation keys seeded EN into `staff-ui`/`admin-ui` namespaces with `is_auto_translated=false` — auto-translate cron fills other locales, never overwrites manual rows.

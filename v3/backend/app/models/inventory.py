@@ -7,6 +7,7 @@ from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey,
     Integer, Numeric, String, Text, UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
@@ -158,6 +159,8 @@ class InventoryMovementLog(Base):
     reserved_delta: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     reserved_after: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
+    # Photo evidence attached by staff (waste/adjustment reports) — list of URL paths
+    image_urls: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     reference_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reference_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     unit_cost_at_movement: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)

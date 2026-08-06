@@ -636,6 +636,8 @@ ALTER TABLE inventory_categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP W
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS item_type VARCHAR(10) DEFAULT 'fnb' NOT NULL;
 
+ALTER TABLE inventory_movement_log ADD COLUMN IF NOT EXISTS image_urls JSONB;
+
 ALTER TABLE loyalty_accounts ADD COLUMN IF NOT EXISTS annual_spend INTEGER DEFAULT 0 NOT NULL;
 ALTER TABLE loyalty_accounts ADD COLUMN IF NOT EXISTS annual_spend_window_start TIMESTAMP WITH TIME ZONE;
 
@@ -716,4 +718,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'p6d7e8f9a0b1' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'q7e8f9a0b1c2' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

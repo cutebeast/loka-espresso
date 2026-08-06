@@ -132,9 +132,9 @@ export default function InventoryMovementsPage() {
               textAlign: "center"
             }}>{t("inventory_movements.qty")}</th><th style={{
               textAlign: "right"
-            }}>{t("inventory_movements.unit_cost")}</th><th>{t("inventory_movements.reason")}</th><th>{t("inventory_movements.date")}</th><th>{t("inventory_movements.by")}</th></tr></thead>
+            }}>{t("inventory_movements.unit_cost")}</th><th>{t("inventory_movements.reason")}</th><th>{t("inventory_movements.photos")}</th><th>{t("inventory_movements.date")}</th><th>{t("inventory_movements.by")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={7} className="data-table-empty">{t("inventory_movements.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={7} className="data-table-empty">{t("inventory_movements.no_movements_found")}</td></tr> : items.map(m => <tr key={m.id}>
+          {loading ? <tr><td colSpan={8} className="data-table-empty">{t("inventory_movements.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={8} className="data-table-empty">{t("inventory_movements.no_movements_found")}</td></tr> : items.map(m => <tr key={m.id}>
               <td style={{
               fontWeight: 600
             }}>{m.item_name || `#${m.inventory_item_id}`}</td>
@@ -154,6 +154,21 @@ export default function InventoryMovementsPage() {
               textOverflow: "ellipsis",
               whiteSpace: "nowrap"
             }}>{m.reason || "—"}</td>
+              <td>{Array.isArray(m.image_urls) && m.image_urls.length > 0 ? <div style={{
+              display: "flex",
+              gap: 4
+            }}>
+                    {m.image_urls.map((u: string, i: number) => <a key={i} href={u} target="_blank" rel="noopener noreferrer">
+                        {/* plain img: /uploads paths are served by the backend, not next/image */}
+                        <img src={u} alt="" style={{
+                  width: 36,
+                  height: 36,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  border: "1px solid var(--color-border-light)"
+                }} />
+                      </a>)}
+                  </div> : "—"}</td>
               <td style={{
               fontSize: 12
             }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : "—"}</td>

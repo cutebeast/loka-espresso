@@ -52,6 +52,10 @@ const SECTIONS: {
   titleKey: "settings.section_einvoice",
   descriptionKey: "settings.section_einvoice_desc",
   prefix: "einvoice."
+}, {
+  titleKey: "settings.section_staffmeal",
+  descriptionKey: "settings.section_staffmeal_desc",
+  prefix: "staffmeal."
 }];
 // API returns JSONB-typed values (boolean true, number 5, objects) — normalize
 // to strings so checkbox/input comparisons and rendering work consistently.

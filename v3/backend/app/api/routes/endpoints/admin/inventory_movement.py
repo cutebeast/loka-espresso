@@ -49,6 +49,7 @@ class MovementLogOut(BaseSchema):
     performed_by: int | None
     created_at: datetime
     item_name: str | None = None
+    image_urls: list[str] | None = None
 
 
 # ---------------------------------------------------------------------------

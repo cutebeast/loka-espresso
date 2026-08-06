@@ -39,6 +39,29 @@ async def branding_config(db: DBDependency):
     return APIResponse(data=items)
 
 
+@router.get("/staff/config/staff-meal")
+async def staff_meal_config(staff: CurrentStaff, db: DBDependency):
+    """Staff meal discount config (staffmeal.* platform config, set by admin).
+
+    Values are JSONB: discount_type is a JSON string, discount_value a number.
+    """
+    result = await db.execute(
+        select(PlatformConfig).where(PlatformConfig.config_key.startswith("staffmeal."))
+    )
+    items = {c.config_key: c.config_value for c in result.scalars().all()}
+    discount_type = items.get("staffmeal.discount_type") or "percentage"
+    if discount_type not in ("percentage", "fixed"):
+        discount_type = "percentage"
+    try:
+        discount_value = float(items.get("staffmeal.discount_value") or 0)
+    except (TypeError, ValueError):
+        discount_value = 0
+    return APIResponse(data={
+        "discount_type": discount_type,
+        "discount_value": discount_value,
+    })
+
+
 # ── Staff read endpoints (menu, tables, orders, reservations) ──
 # These endpoints let staff portal pages fetch data using their staff token
 # instead of calling /admin/* endpoints which require an admin token.

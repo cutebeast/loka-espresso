@@ -2,12 +2,12 @@
 import { RoleGuard, canReportHygiene } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Camera, X } from "lucide-react";
 interface MenuItem {
   id: number;
   item_name: string;
@@ -32,6 +32,22 @@ function WastagePageContent() {
     reason: "",
     notes: ""
   });
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files || []);
+    if (newFiles.length + files.length > 5) return;
+    setFiles(prev => [...prev, ...newFiles]);
+    setPreviews(prev => [...prev, ...newFiles.map(f => URL.createObjectURL(f))]);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+  const removeFile = (idx: number) => {
+    const url = previews[idx];
+    if (url) URL.revokeObjectURL(url);
+    setFiles(prev => prev.filter((_, i) => i !== idx));
+    setPreviews(prev => prev.filter((_, i) => i !== idx));
+  };
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,12 +79,17 @@ function WastagePageContent() {
     setSuccess("");
     try {
       const combinedReason = form.notes.trim() ? `${form.reason} — ${form.notes.trim()}` : form.reason;
-      await api.post("/staff/inventory/waste", {
-        menu_item_id: Number(form.menu_item_id),
-        quantity: form.quantity,
-        reason: combinedReason
-      });
+      const fd = new FormData();
+      fd.set("menu_item_id", form.menu_item_id);
+      fd.set("quantity", String(form.quantity));
+      fd.set("reason", combinedReason);
+      for (const f of files) fd.append("images", f, f.name);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await api.upload<any>("/staff/inventory/waste", fd);
       setSuccess(t("wastage.reported_successfully"));
+      previews.forEach(u => URL.revokeObjectURL(u));
+      setFiles([]);
+      setPreviews([]);
       setForm({
         menu_item_id: "",
         quantity: 0,
@@ -161,6 +182,62 @@ function WastagePageContent() {
             ...form,
             notes: e.target.value
           })} placeholder={t("wastage.supplementary_details_about_this_wastage")} rows={2} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">{t("wastage.photos_optional")}</label>
+            <p style={{
+            fontSize: 12,
+            color: "var(--color-text-muted)",
+            margin: "0 0 8px"
+          }}>{t("wastage.photos_optional_hint")}</p>
+            <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{
+            display: "none"
+          }} />
+            {previews.length > 0 && <div style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 8,
+            flexWrap: "wrap"
+          }}>
+                {previews.map((url, i) => <div key={i} style={{
+              position: "relative",
+              width: 80,
+              height: 80,
+              borderRadius: 8,
+              overflow: "hidden",
+              border: "1px solid var(--color-border-light)"
+            }}>
+                    <img src={url} alt="" style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover"
+              }} />
+                    <button type="button" onClick={() => removeFile(i)} style={{
+                position: "absolute",
+                top: 2,
+                right: 2,
+                background: "rgba(0,0,0,0.6)",
+                border: "none",
+                color: "#fff",
+                borderRadius: "50%",
+                width: 20,
+                height: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                fontSize: 12
+              }}><X size={12} /></button>
+                  </div>)}
+              </div>}
+            <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-outline btn-sm" style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6
+          }}>
+              <Camera size={16} /> {files.length > 0 ? t("wastage.add_more") : t("wastage.upload_images")}
+            </button>
           </div>
 
           <button type="button" onClick={handleSubmit} disabled={submitting} className="btn btn-danger">

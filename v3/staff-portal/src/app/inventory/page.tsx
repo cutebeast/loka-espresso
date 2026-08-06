@@ -2,7 +2,7 @@
 import { RoleGuard, canReportHygiene } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
@@ -10,7 +10,7 @@ import Alert from "@/components/Alert";
 import EmptyState from "@/components/EmptyState";
 import SkeletonCard from "@/components/SkeletonCard";
 import Badge from "@/components/Badge";
-import { Package, RefreshCw, X, Search } from "lucide-react";
+import { Package, RefreshCw, X, Search, Camera } from "lucide-react";
 interface InventoryItem {
   id: number;
   item_name: string;
@@ -39,6 +39,9 @@ function InventoryPageContent() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStock, setEditStock] = useState("");
   const [editReason, setEditReason] = useState("");
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editPreview, setEditPreview] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +79,9 @@ function InventoryPageContent() {
     setEditingId(item.id);
     setEditStock(String(item.current_stock));
     setEditReason("");
+    setEditFile(null);
+    if (editPreview) URL.revokeObjectURL(editPreview);
+    setEditPreview("");
     setError("");
     setSuccess("");
   };
@@ -83,6 +89,16 @@ function InventoryPageContent() {
     setEditingId(null);
     setEditStock("");
     setEditReason("");
+    setEditFile(null);
+    if (editPreview) URL.revokeObjectURL(editPreview);
+    setEditPreview("");
+  };
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    if (editPreview) URL.revokeObjectURL(editPreview);
+    setEditFile(f);
+    setEditPreview(f ? URL.createObjectURL(f) : "");
+    if (fileRef.current) fileRef.current.value = "";
   };
   const handleUpdate = async (itemId: number) => {
     const newCount = Number(editStock);
@@ -94,14 +110,19 @@ function InventoryPageContent() {
     setError("");
     setSuccess("");
     try {
-      await api.post("/staff/inventory/update", {
-        item_id: itemId,
-        current_stock: newCount,
-        reason: editReason.trim() || null
-      });
+      const fd = new FormData();
+      fd.set("item_id", String(itemId));
+      fd.set("current_stock", String(newCount));
+      fd.set("reason", editReason.trim());
+      if (editFile) fd.append("images", editFile, editFile.name);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await api.upload<any>("/staff/inventory/update", fd);
       setSuccess(t("inventory.stock_updated"));
       setEditingId(null);
       setEditStock("");
+      setEditFile(null);
+      if (editPreview) URL.revokeObjectURL(editPreview);
+      setEditPreview("");
       load();
     } catch (e: unknown) {
       setError(parseApiError(e, "Failed to update stock"));
@@ -221,6 +242,56 @@ function InventoryPageContent() {
             maxWidth: 300,
             marginBottom: 0
           }} value={editReason} onChange={e => setEditReason(e.target.value)} placeholder={t("inventory.remark_reason_for_update")} />
+                  <div style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center"
+          }}>
+                    <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{
+              display: "none"
+            }} />
+                    <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-outline btn-sm" style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 12
+            }}>
+                      <Camera size={14} />{editFile ? (editFile.name.length > 18 ? editFile.name.slice(0, 15) + "…" : editFile.name) : t("inventory.upload_image")}
+                    </button>
+                    {editPreview && <div style={{
+              position: "relative",
+              width: 48,
+              height: 48,
+              borderRadius: 8,
+              overflow: "hidden",
+              border: "1px solid var(--color-border-light)"
+            }}>
+                        <img src={editPreview} alt="" style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover"
+              }} />
+                        <button type="button" onClick={() => {
+                if (editPreview) URL.revokeObjectURL(editPreview);
+                setEditFile(null);
+                setEditPreview("");
+              }} style={{
+                position: "absolute",
+                top: 1,
+                right: 1,
+                background: "rgba(0,0,0,0.6)",
+                border: "none",
+                color: "#fff",
+                borderRadius: "50%",
+                width: 16,
+                height: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer"
+              }}><X size={10} /></button>
+                      </div>}
+                  </div>
                 </div> : <div style={{
           marginTop: 12
         }}>

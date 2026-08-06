@@ -1,13 +1,14 @@
 """Staff inventory endpoints (view stock, update counts, report waste)."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel as PydanticBaseModel, Field
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentStaff, DBDependency
+from app.api.routes.endpoints.staff.equipment import _save_uploaded_images
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.menu import MenuItem
 from app.schemas.base import APIResponse
@@ -16,20 +17,8 @@ router = APIRouter(tags=["staff — inventory"])
 
 
 # ── Staff Inventory (view, update stock, report waste) ──
-
-
-class StockUpdateRequest(PydanticBaseModel):
-    item_id: int
-    current_stock: float = Field(..., ge=0)
-    reason: str | None = None
-
-
-class WasteReportRequest(PydanticBaseModel):
-    menu_item_id: int | None = None
-    inventory_item_id: int | None = None
-    quantity: float = Field(..., gt=0)
-    reason: str = Field(..., min_length=5, max_length=300)
-    unit_of_measure: str | None = None
+# Both write endpoints are multipart: staff attach photo evidence (like the
+# hygiene reports) — what was wasted / the shelf state at count time.
 
 
 @router.get("/staff/inventory")
@@ -84,14 +73,17 @@ async def list_inventory_for_staff(
 async def staff_update_stock(
     db: DBDependency,
     staff: CurrentStaff,
-    data: StockUpdateRequest,
+    item_id: int = Form(...),
+    current_stock: float = Form(..., ge=0),
+    reason: str = Form(""),
+    images: list[UploadFile] = File(default=[]),
 ):
     """Staff updates current stock count (for non-FnB shelf counts)."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
 
     result = await db.execute(
         select(InventoryItem).where(
-            InventoryItem.id == data.item_id,
+            InventoryItem.id == item_id,
             InventoryItem.is_active.is_(True),
         )
     )
@@ -99,17 +91,19 @@ async def staff_update_stock(
     if not item:
         raise HTTPException(status_code=404, detail="Inventory item not found")
 
+    image_urls = _save_uploaded_images(images, subdir="inventory") if images else []
+
     # Find or create per-store stock record (lock row to prevent race conditions)
     stock_result = await db.execute(
         select(InventoryStock).where(
-            InventoryStock.inventory_item_id == data.item_id,
+            InventoryStock.inventory_item_id == item_id,
             InventoryStock.store_id == store_id,
         ).with_for_update()
     )
     stock = stock_result.scalar_one_or_none()
     if stock is None:
         stock = InventoryStock(
-            inventory_item_id=data.item_id,
+            inventory_item_id=item_id,
             store_id=store_id,
             current_stock=0,
             reserved_stock=0,
@@ -121,22 +115,25 @@ async def staff_update_stock(
         await db.flush()
 
     old_stock = stock.current_stock
-    delta = round(data.current_stock - old_stock, 4)
+    # DB numerics are Decimal — convert the form float before any arithmetic
+    new_count = Decimal(str(round(current_stock, 4)))
+    delta = new_count - old_stock
 
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
     now = datetime.now(timezone.utc)
 
-    stock.current_stock = data.current_stock
+    stock.current_stock = new_count
     stock.updated_at = now
 
-    if abs(delta) > 0.0001:
+    if abs(delta) > Decimal("0.0001") or image_urls:
         movement = InventoryMovementLog(
             inventory_item_id=item.id,
             store_id=store_id,
             movement_type="adjustment",
             quantity_delta=delta,
-            stock_after=data.current_stock,
-            reason=data.reason or f"Stock count updated by {staff_name}",
+            stock_after=new_count,
+            reason=reason or f"Stock count updated by {staff_name}",
+            image_urls=image_urls or None,
         )
         db.add(movement)
 
@@ -149,6 +146,7 @@ async def staff_update_stock(
         "current_stock": stock.current_stock,
         "previous_stock": old_stock,
         "delta": delta,
+        "image_urls": image_urls,
     })
 
 
@@ -156,17 +154,24 @@ async def staff_update_stock(
 async def staff_report_waste(
     db: DBDependency,
     staff: CurrentStaff,
-    data: WasteReportRequest,
+    quantity: float = Form(..., gt=0),
+    reason: str = Form(..., min_length=5, max_length=300),
+    menu_item_id: int | None = Form(None),
+    inventory_item_id: int | None = Form(None),
+    unit_of_measure: str | None = Form(None),
+    images: list[UploadFile] = File(default=[]),
 ):
     """Staff reports wastage for a menu item or inventory item."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
     now = datetime.now(timezone.utc)
 
-    if data.inventory_item_id:
+    image_urls = _save_uploaded_images(images, subdir="inventory") if images else []
+
+    if inventory_item_id:
         result = await db.execute(
             select(InventoryItem).where(
-                InventoryItem.id == data.inventory_item_id,
+                InventoryItem.id == inventory_item_id,
                 InventoryItem.is_active.is_(True),
             )
         )
@@ -177,14 +182,14 @@ async def staff_report_waste(
         # Find or create per-store stock record
         stock_result = await db.execute(
             select(InventoryStock).where(
-                InventoryStock.inventory_item_id == data.inventory_item_id,
+                InventoryStock.inventory_item_id == inventory_item_id,
                 InventoryStock.store_id == store_id,
             ).with_for_update()
         )
         stock = stock_result.scalar_one_or_none()
         if stock is None:
             stock = InventoryStock(
-                inventory_item_id=data.inventory_item_id,
+                inventory_item_id=inventory_item_id,
                 store_id=store_id,
                 current_stock=0,
                 reserved_stock=0,
@@ -195,8 +200,7 @@ async def staff_report_waste(
             db.add(stock)
             await db.flush()
 
-        from decimal import Decimal
-        delta = Decimal(str(round(-data.quantity, 4)))
+        delta = Decimal(str(round(-quantity, 4)))
         new_stock = stock.current_stock + delta
         stock.current_stock = max(Decimal(0), new_stock)
         stock.updated_at = now
@@ -207,7 +211,8 @@ async def staff_report_waste(
             movement_type="waste",
             quantity_delta=delta,
             stock_after=stock.current_stock,
-            reason=f"[Reported by {staff_name}] {data.reason}",
+            reason=f"[Reported by {staff_name}] {reason}",
+            image_urls=image_urls or None,
         )
         db.add(movement)
 
@@ -217,18 +222,19 @@ async def staff_report_waste(
         return APIResponse(data={
             "id": item.id,
             "item_name": item.item_name,
-            "wasted_quantity": data.quantity,
+            "wasted_quantity": quantity,
             "current_stock": stock.current_stock,
+            "image_urls": image_urls,
             "message": "Waste recorded for inventory item",
         })
 
-    if data.menu_item_id:
+    if menu_item_id:
         from sqlalchemy.orm import selectinload
         menu_result = await db.execute(
             select(MenuItem)
             .options(selectinload(MenuItem.recipes))
             .where(
-                MenuItem.id == data.menu_item_id,
+                MenuItem.id == menu_item_id,
                 MenuItem.is_available.is_(True),
                 MenuItem.deleted_at.is_(None),
             )
@@ -246,7 +252,7 @@ async def staff_report_waste(
             waste_factor = recipe.waste_factor or Decimal(0)
             if not inv_id or qty_per_unit <= 0:
                 continue
-            total_qty = qty_per_unit * Decimal(str(data.quantity)) * (Decimal(1) + waste_factor)
+            total_qty = qty_per_unit * Decimal(str(quantity)) * (Decimal(1) + waste_factor)
 
             stock_result = await db.execute(
                 select(InventoryStock).where(
@@ -265,7 +271,8 @@ async def staff_report_waste(
                     movement_type="waste",
                     quantity_delta=-total_qty,
                     stock_after=new_stock,
-                    reason=f"[Menu item waste: {menu_item.item_name}] {data.reason}",
+                    reason=f"[Menu item waste: {menu_item.item_name}] {reason}",
+                    image_urls=image_urls or None,
                 )
                 db.add(movement)
                 deducted_items.append({"item_id": inv_id, "qty": total_qty})
@@ -273,11 +280,12 @@ async def staff_report_waste(
         await db.commit()
 
         return APIResponse(data={
-            "menu_item_id": data.menu_item_id,
+            "menu_item_id": menu_item_id,
             "menu_item_name": menu_item.item_name,
-            "wasted_quantity": data.quantity,
-            "reason": data.reason,
+            "wasted_quantity": quantity,
+            "reason": reason,
             "deducted_items": deducted_items,
+            "image_urls": image_urls,
             "message": "Waste recorded for menu item",
         })
 
