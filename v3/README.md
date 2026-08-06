@@ -238,12 +238,20 @@ cd v3/customer-pwa && API_PROXY_URL=http://127.0.0.1:13800/api NEXT_PUBLIC_API_U
 |---------|----------|---------------|-------|
 | admin@loyaltysystem.uk | admin123 | Admin (all stores) + Staff (all stores) | system_admin role |
 | store@loyaltysystem.uk | store123 | Admin (limited) + Staff (Store 1 + 2) | store_manager role |
+| tester@loyaltysystem.uk | test1234 | Admin (all stores) + Staff | system_admin, QA account |
+| tester-store@loyaltysystem.uk | Test1234! | Admin (limited) + Staff (Store 1 + 2) | store_manager, QA account |
 | staff1@loyaltysystem.uk | staff123 | Staff (Store 1 only) | server role |
 | staff2@loyaltysystem.uk | staff123 | Staff (Store 2 only) | server role |
+| s1-supervisor@loyaltysystem.uk | staff123 | Staff (Store 1 only) | shift_supervisor, QA |
+| s1-cashier@loyaltysystem.uk | staff123 | Staff (Store 1 only) | cashier, QA |
+| s1-kitchen@loyaltysystem.uk | staff123 | Staff (Store 1 only) | kitchen_staff, QA |
+| s2-server@loyaltysystem.uk | staff123 | Staff (Store 2 only) | server, QA |
+| s2-delivery@loyaltysystem.uk | staff123 | Staff (Store 2 only) | delivery_coordinator, QA |
 | demo@lokaespresso.my | +60123456001 | Customer PWA | RM50 wallet balance |
 | vip@lokaespresso.my | +60123456002 | Customer PWA | RM200 wallet balance |
 
-Staff PIN for all staff accounts: 123456
+Staff PIN for all staff accounts: 123456 (pre-set — no forced PIN change on QA accounts)
+Staff portal login modes: email+password, name+PIN (with store selection), or email+PIN.
 
 ### Environment variables
 
