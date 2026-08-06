@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentStaff, DBDependency
 from app.api.routes.endpoints.staff.equipment import _save_uploaded_images
-from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
+from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, WastageReport
 from app.models.menu import MenuItem
 from app.schemas.base import APIResponse
 
@@ -164,6 +164,8 @@ async def staff_report_waste(
     """Staff reports wastage for a menu item or inventory item."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+    if not store_id:
+        raise HTTPException(status_code=400, detail="Staff account has no store assigned")
     now = datetime.now(timezone.utc)
 
     image_urls = _save_uploaded_images(images, subdir="inventory") if images else []
@@ -215,6 +217,18 @@ async def staff_report_waste(
             image_urls=image_urls or None,
         )
         db.add(movement)
+
+        report = WastageReport(
+            store_id=store_id,
+            inventory_item_id=item.id,
+            item_name=item.item_name,
+            quantity=Decimal(str(round(quantity, 4))),
+            unit_of_measure=unit_of_measure or item.unit_of_measure,
+            reason=reason,
+            image_urls=image_urls or None,
+            reported_by=staff_name,
+        )
+        db.add(report)
 
         await db.commit()
         await db.refresh(stock)
@@ -276,6 +290,20 @@ async def staff_report_waste(
                 )
                 db.add(movement)
                 deducted_items.append({"item_id": inv_id, "qty": total_qty})
+
+        # Always record the report itself — movement rows only exist when the
+        # menu item has recipes; without this the report would vanish.
+        report = WastageReport(
+            store_id=store_id,
+            menu_item_id=menu_item.id,
+            item_name=menu_item.item_name,
+            quantity=Decimal(str(round(quantity, 4))),
+            unit_of_measure=unit_of_measure,
+            reason=reason,
+            image_urls=image_urls or None,
+            reported_by=staff_name,
+        )
+        db.add(report)
 
         await db.commit()
 

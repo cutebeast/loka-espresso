@@ -186,6 +186,54 @@ class InventoryMovementLog(Base):
     )
 
 
+class WastageReport(Base):
+    """Staff-submitted wastage report — the persistent audit record.
+
+    Movement-log rows only exist when stock is actually deducted (recipes);
+    this table records EVERY report incl. menu items without recipes, with
+    photo evidence, so supervisors can review/verify from the admin portal.
+    """
+
+    __tablename__ = "wastage_reports"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    store_id: Mapped[int] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    menu_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("menu_items.id", ondelete="SET NULL"), nullable=True
+    )
+    inventory_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("inventory_items.id", ondelete="SET NULL"), nullable=True
+    )
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    unit_of_measure: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    image_urls: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    reported_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    verified_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    store: Mapped["Store"] = relationship("Store")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','verified','flagged')",
+            name="ck_wastage_reports_status",
+        ),
+        CheckConstraint(
+            "menu_item_id IS NOT NULL OR inventory_item_id IS NOT NULL",
+            name="ck_wastage_reports_item",
+        ),
+    )
+
+
 class PurchaseOrder(Base, TimestampMixin):
     __tablename__ = "purchase_orders"
 

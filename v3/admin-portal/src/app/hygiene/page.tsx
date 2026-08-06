@@ -28,6 +28,8 @@ export default function HygienePage() {
   const [reportType, setReportType] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [storeFilter, setStoreFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [modalImages, setModalImages] = useState<{
@@ -46,6 +48,8 @@ export default function HygienePage() {
       if (storeFilter) params.set("store_id", storeFilter);
       if (reportType) params.set("report_type", reportType);
       if (statusFilter) params.set("status", statusFilter);
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
       params.set("page", String(page));
       params.set("per_page", String(perPage));
       const d = await api.getRaw<any>(`/admin/hygiene/reports?${params.toString()}`);
@@ -56,7 +60,7 @@ export default function HygienePage() {
     } finally {
       setLoading(false);
     }
-  }, [storeFilter, reportType, statusFilter, page]);
+  }, [storeFilter, reportType, statusFilter, dateFrom, dateTo, page]);
   useEffect(() => {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : d.items || [])).catch((e: any) => { console.error("hygiene stores load:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
@@ -164,6 +168,24 @@ export default function HygienePage() {
           <option value="verified">{t("hygiene.verified")}</option>
           <option value="flagged">{t("hygiene.flagged")}</option>
         </select>
+        <input type="date" value={dateFrom} onChange={e => {
+        setDateFrom(e.target.value);
+        setPage(1);
+      }} style={{
+        padding: "6px 10px",
+        fontSize: 13,
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--color-border-light)"
+      }} />
+        <input type="date" value={dateTo} onChange={e => {
+        setDateTo(e.target.value);
+        setPage(1);
+      }} style={{
+        padding: "6px 10px",
+        fontSize: 13,
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--color-border-light)"
+      }} />
       </div>
 
       <div className="table-container">

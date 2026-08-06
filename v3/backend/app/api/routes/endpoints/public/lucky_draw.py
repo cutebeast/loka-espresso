@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from app.core.business_time import BUSINESS_TZ
 from app.api.routes.deps import ActiveCustomer, DBDependency, security_scheme
 from app.core.auth_cookies import get_customer_access_token
 from app.core.security import decode_token
@@ -98,11 +99,11 @@ async def _spins_used_in_interval(db, campaign_id: int, customer_id: int, interv
 
 def _next_spin_at(last_spin: datetime | None = None, interval_days: int = 1) -> datetime:
     """When the next free spin becomes available (last spin + interval,
-    or UTC midnight for the default 1-day interval)."""
+    or business-local midnight for the default 1-day interval)."""
     if last_spin is not None:
         return last_spin + timedelta(days=interval_days)
-    tomorrow = datetime.now(timezone.utc).date() + timedelta(days=1)
-    return datetime.combine(tomorrow, time.min, tzinfo=timezone.utc)
+    tomorrow = datetime.now(BUSINESS_TZ).date() + timedelta(days=1)
+    return datetime.combine(tomorrow, time.min, tzinfo=BUSINESS_TZ)
 
 
 @router.get("/active", response_model=APIResponse[LuckyDrawActiveCampaignOut])

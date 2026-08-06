@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
+from app.core.business_time import day_start_utc, day_end_utc
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.equipment import (
@@ -105,11 +106,11 @@ async def list_equipment_reports(
         base_stmt = base_stmt.where(EquipmentMaintenanceLog.status == status)
         count_stmt = count_stmt.where(EquipmentMaintenanceLog.status == status)
     if date_from:
-        base_stmt = base_stmt.where(EquipmentMaintenanceLog.created_at >= date_from)
-        count_stmt = count_stmt.where(EquipmentMaintenanceLog.created_at >= date_from)
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.created_at >= day_start_utc(date_from))
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.created_at >= day_start_utc(date_from))
     if date_to:
-        base_stmt = base_stmt.where(EquipmentMaintenanceLog.created_at <= date_to)
-        count_stmt = count_stmt.where(EquipmentMaintenanceLog.created_at <= date_to)
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.created_at <= day_end_utc(date_to))
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.created_at <= day_end_utc(date_to))
 
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0

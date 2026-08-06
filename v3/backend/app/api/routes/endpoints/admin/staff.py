@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
+from app.core.business_time import BUSINESS_TZ
 from app.core.security import hash_password
 from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
 from app.models.platform import AuditLog
@@ -255,8 +256,8 @@ async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: ShiftFl
         template = await db.get(ShiftTemplate, data.shift_template_id)
         if template is None:
             raise HTTPException(status_code=404, detail="Shift template not found")
-        planned_start = datetime.combine(data.shift_date, template.start_time, tzinfo=timezone.utc)
-        planned_end = datetime.combine(data.shift_date, template.end_time, tzinfo=timezone.utc)
+        planned_start = datetime.combine(data.shift_date, template.start_time, tzinfo=BUSINESS_TZ)
+        planned_end = datetime.combine(data.shift_date, template.end_time, tzinfo=BUSINESS_TZ)
         if planned_end <= planned_start:
             planned_end += timedelta(days=1)
 

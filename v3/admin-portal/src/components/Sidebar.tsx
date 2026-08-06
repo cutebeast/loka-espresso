@@ -168,6 +168,7 @@ const navItems: NavItem[] = [
       { id: "inventoryStock", labelKey: "admin.nav.inventory.stockLevels", href: "/inventory/stocks" },
       { id: "inventorySuppliers", labelKey: "admin.nav.inventory.suppliers", href: "/inventory/suppliers" },
       { id: "inventoryMovements", labelKey: "admin.nav.inventory.movements", href: "/inventory/movements" },
+      { id: "inventoryWastage", labelKey: "admin.nav.inventory.wastage", href: "/inventory/wastage" },
       { id: "inventoryPurchase", labelKey: "admin.nav.inventory.purchaseOrders", href: "/inventory/purchase-orders" },
     ],
   },

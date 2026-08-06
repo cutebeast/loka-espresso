@@ -490,6 +490,32 @@ CREATE TABLE IF NOT EXISTS lucky_draw_segments (
 
 CREATE INDEX IF NOT EXISTS ix_lucky_draw_segments_campaign_id ON lucky_draw_segments (campaign_id);
 
+CREATE TABLE IF NOT EXISTS wastage_reports (
+	id BIGSERIAL NOT NULL, 
+	store_id INTEGER NOT NULL, 
+	menu_item_id INTEGER, 
+	inventory_item_id INTEGER, 
+	item_name VARCHAR(255) NOT NULL, 
+	quantity NUMERIC(10, 4) NOT NULL, 
+	unit_of_measure VARCHAR(20), 
+	reason TEXT NOT NULL, 
+	image_urls JSONB, 
+	reported_by VARCHAR(120) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	verified_by VARCHAR(120), 
+	verified_at TIMESTAMP WITH TIME ZONE, 
+	verified_notes TEXT, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_wastage_reports_status CHECK (status IN ('pending','verified','flagged')), 
+	CONSTRAINT ck_wastage_reports_item CHECK (menu_item_id IS NOT NULL OR inventory_item_id IS NOT NULL), 
+	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE, 
+	FOREIGN KEY(menu_item_id) REFERENCES menu_items (id) ON DELETE SET NULL, 
+	FOREIGN KEY(inventory_item_id) REFERENCES inventory_items (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_wastage_reports_store_id ON wastage_reports (store_id);
+
 CREATE TABLE IF NOT EXISTS bundle_component_modifiers (
 	id SERIAL NOT NULL, 
 	bundle_product_component_id INTEGER NOT NULL, 
@@ -718,4 +744,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'q7e8f9a0b1c2' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'r8f9a0b1c2d3' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

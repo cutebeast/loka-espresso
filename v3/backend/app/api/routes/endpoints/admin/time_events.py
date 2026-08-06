@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+from app.core.business_time import day_start_utc, day_end_utc
 from app.api.routes.deps import CurrentAdmin, DBDependency, CurrentStaff, require_store_admin
 from app.models.staff import StaffProfile, StaffTimeEvent
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
@@ -88,11 +89,11 @@ async def list_time_events(
         base_stmt = base_stmt.where(StaffTimeEvent.event_type == event_type)
         count_stmt = count_stmt.where(StaffTimeEvent.event_type == event_type)
     if date_from is not None:
-        dt_from = datetime.combine(date_from, time.min, tzinfo=timezone.utc)
+        dt_from = day_start_utc(date_from)
         base_stmt = base_stmt.where(StaffTimeEvent.event_timestamp >= dt_from)
         count_stmt = count_stmt.where(StaffTimeEvent.event_timestamp >= dt_from)
     if date_to is not None:
-        dt_to = datetime.combine(date_to, time.max, tzinfo=timezone.utc)
+        dt_to = day_end_utc(date_to)
         base_stmt = base_stmt.where(StaffTimeEvent.event_timestamp <= dt_to)
         count_stmt = count_stmt.where(StaffTimeEvent.event_timestamp <= dt_to)
 
@@ -269,11 +270,11 @@ async def staff_list_my_time_events(
         base_stmt = base_stmt.where(StaffTimeEvent.event_type == event_type)
         count_stmt = count_stmt.where(StaffTimeEvent.event_type == event_type)
     if date_from is not None:
-        dt_from = datetime.combine(date_from, time.min, tzinfo=timezone.utc)
+        dt_from = day_start_utc(date_from)
         base_stmt = base_stmt.where(StaffTimeEvent.event_timestamp >= dt_from)
         count_stmt = count_stmt.where(StaffTimeEvent.event_timestamp >= dt_from)
     if date_to is not None:
-        dt_to = datetime.combine(date_to, time.max, tzinfo=timezone.utc)
+        dt_to = day_end_utc(date_to)
         base_stmt = base_stmt.where(StaffTimeEvent.event_timestamp <= dt_to)
         count_stmt = count_stmt.where(StaffTimeEvent.event_timestamp <= dt_to)
 

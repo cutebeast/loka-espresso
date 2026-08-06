@@ -1,12 +1,13 @@
 """Admin hygiene report monitoring endpoints."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
+from app.core.business_time import day_start_utc, day_end_utc
 from app.models.hygiene import HygieneReport
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.hygiene import HygieneReportOut, HygieneReportUpdate
@@ -21,10 +22,12 @@ async def list_hygiene_reports(
     store_id: int | None = Query(None),
     report_type: str | None = Query(None),
     status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    """List all hygiene reports with filters."""
+    """List all hygiene reports with filters (dates are business-local days)."""
     base_stmt = select(HygieneReport).options(selectinload(HygieneReport.store))
     count_stmt = select(func.count(HygieneReport.id))
 
@@ -37,6 +40,12 @@ async def list_hygiene_reports(
     if status is not None:
         base_stmt = base_stmt.where(HygieneReport.status == status)
         count_stmt = count_stmt.where(HygieneReport.status == status)
+    if date_from is not None:
+        base_stmt = base_stmt.where(HygieneReport.created_at >= day_start_utc(date_from))
+        count_stmt = count_stmt.where(HygieneReport.created_at >= day_start_utc(date_from))
+    if date_to is not None:
+        base_stmt = base_stmt.where(HygieneReport.created_at <= day_end_utc(date_to))
+        count_stmt = count_stmt.where(HygieneReport.created_at <= day_end_utc(date_to))
 
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0

@@ -22,6 +22,8 @@ function WastagePageContent() {
     t
   } = useTranslation();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<MenuItem[]>([]);
+  const [itemType, setItemType] = useState<"menu" | "inventory">("menu");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +59,12 @@ function WastagePageContent() {
       console.error("Failed to load menu items:", err);
       if (!cancelled) setLoadError(t("wastage.load_menu_failed"));
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    api.getRaw<any>("/staff/inventory").then(d => {
+      if (!cancelled) setInventoryItems(Array.isArray(d) ? d : d?.items || []);
+    }).catch(err => {
+      console.error("Failed to load inventory items:", err);
+    });
     return () => {
       cancelled = true;
     };
@@ -80,7 +88,7 @@ function WastagePageContent() {
     try {
       const combinedReason = form.notes.trim() ? `${form.reason} — ${form.notes.trim()}` : form.reason;
       const fd = new FormData();
-      fd.set("menu_item_id", form.menu_item_id);
+      fd.set(itemType === "menu" ? "menu_item_id" : "inventory_item_id", form.menu_item_id);
       fd.set("quantity", String(form.quantity));
       fd.set("reason", combinedReason);
       for (const f of files) fd.append("images", f, f.name);
@@ -137,13 +145,36 @@ function WastagePageContent() {
         gap: 16
       }}>
           <div className="form-group">
+            <label className="form-label">{t("wastage.item_type")}</label>
+            <div style={{
+            display: "flex",
+            gap: 8
+          }}>
+              <button type="button" className={`btn btn-sm ${itemType === "menu" ? "btn-primary" : "btn-ghost"}`} onClick={() => {
+              setItemType("menu");
+              setForm({
+                ...form,
+                menu_item_id: ""
+              });
+            }}>{t("wastage.type_menu_item")}</button>
+              <button type="button" className={`btn btn-sm ${itemType === "inventory" ? "btn-primary" : "btn-ghost"}`} onClick={() => {
+              setItemType("inventory");
+              setForm({
+                ...form,
+                menu_item_id: ""
+              });
+            }}>{t("wastage.type_inventory_item")}</button>
+            </div>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">{t("wastage.menu_item")}</label>
             <select className="form-input" value={form.menu_item_id} onChange={e => setForm({
             ...form,
             menu_item_id: e.target.value
           })} required>
               <option value="">{t("wastage.select_menu_item")}</option>
-              {menuItems.map(m => <option key={m.id} value={m.id}>{m.item_name}</option>)}
+              {(itemType === "menu" ? menuItems : inventoryItems).map(m => <option key={m.id} value={m.id}>{m.item_name}</option>)}
             </select>
           </div>
 

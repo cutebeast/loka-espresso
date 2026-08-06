@@ -1,6 +1,6 @@
 """Inventory movement log endpoints."""
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
-from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
+from app.core.business_time import day_start_utc, day_end_utc
+from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, WastageReport
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
@@ -82,11 +83,11 @@ async def list_movements(
         base_stmt = base_stmt.where(InventoryMovementLog.movement_type == movement_type)
         count_stmt = count_stmt.where(InventoryMovementLog.movement_type == movement_type)
     if date_from is not None:
-        dt_from = datetime.combine(date_from, time.min, tzinfo=timezone.utc)
+        dt_from = day_start_utc(date_from)
         base_stmt = base_stmt.where(InventoryMovementLog.created_at >= dt_from)
         count_stmt = count_stmt.where(InventoryMovementLog.created_at >= dt_from)
     if date_to is not None:
-        dt_to = datetime.combine(date_to, time.max, tzinfo=timezone.utc)
+        dt_to = day_end_utc(date_to)
         base_stmt = base_stmt.where(InventoryMovementLog.created_at <= dt_to)
         count_stmt = count_stmt.where(InventoryMovementLog.created_at <= dt_to)
 
@@ -227,3 +228,118 @@ async def get_movement(
             status_code=status.HTTP_404_NOT_FOUND, detail="Movement log not found"
         )
     return APIResponse(data=MovementLogOut.model_validate(movement))
+
+
+# ---------------------------------------------------------------------------
+# Wastage reports (staff-submitted, with photo evidence + supervisor review)
+# ---------------------------------------------------------------------------
+
+class WastageReportOut(BaseSchema):
+    model_config = {"from_attributes": True}
+
+    id: int
+    store_id: int
+    menu_item_id: int | None
+    inventory_item_id: int | None
+    item_name: str
+    quantity: float
+    unit_of_measure: str | None
+    reason: str
+    image_urls: list[str] | None
+    reported_by: str
+    status: str
+    verified_by: str | None
+    verified_at: datetime | None
+    verified_notes: str | None
+    created_at: datetime
+    store_name: str | None = None
+
+
+class WastageReportReview(BaseSchema):
+    status: Literal["verified", "flagged", "pending"]
+    verified_notes: str | None = Field(None, max_length=500)
+
+
+@router.get("/wastage-reports", response_model=APIResponse[PaginatedResponse[WastageReportOut]])
+async def list_wastage_reports(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int | None = Query(None),
+    status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+):
+    """List staff wastage reports with store/status/date filters (business-local days)."""
+    base_stmt = select(WastageReport)
+    count_stmt = select(func.count(WastageReport.id))
+
+    if store_id is not None:
+        base_stmt = base_stmt.where(WastageReport.store_id == store_id)
+        count_stmt = count_stmt.where(WastageReport.store_id == store_id)
+    if status is not None:
+        base_stmt = base_stmt.where(WastageReport.status == status)
+        count_stmt = count_stmt.where(WastageReport.status == status)
+    if date_from is not None:
+        base_stmt = base_stmt.where(WastageReport.created_at >= day_start_utc(date_from))
+        count_stmt = count_stmt.where(WastageReport.created_at >= day_start_utc(date_from))
+    if date_to is not None:
+        base_stmt = base_stmt.where(WastageReport.created_at <= day_end_utc(date_to))
+        count_stmt = count_stmt.where(WastageReport.created_at <= day_end_utc(date_to))
+
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    result = await db.execute(
+        base_stmt.order_by(WastageReport.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    rows = result.scalars().all()
+
+    store_ids = {r.store_id for r in rows}
+    store_names: dict[int, str] = {}
+    if store_ids:
+        from app.models.store import Store
+        s_result = await db.execute(select(Store.id, Store.store_name).where(Store.id.in_(store_ids)))
+        store_names = {sid: name for sid, name in s_result.all()}
+
+    items = []
+    for r in rows:
+        out = WastageReportOut.model_validate(r)
+        out.store_name = store_names.get(r.store_id)
+        items.append(out)
+
+    return APIResponse(data=PaginatedResponse(
+        items=items, total=total, page=page, per_page=per_page,
+        total_pages=max(1, (total + per_page - 1) // per_page),
+    ))
+
+
+@router.patch("/wastage-reports/{id}", response_model=APIResponse[WastageReportOut])
+async def review_wastage_report(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    id: int,
+    data: WastageReportReview,
+):
+    """Supervisor verifies or flags a wastage report."""
+    result = await db.execute(select(WastageReport).where(WastageReport.id == id))
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wastage report not found")
+
+    await require_store_admin(db, admin, report.store_id)
+
+    report.status = data.status
+    if data.verified_notes is not None:
+        report.verified_notes = data.verified_notes
+    if data.status == "verified":
+        from datetime import timezone
+        report.verified_at = datetime.now(timezone.utc)
+        report.verified_by = admin.email if hasattr(admin, "email") else f"Admin #{admin.id}"
+
+    await db.commit()
+    await db.refresh(report)
+    return APIResponse(data=WastageReportOut.model_validate(report))

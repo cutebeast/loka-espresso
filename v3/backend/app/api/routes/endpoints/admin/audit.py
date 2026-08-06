@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
+from app.core.business_time import day_start_utc, day_end_utc
 from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.platform import AuditLog
 from app.schemas.audit import AuditLogOut
@@ -47,11 +48,11 @@ async def list_audit_logs(
         base_stmt = base_stmt.where(AuditLog.principal_id == principal_id)
         count_stmt = count_stmt.where(AuditLog.principal_id == principal_id)
     if date_from is not None:
-        base_stmt = base_stmt.where(AuditLog.created_at >= date_from)
-        count_stmt = count_stmt.where(AuditLog.created_at >= date_from)
+        base_stmt = base_stmt.where(AuditLog.created_at >= day_start_utc(date_from))
+        count_stmt = count_stmt.where(AuditLog.created_at >= day_start_utc(date_from))
     if date_to is not None:
-        base_stmt = base_stmt.where(AuditLog.created_at <= date_to)
-        count_stmt = count_stmt.where(AuditLog.created_at <= date_to)
+        base_stmt = base_stmt.where(AuditLog.created_at <= day_end_utc(date_to))
+        count_stmt = count_stmt.where(AuditLog.created_at <= day_end_utc(date_to))
 
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
