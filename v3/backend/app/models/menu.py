@@ -340,7 +340,13 @@ class MenuItemRecipe(Base):
     inventory_item: Mapped["InventoryItem"] = relationship("InventoryItem")
 
     __table_args__ = (
-        UniqueConstraint("menu_item_id", "menu_variant_id", "inventory_item_id"),
+        # NULLS NOT DISTINCT: duplicate generic recipes (variant NULL) would
+        # double-deduct stock on every sale.
+        UniqueConstraint(
+            "menu_item_id", "menu_variant_id", "inventory_item_id",
+            name="uq_menu_item_recipes_item_variant_inventory",
+            postgresql_nulls_not_distinct=True,
+        ),
         CheckConstraint("quantity_required > 0", name="ck_menu_item_recipes_quantity_required"),
         CheckConstraint(
             "waste_factor BETWEEN 0 AND 1",

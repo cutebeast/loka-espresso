@@ -51,6 +51,7 @@ class MovementLogOut(BaseSchema):
     created_at: datetime
     item_name: str | None = None
     image_urls: list[str] | None = None
+    performed_by_name: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +115,19 @@ async def list_movements(
         name_map = {r[0]: r[1] for r in name_rows.all()}
         for item, mv in zip(items, rows):
             item.item_name = name_map.get(mv.inventory_item_id)
+
+        # Enrich with performer names (staff-submitted rows have no performer)
+        performer_ids = {r.performed_by for r in rows if r.performed_by is not None}
+        if performer_ids:
+            from app.models.iam import AdminAccount
+            perf_rows = await db.execute(
+                select(AdminAccount.id, AdminAccount.display_name).where(
+                    AdminAccount.id.in_(performer_ids)
+                )
+            )
+            perf_map = {r[0]: r[1] for r in perf_rows.all()}
+            for item, mv in zip(items, rows):
+                item.performed_by_name = perf_map.get(mv.performed_by) if mv.performed_by else None
 
     return APIResponse(
         data=PaginatedResponse(

@@ -273,14 +273,21 @@ async def _deduct_stock_for_order(
     db: AsyncSession,
     order: Order,
     line_items: list,
-) -> None:
+) -> list[str]:
     """Deduct inventory stock based on menu item recipes for an order.
 
-    `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and `quantity` attributes.
+    `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and
+    `quantity` attributes.
+
+    Business decision (2026-08-07): a sale is NEVER blocked by stock — the
+    counter can't refuse a paying customer because opening stock wasn't keyed.
+    Stock is deducted in full and may go negative; a warning string per
+    affected item is returned for the caller to surface/log.
     """
+    warnings: list[str] = []
     recipe_needs = await _compute_recipe_needs(db, line_items)
     if not recipe_needs:
-        return
+        return warnings
 
     inv_item_result = await db.execute(
         select(InventoryItem).where(InventoryItem.id.in_(list(recipe_needs.keys())))
@@ -289,7 +296,7 @@ async def _deduct_stock_for_order(
 
     recipe_needs = {inv_id: qty for inv_id, qty in recipe_needs.items() if inv_id in inv_items}
     if not recipe_needs:
-        return
+        return warnings
 
     stock_result = await db.execute(
         select(InventoryStock).where(
@@ -312,17 +319,14 @@ async def _deduct_stock_for_order(
 
     for inv_id, qty_needed in recipe_needs.items():
         stock = stock_map[inv_id]
-        current = Decimal(str(stock.current_stock))
-        if current < qty_needed:
-            inv = inv_items[inv_id]
-            raise OrderError(f"Insufficient stock for {inv.item_name}: need {qty_needed:.3f}, have {current:.3f}", 400)
-
-    for inv_id, qty_needed in recipe_needs.items():
-        stock = stock_map[inv_id]
         inv = inv_items[inv_id]
         old_stock = Decimal(str(stock.current_stock))
         new_stock = old_stock - qty_needed
         stock.current_stock = new_stock
+        if new_stock < 0:
+            warnings.append(
+                f"Stock for {inv.item_name} is now {new_stock:.3f} {inv.unit_of_measure} — please key in opening stock or receive a purchase order"
+            )
         db.add(InventoryMovementLog(
             store_id=order.store_id,
             inventory_item_id=inv_id,
@@ -337,6 +341,8 @@ async def _deduct_stock_for_order(
             unit_cost_at_movement=inv.unit_cost if inv.unit_cost is not None else None,
             movement_cost=qty_needed * Decimal(str(inv.unit_cost or 0)),
         ))
+
+    return warnings
 
 
 async def _compute_recipe_needs(db: AsyncSession, line_items: list) -> dict[int, Decimal]:
@@ -1027,8 +1033,11 @@ async def create_order_from_cart(
         except ClassSessionError as e:
             raise OrderError(e.detail, e.status_code)
 
-    # Deduct recipe-based stock
-    await _deduct_stock_for_order(db, order, cart_items)
+    # Deduct recipe-based stock (never blocks; warnings logged for ops review)
+    stock_warnings = await _deduct_stock_for_order(db, order, cart_items)
+    for w in stock_warnings:
+        import logging
+        logging.getLogger("app.stock").warning("order %s: %s", order.order_number, w)
 
     # Create initial status log
     reason_parts = ["Order created"]

@@ -64,7 +64,7 @@ export default function MenuItemsPage() {
         fontSize: 13,
         borderRadius: "var(--radius-sm)"
       }}>
-          <option value="">{t("menu_items.all")}{items.length})</option>
+          <option value="">{t("menu_items.all")} ({items.length})</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
         </select>
       </div>
@@ -130,7 +130,7 @@ export default function MenuItemsPage() {
                     await api.del(`/admin/menu/items/${item.id}`);
                     const d = await api.getRaw<{
                       items: any[];
-                    }>("/admin/menu/items?per_page=100");
+                    }>("/admin/menu/items?per_page=200");
                     setItems(d.items || []);
                   } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
                 }

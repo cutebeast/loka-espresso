@@ -348,7 +348,7 @@ export default function NewItemPage() {
               ...form,
               item_code: e.target.value
             })} placeholder={t("menu_items_new.auto_generated")} /></div>
-            <div className="df-field"><label className="form-label">{t("menu_items_new.price")}</label><input required type="number" step="0.01" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.base_price != null ? Number(form.base_price).toFixed(2) : ""} onChange={e => setForm({
+            <div className="df-field"><label className="form-label">{t("menu_items_new.price")}</label><input required type="number" step="0.01" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.base_price ?? ""} onChange={e => setForm({
               ...form,
               base_price: e.target.value
             })} /></div>

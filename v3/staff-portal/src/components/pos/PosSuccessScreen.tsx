@@ -10,6 +10,7 @@ interface PosSuccessScreenProps {
     order_number?: string | number;
     order_id?: string | number;
     total?: number;
+    stock_warnings?: string[];
   };
   total: number;
   change: number;
@@ -58,6 +59,23 @@ export default function PosSuccessScreen({
       fontSize: 13,
       opacity: 0.7
     }}>{t("pos.change_rm")}{Number(change ?? 0).toFixed(2)}</p>}
+
+      {Array.isArray(result.stock_warnings) && result.stock_warnings.length > 0 && <div style={{
+      marginTop: 16,
+      padding: 12,
+      textAlign: "left",
+      fontSize: 13,
+      color: "var(--color-warning, #b45309)",
+      background: "#FFFBEB",
+      border: "1px solid #FCD34D",
+      borderRadius: 8
+    }}>
+          <div style={{
+        fontWeight: 700,
+        marginBottom: 4
+      }}>{t("pos.stock_warnings")}</div>
+          {result.stock_warnings.map((w, i) => <div key={i}>{w}</div>)}
+        </div>}
 
       <div style={{
       display: "flex",

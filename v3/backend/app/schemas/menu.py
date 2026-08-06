@@ -151,7 +151,6 @@ class MenuItemUpdate(BaseSchema):
     prep_time_minutes: int | None = Field(None, ge=1, le=120)
     calories: int | None = Field(None, ge=0)
     minimum_tier_id: int | None = None
-    dietary_tags: list[str] | None = None
     tax_category_id: int | None = None
     is_bundle_eligible: bool | None = None
     is_addon_deal_eligible: bool | None = None

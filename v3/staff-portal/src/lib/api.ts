@@ -910,7 +910,7 @@ export function createPosOrder(payload: {
   client_ref?: string;
   payment?: { amount_tendered?: number; method?: string };
 }) {
-  return api.post<{ order_id: number; order_number: string; total: number; change?: number }>("/staff/pos/orders", payload);
+  return api.post<{ order_id: number; order_number: string; total: number; change?: number; stock_warnings?: string[] }>("/staff/pos/orders", payload);
 }
 
 export async function generateTableQr(_storeId: number, tableId: number): Promise<Table | null> {

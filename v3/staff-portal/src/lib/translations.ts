@@ -334,6 +334,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "pos.payment_successful": "Payment Successful",
   "pos.order_sent_to_kitchen": "Order Sent to Kitchen",
   "pos.kitchen_notified": "Kitchen notified",
+  "pos.stock_warnings": "Stock warnings — check inventory:",
   "pos.point_camera_at_the_qr_code": "Point camera at the QR code",
   "pos.price": "Price",
   "pos.print_kitchen_ticket": "Print Kitchen Ticket",

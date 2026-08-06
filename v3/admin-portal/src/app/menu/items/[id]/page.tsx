@@ -410,6 +410,14 @@ export default function ItemEditPage() {
         return;
       }
     }
+    // Drop recipe rows with no inventory item selected; if the user added
+    // rows but left every one empty, block instead of sending a 500.
+    const rawRecipes = (form.recipes || []) as any[];
+    const recipes = rawRecipes.filter((rc: any) => rc.inventory_item_id);
+    if (rawRecipes.length > 0 && recipes.length === 0) {
+      setMsg("Recipe row 1: select an inventory item");
+      return;
+    }
     setSaving(true);
     try {
       const pl: any = {
@@ -419,8 +427,13 @@ export default function ItemEditPage() {
       pl.category_id = Number(pl.category_id) || null;
       pl.tax_category_id = Number(pl.tax_category_id) || null;
       pl.calories = pl.calories ? Number(pl.calories) : null;
-      pl.prep_time_minutes = Number(pl.prep_time_minutes) || 10;
+      pl.prep_time_minutes = pl.prep_time_minutes ? Number(pl.prep_time_minutes) : null;
       pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
+      pl.recipes = recipes.map((rc: any) => ({
+        ...rc,
+        quantity_required: Number(rc.quantity_required) || 1,
+        waste_factor: Number(rc.waste_factor) || 0
+      }));
       // Add-on deal fields: send nulls when the deal is off or value is empty —
       // the backend expects a decimal or null, never "".
       if (!pl.is_addon_deal_eligible || !form.addon_discount_value) {
@@ -458,6 +471,26 @@ export default function ItemEditPage() {
       });
     } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
   };
+  // Same upsert as upsertTr but keyed by table_name + record_id + column_name,
+  // for modifier groups (group_name) and options (option_name).
+  const upsertModTr = async (table: string, recordId: number, field: string, locale: string, src: string, text: string) => {
+    try {
+      const rt = await api.getRaw<any>(`/admin/translations?table_name=${table}&record_id=${recordId}&column_name=${field}&locale=${locale}&per_page=1`);
+      const ex = rt?.items?.[0];
+      if (ex) await api.put(`/admin/translations/${ex.id}`, {
+        translated_text: text
+      });else await api.post("/admin/translations", {
+        translation_key: `${table}.${recordId}.${field}`,
+        locale,
+        namespace: "menu",
+        translated_text: text,
+        source_text: src,
+        table_name: table,
+        record_id: recordId,
+        column_name: field
+      });
+    } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
+  };
   const regenAll = async () => {
     setRegen(true);
     let c = 0;
@@ -490,6 +523,16 @@ export default function ItemEditPage() {
       for (const f of TR_FIELDS) {
         const t = tr[`${loc}:${f.key}`] || "";
         if (t) await upsertTr(f.key, loc, (form[f.key] || "").trim(), t);
+      }
+      // Modifier group/option translations live under `mod:group_<id>` /
+      // `mod:opt_<id>` in tr — persist them against their own tables.
+      for (const g of modTr.groups) {
+        const gt = tr[`${loc}:mod:group_${g.id}`] || "";
+        if (gt) await upsertModTr("menu_modifier_groups", g.id, "group_name", loc, g.name, gt);
+        for (const o of g.options) {
+          const ot = tr[`${loc}:mod:opt_${o.id}`] || "";
+          if (ot) await upsertModTr("menu_modifier_options", o.id, "option_name", loc, o.name, ot);
+        }
       }
       setMsg(t("admin.common.saved"));
       setTimeout(() => setMsg(""), 2000);
@@ -591,7 +634,7 @@ export default function ItemEditPage() {
             ...form,
             item_code: e.target.value
           })} /></div>
-            <div className="df-field"><label className="form-label">{t("menu_items_[id].price")}</label><input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm" value={form.base_price != null ? Number(form.base_price).toFixed(2) : ""} onChange={e => setForm({
+            <div className="df-field"><label className="form-label">{t("menu_items_[id].price")}</label><input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm" value={form.base_price ?? ""} onChange={e => setForm({
             ...form,
             base_price: e.target.value
           })} /></div>

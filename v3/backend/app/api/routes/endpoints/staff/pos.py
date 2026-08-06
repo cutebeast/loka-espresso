@@ -414,8 +414,8 @@ async def staff_pos_create_order(
             li.order_id = order.id
             db.add(li)
 
-        # Deduct recipe-based stock
-        await _deduct_stock_for_order(db, order, line_items)
+        # Deduct recipe-based stock (never blocks the sale; warnings surfaced)
+        stock_warnings = await _deduct_stock_for_order(db, order, line_items)
 
         # Loyalty points: credit immediately only when the order is actually
         # paid now (cash / manual card). Pay-later and Stripe-QR orders get an
@@ -608,6 +608,9 @@ async def staff_pos_create_order(
         # QR and pay from their phone via the PWA without logging in.
         from app.core.security import create_guest_pay_token
         response_data["pay_token"] = create_guest_pay_token(order.id, order.store_id)
+
+    if stock_warnings:
+        response_data["stock_warnings"] = stock_warnings
 
     return APIResponse(data=response_data)
 

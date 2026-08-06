@@ -78,7 +78,8 @@ function WastagePageContent() {
       setError(t("wastage.err_quantity"));
       return;
     }
-    if (form.reason.trim().length < 3) {
+    // Backend requires reason min_length=5 (staff_report_waste Form field).
+    if (form.reason.trim().length < 5) {
       setError(t("wastage.err_reason"));
       return;
     }

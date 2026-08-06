@@ -203,6 +203,7 @@ function PosPageContent() {
       order_number?: string | number;
       order_id?: string | number;
       total?: number;
+      stock_warnings?: string[];
     }} total={pos.total} change={pos.successChange} paymentMethod={pos.paymentMethod} onNewOrder={pos.newOrder} />;
   }
 

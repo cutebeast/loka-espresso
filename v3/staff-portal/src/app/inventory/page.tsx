@@ -101,6 +101,11 @@ function InventoryPageContent() {
     if (fileRef.current) fileRef.current.value = "";
   };
   const handleUpdate = async (itemId: number) => {
+    // Number("") is 0 — treat a cleared input as invalid instead of zeroing stock.
+    if (editStock.trim() === "") {
+      setError(t("inventory.err_invalid_count"));
+      return;
+    }
     const newCount = Number(editStock);
     if (isNaN(newCount) || newCount < 0) {
       setError(t("inventory.err_invalid_count"));
@@ -158,7 +163,7 @@ function InventoryPageContent() {
         width: "auto",
         marginBottom: 0
       }} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-          <option value="">{t("inventory.all_categories")}{items.length})</option>
+          <option value="">{t("inventory.all_categories")} ({items.length})</option>
           {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
         </select>
         <span style={{

@@ -119,7 +119,8 @@ export default function InventoryItemEditPage() {
         ...form,
         category_id: Number(form.category_id) || null,
         supplier_id: Number(form.supplier_id) || null,
-        unit_cost: Number(form.unit_cost)
+        // Blank unit cost means "unknown" — send null, not 0.
+        unit_cost: form.unit_cost === "" || form.unit_cost == null ? null : Number(form.unit_cost)
       };
       await api.patch(`/admin/inventory/items/${itemId}`, pl);
       setMsg(t("admin.common.saved"));

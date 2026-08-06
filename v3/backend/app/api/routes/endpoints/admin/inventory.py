@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
-from app.models.inventory import InventoryCategory, InventoryItem, InventoryStock, Supplier
+from app.models.inventory import InventoryCategory, InventoryItem, InventoryMovementLog, InventoryStock, Supplier
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.inventory import (
@@ -447,8 +447,34 @@ async def update_stock(
     await require_store_admin(db, admin, stock.store_id)
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # A direct current_stock edit must leave an audit trail — otherwise the
+    # movement log stops reconciling with actual stock.
+    old_stock = stock.current_stock
+    new_count = update_data.get("current_stock")
+    stock_delta = None
+    if new_count is not None:
+        from decimal import Decimal
+        new_count = Decimal(str(new_count))
+        if new_count != old_stock:
+            stock_delta = new_count - old_stock
+        update_data["current_stock"] = new_count
+
     for key, value in update_data.items():
         setattr(stock, key, value)
+
+    if stock_delta is not None:
+        admin_name = admin.email if hasattr(admin, "email") else f"Admin #{admin.id}"
+        db.add(InventoryMovementLog(
+            inventory_item_id=stock.inventory_item_id,
+            store_id=stock.store_id,
+            movement_type="adjustment",
+            quantity_delta=stock_delta,
+            stock_after=new_count,
+            reserved_after=stock.reserved_stock,
+            reason=f"Stock level edited by {admin_name}",
+            performed_by=admin.id,
+        ))
 
     await db.commit()
     await db.refresh(stock)

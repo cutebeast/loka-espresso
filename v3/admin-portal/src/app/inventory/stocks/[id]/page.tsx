@@ -33,7 +33,14 @@ export default function StockEditPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    current_stock: number | string;
+    reserved_stock: number | string;
+    reorder_level: number | string;
+    reorder_quantity: number | string;
+    par_level: number | string;
+    storage_location: string;
+  }>({
     current_stock: 0,
     reserved_stock: 0,
     reorder_level: 0,
@@ -62,12 +69,14 @@ export default function StockEditPage() {
     setSaving(true);
     setError("");
     try {
+      // Blank numeric fields mean "leave unset" — send null, not 0.
+      const num = (v: number | string) => v === "" || v == null ? null : Number(v);
       await api.patch(`/admin/inventory/stocks/${id}`, {
-        current_stock: Number(form.current_stock),
-        reserved_stock: Number(form.reserved_stock),
-        reorder_level: Number(form.reorder_level),
-        reorder_quantity: Number(form.reorder_quantity),
-        par_level: Number(form.par_level),
+        current_stock: num(form.current_stock),
+        reserved_stock: num(form.reserved_stock),
+        reorder_level: num(form.reorder_level),
+        reorder_quantity: num(form.reorder_quantity),
+        par_level: num(form.par_level),
         storage_location: form.storage_location || null
       });
       setMsg("Stock updated");
@@ -145,35 +154,35 @@ export default function StockEditPage() {
             <label className="form-label">{t("inventory_stocks_[id].current_stock")}</label>
             <input type="number" step="0.01" value={form.current_stock} onChange={e => setForm(f => ({
             ...f,
-            current_stock: Number(e.target.value)
+            current_stock: e.target.value
           }))} />
           </div>
           <div className="df-field">
             <label className="form-label">{t("inventory_stocks_[id].reserved_stock")}</label>
             <input type="number" step="0.01" value={form.reserved_stock} onChange={e => setForm(f => ({
             ...f,
-            reserved_stock: Number(e.target.value)
+            reserved_stock: e.target.value
           }))} />
           </div>
           <div className="df-field">
             <label className="form-label">{t("inventory_stocks_[id].reorder_level")}</label>
             <input type="number" step="0.01" value={form.reorder_level} onChange={e => setForm(f => ({
             ...f,
-            reorder_level: Number(e.target.value)
+            reorder_level: e.target.value
           }))} />
           </div>
           <div className="df-field">
             <label className="form-label">{t("inventory_stocks_[id].reorder_quantity")}</label>
             <input type="number" step="0.01" value={form.reorder_quantity} onChange={e => setForm(f => ({
             ...f,
-            reorder_quantity: Number(e.target.value)
+            reorder_quantity: e.target.value
           }))} />
           </div>
           <div className="df-field">
             <label className="form-label">{t("inventory_stocks_[id].par_level")}</label>
             <input type="number" step="0.01" value={form.par_level} onChange={e => setForm(f => ({
             ...f,
-            par_level: Number(e.target.value)
+            par_level: e.target.value
           }))} />
           </div>
           <div className="df-field" style={{

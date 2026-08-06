@@ -458,7 +458,6 @@ CREATE TABLE IF NOT EXISTS inventory_stock (
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT uq_inventory_stock_item_store UNIQUE (inventory_item_id, store_id), 
-	CONSTRAINT ck_inventory_stock_current_stock CHECK (current_stock >= 0), 
 	CONSTRAINT ck_inventory_stock_reserved_stock CHECK (reserved_stock >= 0), 
 	CONSTRAINT ck_inventory_stock_reorder_level CHECK (reorder_level >= 0), 
 	CONSTRAINT ck_inventory_stock_reorder_quantity CHECK (reorder_quantity >= 0), 
@@ -744,4 +743,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'r8f9a0b1c2d3' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 't0b1c2d3e4f5' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

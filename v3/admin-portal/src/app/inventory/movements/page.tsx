@@ -23,6 +23,10 @@ export default function InventoryMovementsPage() {
   const [movementType, setMovementType] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const perPage = 100;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
   const fetchStores = async () => {
     try {
       const d = await api.getRaw<any>("/admin/stores?per_page=50");
@@ -37,15 +41,18 @@ export default function InventoryMovementsPage() {
       if (fromDate) params.set("date_from", fromDate);
       if (toDate) params.set("date_to", toDate);
       if (storeId) params.set("store_id", storeId);
+      params.set("page", String(page));
+      params.set("per_page", String(perPage));
       const d = await api.getRaw<any>(`/admin/inventory/movements?${params}`);
       const list = d.items || d || [];
       setItems(Array.isArray(list) ? list : []);
+      setTotal(d?.total || 0);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [movementType, fromDate, toDate, storeId]);
+  }, [movementType, fromDate, toDate, storeId, page]);
   useEffect(() => {
     (async () => {
       await fetchStores();
@@ -84,7 +91,10 @@ export default function InventoryMovementsPage() {
           display: "block",
           marginBottom: 4
         }}>{t("inventory_movements.store")}</label>
-          <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{
+          <select value={storeId} onChange={e => {
+          setStoreId(e.target.value);
+          setPage(1);
+        }} style={{
           padding: "6px 12px",
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
@@ -96,7 +106,10 @@ export default function InventoryMovementsPage() {
           display: "block",
           marginBottom: 4
         }}>{t("inventory_movements.type")}</label>
-          <select value={movementType} onChange={e => setMovementType(e.target.value)} style={{
+          <select value={movementType} onChange={e => {
+          setMovementType(e.target.value);
+          setPage(1);
+        }} style={{
           padding: "6px 12px",
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
@@ -107,7 +120,10 @@ export default function InventoryMovementsPage() {
           color: "var(--color-text-muted)",
           display: "block",
           marginBottom: 4
-        }}>{t("inventory_movements.from")}</label><input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={{
+        }}>{t("inventory_movements.from")}</label><input type="date" value={fromDate} onChange={e => {
+          setFromDate(e.target.value);
+          setPage(1);
+        }} style={{
           padding: "6px 10px",
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
@@ -118,7 +134,10 @@ export default function InventoryMovementsPage() {
           color: "var(--color-text-muted)",
           display: "block",
           marginBottom: 4
-        }}>{t("inventory_movements.to")}</label><input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={{
+        }}>{t("inventory_movements.to")}</label><input type="date" value={toDate} onChange={e => {
+          setToDate(e.target.value);
+          setPage(1);
+        }} style={{
           padding: "6px 10px",
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
@@ -178,5 +197,21 @@ export default function InventoryMovementsPage() {
             </tr>)}
         </tbody>
       </table></div>
+
+      {totalPages > 1 && <div style={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 16
+    }}>
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn btn-outline btn-sm">{t("inventory_movements.prev", "Prev")}</button>
+          <span style={{
+        fontSize: 13,
+        padding: "4px 8px",
+        display: "flex",
+        alignItems: "center"
+      }}>{t("common.page_of", { page, total: totalPages })}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn btn-outline btn-sm">{t("inventory_movements.next", "Next")}</button>
+        </div>}
     </div>;
 }

@@ -203,8 +203,10 @@ async def staff_report_waste(
             await db.flush()
 
         delta = Decimal(str(round(-quantity, 4)))
+        # Stock may go negative (business decision 2026-08-07) — the movement
+        # log must reconcile with actual stock, so no clamping.
         new_stock = stock.current_stock + delta
-        stock.current_stock = max(Decimal(0), new_stock)
+        stock.current_stock = new_stock
         stock.updated_at = now
 
         movement = InventoryMovementLog(
@@ -212,7 +214,8 @@ async def staff_report_waste(
             store_id=store_id,
             movement_type="waste",
             quantity_delta=delta,
-            stock_after=stock.current_stock,
+            stock_after=new_stock,
+            reserved_after=stock.reserved_stock,
             reason=f"[Reported by {staff_name}] {reason}",
             image_urls=image_urls or None,
         )
@@ -289,7 +292,7 @@ async def staff_report_waste(
                 )
                 db.add(stock_row)
                 await db.flush()
-            new_stock = max(Decimal(0), stock_row.current_stock - total_qty)
+            new_stock = stock_row.current_stock - total_qty
             stock_row.current_stock = new_stock
             stock_row.updated_at = now
             movement = InventoryMovementLog(
@@ -298,6 +301,7 @@ async def staff_report_waste(
                 movement_type="waste",
                 quantity_delta=-total_qty,
                 stock_after=new_stock,
+                reserved_after=stock_row.reserved_stock,
                 reason=f"[Menu item waste: {menu_item.item_name}] {reason}",
                 image_urls=image_urls or None,
             )

@@ -93,10 +93,96 @@ class _MenuVariantInline(BaseSchema):
 class _MenuItemRecipeInline(BaseSchema):
     inventory_item_id: int
     menu_variant_id: int | None = None
-    quantity_required: float = 1.0
+    quantity_required: float = Field(1.0, gt=0)
     unit_of_measure: str = "unit"
     is_primary_component: bool = False
-    waste_factor: float = 0.05
+    waste_factor: float = Field(0.05, ge=0, le=1)
+
+
+async def _validate_recipe_payloads(
+    db, item_id: int, recipes: list[dict]
+) -> list[dict]:
+    """Validate + normalize raw recipe dicts (shared by create and update).
+
+    - inventory_item_id must exist (active item) — else 400, not an FK 500
+    - menu_variant_id must belong to THIS menu item — else 400 (a cross-linked
+      recipe would silently never match at deduction time)
+    - numeric bounds enforced (quantity_required > 0, 0 <= waste_factor <= 1)
+    - duplicates by (menu_variant_id, inventory_item_id) collapse to the LAST
+      row — duplicates would double-deduct stock on every sale
+    """
+    from app.models.inventory import InventoryItem
+
+    normalized: list[dict] = []
+    for r_data in recipes:
+        if not isinstance(r_data, dict) or r_data.get("inventory_item_id") in (None, ""):
+            raise HTTPException(
+                status_code=400,
+                detail="Each recipe must include 'inventory_item_id'",
+            )
+        try:
+            quantity_required = float(r_data.get("quantity_required", 1.0))
+            waste_factor = float(r_data.get("waste_factor", 0.05))
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail="Recipe 'quantity_required' and 'waste_factor' must be numbers",
+            )
+        if quantity_required <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Recipe 'quantity_required' must be greater than 0",
+            )
+        if not 0 <= waste_factor <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Recipe 'waste_factor' must be between 0 and 1",
+            )
+        normalized.append({
+            "inventory_item_id": int(r_data["inventory_item_id"]),
+            "menu_variant_id": r_data.get("menu_variant_id") or None,
+            "quantity_required": quantity_required,
+            "unit_of_measure": r_data.get("unit_of_measure") or "unit",
+            "is_primary_component": bool(r_data.get("is_primary_component", False)),
+            "waste_factor": waste_factor,
+        })
+
+    inv_ids = {r["inventory_item_id"] for r in normalized}
+    if inv_ids:
+        inv_result = await db.execute(
+            select(InventoryItem.id).where(
+                InventoryItem.id.in_(inv_ids),
+                InventoryItem.is_active.is_(True),
+            )
+        )
+        valid_inv = {row[0] for row in inv_result.all()}
+        invalid_inv = inv_ids - valid_inv
+        if invalid_inv:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid inventory item IDs in recipes: {sorted(invalid_inv)}",
+            )
+
+    variant_ids = {r["menu_variant_id"] for r in normalized if r["menu_variant_id"] is not None}
+    if variant_ids:
+        var_result = await db.execute(
+            select(MenuVariant.id).where(
+                MenuVariant.id.in_(variant_ids),
+                MenuVariant.parent_item_id == item_id,
+            )
+        )
+        valid_var = {row[0] for row in var_result.all()}
+        invalid_var = variant_ids - valid_var
+        if invalid_var:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Recipe menu_variant_id(s) do not belong to this menu item: {sorted(invalid_var)}",
+            )
+
+    deduped: dict[tuple, dict] = {}
+    for r in normalized:
+        deduped[(r["menu_variant_id"], r["inventory_item_id"])] = r
+    return list(deduped.values())
 
 
 class MenuItemCreateRequest(MenuItemCreate):
@@ -457,6 +543,7 @@ async def create_item(
                 is_available=var_data.is_available,
             )
             db.add(variant)
+        await db.flush()  # variant IDs needed for recipe ownership validation
 
     if data.allergen_ids:
         allergen_result = await db.execute(
@@ -476,20 +563,28 @@ async def create_item(
             db.add(MenuItemAllergen(menu_item_id=item.id, allergen_id=allergen_id))
 
     if data.dietary_tag_ids:
+        tag_result = await db.execute(
+            select(DietaryTag.id).where(
+                DietaryTag.id.in_(data.dietary_tag_ids),
+                DietaryTag.is_active.is_(True),
+            )
+        )
+        valid_tag_ids = {row[0] for row in tag_result.all()}
+        invalid_tag_ids = set(data.dietary_tag_ids) - valid_tag_ids
+        if invalid_tag_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid dietary tag IDs: {sorted(invalid_tag_ids)}",
+            )
         for dt_id in data.dietary_tag_ids:
             db.add(MenuItemDietaryTag(menu_item_id=item.id, dietary_tag_id=dt_id))
 
     if data.recipes:
-        for r_data in data.recipes:
-            db.add(MenuItemRecipe(
-                menu_item_id=item.id,
-                menu_variant_id=r_data.menu_variant_id,
-                inventory_item_id=r_data.inventory_item_id,
-                quantity_required=r_data.quantity_required,
-                unit_of_measure=r_data.unit_of_measure,
-                is_primary_component=r_data.is_primary_component,
-                waste_factor=r_data.waste_factor,
-            ))
+        recipe_dicts = await _validate_recipe_payloads(
+            db, item.id, [r.model_dump() for r in data.recipes]
+        )
+        for r_data in recipe_dicts:
+            db.add(MenuItemRecipe(menu_item_id=item.id, **r_data))
 
     await db.commit()
     await db.refresh(item)
@@ -583,78 +678,97 @@ async def update_item(
                     detail="Each modifier group must include a non-empty 'group_name'",
                 )
     if recipes_data is not None:
-        for r_data in recipes_data:
-            if not isinstance(r_data, dict) or r_data.get("inventory_item_id") is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Each recipe must include 'inventory_item_id'",
-                )
-            try:
-                quantity_required = float(r_data.get("quantity_required", 1.0))
-                waste_factor = float(r_data.get("waste_factor", 0.05))
-            except (TypeError, ValueError):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Recipe 'quantity_required' and 'waste_factor' must be numbers",
-                )
-            if quantity_required <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Recipe 'quantity_required' must be greater than 0",
-                )
-            if not 0 <= waste_factor <= 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Recipe 'waste_factor' must be between 0 and 1",
-                )
+        recipes_data = await _validate_recipe_payloads(db, item.id, recipes_data)
 
     for field, value in update_data.items():
         setattr(item, field, value)
 
     await db.flush()
 
-    # Replace modifier groups if provided
+    # Update modifier groups IN PLACE (keyed by id) — the old delete-and-
+    # recreate wiped manually reviewed translations and regenerated IDs on
+    # every save, even when nothing about the modifiers changed.
     if modifier_groups_data is not None:
-        # Delete existing
-        existing = await db.execute(
+        existing_result = await db.execute(
             select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id == item.id)
         )
-        for g in existing.scalars().all():
-            opts = await db.execute(
-                select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == g.id)
-            )
-            for o in opts.scalars().all():
-                await delete_translations(db, "menu_modifier_options", o.id)
-                await db.delete(o)
-            await delete_translations(db, "menu_modifier_groups", g.id)
-            await db.delete(g)
+        existing_groups = {g.id: g for g in existing_result.scalars().all()}
+        seen_group_ids: set[int] = set()
 
-        # Re-create
         for group_data in modifier_groups_data:
-            group = MenuModifierGroup(
-                menu_item_id=item.id,
-                group_name=group_data["group_name"],
-                display_order=group_data.get("display_order", 0),
-                selection_type=group_data.get("selection_type", "single"),
-                is_required=group_data.get("is_required", False),
-                min_selections=group_data.get("min_selections", 0),
-                max_selections=group_data.get("max_selections", 1),
+            gid = group_data.get("id")
+            group = existing_groups.get(gid) if gid else None
+            if group is None:
+                group = MenuModifierGroup(menu_item_id=item.id, group_name=group_data["group_name"])
+                db.add(group)
+                await db.flush()
+            group.group_name = group_data["group_name"]
+            group.display_order = group_data.get("display_order", 0)
+            group.selection_type = group_data.get("selection_type", "single")
+            group.is_required = group_data.get("is_required", False)
+            group.min_selections = group_data.get("min_selections", 0)
+            group.max_selections = group_data.get("max_selections", 1)
+            seen_group_ids.add(group.id)
+
+            opts_result = await db.execute(
+                select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == group.id)
             )
-            db.add(group)
-            await db.flush()
+            existing_opts = {o.id: o for o in opts_result.scalars().all()}
+            seen_opt_ids: set[int] = set()
             for opt_data in group_data.get("options", []):
-                option = MenuModifierOption(
-                    modifier_group_id=group.id,
-                    option_name=opt_data["option_name"],
-                    display_order=opt_data.get("display_order", 0),
-                    price_adjustment=opt_data.get("price_adjustment", 0),
-                    is_default=opt_data.get("is_default", False),
-                    is_available=opt_data.get("is_available", True),
+                if not isinstance(opt_data, dict) or not opt_data.get("option_name"):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Each modifier option must include a non-empty 'option_name' (group '{group_data['group_name']}')",
+                    )
+                oid = opt_data.get("id")
+                option = existing_opts.get(oid) if oid else None
+                if option is None:
+                    option = MenuModifierOption(
+                        modifier_group_id=group.id,
+                        option_name=opt_data["option_name"],
+                    )
+                    db.add(option)
+                    await db.flush()
+                option.option_name = opt_data["option_name"]
+                option.display_order = opt_data.get("display_order", 0)
+                option.price_adjustment = opt_data.get("price_adjustment", 0)
+                option.is_default = opt_data.get("is_default", False)
+                option.is_available = opt_data.get("is_available", True)
+                seen_opt_ids.add(option.id)
+
+            for oid, opt in existing_opts.items():
+                if oid not in seen_opt_ids:
+                    await delete_translations(db, "menu_modifier_options", oid)
+                    await db.delete(opt)
+
+        for gid, grp in existing_groups.items():
+            if gid not in seen_group_ids:
+                opts = await db.execute(
+                    select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == gid)
                 )
-                db.add(option)
+                for o in opts.scalars().all():
+                    await delete_translations(db, "menu_modifier_options", o.id)
+                    await db.delete(o)
+                await delete_translations(db, "menu_modifier_groups", gid)
+                await db.delete(grp)
 
     # Replace allergen_ids if provided
     if allergen_ids_data is not None:
+        if allergen_ids_data:
+            allergen_result = await db.execute(
+                select(Allergen.id).where(
+                    Allergen.id.in_(allergen_ids_data),
+                    Allergen.deleted_at.is_(None),
+                )
+            )
+            valid_allergen_ids = {row[0] for row in allergen_result.all()}
+            invalid_allergen_ids = set(allergen_ids_data) - valid_allergen_ids
+            if invalid_allergen_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid allergen IDs: {sorted(invalid_allergen_ids)}",
+                )
         existing = await db.execute(
             select(MenuItemAllergen).where(MenuItemAllergen.menu_item_id == item.id)
         )
@@ -665,6 +779,20 @@ async def update_item(
 
     # Replace dietary_tag_ids if provided
     if dietary_tag_ids_data is not None:
+        if dietary_tag_ids_data:
+            tag_result = await db.execute(
+                select(DietaryTag.id).where(
+                    DietaryTag.id.in_(dietary_tag_ids_data),
+                    DietaryTag.is_active.is_(True),
+                )
+            )
+            valid_tag_ids = {row[0] for row in tag_result.all()}
+            invalid_tag_ids = set(dietary_tag_ids_data) - valid_tag_ids
+            if invalid_tag_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid dietary tag IDs: {sorted(invalid_tag_ids)}",
+                )
         existing = await db.execute(
             select(MenuItemDietaryTag).where(MenuItemDietaryTag.menu_item_id == item.id)
         )
@@ -673,7 +801,7 @@ async def update_item(
         for did in dietary_tag_ids_data:
             db.add(MenuItemDietaryTag(menu_item_id=item.id, dietary_tag_id=did))
 
-    # Replace recipes if provided
+    # Replace recipes if provided (payload already validated + deduped)
     if recipes_data is not None:
         existing = await db.execute(
             select(MenuItemRecipe).where(MenuItemRecipe.menu_item_id == item.id)
@@ -681,15 +809,7 @@ async def update_item(
         for r in existing.scalars().all():
             await db.delete(r)
         for r_data in recipes_data:
-            db.add(MenuItemRecipe(
-                menu_item_id=item.id,
-                menu_variant_id=r_data.get("menu_variant_id"),
-                inventory_item_id=r_data["inventory_item_id"],
-                quantity_required=r_data.get("quantity_required", 1.0),
-                unit_of_measure=r_data.get("unit_of_measure", "unit"),
-                is_primary_component=r_data.get("is_primary_component", False),
-                waste_factor=r_data.get("waste_factor", 0.05),
-            ))
+            db.add(MenuItemRecipe(menu_item_id=item.id, **r_data))
 
     await db.commit()
     await db.refresh(item)

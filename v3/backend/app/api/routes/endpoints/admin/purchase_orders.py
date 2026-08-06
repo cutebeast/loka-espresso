@@ -345,7 +345,6 @@ async def receive_purchase_order(
         ]
 
     total_received = 0.0
-    all_fully_received = True
 
     for recv in data.lines:
         line = lines.get(recv.line_id)
@@ -366,8 +365,6 @@ async def receive_purchase_order(
             )
         line.quantity_received = recv.quantity_received
         total_received += recv.quantity_received
-        if recv.quantity_received < line.quantity_ordered:
-            all_fully_received = False
 
         if delta_qty > 0:
             stock_result = await db.execute(
@@ -407,7 +404,12 @@ async def receive_purchase_order(
             ))
             stock.current_stock = new_stock
 
-    # Update PO status based on receipt
+    # Update PO status based on receipt — "received" only when EVERY line is
+    # fully received (lines absent from the payload count by stored amounts).
+    all_fully_received = all(
+        Decimal(str(line.quantity_received or 0)) >= Decimal(str(line.quantity_ordered))
+        for line in lines.values()
+    )
     if total_received == 0:
         pass  # keep current status
     elif all_fully_received:

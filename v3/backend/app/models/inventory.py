@@ -106,7 +106,8 @@ class InventoryStock(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("inventory_item_id", "store_id", name="uq_inventory_stock_item_store"),
-        CheckConstraint("current_stock >= 0", name="ck_inventory_stock_current_stock"),
+        # NOTE: current_stock may go negative by design (2026-08-07) — sales and
+        # waste are never blocked by stock level; ops reconcile via movements.
         CheckConstraint("reserved_stock >= 0", name="ck_inventory_stock_reserved_stock"),
         CheckConstraint("reorder_level >= 0", name="ck_inventory_stock_reorder_level"),
         CheckConstraint("reorder_quantity >= 0", name="ck_inventory_stock_reorder_quantity"),

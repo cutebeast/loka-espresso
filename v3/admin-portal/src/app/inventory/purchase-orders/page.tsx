@@ -76,8 +76,15 @@ export default function PurchaseOrdersPage() {
     setStoreId(sid);
     setForm(f => ({
       ...f,
+      supplier_id: "",
       store_id: sid
     }));
+    // Suppliers are store-scoped on the backend — only offer the ones
+    // valid for the selected store.
+    try {
+      const d = await api.getRaw<any>(`/admin/inventory/suppliers?per_page=200${sid ? `&store_id=${sid}` : ""}`);
+      setSuppliers(Array.isArray(d) ? d : d.items || []);
+    } catch (e: any) {console.error(e); setError(e.message || t("admin.errors.loadFailed")); }
     if (!sid) return;
     try {
       const d = await api.getRaw<any>(`/admin/inventory/items?store_id=${sid}&per_page=100`);
@@ -132,6 +139,10 @@ export default function PurchaseOrdersPage() {
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.store_id) {
+      setError("Store is required");
+      return;
+    }
     try {
       const pl = {
         supplier_id: Number(form.supplier_id),
