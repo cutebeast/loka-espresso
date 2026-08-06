@@ -1,5 +1,5 @@
 "use client";
-import { RoleGuard, canUseOps } from "@/hooks/useStaffRole";
+import { RoleGuard, canReportHygiene } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -23,7 +23,7 @@ interface InventoryItem {
   category_name?: string;
 }
 export default function InventoryPage() {
-  return <RoleGuard allowed={canUseOps}>
+  return <RoleGuard allowed={canReportHygiene}>
     <InventoryPageContent />
   </RoleGuard>;
 }

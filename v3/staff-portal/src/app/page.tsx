@@ -89,7 +89,7 @@ const OPS_BUTTONS = [{
   route: "/grease-trap",
   cls: "",
   descKey: "dashboard.cleaning",
-  allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
+  allowed: () => true  // outlet-wide duty: any staff may report; supervisor/admin verifies
 }, {
   key: "garbage",
   labelKey: "dashboard.garbage",
@@ -98,7 +98,7 @@ const OPS_BUTTONS = [{
   route: "/garbage",
   cls: "",
   descKey: "dashboard.disposal",
-  allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
+  allowed: () => true  // outlet-wide duty: any staff may report; supervisor/admin verifies
 }, {
   key: "inventory",
   labelKey: "dashboard.inventory",
@@ -107,7 +107,7 @@ const OPS_BUTTONS = [{
   route: "/inventory",
   cls: "",
   descKey: "dashboard.stock_count",
-  allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
+  allowed: () => true  // outlet-wide duty: any staff may report; supervisor/admin verifies
 }, {
   key: "wastage",
   labelKey: "dashboard.wastage",
@@ -116,7 +116,7 @@ const OPS_BUTTONS = [{
   route: "/wastage",
   cls: "",
   descKey: "dashboard.report_waste",
-  allowed: (role: string | null, isAdmin: boolean) => canUseOps(role as StaffRole | null, isAdmin)
+  allowed: () => true  // outlet-wide duty: any staff may report; supervisor/admin verifies
 }];
 const SELF_BUTTONS = [{
   key: "clock",

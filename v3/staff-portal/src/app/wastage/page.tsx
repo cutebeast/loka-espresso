@@ -1,5 +1,5 @@
 "use client";
-import { RoleGuard, canUseOps } from "@/hooks/useStaffRole";
+import { RoleGuard, canReportHygiene } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
@@ -13,7 +13,7 @@ interface MenuItem {
   item_name: string;
 }
 export default function WastagePage() {
-  return <RoleGuard allowed={canUseOps}>
+  return <RoleGuard allowed={canReportHygiene}>
     <WastagePageContent />
   </RoleGuard>;
 }
