@@ -18,7 +18,6 @@ export default function SplashScreenNewPage() {
   const [img, setImg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
-    screen_name: "",
     title: "",
     subtitle: "",
     image_url: "",
@@ -58,6 +57,7 @@ export default function SplashScreenNewPage() {
     try {
       await api.post("/admin/content/splash-screens", {
         ...form,
+        screen_name: "pre_login",
         duration_ms: form.duration_ms ? Number(form.duration_ms) : undefined,
         active_from: localInputToISO(form.active_from),
         active_until: localInputToISO(form.active_until)
@@ -95,14 +95,6 @@ export default function SplashScreenNewPage() {
               ...form,
               title: e.target.value
             })} /></div>
-          <div className="df-field"><label className="df-label" style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8
-            }}><input type="checkbox" checked={form.screen_name === "pre_login"} onChange={e => setForm({
-                ...form,
-                screen_name: e.target.checked ? "pre_login" : ""
-              })} />{t("content_pwa-splash_new.pre_login_splash")}</label><div className="df-hint">{t("content_pwa-splash_new.shows_before_login_page_on_pwa")}</div></div>
           <div className="df-field" style={{
             gridColumn: "1/-1"
           }}><label className="df-label">{t("content_pwa-splash_new.subtitle")}</label><input value={form.subtitle} onChange={e => setForm({

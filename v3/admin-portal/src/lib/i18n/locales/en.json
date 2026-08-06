@@ -143,5 +143,13 @@
   "events_categories_[id].save_translations": "Save Translations",
   "events_categories_[id].refresh": "Regenerate All",
   "menu_experiences.category": "Category",
-  "menu_experiences.no_category": "— None —"
+  "menu_experiences.no_category": "— None —",
+  "admin.nav.content.preloginSplash": "Pre-login Splash",
+  "admin.nav.content.homeBanner": "Home Banner",
+  "content_pwa-splash.prelogin_splash": "Pre-login Splash",
+  "content_home-banner.home_banner": "Home Banner",
+  "content_home-banner.banners": "banners",
+  "content_home-banner.add_banner": "Add Banner",
+  "content_home-banner_new.new_home_banner": "New Home Banner",
+  "admin.nav.menu.categories": "Menu Item Categories"
 }

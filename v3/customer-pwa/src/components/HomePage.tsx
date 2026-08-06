@@ -12,6 +12,7 @@ import type { MenuItem, PromoBanner, InformationCard } from '@/lib/api';
 
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
 import MembershipHero from './home/MembershipHero';
+import HomeBanner from './home/HomeBanner';
 import EventCountdown from './home/EventCountdown';
 import BrewSpotlight from './home/BrewSpotlight';
 import LuckyDrawPanel from './home/LuckyDrawPanel';
@@ -199,6 +200,11 @@ export default function HomePage() {
             />
           </motion.div>
         )}
+
+        {/* Admin-managed home banner (post-login splash, screen_name=home_banner) */}
+        <motion.div variants={itemVariants}>
+          <HomeBanner />
+        </motion.div>
 
         {/* Day-one welcome gift card (new members with an unused welcome voucher) */}
         {isAuthenticated && (

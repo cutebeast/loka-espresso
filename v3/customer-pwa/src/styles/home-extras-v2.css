@@ -130,3 +130,48 @@ button.home-extra-card { cursor: pointer; }
   justify-content: center;
   cursor: pointer;
 }
+
+/* Home banner (admin-managed post-login banner) */
+.home-banner-card {
+  position: relative;
+  border: 1px solid var(--color-gold);
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(201, 168, 76, 0.07) 0%, transparent 60%),
+    var(--loka-bg-card);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+.home-banner-card .home-welcome-dismiss { z-index: 2; }
+.home-banner-img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+.home-banner-overlay { padding: 12px 14px 2px; }
+.home-banner-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--color-gold);
+}
+.home-banner-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--loka-text-secondary);
+}
+.home-banner-cta {
+  display: inline-block;
+  margin: 10px 0 12px;
+  padding: 7px 18px;
+  border: 1px solid var(--color-gold);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-gold);
+  text-decoration: none;
+  cursor: pointer;
+}

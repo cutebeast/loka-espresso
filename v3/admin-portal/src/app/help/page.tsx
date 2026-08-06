@@ -37,7 +37,7 @@ export default function AdminHelpReaderPage() {
       .then((d) => setItems(Array.isArray(d) ? d : d.items || []))
       .catch((e) => console.error(e))
       .finally(() => setLoading(false));
-  }, [audience]);
+  }, [audience, setItems, setLoading]);
 
   useEffect(() => {
     fetch();

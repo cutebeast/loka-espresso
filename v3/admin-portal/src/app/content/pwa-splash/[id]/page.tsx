@@ -130,6 +130,7 @@ export default function SplashScreenEditPage() {
     try {
       await api.patch(`/admin/content/splash-screens/${id}`, {
         ...form,
+        screen_name: "pre_login",
         duration_ms: form.duration_ms ? Number(form.duration_ms) : undefined,
         active_from: localInputToISO(form.active_from),
         active_until: localInputToISO(form.active_until)
@@ -250,14 +251,6 @@ export default function SplashScreenEditPage() {
             ...form,
             title: e.target.value
           })} /></div>
-            <div className="df-field"><label className="df-label" style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}><input type="checkbox" checked={form.screen_name === "pre_login"} onChange={e => setForm({
-              ...form,
-              screen_name: e.target.checked ? "pre_login" : ""
-            })} />{t("content_pwa-splash_[id].pre_login_splash")}</label><div className="df-hint">{t("content_pwa-splash_[id].shows_before_login_page_on_pwa")}</div></div>
             <div className="df-field" style={{
           gridColumn: "1/-1"
         }}><label className="df-label">{t("content_pwa-splash_[id].subtitle")}</label><input value={form.subtitle} onChange={e => setForm({
