@@ -2,7 +2,7 @@
 
 import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, BookOpen } from "lucide-react";
 
@@ -15,12 +15,20 @@ interface HelpArticle {
   body_text: string | null;
 }
 
+const AUDIENCES = ["admin", "staff", "customer"] as const;
+type Audience = (typeof AUDIENCES)[number];
+
 export default function AdminHelpReaderPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Deep-linkable audience (/help?audience=staff) — sidebar has one entry per portal
+  const urlAudience = searchParams.get("audience");
   const [items, setItems] = useState<HelpArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [audience, setAudience] = useState<"admin" | "staff" | "customer">("admin");
+  const [audience, setAudience] = useState<Audience>(
+    AUDIENCES.includes(urlAudience as Audience) ? (urlAudience as Audience) : "admin",
+  );
 
   const fetch = useCallback(() => {
     setLoading(true);
@@ -47,7 +55,7 @@ export default function AdminHelpReaderPage() {
       </div>
       <div style={{ marginBottom: 20 }}>
         <label style={{ marginRight: 8 }}>{t("help.audience")}:</label>
-        <select value={audience} onChange={(e) => setAudience(e.target.value as any)}>
+        <select value={audience} onChange={(e) => setAudience(e.target.value as Audience)}>
           <option value="admin">admin</option>
           <option value="staff">staff</option>
           <option value="customer">customer</option>

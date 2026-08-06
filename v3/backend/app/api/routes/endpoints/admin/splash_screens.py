@@ -1,6 +1,7 @@
 """Admin splash screens endpoint."""
 
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -15,9 +16,12 @@ router = APIRouter(prefix="/admin/content/splash-screens", tags=["admin — spla
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
-async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
+async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500), screen_name: Literal["pre_login", "home_banner"] | None = Query(None)):
     base = select(SplashScreen).where(SplashScreen.deleted_at.is_(None))
     cnt = select(func.count(SplashScreen.id)).where(SplashScreen.deleted_at.is_(None))
+    if screen_name is not None:
+        base = base.where(SplashScreen.screen_name == screen_name)
+        cnt = cnt.where(SplashScreen.screen_name == screen_name)
     total = (await db.execute(cnt)).scalar() or 0
     result = await db.execute(base.order_by(SplashScreen.id.desc()).offset((page-1)*per_page).limit(per_page))
     items = []

@@ -481,17 +481,14 @@ def _parse_legal_sections(body: str, locale: str | None = None) -> list[dict]:
 
 # ── Splash Screen ──
 
-@router.get("/splash", response_model=APIResponse[SplashScreenOut | None])
-async def get_active_splash(
-    db: DBDependency,
-    locale: OptionalLocale,
-):
-    """Get the currently active splash screen."""
+async def _get_active_splash_by_screen(db, locale: str | None, screen_name: str):
+    """Latest active, in-window, non-deleted splash for the given screen_name."""
     now = datetime.now(timezone.utc)
     stmt = (
         select(SplashScreen)
         .where(SplashScreen.is_active.is_(True))
         .where(SplashScreen.deleted_at.is_(None))
+        .where(SplashScreen.screen_name == screen_name)
         .where(
             (SplashScreen.active_from.is_(None)) | (SplashScreen.active_from <= now)
         )
@@ -504,10 +501,28 @@ async def get_active_splash(
     result = await db.execute(stmt)
     item = result.scalar_one_or_none()
     if not item:
-        return APIResponse(data=None)
+        return None
     item_dict = SplashScreenOut.model_validate(item).model_dump()
     await translate_single(db, item_dict, "splash_screens", locale)
-    return APIResponse(data=item_dict)
+    return item_dict
+
+
+@router.get("/splash", response_model=APIResponse[SplashScreenOut | None])
+async def get_active_splash(
+    db: DBDependency,
+    locale: OptionalLocale,
+):
+    """Get the currently active pre-login splash screen."""
+    return APIResponse(data=await _get_active_splash_by_screen(db, locale, "pre_login"))
+
+
+@router.get("/home-banner", response_model=APIResponse[SplashScreenOut | None])
+async def get_active_home_banner(
+    db: DBDependency,
+    locale: OptionalLocale,
+):
+    """Get the currently active post-login home banner."""
+    return APIResponse(data=await _get_active_splash_by_screen(db, locale, "home_banner"))
 
 
 # ── Config Bootstrap ──

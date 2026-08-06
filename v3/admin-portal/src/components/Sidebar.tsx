@@ -134,7 +134,14 @@ const navItems: NavItem[] = [
     ],
   },
   { id: "feedback", labelKey: "admin.nav.feedback", href: "/feedback", icon: Star },
-  { id: "helpCenter", labelKey: "admin.nav.helpCenter", href: "/help", icon: HelpCircle },
+  {
+    id: "helpCenter", labelKey: "admin.nav.helpCenter", href: "/help", icon: HelpCircle,
+    children: [
+      { id: "helpAdmin", labelKey: "admin.nav.help.admin", href: "/help?audience=admin" },
+      { id: "helpStaff", labelKey: "admin.nav.help.staff", href: "/help?audience=staff" },
+      { id: "helpPwa", labelKey: "admin.nav.help.pwa", href: "/help?audience=customer" },
+    ],
+  },
 
   { type: "section", id: "storeOps", labelKey: "admin.nav.section.storeOps" },
   { id: "orders", labelKey: "admin.nav.orders", href: "/orders", icon: ShoppingBag },

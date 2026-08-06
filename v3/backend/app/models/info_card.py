@@ -3,7 +3,7 @@ from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -173,8 +173,14 @@ class ContentSection(Base):
 
 class SplashScreen(Base, SoftDeleteMixin):
     __tablename__ = "splash_screens"
+    __table_args__ = (
+        CheckConstraint(
+            "screen_name IN ('pre_login', 'home_banner')",
+            name="ck_splash_screens_screen_name",
+        ),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    screen_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    screen_name: Mapped[str] = mapped_column(String(100), nullable=False, default="home_banner")
     title: Mapped[str | None] = mapped_column(String(100))
     subtitle: Mapped[str | None] = mapped_column(String(200))
     image_url: Mapped[str] = mapped_column(String(500), nullable=False)

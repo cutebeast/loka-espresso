@@ -11,7 +11,7 @@ from app.schemas.base import BaseSchema, TimestampedSchema
 
 
 class SplashScreenBase(BaseSchema):
-    screen_name: str = Field(..., max_length=100)
+    screen_name: Literal["pre_login", "home_banner"] = "home_banner"
     image_url: str = Field(..., max_length=500)
     title: str | None = Field(None, max_length=100)
     subtitle: str | None = Field(None, max_length=200)
@@ -32,7 +32,7 @@ class SplashScreenCreate(SplashScreenBase):
 
 
 class SplashScreenUpdate(BaseSchema):
-    screen_name: str | None = Field(None, max_length=100)
+    screen_name: Literal["pre_login", "home_banner"] | None = None
     image_url: str | None = Field(None, max_length=500)
     title: str | None = Field(None, max_length=100)
     subtitle: str | None = Field(None, max_length=200)
