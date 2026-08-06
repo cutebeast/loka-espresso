@@ -202,9 +202,11 @@ export default function HomePage() {
         )}
 
         {/* Admin-managed home banner (post-login splash, screen_name=home_banner) */}
-        <motion.div variants={itemVariants}>
-          <HomeBanner />
-        </motion.div>
+        {isAuthenticated && (
+          <motion.div variants={itemVariants}>
+            <HomeBanner />
+          </motion.div>
+        )}
 
         {/* Day-one welcome gift card (new members with an unused welcome voucher) */}
         {isAuthenticated && (

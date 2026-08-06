@@ -83,6 +83,8 @@ from app.api.routes.endpoints.admin import lucky_draw as admin_lucky_draw
 from app.api.routes.endpoints.public import lucky_draw as public_lucky_draw
 from app.api.routes.endpoints.admin import class_sessions as admin_class_sessions
 from app.api.routes.endpoints.admin import bundle_categories as admin_bundle_categories
+from app.api.routes.endpoints.admin import bundle_types as admin_bundle_types
+from app.api.routes.endpoints.public import bundle_types as public_bundle_types
 from app.api.routes.endpoints.admin import event_categories as admin_event_categories
 from app.api.routes.endpoints.public import categories as public_categories
 
@@ -280,5 +282,7 @@ api_router.include_router(admin_class_sessions.router, prefix="/admin", tags=["a
 
 # Bundle & Event Categories
 api_router.include_router(admin_bundle_categories.router, tags=["admin — bundle categories"])
+api_router.include_router(admin_bundle_types.router, tags=["admin — bundle types"])
 api_router.include_router(admin_event_categories.router, tags=["admin — event categories"])
 api_router.include_router(public_categories.router, tags=["public — categories"])
+api_router.include_router(public_bundle_types.router, tags=["public — bundle types"])

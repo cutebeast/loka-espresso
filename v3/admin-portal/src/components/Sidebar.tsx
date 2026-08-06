@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
     children: [
       { id: "menuCategories", labelKey: "admin.nav.menu.categories", href: "/menu/categories" },
       { id: "menuItems", labelKey: "admin.nav.menu.items", href: "/menu/items" },
+      { id: "menuBundleTypes", labelKey: "admin.nav.menu.bundleTypes", href: "/menu/bundle-types" },
       { id: "menuBundleCategories", labelKey: "admin.nav.menu.bundleCategories", href: "/menu/bundle-categories" },
       { id: "menuBundles", labelKey: "admin.nav.menu.bundleProducts", href: "/menu/bundle-products" },
       { id: "menuAllergens", labelKey: "admin.nav.menu.allergens", href: "/menu/allergens" },

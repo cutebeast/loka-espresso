@@ -10,6 +10,26 @@ from decimal import Decimal
 
 VALID_BUNDLE_TYPES = Literal["combo", "value_meal", "family_meal", "breakfast_set", "promotional", "pick_x", "multi_course"]
 
+VALID_BUNDLE_MECHANICS = Literal["combo", "pick_x", "multi_course"]
+
+
+class BundleTypeCreate(BaseSchema):
+    type_key: str = Field(..., min_length=1, max_length=30)
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    mechanic: VALID_BUNDLE_MECHANICS = "combo"
+    display_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class BundleTypeUpdate(BaseSchema):
+    type_key: str | None = Field(None, min_length=1, max_length=30)
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    mechanic: VALID_BUNDLE_MECHANICS | None = None
+    display_order: int | None = Field(None, ge=0)
+    is_active: bool | None = None
+
 
 class BundleCategoryBase(BaseSchema):
     name: str = Field(..., min_length=1, max_length=100)
@@ -100,7 +120,9 @@ class BundleProductComponentOut(BaseSchema):
 
 
 class BundleProductCreate(BaseSchema):
-    bundle_type: VALID_BUNDLE_TYPES = Field(default="combo", max_length=30)
+    # Any key registered in bundle_types is allowed (admins can invent keys);
+    # existence is validated at the endpoint (422 on unknown key).
+    bundle_type: str = Field(default="combo", max_length=30)
     title: str = Field(..., max_length=255)
     description: str | None = None
     image_url: str | None = None
@@ -122,7 +144,7 @@ class BundleProductCreate(BaseSchema):
 
 
 class BundleProductUpdate(BaseSchema):
-    bundle_type: VALID_BUNDLE_TYPES | None = Field(None, max_length=30)
+    bundle_type: str | None = Field(None, max_length=30)
     title: str | None = Field(None, max_length=255)
     description: str | None = None
     image_url: str | None = None

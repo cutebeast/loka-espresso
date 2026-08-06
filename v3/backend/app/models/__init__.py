@@ -158,6 +158,7 @@ from app.models.equipment import (
 )
 from app.models.hygiene import HygieneReport
 from app.models.bundle_product import (
+    BundleType,
     BundleProduct,
     BundleProductComponent,
     BundleComponentModifier,

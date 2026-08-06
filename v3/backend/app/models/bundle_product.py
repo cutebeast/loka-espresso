@@ -22,6 +22,27 @@ class BundleCategory(Base, TimestampMixin, SoftDeleteMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
+class BundleType(Base, TimestampMixin, SoftDeleteMixin):
+    """Admin-editable bundle type: maps a type_key to a pricing mechanic."""
+
+    __tablename__ = "bundle_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_key: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    mechanic: Mapped[str] = mapped_column(String(20), nullable=False, default="combo")
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "mechanic IN ('combo','pick_x','multi_course')",
+            name="ck_bundle_types_mechanic",
+        ),
+    )
+
+
 class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "bundle_products"
 

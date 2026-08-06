@@ -19,6 +19,7 @@ from app.schemas.bundle_product import (
     BundleProductUpdate,
     BundleGroupIn,
 )
+from app.services.bundle_types import bundle_type_exists, resolve_bundle_mechanic
 from app.services.translation import auto_translate_record, delete_translations
 
 router = APIRouter(prefix="/admin/menu/bundle-products", tags=["admin — bundle products"])
@@ -292,13 +293,19 @@ async def list_bundle_products(
 async def create_bundle_product(db: DBDependency, admin: CurrentAdmin, data: BundleProductCreate):
     cat_id = data.category_id or await _get_or_create_bundle_category(db, data.bundle_type)
 
-    if data.bundle_type in ("pick_x",):
+    if not await bundle_type_exists(db, data.bundle_type):
+        raise HTTPException(status_code=422, detail=f"Unknown bundle type: '{data.bundle_type}'")
+    # Branch on the mechanic behind the type key so admin-invented bundle
+    # types behave like the mechanic they were assigned.
+    mechanic = await resolve_bundle_mechanic(db, data.bundle_type)
+
+    if mechanic == "pick_x":
         if not data.pick_count or data.pick_count < 1:
             raise HTTPException(status_code=400, detail="Pick count must be at least 1 for Pick & Choose bundles")
         if not data.allow_duplicates and len(data.components) < data.pick_count:
             raise HTTPException(status_code=400, detail=f"Pick-X requires at least {data.pick_count} items in the pool")
 
-    if data.bundle_type == "multi_course":
+    if mechanic == "multi_course":
         if not data.groups:
             raise HTTPException(status_code=400, detail="Multi-course bundles require at least one group")
         for g in data.groups:
@@ -323,19 +330,19 @@ async def create_bundle_product(db: DBDependency, admin: CurrentAdmin, data: Bun
         max_per_order=data.max_per_order,
         image_gallery_urls=data.image_gallery_urls,
         gallery_video_url=data.gallery_video_url,
-        pick_count=data.pick_count if data.bundle_type == "pick_x" else None,
-        allow_duplicates=data.allow_duplicates if data.bundle_type == "pick_x" else False,
+        pick_count=data.pick_count if mechanic == "pick_x" else None,
+        allow_duplicates=data.allow_duplicates if mechanic == "pick_x" else False,
     )
 
     db.add(bp)
     await db.flush()
 
-    if data.bundle_type == "multi_course" and data.groups:
+    if mechanic == "multi_course" and data.groups:
         group_map = await _create_groups(db, bp.id, data.groups, data.components)
     else:
         group_map = {}
 
-    await _create_components(db, bp.id, data.components, group_map if data.bundle_type == "multi_course" else None)
+    await _create_components(db, bp.id, data.components, group_map if mechanic == "multi_course" else None)
 
     await db.commit()
     await auto_translate_record(db, "bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})
@@ -375,6 +382,9 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
     components_data = update_data.pop("components", None)
     groups_data = update_data.pop("groups", None)
 
+    if "bundle_type" in update_data and not await bundle_type_exists(db, update_data["bundle_type"]):
+        raise HTTPException(status_code=422, detail=f"Unknown bundle type: '{update_data['bundle_type']}'")
+
     if groups_data is not None and components_data is None:
         raise HTTPException(
             status_code=400,
@@ -385,7 +395,8 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
     # groups for any other bundle_type would delete the existing groups below
     # and never recreate them (recreation is multi_course-only).
     effective_type = update_data.get("bundle_type") or bp.bundle_type
-    if groups_data is not None and effective_type != "multi_course":
+    effective_mechanic = await resolve_bundle_mechanic(db, effective_type)
+    if groups_data is not None and effective_mechanic != "multi_course":
         raise HTTPException(
             status_code=400,
             detail="groups can only be updated on multi_course bundles",
@@ -409,27 +420,28 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
         await _validate_bundle_component_items(db, components_data)
 
     bp_type = getattr(bp, "bundle_type", "combo")
+    bp_mechanic = await resolve_bundle_mechanic(db, bp_type)
 
     # Validate Pick-X constraints (same as create)
-    if bp_type == "pick_x":
+    if bp_mechanic == "pick_x":
         pc = getattr(bp, "pick_count", None)
         if pc and pc > 0:
             comp_count = len(components_data) if components_data is not None else len(bp.components)
             if not getattr(bp, "allow_duplicates", False) and comp_count < pc:
                 raise HTTPException(status_code=400, detail=f"Pick-X requires at least {pc} items in the pool")
-    if bp_type == "multi_course" and groups_data:
+    if bp_mechanic == "multi_course" and groups_data:
         for g_item in groups_data:
             g = g_item if isinstance(g_item, dict) else g_item.model_dump()
             if not g.get("pick_count") or g.get("pick_count", 0) < 1:
                 raise HTTPException(status_code=400, detail=f"Group '{g.get('group_label', 'Unnamed')}' needs a pick count >= 1")
 
-    if bp_type == "multi_course" and groups_data:
+    if bp_mechanic == "multi_course" and groups_data:
         group_map = await _create_groups(db, bp.id, groups_data, components_data or [])
     else:
         group_map = {}
 
     if components_data is not None:
-        await _create_components(db, bp.id, components_data, group_map if bp_type == "multi_course" else None)
+        await _create_components(db, bp.id, components_data, group_map if bp_mechanic == "multi_course" else None)
 
     await db.commit()
     await auto_translate_record(db, "bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})

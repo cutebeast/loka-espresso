@@ -22,6 +22,7 @@ from app.models.store import Store, StoreConfiguration
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleGroup
 from app.schemas.order import OrderCreate
+from app.services.bundle_types import resolve_bundle_mechanic
 from app.services.platform_config import PlatformConfigService
 
 
@@ -111,7 +112,10 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
 
         num_sets = 0
         bundled_sum = Decimal(0)
-        if bundle.bundle_type == "multi_course":
+        # Branch on the mechanic behind the type key so admin-invented
+        # bundle types behave like the mechanic they were assigned.
+        mechanic = await resolve_bundle_mechanic(db, bundle.bundle_type)
+        if mechanic == "multi_course":
             groups_result = await db.execute(
                 select(BundleGroup)
                 .where(BundleGroup.bundle_product_id == bid)
@@ -149,7 +153,7 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
                         ]
                         bundled_sum += _consumed_items_price(group_lines, num_sets * g.pick_count)
 
-        elif bundle.bundle_type == "pick_x" and bundle.pick_count and bundle.pick_count > 0:
+        elif mechanic == "pick_x" and bundle.pick_count and bundle.pick_count > 0:
             component_qtys: dict[int | str, int] = {}
             for ci in bundle_items:
                 key = ci.bundle_component_id or ci.menu_item_id

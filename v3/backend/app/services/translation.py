@@ -284,6 +284,7 @@ TRANSLATABLE_ENTITIES: dict[str, list[str]] = {
     "admin_notifications": ["title", "body"],
     "bundle_products": ["title", "description"],
     "bundle_categories": ["name"],
+    "bundle_types": ["name", "description"],
     "event_categories": ["name"],
 }
 
@@ -305,6 +306,7 @@ TABLE_TO_NAMESPACE = {
     "marketing_campaigns": "campaign",
     "bundle_products": "bundle",
     "bundle_categories": "bundle-category",
+    "bundle_types": "bundle-type",
     "event_categories": "event-category",
 }
 

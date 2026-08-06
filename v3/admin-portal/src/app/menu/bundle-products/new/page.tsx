@@ -22,6 +22,14 @@ interface BundleCategoryOption {
   id: number;
   name: string;
 }
+interface BundleTypeOption {
+  id: number;
+  type_key: string;
+  name: string;
+  description?: string | null;
+  mechanic: "combo" | "pick_x" | "multi_course";
+  is_active: boolean;
+}
 type BundleMode = "fixed" | "pick_n" | "multi_course";
 export default function BundleProductNewPage() {
   const {
@@ -41,6 +49,7 @@ export default function BundleProductNewPage() {
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [bundleCategories, setBundleCategories] = useState<BundleCategoryOption[]>([]);
+  const [bundleTypes, setBundleTypes] = useState<BundleTypeOption[]>([]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -77,12 +86,17 @@ export default function BundleProductNewPage() {
     api.getRaw<any>("/admin/menu/items?per_page=500").then(d => setMenuItems((d?.items || []).filter((mi: any) => mi.is_bundle_eligible))).catch((e: any) => { console.error('menu items:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/menu/categories?per_page=100").then(d => setCategories((d?.items || []).filter((c: any) => c.category_type !== "combo"))).catch((e: any) => { console.error('menu categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/bundle-categories?per_page=100").then(d => setBundleCategories((d?.items || []).filter((c: any) => c.is_active))).catch((e: any) => { console.error('bundle categories:', e); });
+    api.getRaw<any>("/admin/bundle-types?per_page=100").then(d => setBundleTypes((d?.items || []).filter((bt: any) => bt.is_active))).catch((e: any) => { console.error('bundle types:', e); });
   }, []);
   const selectMode = (m: BundleMode) => {
     setMode(m);
+    const mech = m === "pick_n" ? "pick_x" : m === "multi_course" ? "multi_course" : "combo";
+    // Default to the admin-defined type whose mechanic matches the mode;
+    // fall back to the raw mechanic key when the types list hasn't loaded.
+    const def = bundleTypes.find(bt => bt.mechanic === mech);
     setForm(prev => ({
       ...prev,
-      bundle_type: m === "pick_n" ? "pick_x" : m === "multi_course" ? "multi_course" : "combo",
+      bundle_type: def?.type_key || mech,
       pick_count: "",
       allow_duplicates: false
     }));
@@ -375,6 +389,10 @@ export default function BundleProductNewPage() {
       </div>;
   }
   const modeLabel = mode === "fixed" ? "Fixed Set" : mode === "pick_n" ? "Pick & Choose" : "Multi-Course";
+  const modeMechanic = mode === "pick_n" ? "pick_x" : mode === "multi_course" ? "multi_course" : "combo";
+  // Any admin-defined type whose mechanic matches the chosen mode is compatible.
+  const compatibleTypes = bundleTypes.filter(bt => bt.mechanic === modeMechanic);
+  const selectedType = bundleTypes.find(bt => bt.type_key === form.bundle_type);
   return <div style={{
     padding: 32,
     height: "100%",
@@ -417,6 +435,13 @@ export default function BundleProductNewPage() {
               ...form,
               bundle_category_id: e.target.value
             })}><option value="">{t("menu_bundle-products_new.none")}</option>{bundleCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+            <div className="df-field"><label className="df-label">{t("menu_bundle-products_new.bundle_type")}</label><select value={form.bundle_type} onChange={e => setForm({
+              ...form,
+              bundle_type: e.target.value
+            })}>{compatibleTypes.length > 0 ? compatibleTypes.map(bt => <option key={bt.id} value={bt.type_key}>{bt.name}</option>) : <option value={form.bundle_type}>{form.bundle_type}</option>}</select>{selectedType?.description && <span style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)"
+            }}>{selectedType.description}</span>}</div>
 
             {mode === "pick_n" && <>
                 <div className="df-field"><label className="df-label">{t("menu_bundle-products_new.pick_count")}</label><input type="number" min={1} step={1} required value={form.pick_count} onChange={e => setForm({

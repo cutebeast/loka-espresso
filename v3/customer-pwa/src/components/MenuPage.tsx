@@ -82,6 +82,8 @@ export default function MenuPage() {
     showToast(t('menu.addedToCart'), 'success');
   }, [menuItems, addItem, selectedStore?.id, showToast, t]);
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
+  // type_key -> engine mechanic, from the public /bundle-types endpoint
+  const [bundleTypeMechanics, setBundleTypeMechanics] = useState<Record<string, string>>({});
   const [bundleCategories, setBundleCategories] = useState<BundleCategory[]>([]);
   const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [workshopSessions, setWorkshopSessions] = useState<Record<number, ExperienceSession[]>>({});
@@ -99,7 +101,7 @@ export default function MenuPage() {
     setLoadError(false);
     try {
       const storeId = selectedStore?.id;
-      const [catRes, itemRes, bpRes, wsRes, bcRes, ecRes] = await Promise.all([api.get(`/menu/categories`, {
+      const [catRes, itemRes, bpRes, wsRes, bcRes, ecRes, btRes] = await Promise.all([api.get(`/menu/categories`, {
         signal
       }), api.get(`/menu/items`, {
         signal,
@@ -126,6 +128,11 @@ export default function MenuPage() {
         params: { locale: getLocale() }
       }).catch(() => ({
         data: { data: { categories: [] } }
+      })), api.get(`/bundle-types`, {
+        signal,
+        params: { locale: getLocale() }
+      }).catch(() => ({
+        data: []
       }))]);
       const catData = catRes.data;
       const itemData = itemRes.data;

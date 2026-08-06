@@ -59,6 +59,14 @@ interface BundleCategoryOption {
   id: number;
   name: string;
 }
+interface BundleTypeOption {
+  id: number;
+  type_key: string;
+  name: string;
+  description?: string | null;
+  mechanic: "combo" | "pick_x" | "multi_course";
+  is_active: boolean;
+}
 export default function BundleProductEditPage() {
   const {
     t
@@ -92,6 +100,7 @@ export default function BundleProductEditPage() {
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [bundleCategories, setBundleCategories] = useState<BundleCategoryOption[]>([]);
+  const [bundleTypes, setBundleTypes] = useState<BundleTypeOption[]>([]);
   const [form, setForm] = useState<Record<string, any>>({});
   const [tr, setTr] = useState<Record<string, string>>({});
   const [components, setComponents] = useState<Array<any>>([]);
@@ -113,7 +122,16 @@ export default function BundleProductEditPage() {
       const d = await api.getRaw<any>("/admin/bundle-categories?per_page=100");
       setBundleCategories(d?.items || []);
     } catch (e: any) {console.error(e); }
+    try {
+      const d = await api.getRaw<any>("/admin/bundle-types?per_page=100");
+      setBundleTypes(d?.items || []);
+    } catch (e: any) {console.error(e); }
   };
+  // Resolve the checkout mechanic from the selected bundle type so custom
+  // types (e.g. a marketing type mapped to multi_course) drive the same UI
+  // as the built-in combo/pick_x/multi_course keys.
+  const selectedBundleType = bundleTypes.find(bt => bt.type_key === form.bundle_type);
+  const mechanic: "combo" | "pick_x" | "multi_course" = selectedBundleType?.mechanic || (form.bundle_type === "pick_x" ? "pick_x" : form.bundle_type === "multi_course" ? "multi_course" : "combo");
   const selectedItemIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));
   const itemsForComponent = (catFilter: string) => {
     const pool = catFilter ? menuItems.filter(i => i.category_id === Number(catFilter)) : menuItems;
@@ -234,8 +252,8 @@ export default function BundleProductEditPage() {
     }
   };
   const handleSave = async () => {
-    const isPickX = form.bundle_type === "pick_x";
-    const isMultiCourse = form.bundle_type === "multi_course";
+    const isPickX = mechanic === "pick_x";
+    const isMultiCourse = mechanic === "multi_course";
     if (!form.title) {
       setError("Title is required");
       return;
@@ -573,7 +591,10 @@ export default function BundleProductEditPage() {
           <div className="df-field"><label className="df-label">{t("menu_bundle-products_[id].bundle_type")}</label><select value={form.bundle_type} onChange={e => setForm({
             ...form,
             bundle_type: e.target.value
-          })}><option value="combo">{t("menu_bundle-products_[id].combo")}</option><option value="pick_x">{t("menu_bundle-products_[id].pick_x_build_your_own")}</option><option value="multi_course">{t("menu_bundle-products_[id].multi_course")}</option></select></div>
+          })}>{bundleTypes.filter(bt => bt.is_active || bt.type_key === form.bundle_type).map(bt => <option key={bt.id} value={bt.type_key}>{bt.name}</option>)}{bundleTypes.length === 0 && <option value={form.bundle_type}>{form.bundle_type}</option>}</select>{selectedBundleType?.description && <span style={{
+            fontSize: 11,
+            color: "var(--color-text-muted)"
+          }}>{selectedBundleType.description}</span>}</div>
           <div className="df-field"><label className="df-label">{t("menu_bundle-products_[id].bundle_category")}</label><select value={form.bundle_category_id || ""} onChange={e => setForm({
             ...form,
             bundle_category_id: e.target.value
@@ -583,7 +604,7 @@ export default function BundleProductEditPage() {
             bundle_price: e.target.value
           })} /></div>
 
-          {form.bundle_type === "pick_x" && <>
+          {mechanic === "pick_x" && <>
               <div className="df-field">
                 <label className="df-label">{t("menu_bundle-products_[id].pick_count")}</label>
                 <input type="number" min={1} step={1} required value={form.pick_count || ""} onChange={e => setForm({
@@ -618,7 +639,7 @@ export default function BundleProductEditPage() {
                   </span>}
               </div>
             </>}
-          {form.bundle_type === "pick_x" && components.filter((c: any) => c.menu_item_id).length > 0 && <div className="df-field" style={{
+          {mechanic === "pick_x" && components.filter((c: any) => c.menu_item_id).length > 0 && <div className="df-field" style={{
           gridColumn: "1/-1"
         }}>
               <div style={{
@@ -690,7 +711,7 @@ export default function BundleProductEditPage() {
             })} />{t("menu_bundle-products_[id].active")}</label></div>
         </div>
 
-        {form.bundle_type === "multi_course" ? <div style={{
+        {mechanic === "multi_course" ? <div style={{
         marginTop: 24
       }}>
             <div style={{
@@ -845,7 +866,7 @@ export default function BundleProductEditPage() {
             fontSize: 15,
             fontWeight: 700,
             margin: 0
-          }}>{form.bundle_type === "pick_x" ? "Selectable Items Pool" : "Components"}</h3>
+          }}>{mechanic === "pick_x" ? "Selectable Items Pool" : "Components"}</h3>
               <button type="button" onClick={() => addComponent()} className="btn btn-sm btn-outline" style={{
             display: "flex",
             alignItems: "center",
@@ -856,7 +877,7 @@ export default function BundleProductEditPage() {
           fontSize: 13,
           color: "var(--color-text-muted)",
           marginBottom: 8
-        }}>{form.bundle_type === "pick_x" ? "No items in pool. Click &quot;Add&quot; to include selectable items." : "No components added. Click &quot;Add&quot; to include menu items in this bundle."}</p>}
+        }}>{mechanic === "pick_x" ? "No items in pool. Click &quot;Add&quot; to include selectable items." : "No components added. Click &quot;Add&quot; to include menu items in this bundle."}</p>}
             {components.map((c, i) => <div key={i} style={{
           display: "flex",
           gap: 8,
