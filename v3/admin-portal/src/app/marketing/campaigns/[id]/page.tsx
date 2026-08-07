@@ -9,7 +9,7 @@ import { toLocalInput, localInputToISO } from "@/lib/datetime";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
-type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
+type LocaleTab = "en" | "zh"; // EN + CN only at launch; ms may return later
 const LOCALES: {
   code: LocaleTab;
   label: string;
@@ -19,21 +19,9 @@ const LOCALES: {
   label: "English",
   flag: "🇬🇧"
 }, {
-  code: "ms",
-  label: "BM",
-  flag: "🇲🇾"
-}, {
   code: "zh",
   label: "中文",
   flag: "🇨🇳"
-}, {
-  code: "ta",
-  label: "தமிழ்",
-  flag: "🇮🇳"
-}, {
-  code: "tr",
-  label: "TR",
-  flag: "🇹🇷"
 }];
 
 export default function CampaignEditPage() {

@@ -10,7 +10,7 @@ import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 import GalleryUpload from "@/components/GalleryUpload";
 import { useCurrency } from "@/hooks/useCurrency";
-type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
+type LocaleTab = "en" | "zh"; // EN + CN only at launch; ms may return later
 const LOCALES: {
   code: LocaleTab;
   label: string;
@@ -20,21 +20,9 @@ const LOCALES: {
   label: "English",
   flag: "🇬🇧"
 }, {
-  code: "ms",
-  label: "BM",
-  flag: "🇲🇾"
-}, {
   code: "zh",
   label: "中文",
   flag: "🇨🇳"
-}, {
-  code: "ta",
-  label: "தமிழ்",
-  flag: "🇮🇳"
-}, {
-  code: "tr",
-  label: "TR",
-  flag: "🇹🇷"
 }];
 
 interface Reward {

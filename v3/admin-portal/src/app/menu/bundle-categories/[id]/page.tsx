@@ -12,21 +12,9 @@ const L = [{
   label: "English",
   flag: "🇬🇧"
 }, {
-  code: "ms",
-  label: "BM",
-  flag: "🇲🇾"
-}, {
   code: "zh",
   label: "中文",
   flag: "🇨🇳"
-}, {
-  code: "ta",
-  label: "தமிழ்",
-  flag: "🇮🇳"
-}, {
-  code: "tr",
-  label: "TR",
-  flag: "🇹🇷"
 }];
 
 export default function BundleCategoryEditPage() {

@@ -8,7 +8,7 @@ import { isNotFoundError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
 import GalleryUpload from "@/components/GalleryUpload";
-type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
+type LocaleTab = "en" | "zh"; // EN + CN only at launch; ms may return later
 const LOCALES: {
   code: LocaleTab;
   label: string;
@@ -18,21 +18,9 @@ const LOCALES: {
   label: "English",
   flag: "🇬🇧"
 }, {
-  code: "ms",
-  label: "BM",
-  flag: "🇲🇾"
-}, {
   code: "zh",
   label: "中文",
   flag: "🇨🇳"
-}, {
-  code: "ta",
-  label: "தமிழ்",
-  flag: "🇮🇳"
-}, {
-  code: "tr",
-  label: "TR",
-  flag: "🇹🇷"
 }];
 
 const ACTION_TYPES = [{

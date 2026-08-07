@@ -13,21 +13,9 @@ const LOCALES = [{
   localeKey: "locale.english",
   flag: "🇬🇧"
 }, {
-  code: "ms",
-  localeKey: "locale.bahasa_melayu",
-  flag: "🇲🇾"
-}, {
   code: "zh",
   localeKey: "locale.chinese",
   flag: "🇨🇳"
-}, {
-  code: "ta",
-  localeKey: "locale.tamil",
-  flag: "🇮🇳"
-}, {
-  code: "tr",
-  localeKey: "locale.turkish",
-  flag: "🇹🇷"
 }];
 const TR_FIELDS = [{
   key: "title",

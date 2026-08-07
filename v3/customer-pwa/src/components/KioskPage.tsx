@@ -489,7 +489,7 @@ export default function KioskPage() {
           <motion.div key="welcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative' }}>
             <div style={{ position: 'absolute', top: fs(24, 16), left: fs(24, 16), display: 'flex', gap: 8 }}>
-              {([['en', 'EN'], ['ms', 'BM'], ['zh', '中文'], ['ta', 'தமிழ்'], ['tr', 'TR']] as const).map(([code, label]) => (
+              {([['en', 'EN'], ['zh', '中文']] as const).map(([code, label]) => (
                 <button key={code} onClick={() => setLocale(code)} style={{
                   padding: '12px 18px', fontSize: fs(18, 15), fontWeight: 700, borderRadius: 10, cursor: 'pointer',
                   border: locale === code ? `2px solid ${LOKA.primary}` : '2px solid #ddd',

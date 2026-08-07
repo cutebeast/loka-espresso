@@ -2,7 +2,7 @@
  * Customer PWA Translations Tab
  *
  * Lists PWA UI labels grouped by section. Supports viewing/editing translations
- * across all 4 locales (ms, zh, ta, tr) with auto-translate on demand.
+ * across the active locales (zh; EN is the source) with auto-translate on demand.
  */
 "use client";
 import { useEffect, useState, useCallback } from "react";

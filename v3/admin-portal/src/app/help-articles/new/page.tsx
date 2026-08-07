@@ -11,11 +11,13 @@ const AUDIENCES = ["admin", "staff", "customer"] as const;
 export default function NewHelpArticlePage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [saving, setSaving] = useState(false);
+  const audienceParam = searchParams.get("audience");
   const [form, setForm] = useState({
     slug: "",
     title: "",
-    audience: ((["admin", "staff", "customer"] as const).includes(useSearchParams().get("audience") as any) ? useSearchParams().get("audience") : "admin") as "admin" | "staff" | "customer",
+    audience: (AUDIENCES.includes(audienceParam as typeof AUDIENCES[number]) ? audienceParam : "admin") as "admin" | "staff" | "customer",
     category: "",
     body_text: "",
     position: 0,
