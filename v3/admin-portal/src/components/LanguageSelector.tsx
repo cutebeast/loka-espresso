@@ -5,10 +5,7 @@ import { useTranslation, SUPPORTED_LOCALES, DEFAULT_LOCALE } from "@/lib/i18n";
 
 const LOCALE_LABELS: Record<string, string> = {
   en: "English",
-  ms: "Bahasa Melayu",
   zh: "中文",
-  ta: "தமிழ்",
-  tr: "Türkçe",
 };
 
 export default function LanguageSelector() {

@@ -19,8 +19,8 @@ interface Translation {
 }
 
 const LOCALES = ["zh"] as const; // EN + CN only at launch; ms may return later
-const FLAGS: Record<string, string> = { ms: "🇲🇾", zh: "🇨🇳", ta: "🇮🇳", tr: "🇹🇷" };
-const NAMES: Record<string, string> = { ms: "BM", zh: "中文", ta: "தமிழ்", tr: "TR" };
+const FLAGS: Record<string, string> = { zh: "🇨🇳" };
+const NAMES: Record<string, string> = { zh: "中文" };
 
 function humanizeSection(section: string): string {
   return section
