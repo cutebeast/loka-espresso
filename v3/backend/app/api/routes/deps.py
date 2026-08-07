@@ -22,7 +22,9 @@ from app.models.staff import StaffProfile
 settings = get_settings()
 security_scheme = HTTPBearer(auto_error=False)
 
-SUPPORTED_LOCALES = {"en", "ms", "zh", "ta", "tr"}
+# Active locales (2026-08-07): EN + CN only at launch; ms may return later,
+# ta/tr dropped. Unknown/stale stored locales fall back to English.
+SUPPORTED_LOCALES = {"en", "zh"}
 SOURCE_LOCALE = "en"
 
 

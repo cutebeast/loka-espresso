@@ -68,7 +68,8 @@ export default function CategoryEditPage() {
         available_from_time: d.available_from_time || "",
         available_to_time: d.available_to_time || "",
         available_from_date: d.available_from_date || "",
-        available_to_date: d.available_to_date || ""
+        available_to_date: d.available_to_date || "",
+        display_order: d.display_order ?? 0
       });
       const tr: Record<string, string> = {};
       for (const loc of LOCALES) {
@@ -236,6 +237,10 @@ export default function CategoryEditPage() {
             ...form,
             category_type: e.target.value
           })}><option value="regular">{t("menu_categories_[id].regular")}</option><option value="combo">{t("menu_categories_[id].combo_shows_first")}</option></select></div>
+            <div className="df-field"><label className="form-label">{t("menu_categories_[id].sort_order", "Sort Order")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.display_order ?? 0} onChange={e => setForm({
+            ...form,
+            display_order: Number(e.target.value)
+          })} /></div>
             <div className="df-field"><label style={{
             display: "flex",
             alignItems: "center",

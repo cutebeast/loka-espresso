@@ -19,6 +19,7 @@ export default function BundleCategoriesPage() {
       console.error('bundle-categories:', e);
     }).finally(() => setLoading(false));
   }, []);
+  const sorted = [...items].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || (a.name || "").localeCompare(b.name || ""));
   return <div style={{
     padding: 32
   }}>
@@ -26,13 +27,22 @@ export default function BundleCategoriesPage() {
         <div><h1 className="page-title">{t("menu_bundle-categories.bundle_categories")}</h1><p className="page-subtitle">{items.length} {" "}{t("menu_bundle-categories.categories")}</p></div>
         <button onClick={() => router.push("/menu/bundle-categories/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("menu_bundle-categories.add_category")}</button>
       </div>
+      <div style={{
+      fontSize: 12,
+      color: "var(--color-text-muted)",
+      background: "var(--color-bg-white)",
+      border: "1px solid var(--color-border-light)",
+      borderRadius: "var(--radius-md)",
+      padding: "10px 14px",
+      marginBottom: 16
+    }}>{t("menu_bundle-categories.sort_note", "Sort order is shared with Menu Item Categories — the customer menu combines both lists into one sequence ordered by this number. Bundle categories usually get the lower numbers so they appear first.")}</div>
       <div className="table-container" style={{
       marginTop: 16
     }}>
         <table className="data-table">
           <thead><tr><th>{t("menu_bundle-categories.name")}</th><th>{t("menu_bundle-categories.slug")}</th><th>{t("menu_bundle-categories.order")}</th><th>{t("menu_bundle-categories.status")}</th><th>{t("menu_bundle-categories.actions")}</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={5} className="data-table-empty">{t("menu_bundle-categories.loading")}</td></tr> : items.map(item => <tr key={item.id}>
+            {loading ? <tr><td colSpan={5} className="data-table-empty">{t("menu_bundle-categories.loading")}</td></tr> : sorted.map(item => <tr key={item.id}>
                 <td><div style={{
                 fontWeight: 600
               }}>{item.name}</div></td>

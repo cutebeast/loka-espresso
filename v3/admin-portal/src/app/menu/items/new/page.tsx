@@ -54,6 +54,7 @@ export default function NewItemPage() {
     dietary_tag_ids: [] as number[],
     is_available: true,
     is_featured: false,
+    display_order: 0,
     is_bundle_eligible: false,
     is_addon_deal_eligible: false,
     addon_discount_type: "percentage",
@@ -278,6 +279,7 @@ export default function NewItemPage() {
       p.calories = p.calories ? Number(p.calories) : null;
       p.prep_time_minutes = Number(p.prep_time_minutes) || 10;
       p.minimum_tier_id = p.minimum_tier_id ? Number(p.minimum_tier_id) : null;
+      p.display_order = Number(p.display_order) || 0;
       // Add-on deal fields: send nulls when the deal is off or value is empty —
       // the backend expects a decimal or null, never "".
       if (!p.is_addon_deal_eligible || !form.addon_discount_value) {
@@ -451,6 +453,10 @@ export default function NewItemPage() {
                 ...form,
                 is_featured: e.target.checked
               })} />{t("menu_items_new.featured")}</label></div>
+            <div className="df-field"><label className="form-label">{t("menu_items_new.sort_order", "Sort Order")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.display_order} onChange={e => setForm({
+              ...form,
+              display_order: Number(e.target.value)
+            })} /></div>
             {!isExperience && <div className="df-field"><label style={{
               display: "flex",
               alignItems: "center",

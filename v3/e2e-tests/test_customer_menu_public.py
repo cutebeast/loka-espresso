@@ -86,9 +86,9 @@ async def test_workshops_endpoint(client: httpx.AsyncClient, base_url: str):
         assert isinstance(w["total_remaining"], int)
         for s in w["sessions"]:
             assert s["remaining"] == s["capacity"] - s["booked_pax"]
-    # localized content
-    r = await client.get(f"{base_url}/menu/workshops", params={"locale": "ms"})
+    # localized content (launch locales: EN + CN only)
+    r = await client.get(f"{base_url}/menu/workshops", params={"locale": "zh"})
     assert r.status_code == 200
-    ms_names = [w["item_name"] for w in r.json()["data"]]
+    zh_names = [w["item_name"] for w in r.json()["data"]]
     en_names = [w["item_name"] for w in data]
-    assert any(a != b for a, b in zip(ms_names, en_names)), "locale=ms should localize names"
+    assert any(a != b for a, b in zip(zh_names, en_names)), "locale=zh should localize names"

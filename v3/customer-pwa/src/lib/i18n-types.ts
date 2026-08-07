@@ -8,7 +8,8 @@
 
 export type Locale = 'en' | 'ms' | 'zh' | 'ta' | 'tr';
 
-export const AVAILABLE_LOCALES: Locale[] = ['en', 'ms', 'zh', 'ta', 'tr'];
+// EN + CN only at launch (2026-08-07); ms may return later, ta/tr dropped.
+export const AVAILABLE_LOCALES: Locale[] = ['en', 'zh'];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 export function isValidLocale(locale: string): locale is Locale {

@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.admin]
 @pytest.mark.asyncio
 async def test_public_ui_translations(client: httpx.AsyncClient, base_url: str):
     """Public UI translations endpoint returns key/value pairs."""
-    r = await client.get(f"{base_url}/public/translations/ui?locale=ms&namespace=pwa-ui")
+    r = await client.get(f"{base_url}/public/translations/ui?locale=zh&namespace=pwa-ui")
     assert r.status_code == 200
     data = r.json()["data"]
     assert isinstance(data, dict)
@@ -23,7 +23,7 @@ async def test_admin_translation_lifecycle(client: httpx.AsyncClient, admin_head
     key = f"e2e.test.{uuid.uuid4().hex[:8]}"
     payload = {
         "translation_key": key,
-        "locale": "ms",
+        "locale": "zh",
         "translated_text": "Ujian",
         "source_text": "Test",
         "namespace": "pwa-ui",
@@ -36,7 +36,7 @@ async def test_admin_translation_lifecycle(client: httpx.AsyncClient, admin_head
     trans_id = r.json()["data"]["id"]
 
     # List
-    r = await client.get(f"{base_url}/translations?locale=ms&namespace=pwa-ui", headers=admin_headers)
+    r = await client.get(f"{base_url}/translations?locale=zh&namespace=pwa-ui", headers=admin_headers)
     assert r.status_code == 200
     assert any(t["id"] == trans_id for t in r.json()["data"]["items"])
 

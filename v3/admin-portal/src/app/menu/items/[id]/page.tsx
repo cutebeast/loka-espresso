@@ -124,6 +124,7 @@ export default function ItemEditPage() {
         dietary_tag_ids: (d.dietary_tags || []).map((t: any) => t.id || t.dietary_tag_id),
         is_available: d.is_available,
         is_featured: d.is_featured,
+        display_order: d.display_order ?? 0,
         is_bundle_eligible: d.is_bundle_eligible ?? false,
         is_addon_deal_eligible: d.is_addon_deal_eligible ?? false,
         addon_discount_type: d.addon_discount_type || "percentage",
@@ -429,6 +430,7 @@ export default function ItemEditPage() {
       pl.calories = pl.calories ? Number(pl.calories) : null;
       pl.prep_time_minutes = pl.prep_time_minutes ? Number(pl.prep_time_minutes) : null;
       pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
+      pl.display_order = Number(pl.display_order) || 0;
       pl.recipes = recipes.map((rc: any) => ({
         ...rc,
         quantity_required: Number(rc.quantity_required) || 1,
@@ -724,6 +726,10 @@ export default function ItemEditPage() {
               ...form,
               is_featured: e.target.checked
             })} />{t("menu_items_[id].featured")}</label></div>
+            <div className="df-field"><label className="form-label">{t("menu_items_[id].sort_order", "Sort Order")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.display_order ?? 0} onChange={e => setForm({
+            ...form,
+            display_order: Number(e.target.value)
+          })} /></div>
             {!isExperience && <div className="df-field"><label style={{
             display: "flex",
             alignItems: "center",

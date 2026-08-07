@@ -46,7 +46,7 @@ async def test_customer_list_stores(client: httpx.AsyncClient, base_url: str):
 @pytest.mark.asyncio
 async def test_customer_list_stores_with_locale(client: httpx.AsyncClient, base_url: str):
     """Public stores API respects Accept-Language for translations."""
-    r = await client.get(f"{base_url}/stores", headers={"Accept-Language": "ms"})
+    r = await client.get(f"{base_url}/stores", headers={"Accept-Language": "zh"})
     assert r.status_code == 200
     stores = r.json()["data"]["items"]
     assert len(stores) >= 1
@@ -105,7 +105,7 @@ async def test_customer_get_menu_item_with_translation(client: httpx.AsyncClient
     assert len(items) >= 1
     item_id = items[0]["id"]
 
-    r2 = await client.get(f"{base_url}/menu/items/{item_id}", headers={"Accept-Language": "ms"})
+    r2 = await client.get(f"{base_url}/menu/items/{item_id}", headers={"Accept-Language": "zh"})
     assert r2.status_code == 200
     item = r2.json()["data"]
     assert "item_name" in item

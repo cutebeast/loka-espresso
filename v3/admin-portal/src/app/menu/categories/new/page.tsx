@@ -15,6 +15,7 @@ export default function NewCategoryPage() {
     slug: "",
     description: "",
     is_available: true,
+    display_order: 0,
     category_type: "regular",
     available_from_time: "",
     available_to_time: "",
@@ -87,6 +88,10 @@ export default function NewCategoryPage() {
               ...form,
               category_type: e.target.value
             })}><option value="regular">{t("menu_categories_new.regular")}</option><option value="combo">{t("menu_categories_new.combo_shows_first")}</option></select></div>
+            <div className="df-field"><label className="form-label">{t("menu_categories_new.sort_order", "Sort Order")}</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.display_order} onChange={e => setForm({
+              ...form,
+              display_order: Number(e.target.value)
+            })} /></div>
             <div className="df-field"><label style={{
               display: "flex",
               alignItems: "center",

@@ -6,7 +6,8 @@ import { logError } from "@/lib/logger";
 import DEFAULT_TRANSLATIONS from "./i18n/locales/en.json";
 
 const STORAGE_KEY = "admin-locale";
-const SUPPORTED_LOCALES = ["en", "ms", "zh", "ta", "tr"];
+// Active locales: EN + CN at launch (2026-08-07); ms may return later, ta/tr dropped.
+const SUPPORTED_LOCALES = ["en", "zh"];
 const DEFAULT_LOCALE = "en";
 const NAMESPACE = "admin-ui";
 

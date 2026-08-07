@@ -22,3 +22,4 @@ scripts/seed/seed_state.json
 .next/
 tsconfig.tsbuildinfo
 CLAUDE.md
+backups/

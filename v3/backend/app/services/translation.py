@@ -13,7 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.translation import Translation, TranslationCache
 
-SUPPORTED_LOCALES = ["ms", "zh", "ta", "tr"]
+# Active translation targets. Business decision (2026-08-07): launch with
+# English + Simplified Chinese only. Bahasa Melayu may be re-enabled later;
+# ta/tr were dropped. Existing ms/ta/tr rows stay in the DB — re-adding a
+# locale here resumes auto-translation for it without reseeding.
+SUPPORTED_LOCALES = ["zh"]
 SOURCE_LOCALE = "en"
 
 import threading

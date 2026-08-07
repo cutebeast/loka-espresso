@@ -23,6 +23,7 @@ interface BundleProduct {
   }[];
   category_name?: string;
   is_active: boolean;
+  display_order?: number;
   pick_count?: number | null;
 }
 export default function BundleProductsPage() {
@@ -68,7 +69,7 @@ export default function BundleProductsPage() {
     const matchesSearch = !search || b.title.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? b.is_active : !b.is_active);
     return matchesSearch && matchesStatus;
-  });
+  }).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || a.title.localeCompare(b.title));
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
@@ -124,13 +125,13 @@ export default function BundleProductsPage() {
               width: 50
             }}></th><th>{t("menu_bundle-products.title")}</th><th>{t("menu_bundle-products.type")}</th><th>{t("menu_bundle-products.components")}</th><th style={{
               textAlign: "right"
-            }}>{t("menu_bundle-products.price")}</th><th style={{
+            }}>{t("menu_bundle-products.price")}</th><th>{t("menu_bundle-products.sort", "Sort")}</th><th style={{
               width: 80
             }}>{t("menu_bundle-products.status")}</th><th style={{
               width: 80
             }}>{t("menu_bundle-products.actions")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={7} className="data-table-empty">{t("menu_bundle-products.loading")}</td></tr> : paged.length === 0 ? <tr><td colSpan={7} className="data-table-empty">{t("menu_bundle-products.no_bundle_products_found")}<button type="button" onClick={() => router.push("/menu/bundle-products/new")} style={{
+          {loading ? <tr><td colSpan={8} className="data-table-empty">{t("menu_bundle-products.loading")}</td></tr> : paged.length === 0 ? <tr><td colSpan={8} className="data-table-empty">{t("menu_bundle-products.no_bundle_products_found")}<button type="button" onClick={() => router.push("/menu/bundle-products/new")} style={{
                 background: "none",
                 border: "none",
                 color: "var(--color-primary)",
@@ -167,6 +168,7 @@ export default function BundleProductsPage() {
               textAlign: "right",
               fontWeight: 600
             }}>{format(b.bundle_price)}</td>
+                <td>{b.display_order ?? 0}</td>
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? t("admin.status.active") : t("admin.status.inactive")}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{

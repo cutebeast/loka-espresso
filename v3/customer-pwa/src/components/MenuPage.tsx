@@ -188,14 +188,14 @@ export default function MenuPage() {
   // Bundle sections: one per bundle category that has bundles (ordered by
   // display_order), plus an uncategorized bucket for bundles without one.
   const bundleSections = useMemo(() => {
-    const sections: { id: number; name: string; bundles: BundleProduct[] }[] = [];
+    const sections: { id: number; name: string; bundles: BundleProduct[]; display_order: number }[] = [];
     const sorted = [...bundleCategories].sort((a, b) => a.display_order - b.display_order);
     for (const bc of sorted) {
       const bundles = bundleProducts.filter(bp => bp.bundle_category_id === bc.id);
-      if (bundles.length > 0) sections.push({ id: BUNDLE_SECTION_ID_BASE + bc.id, name: bc.name, bundles });
+      if (bundles.length > 0) sections.push({ id: BUNDLE_SECTION_ID_BASE + bc.id, name: bc.name, bundles, display_order: bc.display_order });
     }
     const uncategorized = bundleProducts.filter(bp => bp.bundle_category_id == null || !sorted.some(bc => bc.id === bp.bundle_category_id));
-    if (uncategorized.length > 0) sections.push({ id: UNCATEGORIZED_BUNDLE_SECTION_ID, name: t('menu.bundles'), bundles: uncategorized });
+    if (uncategorized.length > 0) sections.push({ id: UNCATEGORIZED_BUNDLE_SECTION_ID, name: t('menu.bundles'), bundles: uncategorized, display_order: Number.MAX_SAFE_INTEGER });
     return sections;
   }, [bundleCategories, bundleProducts, t]);
 
@@ -361,16 +361,47 @@ export default function MenuPage() {
       setTierNames(map);
     }).catch(() => setTierNames({}));
   }, [vaultItems.length]);
+  // Combined display sequence: bundle categories and item categories share ONE
+  // display_order space (admin sets the numbers; bundles usually come first).
+  // Ties go to bundle sections. Bundle sections hide while searching.
+  const combinedSections = useMemo(() => {
+    const itemSecs = itemsByCategory.map(g => ({
+      kind: 'items' as const,
+      order: g.category.display_order ?? 0,
+      id: g.category.id,
+      name: g.category.category_name,
+      group: g
+    }));
+    const bSecs = debouncedSearch ? [] : bundleSections.map(s => ({
+      kind: 'bundle' as const,
+      order: s.display_order,
+      id: s.id,
+      name: s.name,
+      section: s
+    }));
+    return [...itemSecs, ...bSecs].sort((a, b) =>
+      a.order - b.order || (a.kind === b.kind ? a.id - b.id : a.kind === 'bundle' ? -1 : 1)
+    );
+  }, [itemsByCategory, bundleSections, debouncedSearch]);
   const allCats = useMemo(() => [{
     id: null as number | null,
     name: t('menu.all')
-  }, ...categories.map(c => ({
-    id: c.id,
-    name: c.category_name
-  })), ...bundleSections.map(s => ({
+  }, ...combinedSections.map(s => ({
     id: s.id,
     name: s.name
-  }))], [categories, bundleSections, t]);
+  }))], [combinedSections, t]);
+  // Bundle section renderer — same scroll-spy hooks as the F&B sections
+  const renderBundleSection = (section: { id: number; name: string; bundles: BundleProduct[]; display_order: number }) => <div key={section.id} ref={el => {
+    sectionRefs.current.set(section.id, el);
+  }} data-category-id={section.id}>
+      <div className="menu-category-header">
+        <div className="menu-category-accent" />
+        <h2 className="menu-category-title">{section.name}</h2>
+      </div>
+      <div className="menu-items-grid">
+        {section.bundles.map(renderBundleCard)}
+      </div>
+    </div>;
   const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
     if (categoryId === null) {      const firstCatId = categories[0]?.id;
@@ -591,10 +622,13 @@ export default function MenuPage() {
         }}>
                 {t('common.retry')}
               </button>}
-          </div> : itemsByCategory.map(({
-        category,
-        items
-      }) => <div key={category.id} ref={el => {
+          </div> : combinedSections.map(sec => {
+        if (sec.kind === 'bundle') return renderBundleSection(sec.section);
+        const {
+          category,
+          items
+        } = sec.group;
+        return <div key={category.id} ref={el => {
         sectionRefs.current.set(category.id, el);
       }} data-category-id={category.id}>
               <div className="menu-category-header">
@@ -714,22 +748,8 @@ export default function MenuPage() {
           })}
               </div>
               </>}
-            </div>)}
-
-        {/* Bundle sections — grouped by bundle category, after the F&B categories.
-            data-category-id hooks them into the same scroll-spy as F&B sections. */}
-        {!loading && !debouncedSearch ? bundleSections.map(section => <div key={section.id} ref={el => {
-          // eslint-disable-next-line react-hooks/refs -- same ref-callback pattern as the F&B category sections above; runs at commit time, not during render
-          sectionRefs.current.set(section.id, el);
-        }} data-category-id={section.id}>
-            <div className="menu-category-header">
-              <div className="menu-category-accent" />
-              <h2 className="menu-category-title">{section.name}</h2>
-            </div>
-            <div className="menu-items-grid">
-              {section.bundles.map(renderBundleCard)}
-            </div>
-          </div>) : null}
+            </div>;
+        })}
       </div>
 
       {customizeItem && <ItemCustomizeSheet item={customizeItem} isOpen={customizeItem !== null} onClose={() => setCustomizeItem(null)} onAdd={handleCustomizeAdd} customizations={deriveCustomizationOptions(customizeItem)} />}

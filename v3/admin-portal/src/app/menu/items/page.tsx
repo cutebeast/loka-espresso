@@ -28,7 +28,7 @@ export default function MenuItemsPage() {
       items: any[];
     }>("/admin/menu/categories?per_page=50").then(d => setCategories(d.items || [])).catch((e: any) => { console.error("Failed to load categories:", e); setError(e.message || t("admin.errors.loadFailed")); });
   }, []);
-  const filtered = catFilter ? items.filter(i => i.category_id === Number(catFilter)) : items;
+  const filtered = (catFilter ? items.filter(i => i.category_id === Number(catFilter)) : [...items]).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || (a.item_name || "").localeCompare(b.item_name || ""));
   return <div style={{
     padding: 32
   }}>
@@ -70,9 +70,9 @@ export default function MenuItemsPage() {
       </div>
       <div className="table-container">
         <table className="data-table">
-          <thead><tr><th style={{ width: 56 }}>{t("menu_items.image")}</th><th>{t("menu_items.name")}</th><th>{t("menu_items.code")}</th><th>{t("menu_items.price")}</th><th>{t("menu_items.category_2")}</th><th>{t("menu_items.tags")}</th><th>{t("menu_items.add_ons")}</th><th>{t("menu_items.recipes")}</th><th>{t("menu_items.status")}</th><th>{t("menu_items.actions")}</th></tr></thead>
+          <thead><tr><th style={{ width: 56 }}>{t("menu_items.image")}</th><th>{t("menu_items.name")}</th><th>{t("menu_items.code")}</th><th>{t("menu_items.price")}</th><th>{t("menu_items.sort", "Sort")}</th><th>{t("menu_items.category_2")}</th><th>{t("menu_items.tags")}</th><th>{t("menu_items.add_ons")}</th><th>{t("menu_items.recipes")}</th><th>{t("menu_items.status")}</th><th>{t("menu_items.actions")}</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={10} className="data-table-empty">{t("menu_items.loading")}</td></tr> : filtered.map(item => <tr key={item.id}>
+            {loading ? <tr><td colSpan={11} className="data-table-empty">{t("menu_items.loading")}</td></tr> : filtered.map(item => <tr key={item.id}>
                 <td>{item.image_url ? <img src={item.image_url} alt={item.item_name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: "var(--radius-sm)", display: "block" }} /> : <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--color-bg-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--color-text-muted)" }}>—</div>}</td>
                 <td><div style={{
                 fontWeight: 600
@@ -84,6 +84,7 @@ export default function MenuItemsPage() {
               fontSize: 12
             }}>{item.item_code}</td>
                 <td>{format(item.base_price)}</td>
+                <td>{item.display_order ?? 0}</td>
                 <td style={{
               fontSize: 13
             }}>{item.category?.category_name || "—"}</td>

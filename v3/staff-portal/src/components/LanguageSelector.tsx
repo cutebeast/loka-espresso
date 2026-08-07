@@ -3,17 +3,17 @@
 import { Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 
+// EN + CN only at launch (2026-08-07); ms may return later, ta/tr dropped.
 const LOCALES: Record<string, string> = {
   en: "English",
-  ms: "Bahasa Melayu",
   zh: "中文",
-  ta: "தமிழ்",
-  tr: "Türkçe",
 };
 
 function getStoredLocale(): string {
   if (typeof window === "undefined") return "en";
-  return localStorage.getItem("locale") || navigator.language?.split("-")[0] || "en";
+  const stored = localStorage.getItem("locale") || navigator.language?.split("-")[0] || "en";
+  // Stale stored locales (ms/ta/tr from before the launch restriction) fall back to EN
+  return stored in LOCALES ? stored : "en";
 }
 
 function storeLocale(locale: string) {

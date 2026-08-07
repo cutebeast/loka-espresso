@@ -96,8 +96,7 @@ async def get_store_menu(
         MenuCategory.is_available.is_(True),
         MenuCategory.deleted_at.is_(None),
     ).order_by(
-        # Combo categories first, then by display_order
-        (MenuCategory.category_type != "combo"),
+        # Pure display_order — combined with bundle categories client-side
         MenuCategory.display_order,
         MenuCategory.id,
     )
@@ -109,11 +108,12 @@ async def get_store_menu(
         if _is_category_available_now(c, now_time, now_date)
     ]
 
-    # Fetch items (global menu, not per-store)
+    # Fetch items (global menu, not per-store) — display_order drives the
+    # customer-facing order within each category
     item_stmt = select(MenuItem).where(
         MenuItem.is_available.is_(True),
         MenuItem.deleted_at.is_(None),
-    )
+    ).order_by(MenuItem.display_order, MenuItem.id)
     if category_id:
         item_stmt = item_stmt.where(MenuItem.category_id == category_id)
     if search:
@@ -394,7 +394,8 @@ async def list_menu_categories(db: DBDependency, locale: OptionalLocale):
         MenuCategory.deleted_at.is_(None),
         MenuCategory.is_system.is_(False),
     ).order_by(
-        (MenuCategory.category_type != "combo"),
+        # Pure display_order — bundle and item categories interleave in one
+        # combined sequence on the customer menu (admin sets the numbers)
         MenuCategory.display_order,
         MenuCategory.id,
     )

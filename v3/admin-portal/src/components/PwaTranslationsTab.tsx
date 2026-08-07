@@ -18,7 +18,7 @@ interface Translation {
   namespace: string;
 }
 
-const LOCALES = ["ms", "zh", "ta", "tr"] as const;
+const LOCALES = ["zh"] as const; // EN + CN only at launch; ms may return later
 const FLAGS: Record<string, string> = { ms: "🇲🇾", zh: "🇨🇳", ta: "🇮🇳", tr: "🇹🇷" };
 const NAMES: Record<string, string> = { ms: "BM", zh: "中文", ta: "தமிழ்", tr: "TR" };
 
