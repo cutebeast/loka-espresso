@@ -10,6 +10,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
@@ -17,6 +18,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -46,6 +48,9 @@ class MenuCategory(Base, TimestampMixin, SoftDeleteMixin):
     available_to_date: Mapped[str | None] = mapped_column(Date, nullable=True)
 
     __table_args__ = (
+        # Recreating a deleted category with the same slug must work —
+        # uniqueness applies to live rows only
+        Index("uq_menu_categories_slug_active", "slug", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint("category_type IN ('regular','combo')", name="ck_menu_categories_category_type"),
         CheckConstraint(
             "(available_from_time IS NULL) OR (available_to_time IS NULL) OR (available_from_time < available_to_time)",
@@ -80,9 +85,13 @@ class EventCategory(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    slug: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        Index("uq_event_categories_slug_active", "slug", unique=True, postgresql_where=text("deleted_at IS NULL")),
+    )
 
 
 class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
@@ -95,7 +104,7 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     event_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("event_categories.id", ondelete="SET NULL"), nullable=True
     )
-    item_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    item_code: Mapped[str] = mapped_column(String(50), nullable=False)
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     long_description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -148,6 +157,7 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     __table_args__ = (
+        Index("uq_menu_items_item_code_active", "item_code", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint("base_price >= 0", name="ck_menu_items_base_price"),
         CheckConstraint("cost_price >= 0", name="ck_menu_items_cost_price"),
         CheckConstraint("prep_time_minutes BETWEEN 1 AND 120", name="ck_menu_items_prep_time_minutes"),
@@ -274,7 +284,7 @@ class Allergen(Base, SoftDeleteMixin):
     __tablename__ = "allergens"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    allergen_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    allergen_key: Mapped[str] = mapped_column(String(50), nullable=False)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -290,6 +300,7 @@ class Allergen(Base, SoftDeleteMixin):
     )
 
     __table_args__ = (
+        Index("uq_allergens_allergen_key_active", "allergen_key", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint(
             "severity IN ('low','medium','high','critical')",
             name="ck_allergens_severity",

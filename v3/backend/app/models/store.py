@@ -32,9 +32,9 @@ class Store(Base, SoftDeleteMixin):
     __tablename__ = "stores"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    store_code: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
+    store_code: Mapped[str] = mapped_column(String(20), nullable=False)
     store_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    slug: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False)
     brand_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     address_line_1: Mapped[str] = mapped_column(String(255), nullable=False)
     address_line_2: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -98,6 +98,8 @@ class Store(Base, SoftDeleteMixin):
     )
 
     __table_args__ = (
+        Index("uq_stores_store_code_active", "store_code", unique=True, postgresql_where=text("deleted_at IS NULL")),
+        Index("uq_stores_slug_active", "slug", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint("pickup_lead_minutes BETWEEN 5 AND 120", name="ck_stores_pickup_lead_minutes"),
         CheckConstraint("delivery_radius_km > 0", name="ck_stores_delivery_radius_km"),
         CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_stores_latitude"),

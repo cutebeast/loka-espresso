@@ -3,7 +3,7 @@ from decimal import Decimal
 from datetime import datetime, timezone
 from typing import List
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,18 +17,20 @@ class BundleCategory(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    slug: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-
+    __table_args__ = (
+        Index("uq_bundle_categories_slug_active", "slug", unique=True, postgresql_where=text("deleted_at IS NULL")),
+    )
 class BundleType(Base, TimestampMixin, SoftDeleteMixin):
     """Admin-editable bundle type: maps a type_key to a pricing mechanic."""
 
     __tablename__ = "bundle_types"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    type_key: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
+    type_key: Mapped[str] = mapped_column(String(30), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     mechanic: Mapped[str] = mapped_column(String(20), nullable=False, default="combo")
@@ -36,6 +38,7 @@ class BundleType(Base, TimestampMixin, SoftDeleteMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
+        Index("uq_bundle_types_type_key_active", "type_key", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint(
             "mechanic IN ('combo','pick_x','multi_course')",
             name="ck_bundle_types_mechanic",

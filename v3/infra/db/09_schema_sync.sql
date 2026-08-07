@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS bundle_categories (
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	deleted_at TIMESTAMP WITH TIME ZONE, 
-	PRIMARY KEY (id), 
-	UNIQUE (slug)
+	PRIMARY KEY (id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bundle_categories_slug_active ON bundle_categories (slug) WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS bundle_types (
 	id SERIAL NOT NULL, 
@@ -35,9 +36,10 @@ CREATE TABLE IF NOT EXISTS bundle_types (
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	deleted_at TIMESTAMP WITH TIME ZONE, 
 	PRIMARY KEY (id), 
-	CONSTRAINT ck_bundle_types_mechanic CHECK (mechanic IN ('combo','pick_x','multi_course')), 
-	UNIQUE (type_key)
+	CONSTRAINT ck_bundle_types_mechanic CHECK (mechanic IN ('combo','pick_x','multi_course'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bundle_types_type_key_active ON bundle_types (type_key) WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS dietary_tags (
 	id SERIAL NOT NULL, 
@@ -61,9 +63,10 @@ CREATE TABLE IF NOT EXISTS event_categories (
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	deleted_at TIMESTAMP WITH TIME ZONE, 
-	PRIMARY KEY (id), 
-	UNIQUE (slug)
+	PRIMARY KEY (id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_event_categories_slug_active ON event_categories (slug) WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS help_articles (
 	id SERIAL NOT NULL, 
@@ -743,4 +746,4 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 't0b1c2d3e4f5' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'u1c2d3e4f5a6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

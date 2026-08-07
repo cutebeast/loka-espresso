@@ -14,6 +14,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,7 +29,7 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
     __tablename__ = "voucher_definitions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    voucher_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    voucher_code: Mapped[str] = mapped_column(String(50), nullable=False)
     voucher_type: Mapped[str] = mapped_column(VoucherType, nullable=False)
     scope: Mapped[str] = mapped_column(VoucherScope, nullable=False, default="global")
     category_id: Mapped[int | None] = mapped_column(
@@ -73,6 +74,7 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
     )
 
     __table_args__ = (
+        Index("uq_voucher_definitions_voucher_code_active", "voucher_code", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint(
             "voucher_type IN ('percentage_off','fixed_amount_off','free_delivery','free_item')",
             name="ck_voucher_definitions_voucher_type",

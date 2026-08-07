@@ -9,10 +9,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,7 +30,7 @@ class RewardCatalog(Base, SoftDeleteMixin, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reward_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    reward_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    reward_key: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     short_description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     reward_type: Mapped[str] = mapped_column(RewardRedemptionType, nullable=False)
@@ -66,6 +68,7 @@ class RewardCatalog(Base, SoftDeleteMixin, TimestampMixin):
     )
 
     __table_args__ = (
+        Index("uq_reward_catalog_reward_key_active", "reward_key", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint(
             "reward_type IN ('free_item','percentage_discount','fixed_discount','free_delivery','points_multiplier','bundle_deal','buy_x_get_y')",
             name="ck_reward_catalog_reward_type",

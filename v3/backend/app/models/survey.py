@@ -10,10 +10,12 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     SmallInteger,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,7 +27,7 @@ class SurveyDefinition(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "survey_definitions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    survey_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    survey_key: Mapped[str] = mapped_column(String(50), nullable=False)
     survey_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     welcome_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -47,6 +49,10 @@ class SurveyDefinition(Base, TimestampMixin, SoftDeleteMixin):
     )
     responses: Mapped[List["SurveyResponse"]] = relationship(
         "SurveyResponse", back_populates="survey", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("uq_survey_definitions_survey_key_active", "survey_key", unique=True, postgresql_where=text("deleted_at IS NULL")),
     )
 
 

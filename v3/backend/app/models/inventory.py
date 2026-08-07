@@ -4,8 +4,18 @@ from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey,
-    Integer, Numeric, String, Text, UniqueConstraint,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -48,7 +58,7 @@ class InventoryItem(Base, SoftDeleteMixin, TimestampMixin):
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("inventory_categories.id", ondelete="SET NULL"), nullable=True
     )
-    item_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    item_code: Mapped[str] = mapped_column(String(50), nullable=False)
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -77,6 +87,7 @@ class InventoryItem(Base, SoftDeleteMixin, TimestampMixin):
     )
 
     __table_args__ = (
+        Index("uq_inventory_items_item_code_active", "item_code", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint("unit_cost >= 0", name="ck_inventory_items_unit_cost"),
         CheckConstraint("shelf_life_days > 0", name="ck_inventory_items_shelf_life_days"),
         CheckConstraint("item_type IN ('fnb','non_fnb')", name="ck_inventory_items_item_type"),
