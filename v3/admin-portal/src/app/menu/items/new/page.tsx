@@ -276,7 +276,9 @@ export default function NewItemPage() {
       }
       const r: any = await api.post("/admin/menu/items", p);
       const id = r?.data?.id || r?.id;
-      if (id) router.push(`/menu/items/${id}`);
+      // Classes created via the Workshops "Add Class" flow go back there, not
+      // to the generic items list — the user should land where their work is.
+      if (id) router.push(`/menu/items/${id}${lockCategory ? "?from=workshops" : ""}`);
     } catch (e: any) {
       setError(e.message || t("admin.errors.saveFailed"));
       console.error(e);
@@ -318,7 +320,7 @@ export default function NewItemPage() {
       alignItems: "center",
       gap: 12,
       marginBottom: 20
-    }}><button onClick={() => router.push("/menu/items")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><h1 className="page-title" style={{
+    }}><button onClick={() => router.push(lockCategory ? "/events/workshops" : "/menu/items")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><h1 className="page-title" style={{
         margin: 0
       }}>{t("menu_items_new.new_menu_item")}</h1></div>
       <form onSubmit={handleSubmit}>
@@ -726,7 +728,7 @@ export default function NewItemPage() {
                 </div>)}
             </div>}
           </div>
-          <div className="df-actions"><button type="button" onClick={() => router.push("/menu/items")} className="btn btn-ghost">{t("menu_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div>
+          <div className="df-actions"><button type="button" onClick={() => router.push(lockCategory ? "/events/workshops" : "/menu/items")} className="btn btn-ghost">{t("menu_items_new.cancel")}</button><button type="submit" disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? t("admin.common.creating") : t("admin.common.create")}</button></div>
         </div>
       </form>
     </div>;

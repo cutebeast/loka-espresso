@@ -1507,3 +1507,9 @@ RULE: any filter value compared against a PG enum needs backend-side validation 
 ### Round 35 follow-up 22 — background auto-translate (2026-08-07)
 
 E2E bundle tests timed out under load; root cause: menu item create blocked 6.6s on the INLINE auto-translate call (reasoning-model latency + purged cache misses + empty-row retries). All 57 `await auto_translate_record(...)` call sites in 21 admin endpoint files now use `schedule_auto_translate(...)` (fire-and-forget with its own session). Create latency 6.6s → 1.3s. Translation stays eventually consistent: background task → cache → nightly cron backstop; reads fall back to source text. Verified zh translation lands ~25s after create. Also relaxed the workshops E2E assertion (tester-created classes on the shared dev DB shouldn't fail seeded EX- checks).
+
+### Round 35 follow-up 23 — zh UI keys + workshop back-nav (2026-08-07)
+
+- **New admin pages showed English on zh UI**: UI-key namespaces (admin-ui/staff-ui/pwa-ui) had NO bulk fill — keys seeded EN-only (or never seeded: 81 keys across the agent-built bundle-types/bundle-categories/event-categories pages) never got zh rows. New `backend/scripts/translate_missing_ui_keys.py` fills missing namespace keys per locale (now also nightly 04:37 cron). Seeded the 81 missing EN keys, filled 145 zh rows total.
+- **Workshop edit "becomes a menu item"**: workshops edit link now passes `?from=workshops`; the item edit back arrow returns to /events/workshops; Add Class save/cancel/back also return to the workshops page instead of the generic items list.
+- GOTCHA for agents: new admin pages using t() keys MUST have the keys seeded to the admin-ui DB namespace (EN row) — there is no en.json fallback for page-specific keys, and zh only fills from EN rows.

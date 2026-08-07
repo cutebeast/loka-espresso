@@ -294,7 +294,7 @@ export default function ExperiencesPage() {
                           <button className="btn btn-ghost btn-sm" onClick={() => setExpandedId(expanded ? null : item.id)} title={t("menu_experiences.sessions", "Sessions")}>
                             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
-                          <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" title={t("common.edit", "Edit")} style={{ color: "var(--color-info)" }}>
+                          <button onClick={() => router.push(`/menu/items/${item.id}?from=workshops`)} className="btn btn-ghost btn-sm" title={t("common.edit", "Edit")} style={{ color: "var(--color-info)" }}>
                             <Edit2 size={14} />
                           </button>
                         </div>

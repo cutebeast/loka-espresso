@@ -587,7 +587,7 @@ export default function ItemEditPage() {
       alignItems: "center",
       gap: 12,
       marginBottom: 20
-    }}><button onClick={() => r.push("/menu/items")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{
+    }}><button onClick={() => r.push(new URLSearchParams(window.location.search).get("from") === "workshops" ? "/events/workshops" : "/menu/items")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{
           margin: 0
         }}>{form.item_name || "Item"}</h1></div></div>
       {msg && <div className="alert alert-success" style={{
