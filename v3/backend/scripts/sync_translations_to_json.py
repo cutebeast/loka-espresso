@@ -24,7 +24,8 @@ CUSTOMER_PWA_LOCALES = os.path.join(
     os.path.dirname(__file__), "..", "..", "customer-pwa", "src", "locales"
 )
 
-LOCALES = ["ms", "zh", "ta", "tr"]
+# EN + CN only at launch (2026-08-07); ms may return later, ta/tr dropped.
+LOCALES = ["zh"]
 
 
 def set_nested(d: dict, key: str, value: str):

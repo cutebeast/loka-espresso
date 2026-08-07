@@ -1488,3 +1488,9 @@ User found classes landing in menu items but not the workshops page, and an audi
 - **Audit log severity 500**: frontend offered low/medium/high; PG enum is info/notice/warning/critical/emergency. Backend maps legacy words + 400s on unknown (never 500); frontend options now match the enum; sevBadge keys updated.
 - **Full filter sweep** (every admin filter vs backend enums/CHECKs): fixed time-events event_type 500 (start_break/end_break → break_start/break_end + overtime_start + backend validation), devices platform filter silently ignored (param renamed device_type), PO receive/cancel buttons vanishing after draft (gates used submitted/ordered/partially_received vs real draft/sent/partial), missing filter options added (orders partially_refunded/disputed/drive_thru, movements return/transfer_in/out), cosmetic badges fixed (loyalty ledger keyword classify, consents withdrawn).
 RULE: any filter value compared against a PG enum needs backend-side validation → 400, or an unknown value 500s on the enum cast.
+
+### Round 35 follow-up 20 — help refresh + staff checklist (2026-08-07)
+
+- All 50 help articles audited against recent changes; 18 updated in place (sort order/combined sequence, Copy to Inventory + Link, negative-stock rule + all-channel deduction, Wastage Reports page + photo evidence, Staff Meal settings + POS button, MYT date filters, audit severity levels, per-audience Manage Articles, duty pages open to all roles, EN+zh languages, reusable deleted codes). 32 verified already-correct. Labels aligned to "Items Categories". `sync_translations_to_json.py` LOCALES trimmed to zh.
+- Staff portal full verification: 20 pages, all staff endpoints, 5 test-role logins, clock/break events, garbage + grease-trap photo submissions — all healthy.
+- New `v3/staff_portal_test_checklist.csv` (75 rows) mirrors the admin checklist for the staff portal testers.
