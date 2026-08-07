@@ -79,7 +79,7 @@ export default function ExperiencesPage() {
     setError("");
     try {
       const [cats, evCats] = await Promise.all([
-        api.getRaw<{ items: Category[] }>("/admin/menu/categories?per_page=50"),
+        api.getRaw<{ items: Category[] }>("/admin/menu/categories?per_page=50&include_system=true"),
         api.getRaw<{ items: EventCategory[] }>("/admin/event-categories?per_page=100"),
       ]);
       setEventCategories(evCats.items || []);

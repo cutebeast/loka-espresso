@@ -34,14 +34,14 @@ export default function LoyaltyLedgerPage() {
     };
   }, [fetchData]);
   const eventBadge = (eventType: string) => {
-    const colors: Record<string, string> = {
-      earn: "badge-green",
-      redeem: "badge-red",
-      expire: "badge-gray",
-      adjustment: "badge-blue"
-    };
-    return <span className={`badge badge-sm ${colors[eventType] || "badge-gray"}`}>
-        {eventType}
+    // Raw DB event types (order_earned, reward_redemption, points_expired,
+    // manual_adjustment, ...) — classify by keyword
+    const color = /earn|bonus|submitted/.test(eventType) ? "badge-green"
+      : /redeem|conversion/.test(eventType) ? "badge-red"
+      : /expired/.test(eventType) ? "badge-gray"
+      : "badge-blue";
+    return <span className={`badge badge-sm ${color}`}>
+        {eventType.replace(/_/g, " ")}
       </span>;
   };
   return <div style={{

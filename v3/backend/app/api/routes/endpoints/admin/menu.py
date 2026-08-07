@@ -240,13 +240,23 @@ async def list_categories(
     admin: CurrentAdmin,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    include_system: bool = Query(False),
 ):
-    """List menu categories for a store (excluding soft-deleted)."""
-    total_result = await db.execute(select(func.count(MenuCategory.id)).where(MenuCategory.deleted_at.is_(None), MenuCategory.is_system.is_(False)))
+    """List menu categories (excluding soft-deleted).
+
+    System categories (Experiences, Combo) are hidden by default so they stay
+    out of item-category pickers; the workshops page passes include_system=true
+    to resolve the Experiences category id.
+    """
+    base = select(MenuCategory).where(MenuCategory.deleted_at.is_(None))
+    count_stmt = select(func.count(MenuCategory.id)).where(MenuCategory.deleted_at.is_(None))
+    if not include_system:
+        base = base.where(MenuCategory.is_system.is_(False))
+        count_stmt = count_stmt.where(MenuCategory.is_system.is_(False))
+    total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
     result = await db.execute(
-        select(MenuCategory)
-        .where(MenuCategory.deleted_at.is_(None), MenuCategory.is_system.is_(False))
+        base
         .order_by((MenuCategory.category_type != "combo"), MenuCategory.display_order, MenuCategory.id)
         .offset((page - 1) * per_page)
         .limit(per_page)

@@ -79,7 +79,7 @@ export default function NewItemPage() {
     const safeSet = <T,>(setter: (v: T) => void) => (v: T) => {
       if (!cancelled) setter(v);
     };
-    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => {
+    api.getRaw<any>("/admin/menu/categories?per_page=50&include_system=true").then(d => {
       const cats = Array.isArray(d) ? d : d.items || [];
       safeSet(setCategories)(cats);
       // e.g. /menu/items/new?cat=experiences from the Workshops "Add Class" button
@@ -344,7 +344,7 @@ export default function NewItemPage() {
               <select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id} disabled={lockCategory} onChange={e => setForm({
               ...form,
               category_id: e.target.value
-            })}><option value="">{t("menu_items_new.select")}</option>{categories.filter(c => lockCategory ? (c as any).slug === "experiences" : (c as any).slug !== "experiences").map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select>
+            })}><option value="">{t("menu_items_new.select")}</option>{categories.filter(c => lockCategory ? (c as any).slug === "experiences" : !(c as any).is_system).map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select>
               {lockCategory && <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 4 }}>{t("menu_items_new.workshop_category_locked")}</p>}
             </div>
             <div className="df-field">

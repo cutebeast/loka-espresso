@@ -86,6 +86,13 @@ async def list_time_events(
         base_stmt = base_stmt.where(StaffTimeEvent.staff_id == staff_id)
         count_stmt = count_stmt.where(StaffTimeEvent.staff_id == staff_id)
     if event_type is not None:
+        # Native PG enum shift_event_type — validate before the cast (500s otherwise)
+        _valid_event_types = {"clock_in", "clock_out", "break_start", "break_end", "overtime_start"}
+        if event_type not in _valid_event_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid event_type '{event_type}' — use {', '.join(sorted(_valid_event_types))}",
+            )
         base_stmt = base_stmt.where(StaffTimeEvent.event_type == event_type)
         count_stmt = count_stmt.where(StaffTimeEvent.event_type == event_type)
     if date_from is not None:
@@ -267,6 +274,13 @@ async def staff_list_my_time_events(
     count_stmt = select(func.count(StaffTimeEvent.id)).where(StaffTimeEvent.staff_id == staff.id)
 
     if event_type is not None:
+        # Native PG enum shift_event_type — validate before the cast (500s otherwise)
+        _valid_event_types = {"clock_in", "clock_out", "break_start", "break_end", "overtime_start"}
+        if event_type not in _valid_event_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid event_type '{event_type}' — use {', '.join(sorted(_valid_event_types))}",
+            )
         base_stmt = base_stmt.where(StaffTimeEvent.event_type == event_type)
         count_stmt = count_stmt.where(StaffTimeEvent.event_type == event_type)
     if date_from is not None:

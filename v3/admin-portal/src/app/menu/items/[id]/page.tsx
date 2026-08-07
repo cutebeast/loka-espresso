@@ -72,7 +72,7 @@ export default function ItemEditPage() {
   const loadRefs = useCallback(async () => {
     const raw = (d: any) => Array.isArray(d) ? d : d?.items || [];
     try {
-      const d = await api.getRaw<any>("/admin/menu/categories?per_page=50");
+      const d = await api.getRaw<any>("/admin/menu/categories?per_page=50&include_system=true");
       setCategories(raw(d));
     } catch (e: any) {console.error(e); setMsg(e.message || t("admin.errors.loadFailed")); }
     try {
@@ -631,7 +631,7 @@ export default function ItemEditPage() {
             <div className="df-field"><label className="form-label">{t("menu_items_[id].category")}</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id || ""} disabled={isExperience} onChange={e => setForm({
             ...form,
             category_id: e.target.value
-          })}><option value="">—</option>{categories.filter((c: any) => isExperience ? c.slug === "experiences" : c.slug !== "experiences").map((c: any) => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select>{isExperience && <p style={{
+          })}><option value="">—</option>{categories.filter((c: any) => isExperience ? c.slug === "experiences" : !c.is_system).map((c: any) => <option key={c.id} value={c.id}>{c.category_name}</option>)}</select>{isExperience && <p style={{
             fontSize: 11,
             color: "var(--color-text-muted)",
             marginTop: 4

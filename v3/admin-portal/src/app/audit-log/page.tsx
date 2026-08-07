@@ -40,10 +40,11 @@ export default function AuditLogPage() {
   }, [actionFilter, resourceTypeFilter, severityFilter, fromDate, toDate]);
   const sevBadge = (s: string) => {
     const m: Record<string, string> = {
-      low: "badge-gray",
-      medium: "badge-yellow",
-      high: "badge-red",
-      critical: "badge-red"
+      info: "badge-gray",
+      notice: "badge-blue",
+      warning: "badge-yellow",
+      critical: "badge-red",
+      emergency: "badge-red"
     };
     return <span className={`badge badge-sm ${m[s] || "badge-gray"}`}>{s}</span>;
   };
@@ -77,7 +78,7 @@ export default function AuditLogPage() {
         borderRadius: "var(--radius-sm)",
         padding: "6px 12px",
         fontSize: 13
-      }}><option value="">{t("audit-log.all")}</option><option value="low">{t("audit-log.low")}</option><option value="medium">{t("audit-log.medium")}</option><option value="high">{t("audit-log.high")}</option><option value="critical">{t("audit-log.critical")}</option></select>
+      }}><option value="">{t("audit-log.all")}</option><option value="info">{t("audit-log.info", "Info")}</option><option value="notice">{t("audit-log.notice", "Notice")}</option><option value="warning">{t("audit-log.warning", "Warning")}</option><option value="critical">{t("audit-log.critical")}</option><option value="emergency">{t("audit-log.emergency", "Emergency")}</option></select>
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={{
         border: "1px solid var(--color-border-light)",
         borderRadius: "var(--radius-sm)",

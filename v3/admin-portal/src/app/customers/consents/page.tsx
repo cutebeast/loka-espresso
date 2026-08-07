@@ -22,7 +22,7 @@ export default function CustomerConsentsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  const statusBadge = (s: string) => <span className={`badge badge-sm ${s === "granted" ? "badge-green" : s === "revoked" ? "badge-red" : "badge-gray"}`}>{s}</span>;
+  const statusBadge = (s: string) => <span className={`badge badge-sm ${s === "granted" ? "badge-green" : s === "revoked" || s === "withdrawn" ? "badge-red" : "badge-gray"}`}>{s}</span>;
   return <div style={{
     padding: 32
   }}>

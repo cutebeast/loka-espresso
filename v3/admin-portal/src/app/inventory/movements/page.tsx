@@ -114,7 +114,7 @@ export default function InventoryMovementsPage() {
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border-light)"
-        }}><option value="">{t("inventory_movements.all_2")}</option><option value="in">{t("inventory_movements.in")}</option><option value="out">{t("inventory_movements.out")}</option><option value="adjustment">{t("inventory_movements.adjustment")}</option><option value="waste">{t("inventory_movements.waste")}</option></select></div>
+        }}><option value="">{t("inventory_movements.all_2")}</option><option value="in">{t("inventory_movements.in")}</option><option value="out">{t("inventory_movements.out")}</option><option value="adjustment">{t("inventory_movements.adjustment")}</option><option value="waste">{t("inventory_movements.waste")}</option><option value="return">{t("inventory_movements.return", "Return")}</option><option value="transfer_in">{t("inventory_movements.transfer_in", "Transfer In")}</option><option value="transfer_out">{t("inventory_movements.transfer_out", "Transfer Out")}</option></select></div>
         <div><label style={{
           fontSize: 11,
           color: "var(--color-text-muted)",

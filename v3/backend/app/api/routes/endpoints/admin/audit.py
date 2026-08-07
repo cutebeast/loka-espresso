@@ -41,9 +41,23 @@ async def list_audit_logs(
     if resource_type is not None:
         base_stmt = base_stmt.where(AuditLog.resource_type == resource_type)
         count_stmt = count_stmt.where(AuditLog.resource_type == resource_type)
+    # DB enum audit_severity: info/notice/warning/critical/emergency.
+    # Map the legacy low/medium/high words too, and never let an unknown
+    # value reach the enum cast (it 500s).
+    _SEVERITY_MAP = {
+        "info": "info", "notice": "notice", "warning": "warning",
+        "critical": "critical", "emergency": "emergency",
+        "low": "info", "medium": "warning", "high": "critical",
+    }
     if severity is not None:
-        base_stmt = base_stmt.where(AuditLog.severity == severity)
-        count_stmt = count_stmt.where(AuditLog.severity == severity)
+        sev = _SEVERITY_MAP.get(severity.lower())
+        if sev is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid severity '{severity}' — use info, notice, warning, critical or emergency",
+            )
+        base_stmt = base_stmt.where(AuditLog.severity == sev)
+        count_stmt = count_stmt.where(AuditLog.severity == sev)
     if principal_id is not None:
         base_stmt = base_stmt.where(AuditLog.principal_id == principal_id)
         count_stmt = count_stmt.where(AuditLog.principal_id == principal_id)

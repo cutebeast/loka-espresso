@@ -152,7 +152,7 @@ export default function OrdersPage() {
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border-light)"
-        }}><option value="">{t("orders.all")}</option><option value="pending">{t("orders.pending")}</option><option value="confirmed">{t("orders.confirmed")}</option><option value="preparing">{t("orders.preparing")}</option><option value="ready_for_pickup">{t("orders.ready")}</option><option value="out_for_delivery">{t("orders.out_for_delivery")}</option><option value="delivered">{t("orders.delivered")}</option><option value="cancelled_by_customer">{t("orders.cancelled_by_customer")}</option><option value="cancelled_by_merchant">{t("orders.cancelled_by_merchant")}</option><option value="refunded">{t("orders.refunded")}</option></select></div>
+        }}><option value="">{t("orders.all")}</option><option value="pending">{t("orders.pending")}</option><option value="confirmed">{t("orders.confirmed")}</option><option value="preparing">{t("orders.preparing")}</option><option value="ready_for_pickup">{t("orders.ready")}</option><option value="out_for_delivery">{t("orders.out_for_delivery")}</option><option value="delivered">{t("orders.delivered")}</option><option value="cancelled_by_customer">{t("orders.cancelled_by_customer")}</option><option value="cancelled_by_merchant">{t("orders.cancelled_by_merchant")}</option><option value="refunded">{t("orders.refunded")}</option><option value="partially_refunded">{t("orders.partially_refunded", "Partially Refunded")}</option><option value="disputed">{t("orders.disputed", "Disputed")}</option></select></div>
         <div><label htmlFor="order-type-filter" style={{
           fontSize: 11,
           fontWeight: 600,
@@ -165,7 +165,7 @@ export default function OrdersPage() {
           fontSize: 13,
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border-light)"
-        }}><option value="">{t("orders.all_2")}</option><option value="dine_in">{t("orders.dine_in")}</option><option value="takeaway">{t("orders.takeaway")}</option><option value="delivery">{t("orders.delivery")}</option></select></div>
+        }}><option value="">{t("orders.all_2")}</option><option value="dine_in">{t("orders.dine_in")}</option><option value="takeaway">{t("orders.takeaway")}</option><option value="delivery">{t("orders.delivery")}</option><option value="drive_thru">{t("orders.drive_thru", "Drive Thru")}</option></select></div>
         <div><label htmlFor="order-category-filter" style={{
           fontSize: 11,
           fontWeight: 600,

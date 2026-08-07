@@ -181,9 +181,8 @@ export default function PurchaseOrdersPage() {
   const sb = (s: string) => {
     const m: Record<string, string> = {
       draft: "badge-yellow",
-      submitted: "badge-blue",
-      ordered: "badge-blue",
-      partially_received: "badge-orange",
+      sent: "badge-blue",
+      partial: "badge-orange",
       received: "badge-green",
       cancelled: "badge-red"
     };
@@ -351,10 +350,10 @@ export default function PurchaseOrdersPage() {
                 display: "flex",
                 gap: 4
               }}>
-                  {(["draft", "submitted", "ordered", "partially_received"] as string[]).includes(po.status) && <button onClick={() => handleReceive(po.id)} className="btn btn-ghost btn-sm" title={t("inventory_purchase-orders.receive")} style={{
+                  {(["draft", "sent", "partial"] as string[]).includes(po.status) && <button onClick={() => handleReceive(po.id)} className="btn btn-ghost btn-sm" title={t("inventory_purchase-orders.receive")} style={{
                   color: "var(--color-success)"
                 }}><CheckCircle size={14} /></button>}
-                  {(["draft", "submitted"] as string[]).includes(po.status) && <button onClick={() => handleCancel(po.id)} className="btn btn-ghost btn-sm" title={t("inventory_purchase-orders.cancel_2")} style={{
+                  {(["draft", "sent"] as string[]).includes(po.status) && <button onClick={() => handleCancel(po.id)} className="btn btn-ghost btn-sm" title={t("inventory_purchase-orders.cancel_2")} style={{
                   color: "var(--color-error)"
                 }}><XCircle size={14} /></button>}
                 </div>

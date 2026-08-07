@@ -84,7 +84,7 @@ export default function StaffTimeEventsPage() {
         fontSize: 13,
         borderRadius: "var(--radius-sm)",
         border: "1px solid var(--color-border-light)"
-      }}><option value="">{t("staff_attendance.all_types")}</option><option value="clock_in">{t("staff_attendance.clock_in")}</option><option value="clock_out">{t("staff_attendance.clock_out")}</option><option value="start_break">{t("staff_attendance.start_break")}</option><option value="end_break">{t("staff_attendance.end_break")}</option></select>
+      }}><option value="">{t("staff_attendance.all_types")}</option><option value="clock_in">{t("staff_attendance.clock_in")}</option><option value="clock_out">{t("staff_attendance.clock_out")}</option><option value="break_start">{t("staff_attendance.start_break")}</option><option value="break_end">{t("staff_attendance.end_break")}</option><option value="overtime_start">{t("staff_attendance.overtime_start", "Overtime Start")}</option></select>
         <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{
         padding: "6px 10px",
         fontSize: 13,

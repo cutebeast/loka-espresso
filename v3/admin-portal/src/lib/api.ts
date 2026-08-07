@@ -312,7 +312,7 @@ export interface CustomerConsent { id: number; customer_id: number; customer_nam
 export function getCustomerConsents(params?: { consent_type?: string; status?: string }) { const qs = new URLSearchParams(); if (params?.consent_type) qs.set("consent_type", params.consent_type); if (params?.status) qs.set("status", params.status); return api.get<CustomerConsent[]>(`/admin/customers/consents?${qs.toString()}`); }
 
 export interface CustomerDevice { id: number; customer_id: number; customer_name?: string; platform: string; device_model: string | null; is_active: boolean; last_seen_at: string | null; }
-export function getCustomerDevices(params?: { platform?: string; is_active?: boolean }) { const qs = new URLSearchParams(); if (params?.platform) qs.set("platform", params.platform); if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active)); return api.get<CustomerDevice[]>(`/admin/customers/devices?${qs.toString()}`); }
+export function getCustomerDevices(params?: { platform?: string; is_active?: boolean }) { const qs = new URLSearchParams(); if (params?.platform) qs.set("device_type", params.platform); if (params?.is_active !== undefined) qs.set("is_active", String(params.is_active)); return api.get<CustomerDevice[]>(`/admin/customers/devices?${qs.toString()}`); }
 
 export interface PurchaseOrder { id: number; po_number: string; supplier_id: number; supplier_name?: string; status: string; total_amount: number; expected_delivery: string; created_at: string; items_count?: number; items?: PurchaseOrderLineItem[]; }
 export interface PurchaseOrderLineItem { inventory_item_id: number; quantity_ordered: number; unit_cost: number; }

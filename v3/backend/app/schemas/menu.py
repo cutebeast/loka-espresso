@@ -29,6 +29,7 @@ class MenuCategoryBase(BaseSchema):
     image_url: str | None = Field(None, max_length=500)
     is_available: bool = True
     is_featured: bool = False
+    is_system: bool = False
     category_type: str = Field(default="regular", pattern="^(regular|combo)$")
     available_from_time: time | None = None
     available_to_time: time | None = None
