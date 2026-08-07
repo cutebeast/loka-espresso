@@ -1464,3 +1464,11 @@ User asked why this area keeps having issues. Full audit (2 parallel code audits
 ### Round 35 follow-up 16b — locale trim missed spots (2026-08-07, same day)
 
 The EN/CN restriction initially missed the per-record translation tabs on ~26 admin edit pages (each had its own LOCALES constant with all 5 locales) and the kiosk welcome-screen language buttons (hardcoded list in KioskPage.tsx). All now EN+CN. RULE: when changing the locale set, grep for `code: "ta"`, `"ms", "zh"`, and hardcoded `[['en',...]]` lists — locale lists exist per-page, not just in the central i18n configs. Also fixed a pre-existing react-hooks violation in help-articles/new (useSearchParams inside useState initializer).
+
+### Round 35 follow-up 17 — edit/save full probe (2026-08-07)
+
+User asked whether ALL edit/save functions work. Live round-trip probe of every admin PATCH/PUT endpoint (52 found via app route table; script at /tmp/probe_edit_save.py): 43 PASS with data present, 9 empty-table skips, 3 real bugs fixed:
+- **Splash screen save 400** when image_url empty: GET returns "" but BaseSchema coerced it to None → NOT NULL violation on save. Endpoint now maps None→"" for image_url.
+- **Bundle product save 400** "groups can only be updated on multi_course": a faithful UI echo sends `groups: []` for combo bundles — empty groups now normalized away before guards.
+- **Survey question translations destroyed on every save**: PUT delete+recreated questions (new IDs, translations deleted). Now updates in place keyed by question id (`id` added to SurveyQuestionCreate so it survives the schema); only genuinely removed questions are deleted. Verified: id + 4 translation rows survive a save; add/remove branches work.
+RULE addition: any "replace children on save" handler is a translation-destruction suspect — update children in place keyed by id.

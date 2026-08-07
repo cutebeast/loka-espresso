@@ -24,8 +24,10 @@ class SurveyQuestionBase(BaseSchema):
 
 
 class SurveyQuestionCreate(SurveyQuestionBase):
+    # Present on edit-round-trips: lets the survey update handler update the
+    # question in place instead of delete+recreate (which destroyed translations)
+    id: int | None = None
     options: list[str] | None = None
-    pass
 
 
 class SurveyQuestionUpdate(BaseSchema):

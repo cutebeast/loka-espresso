@@ -382,6 +382,11 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
     components_data = update_data.pop("components", None)
     groups_data = update_data.pop("groups", None)
 
+    # An EMPTY groups array is a UI echo of "no groups" — normalize it away
+    # before any guards so a faithful form round-trip of a combo bundle saves.
+    if groups_data is not None and not groups_data:
+        groups_data = None
+
     if "bundle_type" in update_data and not await bundle_type_exists(db, update_data["bundle_type"]):
         raise HTTPException(status_code=422, detail=f"Unknown bundle type: '{update_data['bundle_type']}'")
 

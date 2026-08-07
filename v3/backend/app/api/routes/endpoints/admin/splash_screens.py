@@ -59,6 +59,10 @@ async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: Spla
     if not item: raise HTTPException(404, "Not found")
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
+        # image_url is NOT NULL in the DB; BaseSchema coerces ""→None, which
+        # would violate the column on a no-op save of a record with no image.
+        if field == "image_url" and value is None:
+            value = ""
         setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()

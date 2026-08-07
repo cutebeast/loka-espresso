@@ -246,7 +246,9 @@ async def update_survey(
 
     payload = data.model_dump(exclude_unset=True)
 
-    # Handle questions if provided
+    # Handle questions if provided — update IN PLACE keyed by id (the old
+    # delete-and-recreate destroyed manually reviewed translations and
+    # regenerated question IDs on every save).
     if "questions" in payload:
         questions_data = payload.pop("questions")
         if len(questions_data) > MAX_QUESTIONS_PER_SURVEY:
@@ -254,39 +256,38 @@ async def update_survey(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Maximum {MAX_QUESTIONS_PER_SURVEY} questions allowed per survey",
             )
-        # Delete existing questions
-        await db.execute(
+        existing = {q.id: q for q in (await db.execute(
             select(SurveyQuestion).where(SurveyQuestion.survey_id == survey.id)
-        )
-        existing = (await db.execute(
-            select(SurveyQuestion).where(SurveyQuestion.survey_id == survey.id)
-        )).scalars().all()
-        for q in existing:
-            await delete_translations(db, "survey_questions", q.id)
-            await db.delete(q)
-        # Add new questions
+        )).scalars().all()}
+        seen_ids: set[int] = set()
         for i, q in enumerate(questions_data):
             # Map "options" from frontend to "answer_options" in model
             opts = None
             if q.get("options"):
                 opts = {"choices": q.get("options")}
-            question = SurveyQuestion(
-                question_text=q.get("question_text", ""),
-                question_type=q.get("question_type", "text_open"),
-                answer_options=opts or q.get("answer_options"),
-                min_rating=q.get("min_rating"),
-                max_rating=q.get("max_rating"),
-                rating_labels=q.get("rating_labels"),
-                conditional_logic=q.get("conditional_logic"),
-                is_required=q.get("is_required", False),
-                display_order=q.get("display_order", i),
-                survey_id=survey.id,
-            )
-            db.add(question)
-            await db.flush()
+            qid = q.get("id")
+            question = existing.get(qid) if qid else None
+            if question is None:
+                question = SurveyQuestion(survey_id=survey.id, question_text="")
+                db.add(question)
+            question.question_text = q.get("question_text", "") or ""
+            question.question_type = q.get("question_type", "text_open")
+            question.answer_options = opts or q.get("answer_options")
+            question.min_rating = q.get("min_rating")
+            question.max_rating = q.get("max_rating")
+            question.rating_labels = q.get("rating_labels")
+            question.conditional_logic = q.get("conditional_logic")
+            question.is_required = q.get("is_required", False)
+            question.display_order = q.get("display_order", i)
+            await db.flush()  # new rows get their id here; fields already set
+            seen_ids.add(question.id)
             await auto_translate_record(db, "survey_questions", question.id, {"question_text": question.question_text or ""})
             if opts:
                 await _translate_question_options(db, question.id, opts.get("choices", []))
+        for qid, question in existing.items():
+            if qid not in seen_ids:
+                await delete_translations(db, "survey_questions", qid)
+                await db.delete(question)
 
     # Update survey fields
     for field, value in payload.items():
