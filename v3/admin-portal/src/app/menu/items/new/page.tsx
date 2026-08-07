@@ -30,10 +30,6 @@ interface LoyaltyTier {
   id: number;
   display_name: string;
 }
-interface Store {
-  id: number;
-  store_name: string;
-}
 export default function NewItemPage() {
   const {
     t
@@ -72,9 +68,7 @@ export default function NewItemPage() {
   const [dietaryTags, setDietaryTags] = useState<DietaryTag[]>([]);
   const [taxCategories, setTaxCategories] = useState<TaxCategory[]>([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState<LoyaltyTier[]>([]);
-  const [stores, setStores] = useState<Store[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [recipeStoreId, setRecipeStoreId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [lockCategory, setLockCategory] = useState(false);
   const [error, setError] = useState("");
@@ -100,7 +94,8 @@ export default function NewItemPage() {
     api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => safeSet(setDietaryTags)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('dietary-tags:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/menu/tax-categories").then(d => safeSet(setTaxCategories)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('tax-categories:', e); setError(e.message || t("admin.errors.loadFailed")); });
     api.getRaw<any>("/admin/loyalty/tiers").then(d => safeSet(setLoyaltyTiers)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('loyalty-tiers:', e); setError(e.message || t("admin.errors.loadFailed")); });
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => safeSet(setStores)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('stores:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    // Recipes are global — load the full inventory item list up front
+    api.getRaw<any>("/admin/inventory/items?per_page=500").then(d => safeSet(setInventoryItems)(Array.isArray(d) ? d : d.items || [])).catch(e => { console.error('inventory:', e); });
     api.getRaw<any>("/admin/menu/bundle-products?per_page=500").then(d => safeSet(setBundleProducts)(Array.isArray(d) ? d : [])).catch(e => { console.error('bundles:', e); setError(e.message || t("admin.errors.loadFailed")); });
     return () => {
       cancelled = true;
@@ -187,16 +182,6 @@ export default function NewItemPage() {
       ...form,
       modifier_groups: g
     });
-  };
-  const loadInventoryForStore = async (storeId: string) => {
-    if (!storeId) return;
-    try {
-      const d = await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);
-      setInventoryItems(Array.isArray(d) ? d : d.items || []);
-    } catch (e) {
-      console.error(e);
-      setInventoryItems([]);
-    }
   };
   const addRecipe = () => setForm({
     ...form,
@@ -684,26 +669,11 @@ export default function NewItemPage() {
               }}>{t("menu_items_new.recipe_inventory_components")}</label>
                 <button type="button" onClick={addRecipe} className="btn btn-sm btn-outline"><Plus size={14} />{t("menu_items_new.add_component")}</button>
               </div>
-              <div style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              marginBottom: 12
-            }}>
-                <select className="w-full border rounded px-3 py-2 text-sm" style={{
-                maxWidth: 220
-              }} value={recipeStoreId} onChange={e => {
-                setRecipeStoreId(e.target.value);
-                loadInventoryForStore(e.target.value);
-              }}>
-                  <option value="">{t("menu_items_new.select_store")}</option>
-                  {stores.map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
-                </select>
-                <span style={{
-                fontSize: 11,
-                color: "var(--color-text-muted)"
-              }}>{t("menu_items_new.pick_a_store_to_load_its")}</span>
-              </div>
+              <p style={{
+              fontSize: 12,
+              color: "var(--color-text-muted)",
+              margin: "0 0 10px"
+            }}>{t("menu_items_new.recipe_help")}</p>
               {(form.recipes || []).map((rc: any, ri: number) => <div key={ri} style={{
               background: "var(--color-bg-muted)",
               borderRadius: "var(--radius-md)",

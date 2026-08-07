@@ -937,22 +937,24 @@ export default function ItemEditPage() {
             }}>{t("menu_items_[id].recipe_inventory_components")}</label>
                 <button type="button" onClick={addRecipe} className="btn btn-sm btn-outline"><Plus size={14} />{t("menu_items_[id].add_component")}</button>
               </div>
+              <p style={{
+            fontSize: 12,
+            color: "var(--color-text-muted)",
+            margin: "0 0 10px"
+          }}>{t("menu_items_[id].recipe_help")}</p>
               <div style={{
             display: "flex",
             gap: 8,
             alignItems: "center",
             marginBottom: 12
           }}>
-                <button type="button" onClick={() => loadInventoryForStore()} className="btn btn-sm btn-ghost" style={{
-              fontSize: 11
-            }}>{t("menu_items_[id].load_inventory_items")}</button>
                 <button type="button" onClick={copyToInventoryAndLink} disabled={copyingToInventory} className="btn btn-sm btn-outline" style={{
               fontSize: 11
             }}>{copyingToInventory ? "..." : t("menu_items_[id].copy_to_inventory")}</button>
                 <span style={{
               fontSize: 11,
               color: "var(--color-text-muted)"
-            }}>{inventoryItems.length} {" "}{t("menu_items_[id].items_loaded_recipe_formula_is_global")}</span>
+            }}>{t("menu_items_[id].copy_to_inventory_help")}</span>
               </div>
               {(form.recipes || []).map((rc: any, ri: number) => <div key={ri} style={{
             background: "var(--color-bg-muted)",
