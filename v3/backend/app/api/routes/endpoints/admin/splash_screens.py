@@ -10,7 +10,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.info_card import SplashScreen
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.content import SplashScreenCreate, SplashScreenUpdate
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/content/splash-screens", tags=["admin — splash screens"])
 
@@ -48,7 +48,7 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
 async def create_item(db: DBDependency, admin: CurrentAdmin, data: SplashScreenCreate):
     item = SplashScreen(**data.model_dump(exclude_unset=True))
     db.add(item); await db.commit();
-    await auto_translate_record(db, "splash_screens", item.id, {"title": data.title or "", "subtitle": data.subtitle or ""})
+    schedule_auto_translate("splash_screens", item.id, {"title": data.title or "", "subtitle": data.subtitle or ""})
     await db.refresh(item)
     return APIResponse(data={"id": item.id, "message": "Created"})
 
@@ -66,7 +66,7 @@ async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: Spla
         setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(db, "splash_screens", item.id, {"title": item.title or "", "subtitle": item.subtitle or ""})
+    schedule_auto_translate("splash_screens", item.id, {"title": item.title or "", "subtitle": item.subtitle or ""})
     return APIResponse(data={"id": item.id, "message": "Updated"})
 
 @router.delete("/{id}", response_model=APIResponse[dict])

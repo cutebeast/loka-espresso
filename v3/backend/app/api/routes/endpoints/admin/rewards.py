@@ -20,7 +20,7 @@ from app.schemas.loyalty import (
     RewardCatalogOut,
     RewardCatalogUpdate,
 )
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 admin_router = APIRouter(prefix="/admin/rewards", tags=["admin — rewards"])
 public_router = APIRouter(prefix="/rewards", tags=["rewards"])
@@ -90,7 +90,7 @@ async def create_reward(
     db.add(reward)
     await db.commit()
     await db.refresh(reward)
-    await auto_translate_record(db, "reward_catalog", reward.id, {
+    schedule_auto_translate("reward_catalog", reward.id, {
         "reward_name": reward.reward_name or "",
         "short_description": reward.short_description or "",
         "long_description": reward.long_description or "",
@@ -128,7 +128,7 @@ async def update_reward(
     reward.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(reward)
-    await auto_translate_record(db, "reward_catalog", reward.id, {
+    schedule_auto_translate("reward_catalog", reward.id, {
         "reward_name": reward.reward_name or "",
         "short_description": reward.short_description or "",
         "long_description": reward.long_description or "",

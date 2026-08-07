@@ -9,7 +9,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.bundle_product import BundleCategory
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.bundle_product import BundleCategoryCreate, BundleCategoryUpdate
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/bundle-categories", tags=["admin — bundle categories"])
 
@@ -45,7 +45,7 @@ async def create_category(db: DBDependency, admin: CurrentAdmin, data: BundleCat
     db.add(category)
     await db.commit()
     await db.refresh(category)
-    await auto_translate_record(db, "bundle_categories", category.id, {"name": category.name})
+    schedule_auto_translate("bundle_categories", category.id, {"name": category.name})
     return APIResponse(data=_out(category))
 
 
@@ -58,7 +58,7 @@ async def update_category(db: DBDependency, admin: CurrentAdmin, id: int, data: 
     for field, value in update_data.items():
         setattr(category, field, value)
     await db.commit()
-    await auto_translate_record(db, "bundle_categories", id, {"name": category.name or ""})
+    schedule_auto_translate("bundle_categories", id, {"name": category.name or ""})
     return APIResponse(data=_out(category))
 
 

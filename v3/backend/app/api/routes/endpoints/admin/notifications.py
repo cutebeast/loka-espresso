@@ -31,7 +31,7 @@ from app.schemas.notification import (
     NotificationTemplateUpdate,
 )
 
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 admin_router = APIRouter(prefix="/admin/notifications", tags=["admin — notifications"])
 public_router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -118,7 +118,7 @@ async def create_notification(
     notif = AdminNotification(**data.model_dump(), created_by=admin.id)
     db.add(notif)
     await db.commit()
-    await auto_translate_record(db, "admin_notifications", notif.id, {"title": notif.title or "", "body": notif.body or ""})
+    schedule_auto_translate("admin_notifications", notif.id, {"title": notif.title or "", "body": notif.body or ""})
     await db.refresh(notif)
     return APIResponse(data=AdminNotificationOut.model_validate(notif))
 
@@ -159,7 +159,7 @@ async def create_template(
     tmpl = NotificationTemplate(**data.model_dump())
     db.add(tmpl)
     await db.commit()
-    await auto_translate_record(db, "notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
+    schedule_auto_translate("notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
     await db.refresh(tmpl)
     return APIResponse(data=NotificationTemplateOut.model_validate(tmpl))
 
@@ -196,7 +196,7 @@ async def update_notification(
         setattr(notif, field, value)
     notif.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "admin_notifications", notif.id, {"title": notif.title or "", "body": notif.body or ""})
+    schedule_auto_translate("admin_notifications", notif.id, {"title": notif.title or "", "body": notif.body or ""})
     await db.refresh(notif)
     return APIResponse(data=AdminNotificationOut.model_validate(notif))
 
@@ -499,7 +499,7 @@ async def update_template(
         setattr(tmpl, field, value)
     tmpl.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
+    schedule_auto_translate("notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
     await db.refresh(tmpl)
     return APIResponse(data=NotificationTemplateOut.model_validate(tmpl))
 

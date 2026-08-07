@@ -22,7 +22,7 @@ from app.models.store import (
     TableStatusSnapshot,
 )
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.schemas.store import (
     DiningTableOut,
     StoreConfigurationOut,
@@ -214,7 +214,7 @@ async def create_store(
     )
 
     await db.commit()
-    await auto_translate_record(db, "stores", store.id, {"store_name": store.store_name})
+    schedule_auto_translate("stores", store.id, {"store_name": store.store_name})
     out = StoreOut(
         id=store.id,
         store_code=store.store_code,
@@ -352,7 +352,7 @@ async def update_store(
 
     store.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "stores", store.id, {"store_name": store.store_name})
+    schedule_auto_translate("stores", store.id, {"store_name": store.store_name})
 
     hours_result = await db.execute(
         select(StoreOperatingHours).where(StoreOperatingHours.store_id == store.id)

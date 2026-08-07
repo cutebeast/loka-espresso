@@ -25,7 +25,7 @@ from app.schemas.inventory import (
     SupplierOut,
     SupplierUpdate,
 )
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 
@@ -84,7 +84,7 @@ async def create_category(
     category = InventoryCategory(**category_data)
     db.add(category)
     await db.commit()
-    await auto_translate_record(db, "inventory_categories", category.id, {"category_name": category.category_name or "", "description": category.description or ""})
+    schedule_auto_translate("inventory_categories", category.id, {"category_name": category.category_name or "", "description": category.description or ""})
     await db.refresh(category)
     return APIResponse(data=InventoryCategoryOut.model_validate(category))
 
@@ -126,7 +126,7 @@ async def update_category(
         setattr(category, key, value)
 
     await db.commit()
-    await auto_translate_record(db, "inventory_categories", category.id, {"category_name": category.category_name or "", "description": category.description or ""})
+    schedule_auto_translate("inventory_categories", category.id, {"category_name": category.category_name or "", "description": category.description or ""})
     await db.refresh(category)
     return APIResponse(data=InventoryCategoryOut.model_validate(category))
 
@@ -242,7 +242,7 @@ async def create_item(
     db.add(item)
     await db.commit()
     await db.refresh(item)
-    await auto_translate_record(db, "inventory_items", item.id, {"item_name": item.item_name, "description": item.description or ""})
+    schedule_auto_translate("inventory_items", item.id, {"item_name": item.item_name, "description": item.description or ""})
     return APIResponse(data=InventoryItemOut.model_validate(item))
 
 
@@ -311,7 +311,7 @@ async def update_item(
 
     await db.commit()
     await db.refresh(item)
-    await auto_translate_record(db, "inventory_items", item.id, {"item_name": item.item_name, "description": item.description or ""})
+    schedule_auto_translate("inventory_items", item.id, {"item_name": item.item_name, "description": item.description or ""})
     return APIResponse(data=InventoryItemOut.model_validate(item))
 
 

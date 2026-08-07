@@ -9,7 +9,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.info_card import SystemPage
 from app.schemas.content import SystemPageCreate, SystemPageOut, SystemPageUpdate
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/system-pages", tags=["admin — system pages"])
 
@@ -44,7 +44,7 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
 async def create_item(db: DBDependency, admin: CurrentAdmin, data: SystemPageCreate):
     item = SystemPage(**data.model_dump(exclude_unset=True))
     db.add(item); await db.commit();
-    await auto_translate_record(db, "system_pages", item.id, {"title": data.title or "", "body_text": data.body_text or ""})
+    schedule_auto_translate("system_pages", item.id, {"title": data.title or "", "body_text": data.body_text or ""})
     await db.refresh(item)
     return APIResponse(data={"id": item.id, "message": "Created"})
 
@@ -58,7 +58,7 @@ async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: Syst
         setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(db, "system_pages", item.id, {"title": item.title or "", "body_text": item.body_text or ""})
+    schedule_auto_translate("system_pages", item.id, {"title": item.title or "", "body_text": item.body_text or ""})
     return APIResponse(data={"id": item.id, "message": "Updated"})
 
 @router.delete("/{id}", response_model=APIResponse[dict])

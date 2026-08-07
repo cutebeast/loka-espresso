@@ -10,7 +10,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.info_card import PromoBanner
 from app.schemas.content import PromoBannerCreate, PromoBannerOut, PromoBannerUpdate
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/promo-banners", tags=["admin — promo banners"])
 
@@ -38,7 +38,7 @@ async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1,
 async def create_item(db: DBDependency, admin: CurrentAdmin, data: PromoBannerCreate):
     item = PromoBanner(**data.model_dump(exclude_unset=True))
     db.add(item); await db.commit();
-    await auto_translate_record(db, "promo_banners", item.id, {"title": item.title or "", "short_description": item.short_description or ""})
+    schedule_auto_translate("promo_banners", item.id, {"title": item.title or "", "short_description": item.short_description or ""})
     await db.refresh(item)
     return APIResponse(data={"id": item.id, "message": "Created"})
 
@@ -65,7 +65,7 @@ async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: Prom
         setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(db, "promo_banners", item.id, {"title": item.title or "", "short_description": item.short_description or ""})
+    schedule_auto_translate("promo_banners", item.id, {"title": item.title or "", "short_description": item.short_description or ""})
     return APIResponse(data={"id": item.id, "message": "Updated"})
 
 

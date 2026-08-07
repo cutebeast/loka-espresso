@@ -169,28 +169,40 @@ async def _call_deepseek(text: str, target_locale: str, model: str | None = None
     )
     # Scale output budget/timeouts with input size — long texts (help-article
     # bodies) otherwise hit the 2000-token / 30s ceiling and fail silently.
+    # deepseek-v4-* are reasoning models: reasoning_tokens share the max_tokens
+    # budget, so an exhausted budget returns EMPTY content — which must be
+    # treated as a failure (returning '' here used to poison both the cache
+    # and the translations table with empty rows).
     max_tokens = min(8000, max(2000, len(text) * 2))
     timeout = 60 if len(text) > 1500 else 30
-    try:
-        async with AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.1,
-                },
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "").strip()
-    except Exception as e:
-        logger.error(f"DeepSeek API error: {e}")
-        return None
+    for attempt in range(2):
+        try:
+            async with AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    "https://api.deepseek.com/v1/chat/completions",
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": max_tokens,
+                        "temperature": 0.1,
+                    },
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        content = (choices[0].get("message", {}).get("content") or "").strip()
+                        if content:
+                            return content
+                        # Empty content (reasoning ate the budget) — retry once
+                        # with a doubled budget, then give up as a failure.
+                        logger.warning(f"DeepSeek empty content (attempt {attempt + 1}, finish={choices[0].get('finish_reason')}, model={model})")
+        except Exception as e:
+            logger.error(f"DeepSeek API error: {e}")
+            return None
+        max_tokens = min(8000, max_tokens * 2)
+    return None
 
 
 async def _fetch_translation(text: str, target_locale: str, db: AsyncSession | None = None) -> str | None:
@@ -200,15 +212,21 @@ async def _fetch_translation(text: str, target_locale: str, db: AsyncSession | N
     # Ensure creds are loaded from DB; _get_translation_creds handles its own cache.
     creds = await _get_translation_creds(db)
 
-    translated = await _call_deepseek(text, target_locale, db=db)
+    # deepseek-v4-flash is a reasoning model: on long inputs its reasoning eats
+    # the entire 8000-token budget and returns empty content (finish=length) —
+    # two guaranteed 60s timeouts before the pro model succeeds. Long texts go
+    # straight to the pro model; flash stays the primary for short ones.
+    fallback_model = creds.get("deepseek_fallback_model", "deepseek-v4-pro")
+    long_text = len(text) > 1500
+    first_model = fallback_model if long_text else None
+    second_model = None if long_text else fallback_model
+
+    translated = await _call_deepseek(text, target_locale, model=first_model, db=db)
     if translated is not None:
-        logger.info(f"DeepSeek primary success for {target_locale}: {translated[:30]}")
         return translated
 
-    fallback_model = creds.get("deepseek_fallback_model", "deepseek-v4-pro")
-    translated = await _call_deepseek(text, target_locale, model=fallback_model, db=db)
+    translated = await _call_deepseek(text, target_locale, model=second_model, db=db)
     if translated is not None:
-        logger.info(f"DeepSeek fallback success for {target_locale}: {translated[:30]}")
         return translated
 
     logger.warning(f"All translation providers failed for {target_locale}, using English fallback")
@@ -365,6 +383,8 @@ async def auto_translate_record(
         for col, loc, text in needed
         if existing_by_pair.get((col, loc)) is None
         or existing_by_pair[(col, loc)].source_text != text
+        # Empty translations are failures, not results — retry them
+        or not (existing_by_pair[(col, loc)].translated_text or "").strip()
     ]
 
     if not needed:
@@ -394,7 +414,8 @@ async def auto_translate_record(
     for col, loc, text in needed:
         cache_hash = _compute_hash(SOURCE_LOCALE, loc, text)
         cached = cache_map.get(cache_hash)
-        if cached is not None:
+        # Empty cache entries are poisoned failures, not results — treat as a miss
+        if cached is not None and cached.strip():
             ops.append({"col": col, "loc": loc, "text": text, "translated": cached})
         else:
             task = asyncio.create_task(_fetch_translation(text, loc))
@@ -434,10 +455,10 @@ async def auto_translate_record(
                 )
                 existing = result.scalar_one_or_none()
                 if existing:
-                    if existing.source_text == op["text"]:
-                        # Defense-in-depth (races): a translation that matches
-                        # its current source is never rewritten — `needed` was
-                        # already pre-filtered above, so this should not hit.
+                    if existing.source_text == op["text"] and (existing.translated_text or "").strip():
+                        # Defense-in-depth (races): a NON-EMPTY translation that
+                        # matches its current source is never rewritten. Empty
+                        # stored translations are failures — always rewritten.
                         continue
                     # Stale row (source text changed): re-translate. Manual
                     # rows are re-marked auto so the review cron/queue picks
@@ -495,6 +516,29 @@ async def auto_translate_record(
                 continue
             raise
     return 0
+
+
+def schedule_auto_translate(table_name: str, record_id: int, fields: dict[str, str]) -> None:
+    """Fire-and-forget auto-translate with its own DB session.
+
+    Reasoning-model translation calls take 5-60s — awaiting them inline made
+    every admin create/update request block for seconds (6.6s per menu item
+    create measured) and stacked into httpx timeouts under load. Translation
+    is eventually consistent by design: missing rows are retried by the
+    nightly cron, and reads fall back to the source text meanwhile.
+    """
+    async def _run() -> None:
+        try:
+            from app.core.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as db:
+                await auto_translate_record(db, table_name, record_id, fields)
+        except Exception:
+            logger.exception("schedule_auto_translate failed for %s.%s", table_name, record_id)
+
+    try:
+        asyncio.get_running_loop().create_task(_run())
+    except RuntimeError:
+        logger.warning("schedule_auto_translate called without a running loop — skipping")
 
 
 async def delete_translations(
@@ -557,7 +601,10 @@ async def merge_translations(
         tid = item.get("id")
         if tid and tid in lookup:
             for col in columns:
-                if col in lookup[tid] and col in item:
+                # Skip empty/whitespace translations — an empty row must fall
+                # back to the source text, not blank the page (round 35 bug:
+                # 17 zh help bodies rendered empty).
+                if col in lookup[tid] and lookup[tid][col] and lookup[tid][col].strip() and col in item:
                     item[col] = lookup[tid][col]
 
     return items

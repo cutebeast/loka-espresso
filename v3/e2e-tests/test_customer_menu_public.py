@@ -80,8 +80,11 @@ async def test_workshops_endpoint(client: httpx.AsyncClient, base_url: str):
     assert r.status_code == 200, f"Workshops failed: {r.text}"
     data = r.json().get("data", [])
     assert len(data) >= 1, "expected seeded workshop items"
+    # Seeded classes use EX- codes; other items (tester-created classes on the
+    # shared dev DB) may use generated codes — assert structure for all.
+    assert any(w["item_code"].startswith("EX-") for w in data), "expected seeded EX- workshops"
     for w in data:
-        assert w["item_code"].startswith("EX-")
+        assert w.get("item_code"), "workshop item_code missing"
         assert "base_price" in w and "variants" in w and "sessions" in w
         assert isinstance(w["total_remaining"], int)
         for s in w["sessions"]:

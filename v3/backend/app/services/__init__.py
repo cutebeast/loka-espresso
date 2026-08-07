@@ -40,6 +40,7 @@ from app.services.translation import (
     auto_translate_record,
     delete_translations,
     merge_translations,
+    schedule_auto_translate,
     translate_single,
 )
 
@@ -55,5 +56,5 @@ __all__ = [
     "create_payment_intent", "confirm_payment", "capture_payment",
     "cancel_payment", "refund_payment",
     "auto_translate_text", "auto_translate_record", "delete_translations",
-    "merge_translations", "translate_single",
+    "merge_translations", "schedule_auto_translate", "translate_single",
 ]

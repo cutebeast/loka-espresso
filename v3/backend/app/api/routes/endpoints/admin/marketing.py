@@ -21,7 +21,7 @@ from app.schemas.marketing import (
     MarketingCampaignOut,
     MarketingCampaignUpdate,
 )
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.services.messaging import get_twilio_credentials, send_sms_via_twilio
 
 logger = logging.getLogger(__name__)
@@ -253,7 +253,7 @@ async def create_campaign(
     campaign = MarketingCampaign(**data.model_dump(), created_by=admin.id)
     db.add(campaign)
     await db.commit()
-    await auto_translate_record(db, "marketing_campaigns", campaign.id, {"campaign_name": campaign.campaign_name or "", "body_content": campaign.body_content or ""})
+    schedule_auto_translate("marketing_campaigns", campaign.id, {"campaign_name": campaign.campaign_name or "", "body_content": campaign.body_content or ""})
     await db.refresh(campaign)
     return APIResponse(data=MarketingCampaignOut.model_validate(campaign))
 
@@ -285,7 +285,7 @@ async def update_campaign(
 
     campaign.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "marketing_campaigns", campaign.id, {"campaign_name": campaign.campaign_name or "", "body_content": campaign.body_content or ""})
+    schedule_auto_translate("marketing_campaigns", campaign.id, {"campaign_name": campaign.campaign_name or "", "body_content": campaign.body_content or ""})
     await db.refresh(campaign)
     return APIResponse(data=MarketingCampaignOut.model_validate(campaign))
 

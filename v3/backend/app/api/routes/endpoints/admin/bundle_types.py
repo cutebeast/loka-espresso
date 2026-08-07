@@ -9,7 +9,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.bundle_product import BundleType
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.bundle_product import BundleTypeCreate, BundleTypeUpdate
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/bundle-types", tags=["admin — bundle types"])
 
@@ -53,7 +53,7 @@ async def create_bundle_type(db: DBDependency, admin: CurrentAdmin, data: Bundle
     db.add(bundle_type)
     await db.commit()
     await db.refresh(bundle_type)
-    await auto_translate_record(db, "bundle_types", bundle_type.id, {"name": bundle_type.name or "", "description": bundle_type.description or ""})
+    schedule_auto_translate("bundle_types", bundle_type.id, {"name": bundle_type.name or "", "description": bundle_type.description or ""})
     return APIResponse(data=_out(bundle_type))
 
 
@@ -71,7 +71,7 @@ async def update_bundle_type(db: DBDependency, admin: CurrentAdmin, id: int, dat
     for field, value in update_data.items():
         setattr(bundle_type, field, value)
     await db.commit()
-    await auto_translate_record(db, "bundle_types", id, {"name": bundle_type.name or "", "description": bundle_type.description or ""})
+    schedule_auto_translate("bundle_types", id, {"name": bundle_type.name or "", "description": bundle_type.description or ""})
     return APIResponse(data=_out(bundle_type))
 
 

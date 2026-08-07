@@ -8,7 +8,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.help import HelpArticle
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.help import HelpArticleCreate, HelpArticleOut, HelpArticleUpdate
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/help-articles", tags=["admin — help center"])
 
@@ -77,8 +77,7 @@ async def create_help_article(
     item = HelpArticle(**data.model_dump(exclude_unset=True))
     db.add(item)
     await db.commit()
-    await auto_translate_record(
-        db,
+    schedule_auto_translate(
         "help_articles",
         item.id,
         {"title": data.title or "", "body_text": data.body_text or ""},
@@ -100,8 +99,7 @@ async def update_help_article(
         setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(
-        db,
+    schedule_auto_translate(
         "help_articles",
         item.id,
         {"title": item.title or "", "body_text": item.body_text or ""},

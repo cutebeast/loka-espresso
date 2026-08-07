@@ -38,7 +38,7 @@ from app.schemas.menu import (
     MenuVariantOut,
     MenuItemRecipeOut,
 )
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 async def _translate_item_modifiers(db, item_id: int):
     """Translate all modifier groups and options for a menu item."""
@@ -47,12 +47,12 @@ async def _translate_item_modifiers(db, item_id: int):
             select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id == item_id)
         )
         for mg in mg_result.scalars().all():
-            await auto_translate_record(db, "menu_modifier_groups", mg.id, {"group_name": mg.group_name})
+            schedule_auto_translate("menu_modifier_groups", mg.id, {"group_name": mg.group_name})
             opt_result = await db.execute(
                 select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == mg.id)
             )
             for opt in opt_result.scalars().all():
-                await auto_translate_record(db, "menu_modifier_options", opt.id, {"option_name": opt.option_name})
+                schedule_auto_translate("menu_modifier_options", opt.id, {"option_name": opt.option_name})
     except Exception:
         logger.debug("Non-blocking error", exc_info=True)
 
@@ -302,7 +302,7 @@ async def create_category(
     db.add(category)
     await db.commit()
     await db.refresh(category)
-    await auto_translate_record(db, "menu_categories", category.id, {"category_name": category.category_name})
+    schedule_auto_translate("menu_categories", category.id, {"category_name": category.category_name})
     return APIResponse(data=MenuCategoryOut.model_validate(category))
 
 
@@ -330,7 +330,7 @@ async def update_category(
 
     await db.commit()
     await db.refresh(category)
-    await auto_translate_record(db, "menu_categories", category.id, {"category_name": category.category_name})
+    schedule_auto_translate("menu_categories", category.id, {"category_name": category.category_name})
     return APIResponse(data=MenuCategoryOut.model_validate(category))
 
 
@@ -600,7 +600,7 @@ async def create_item(
     await db.refresh(item)
 
     # Auto-translate menu item name and description for all locales
-    await auto_translate_record(db, "menu_items", item.id, {
+    schedule_auto_translate("menu_items", item.id, {
         "item_name": item.item_name,
         "description": item.description or "",
         "long_description": item.long_description or "",
@@ -825,7 +825,7 @@ async def update_item(
     await db.refresh(item)
 
     # Re-translate on update
-    await auto_translate_record(db, "menu_items", item.id, {
+    schedule_auto_translate("menu_items", item.id, {
         "item_name": item.item_name,
         "description": item.description or "",
         "long_description": item.long_description or "",
@@ -928,7 +928,7 @@ async def create_allergen(
     db.add(allergen)
     await db.commit()
     await db.refresh(allergen)
-    await auto_translate_record(db, "allergens", allergen.id, {"display_name": allergen.display_name, "description": allergen.description or ""})
+    schedule_auto_translate("allergens", allergen.id, {"display_name": allergen.display_name, "description": allergen.description or ""})
     return APIResponse(data=AllergenOut.model_validate(allergen))
 
 
@@ -956,7 +956,7 @@ async def update_allergen(
 
     await db.commit()
     await db.refresh(allergen)
-    await auto_translate_record(db, "allergens", allergen.id, {"display_name": allergen.display_name, "description": allergen.description or ""})
+    schedule_auto_translate("allergens", allergen.id, {"display_name": allergen.display_name, "description": allergen.description or ""})
     return APIResponse(data=AllergenOut.model_validate(allergen))
 
 
@@ -1042,7 +1042,7 @@ async def create_tax_category(
     db.add(tax_category)
     await db.commit()
     await db.refresh(tax_category)
-    await auto_translate_record(db, "tax_categories", tax_category.id, {"category_name": tax_category.category_name})
+    schedule_auto_translate("tax_categories", tax_category.id, {"category_name": tax_category.category_name})
     return APIResponse(data=TaxCategoryOut.model_validate(tax_category))
 
 
@@ -1070,7 +1070,7 @@ async def update_tax_category(
 
     await db.commit()
     await db.refresh(tax_category)
-    await auto_translate_record(db, "tax_categories", tax_category.id, {"category_name": tax_category.category_name})
+    schedule_auto_translate("tax_categories", tax_category.id, {"category_name": tax_category.category_name})
     return APIResponse(data=TaxCategoryOut.model_validate(tax_category))
 
 

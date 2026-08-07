@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.info_card import ProductCard
 from app.schemas.content import ProductCardCreate, ProductCardOut, ProductCardUpdate
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/product-cards", tags=["admin — product cards"])
@@ -49,7 +49,7 @@ async def create_item(db: DBDependency, admin: CurrentAdmin, data: ProductCardCr
         create_data["slug"] = data.title.lower().replace(" ", "-")[:50]
     item = ProductCard(**create_data)
     db.add(item); await db.commit(); await db.refresh(item)
-    await auto_translate_record(db, "product_cards", item.id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
+    schedule_auto_translate("product_cards", item.id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": item.id, "message": "Created"})
 
 
@@ -63,7 +63,7 @@ async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: Prod
         setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(db, "product_cards", id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
+    schedule_auto_translate("product_cards", id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": item.id, "message": "Updated"})
 
 

@@ -12,7 +12,7 @@ from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, Opti
 from app.services.translation import translate_single
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.schemas.loyalty import (
     LoyaltyAccountOut,
     LoyaltyPointsLedgerOut,
@@ -117,7 +117,7 @@ async def create_loyalty_tier(
     tier = LoyaltyTier(**data.model_dump())
     db.add(tier)
     await db.commit()
-    await auto_translate_record(db, "loyalty_tiers", tier.id, {"display_name": tier.display_name})
+    schedule_auto_translate("loyalty_tiers", tier.id, {"display_name": tier.display_name})
     await db.refresh(tier)
     return APIResponse(data=LoyaltyTierOut.model_validate(tier))
 
@@ -139,7 +139,7 @@ async def update_loyalty_tier(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(tier, field, value)
     await db.commit()
-    await auto_translate_record(db, "loyalty_tiers", tier.id, {"display_name": tier.display_name})
+    schedule_auto_translate("loyalty_tiers", tier.id, {"display_name": tier.display_name})
     await db.refresh(tier)
     return APIResponse(data=LoyaltyTierOut.model_validate(tier))
 

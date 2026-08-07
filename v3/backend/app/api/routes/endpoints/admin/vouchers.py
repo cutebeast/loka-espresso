@@ -20,7 +20,7 @@ from app.schemas.voucher import (
     VoucherValidateRequest,
     VoucherValidateResponse,
 )
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.core.money import money_round, to_decimal
 from app.services.platform_config import PlatformConfigService
 from app.models.loyalty import LoyaltyAccount
@@ -91,7 +91,7 @@ async def create_voucher(
     db.add(voucher)
     await db.commit()
     await db.refresh(voucher)
-    await auto_translate_record(db, "voucher_definitions", voucher.id, {
+    schedule_auto_translate("voucher_definitions", voucher.id, {
         "display_title": voucher.display_title,
         "description": voucher.description or "",
         "short_description": voucher.short_description or "",
@@ -128,7 +128,7 @@ async def update_voucher(
     voucher.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(voucher)
-    await auto_translate_record(db, "voucher_definitions", voucher.id, {
+    schedule_auto_translate("voucher_definitions", voucher.id, {
         "display_title": voucher.display_title,
         "description": voucher.description or "",
         "short_description": voucher.short_description or "",

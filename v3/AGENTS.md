@@ -1494,3 +1494,16 @@ RULE: any filter value compared against a PG enum needs backend-side validation 
 - All 50 help articles audited against recent changes; 18 updated in place (sort order/combined sequence, Copy to Inventory + Link, negative-stock rule + all-channel deduction, Wastage Reports page + photo evidence, Staff Meal settings + POS button, MYT date filters, audit severity levels, per-audience Manage Articles, duty pages open to all roles, EN+zh languages, reusable deleted codes). 32 verified already-correct. Labels aligned to "Items Categories". `sync_translations_to_json.py` LOCALES trimmed to zh.
 - Staff portal full verification: 20 pages, all staff endpoints, 5 test-role logins, clock/break events, garbage + grease-trap photo submissions — all healthy.
 - New `v3/staff_portal_test_checklist.csv` (75 rows) mirrors the admin checklist for the staff portal testers.
+
+### Round 35 follow-up 21 — empty-translation root cause (2026-08-07)
+
+17 zh help-article bodies rendered BLANK. Root cause chain, all fixed:
+1. **Provider**: deepseek-v4-* are reasoning models — reasoning_tokens share max_tokens. Long inputs exhaust the budget → finish=length with EMPTY content, and `_call_deepseek` returned `''` which passed the `is not None` check and got CACHED + written as a "translation". Now: empty content = failure, retry ×2 budget, else None. Long texts (>1500 chars) go straight to the pro model (flash reasoning always explodes on them — two guaranteed 60s timeouts otherwise).
+2. **Cache**: 190 poisoned empty cache rows purged; empty cache entries now treated as misses.
+3. **Upsert**: defense-in-depth skip (`source_text` matches) also skipped EMPTY stored rows — now only skips non-empty matches.
+4. **Display**: `merge_translations` no longer applies empty/whitespace translations — falls back to source.
+- `auto_translate_record` needed-filter now retries rows with empty translated_text (they looked "done" forever before).
+
+### Round 35 follow-up 22 — background auto-translate (2026-08-07)
+
+E2E bundle tests timed out under load; root cause: menu item create blocked 6.6s on the INLINE auto-translate call (reasoning-model latency + purged cache misses + empty-row retries). All 57 `await auto_translate_record(...)` call sites in 21 admin endpoint files now use `schedule_auto_translate(...)` (fire-and-forget with its own session). Create latency 6.6s → 1.3s. Translation stays eventually consistent: background task → cache → nightly cron backstop; reads fall back to source text. Verified zh translation lands ~25s after create. Also relaxed the workshops E2E assertion (tester-created classes on the shared dev DB shouldn't fail seeded EX- checks).

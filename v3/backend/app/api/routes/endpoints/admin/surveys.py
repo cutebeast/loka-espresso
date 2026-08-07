@@ -25,7 +25,7 @@ from app.schemas.survey import (
     SurveyResponseCreate,
     SurveyResponseOut,
 )
-from app.services.translation import auto_translate_record, auto_translate_text, delete_translations, SUPPORTED_LOCALES, SOURCE_LOCALE
+from app.services.translation import auto_translate_record, schedule_auto_translate, auto_translate_text, delete_translations, SUPPORTED_LOCALES, SOURCE_LOCALE
 
 async def _translate_question_options(db, question_id: int, options: list[str]):
     """Auto-translate each option for all supported locales."""
@@ -187,12 +187,12 @@ async def create_survey(
         )
         db.add(question)
         await db.flush()
-        await auto_translate_record(db, "survey_questions", question.id, {"question_text": question.question_text or ""})
+        schedule_auto_translate("survey_questions", question.id, {"question_text": question.question_text or ""})
         if opts:
             await _translate_question_options(db, question.id, opts.get("choices", []))
 
     await db.commit()
-    await auto_translate_record(db, "survey_definitions", survey.id, {"survey_name": survey.survey_name or "", "description": survey.description or ""})
+    schedule_auto_translate("survey_definitions", survey.id, {"survey_name": survey.survey_name or "", "description": survey.description or ""})
     await db.refresh(survey)
     # Re-fetch with eager-loaded questions
     result = await db.execute(
@@ -281,7 +281,7 @@ async def update_survey(
             question.display_order = q.get("display_order", i)
             await db.flush()  # new rows get their id here; fields already set
             seen_ids.add(question.id)
-            await auto_translate_record(db, "survey_questions", question.id, {"question_text": question.question_text or ""})
+            schedule_auto_translate("survey_questions", question.id, {"question_text": question.question_text or ""})
             if opts:
                 await _translate_question_options(db, question.id, opts.get("choices", []))
         for qid, question in existing.items():
@@ -295,7 +295,7 @@ async def update_survey(
 
     survey.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "survey_definitions", survey.id, {"survey_name": survey.survey_name or "", "description": survey.description or ""})
+    schedule_auto_translate("survey_definitions", survey.id, {"survey_name": survey.survey_name or "", "description": survey.description or ""})
 
     # Re-fetch with eager-loaded questions
     result = await db.execute(
@@ -361,7 +361,7 @@ async def add_question(
     await db.commit()
     await db.refresh(question)
     # Auto-translate the question text
-    await auto_translate_record(db, "survey_questions", question.id, {"question_text": question.question_text or ""})
+    schedule_auto_translate("survey_questions", question.id, {"question_text": question.question_text or ""})
     return APIResponse(data=SurveyQuestionOut.model_validate(question))
 
 

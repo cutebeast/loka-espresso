@@ -7,7 +7,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.menu import DietaryTag, MenuItemDietaryTag
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.menu import DietaryTagCreate, DietaryTagUpdate
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/dietary-tags", tags=["admin — dietary tags"])
 
@@ -38,7 +38,7 @@ async def create_tag(db: DBDependency, admin: CurrentAdmin, data: DietaryTagCrea
     db.add(tag)
     await db.commit()
     await db.refresh(tag)
-    await auto_translate_record(db, "dietary_tags", tag.id, {"display_name": tag.display_name})
+    schedule_auto_translate("dietary_tags", tag.id, {"display_name": tag.display_name})
     return APIResponse(data={"id": tag.id, "tag_key": tag.tag_key, "display_name": tag.display_name, "icon": tag.icon, "color_hex": tag.color_hex, "description": tag.description, "is_active": tag.is_active})
 
 
@@ -51,7 +51,7 @@ async def update_tag(db: DBDependency, admin: CurrentAdmin, id: int, data: Dieta
     for field, value in update_data.items():
         setattr(tag, field, value)
     await db.commit()
-    await auto_translate_record(db, "dietary_tags", id, {"display_name": tag.display_name or ""})
+    schedule_auto_translate("dietary_tags", id, {"display_name": tag.display_name or ""})
     return APIResponse(data={"id": tag.id, "tag_key": tag.tag_key, "display_name": tag.display_name, "icon": tag.icon, "color_hex": tag.color_hex, "description": tag.description, "is_active": tag.is_active})
 
 

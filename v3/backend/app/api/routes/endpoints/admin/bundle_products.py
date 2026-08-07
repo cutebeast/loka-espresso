@@ -20,7 +20,7 @@ from app.schemas.bundle_product import (
     BundleGroupIn,
 )
 from app.services.bundle_types import bundle_type_exists, resolve_bundle_mechanic
-from app.services.translation import auto_translate_record, delete_translations
+from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 
 router = APIRouter(prefix="/admin/menu/bundle-products", tags=["admin — bundle products"])
 
@@ -345,7 +345,7 @@ async def create_bundle_product(db: DBDependency, admin: CurrentAdmin, data: Bun
     await _create_components(db, bp.id, data.components, group_map if mechanic == "multi_course" else None)
 
     await db.commit()
-    await auto_translate_record(db, "bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})
+    schedule_auto_translate("bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})
     await db.refresh(bp)
     return APIResponse(data={"id": bp.id, "message": "Created"})
 
@@ -449,7 +449,7 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
         await _create_components(db, bp.id, components_data, group_map if bp_mechanic == "multi_course" else None)
 
     await db.commit()
-    await auto_translate_record(db, "bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})
+    schedule_auto_translate("bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})
     return APIResponse(data={"id": bp.id, "message": "Updated"})
 
 
