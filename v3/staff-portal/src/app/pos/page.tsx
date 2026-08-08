@@ -274,6 +274,7 @@ function PosPageContent() {
         <div style={{
         display: "flex",
         gap: 6,
+        flexWrap: "wrap",
         marginBottom: workshopNeedsCustomer ? 2 : 8,
         padding: workshopNeedsCustomer ? 6 : 0,
         borderRadius: workshopNeedsCustomer ? 8 : 0,

@@ -26,46 +26,48 @@ async def list_inventory_for_staff(
     db: DBDependency,
     staff: CurrentStaff,
 ):
-    """List inventory items for the staff member's store."""
+    """List inventory items for the staff member's store.
+
+    Every active item is listed — items with no stock row yet show 0, so
+    staff can report counts/wastage on them (the stock row is created on
+    first movement)."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
     if not store_id:
         raise HTTPException(status_code=400, detail="No store assigned to this staff member")
 
     result = await db.execute(
-        select(InventoryStock)
-        .options(
-            selectinload(InventoryStock.item).selectinload(InventoryItem.category)
+        select(InventoryItem, InventoryStock)
+        .options(selectinload(InventoryItem.category))
+        .outerjoin(
+            InventoryStock,
+            (InventoryStock.inventory_item_id == InventoryItem.id)
+            & (InventoryStock.store_id == store_id),
         )
         .where(
-            InventoryStock.store_id == store_id,
-            InventoryStock.item.has(
-                InventoryItem.is_active.is_(True),
-            ),
-            InventoryStock.item.has(
-                InventoryItem.deleted_at.is_(None),
-            ),
+            InventoryItem.is_active.is_(True),
+            InventoryItem.deleted_at.is_(None),
         )
-        .order_by(InventoryStock.inventory_item_id)
+        .order_by(InventoryItem.id)
     )
-    stocks = result.scalars().all()
+    rows = result.all()
 
     return APIResponse(data={
         "items": [
             {
-                "id": s.item.id,
-                "item_name": s.item.item_name,
-                "item_code": s.item.item_code,
-                "item_type": s.item.item_type,
-                "unit_of_measure": s.item.unit_of_measure,
-                "current_stock": s.current_stock,
-                "reorder_level": s.reorder_level or 0,
-                "par_level": s.par_level or 0,
-                "storage_location": s.storage_location,
-                "category_name": s.item.category.category_name if s.item.category else None,
+                "id": item.id,
+                "item_name": item.item_name,
+                "item_code": item.item_code,
+                "item_type": item.item_type,
+                "unit_of_measure": item.unit_of_measure,
+                "current_stock": stock.current_stock if stock else 0,
+                "reorder_level": (stock.reorder_level if stock else 0) or 0,
+                "par_level": (stock.par_level if stock else 0) or 0,
+                "storage_location": stock.storage_location if stock else None,
+                "category_name": item.category.category_name if item.category else None,
             }
-            for s in stocks
+            for item, stock in rows
         ],
-        "total": len(stocks),
+        "total": len(rows),
     })
 
 

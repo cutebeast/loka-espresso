@@ -1513,3 +1513,11 @@ E2E bundle tests timed out under load; root cause: menu item create blocked 6.6s
 - **New admin pages showed English on zh UI**: UI-key namespaces (admin-ui/staff-ui/pwa-ui) had NO bulk fill — keys seeded EN-only (or never seeded: 81 keys across the agent-built bundle-types/bundle-categories/event-categories pages) never got zh rows. New `backend/scripts/translate_missing_ui_keys.py` fills missing namespace keys per locale (now also nightly 04:37 cron). Seeded the 81 missing EN keys, filled 145 zh rows total.
 - **Workshop edit "becomes a menu item"**: workshops edit link now passes `?from=workshops`; the item edit back arrow returns to /events/workshops; Add Class save/cancel/back also return to the workshops page instead of the generic items list.
 - GOTCHA for agents: new admin pages using t() keys MUST have the keys seeded to the admin-ui DB namespace (EN row) — there is no en.json fallback for page-specific keys, and zh only fills from EN rows.
+
+### Round 35 follow-up 24 — staff portal UI/UX review (2026-08-07/08)
+
+Screenshot review of all 20 staff pages at tablet (768×1024) and phone (390×844) as outlet staff will use them. Findings + fixes:
+- POS top action bar clipped Unpaid/Park/Display buttons on phone — added flexWrap.
+- Sidebar/dashboard "Wallet" button was actually the customer-lookup tool — renamed to "Customers" (subtitle: customer lookup — wallet, rewards & vouchers).
+- Staff inventory showed a broken-looking empty page when no stock rows existed (post-cleanup) — /staff/inventory now LEFT JOINs all active items with stock defaulting to 0, so staff can report counts/wastage on them (row created on first movement).
+- Non-issues verified: kitchen Access Denied is direct-URL only (home hides the button per role); broken images in local dev are the missing /uploads nginx route (production serves them fine — all 166 menu items + 4 real bundles have images).
