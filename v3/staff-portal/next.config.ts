@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // friendly alias — the customer display lives at /pos/display
+      { source: "/pos-disp", destination: "/pos/display", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

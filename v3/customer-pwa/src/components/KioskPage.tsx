@@ -23,6 +23,7 @@ import {
   ShoppingCart, ArrowLeft, ArrowRight, CheckCircle, Loader2,
   CreditCard, Smartphone, Phone
 } from 'lucide-react';
+import KioskItemPage from './kiosk/KioskItemPage';
 
 interface KioskModifierOption {
   id: number;
@@ -70,7 +71,7 @@ interface CartItem {
   modifier_label?: string;
 }
 
-type KioskPhase = 'welcome' | 'order_type' | 'phone' | 'menu' | 'cart' | 'checkout' | 'success' | 'setup';
+type KioskPhase = 'welcome' | 'order_type' | 'phone' | 'menu' | 'item' | 'cart' | 'checkout' | 'success' | 'setup';
 type Orientation = 'portrait' | 'landscape';
 type KioskMode = 'standing' | 'tablet';
 
@@ -282,15 +283,17 @@ export default function KioskPage() {
   const [modifierDrawerItem, setModifierDrawerItem] = useState<KioskMenuItem | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number[]>>({});
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
+  const [itemQty, setItemQty] = useState(1);
 
+  // Tapping an item opens the full-screen item page (no modals on kiosk —
+  // they are bad touch UX). Even modifier-free items open it, so customers
+  // can set quantity and see the photo before adding.
   const openModifierDrawer = (item: KioskMenuItem) => {
-    if (item.modifier_groups && item.modifier_groups.length > 0) {
-      setSelectedOptions({});
-      setSelectedVariant(null);
-      setModifierDrawerItem(item);
-    } else {
-      addToCart(item, [], undefined);
-    }
+    setSelectedOptions({});
+    setSelectedVariant(null);
+    setItemQty(1);
+    setModifierDrawerItem(item);
+    setPhase('item');
   };
 
   const confirmAddWithModifiers = () => {
@@ -321,10 +324,12 @@ export default function KioskPage() {
     }
 
     const fullLabel = [variantLabel, modifierLabel].filter(Boolean).join(', ');
-    addToCart(modifierDrawerItem, optionIds, selectedVariant !== null ? selectedVariant : undefined, extraCost, fullLabel);
+    addToCart(modifierDrawerItem, optionIds, selectedVariant !== null ? selectedVariant : undefined, extraCost, fullLabel, itemQty);
     setModifierDrawerItem(null);
     setSelectedOptions({});
     setSelectedVariant(null);
+    setItemQty(1);
+    setPhase('menu');
   };
 
   const toggleOption = (groupId: number, optionId: number, selectionType: string, maxSelections: number) => {
@@ -343,7 +348,7 @@ export default function KioskPage() {
     });
   };
 
-  const addToCart = (item: KioskMenuItem, modifierOptionIds: number[], variantId?: number, extraCost = 0, modifierLabel = '') => {
+  const addToCart = (item: KioskMenuItem, modifierOptionIds: number[], variantId?: number, extraCost = 0, modifierLabel = '', qty = 1) => {
     const basePrice = parseFloat(item.base_price) || 0;
     const finalPrice = basePrice + extraCost;
     const lineKey = cartLineKey(item.id, variantId, modifierOptionIds);
@@ -351,7 +356,7 @@ export default function KioskPage() {
       const existing = prev.find(c => c.lineKey === lineKey);
       if (existing) {
         return prev.map(c =>
-          c.lineKey === lineKey ? { ...c, qty: c.qty + 1 } : c
+          c.lineKey === lineKey ? { ...c, qty: c.qty + qty } : c
         );
       }
       return [...prev, {
@@ -359,7 +364,7 @@ export default function KioskPage() {
         lineKey,
         name: item.item_name,
         price: finalPrice,
-        qty: 1,
+        qty,
         image_url: item.image_url,
         selected_modifier_options: modifierOptionIds.length > 0 ? modifierOptionIds : undefined,
         selected_variant_id: variantId,
@@ -703,8 +708,11 @@ export default function KioskPage() {
                         onPointerLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
                       >
                         {item.image_url && (
-                          <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name}
-                            style={{ width: '100%', height: fs(200, 160), objectFit: 'cover' }} />
+                          <div style={{ width: '100%', height: fs(200, 160), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {/* contain — never crop item photos on kiosk cards */}
+                            <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          </div>
                         )}
                         <div style={{ padding: fs(20, 16) }}>
                           <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 4 }}>{item.item_name}</div>
@@ -743,7 +751,7 @@ export default function KioskPage() {
               ) : (
                 cart.map(item => (
                   <div key={item.lineKey} style={{ display: 'flex', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid #eee', gap: 16 }}>
-                    {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" style={{ width: fs(72, 60), height: fs(72, 60), borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} /> : null}
+                    {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" style={{ width: fs(72, 60), height: fs(72, 60), borderRadius: 10, objectFit: 'contain', background: 'var(--loka-cream, #f5f2ea)', flexShrink: 0 }} /> : null}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: fs(22, 20), fontWeight: 600 }}>{item.name}</div>
                       {item.modifier_label && <div style={{ fontSize: fs(16, 14), color: '#888' }}>{item.modifier_label}</div>}
@@ -866,83 +874,40 @@ export default function KioskPage() {
         </div>
       )}
 
-      {/* Modifier drawer overlay */}
-      {modifierDrawerItem && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)', zIndex: 100,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        }} onClick={() => setModifierDrawerItem(null)}>
-          <div style={{
-            background: 'white', borderRadius: '20px 20px 0 0', padding: 24,
-            maxWidth: fs(600, 500), width: '100%', maxHeight: '80vh', overflowY: 'auto',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: fs(28, 24), fontWeight: 700 }}>{modifierDrawerItem.item_name}</h2>
-              <button onClick={() => setModifierDrawerItem(null)} style={{ background: 'none', border: 'none', fontSize: 32, cursor: 'pointer', color: '#999' }}>×</button>
-            </div>
-            {/* item photo — kiosk customers expect to see what they picked */}
-            {modifierDrawerItem.image_url ? <div style={{
-              width: '100%', height: fs(280, 220), borderRadius: 14, overflow: 'hidden',
-              marginBottom: 16, background: '#f5f2ea',
-            }}>
-              <img src={resolveAssetUrl(modifierDrawerItem.image_url) || ''} alt={modifierDrawerItem.item_name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div> : null}
-            <div style={{ fontSize: fs(24, 20), fontWeight: 700, color: LOKA.primary, marginBottom: 16 }}>
-              {formatPrice(modifierDrawerItem.base_price)}
-            </div>
-            {modifierDrawerItem.variants && modifierDrawerItem.variants.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: fs(20, 18), fontWeight: 600, marginBottom: 8 }}>{t('kiosk.choose_variant')}</div>
-                {modifierDrawerItem.variants.map(v => (
-                  <button key={v.id} onClick={() => setSelectedVariant(v.id)} style={{
-                    display: 'flex', justifyContent: 'space-between', width: '100%',
-                    padding: '14px 18px', marginBottom: 8, borderRadius: 10, cursor: 'pointer',
-                    border: selectedVariant === v.id ? '2px solid ' + LOKA.primary : '2px solid #eee',
-                    background: selectedVariant === v.id ? 'rgba(59,74,26,0.05)' : 'white',
-                  }}>
-                    <span style={{ fontSize: fs(18, 16) }}>{v.variant_name}</span>
-                    <span style={{ fontSize: fs(18, 16), color: '#666' }}>{v.price_adjustment > 0 ? `+RM${v.price_adjustment.toFixed(2)}` : ''}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {modifierDrawerItem.modifier_groups?.map(group => (
-              <div key={group.id} style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: fs(20, 18), fontWeight: 600, marginBottom: 8 }}>
-                  {group.group_name}
-                  {group.min_selections > 0 && <span style={{ color: 'var(--color-danger)', fontSize: fs(16, 14) }}> *</span>}
-                  <span style={{ fontSize: fs(16, 14), color: '#999', marginLeft: 8 }}>
-                    {group.selection_type === 'single' ? t('kiosk.choose_one') : t('kiosk.choose_up_to', { n: group.max_selections })}
-                  </span>
-                </div>
-                {group.options.map(opt => {
-                  const isSelected = (selectedOptions[group.id] || []).includes(opt.id);
-                  return (
-                    <button key={opt.id}
-                      onClick={() => toggleOption(group.id, opt.id, group.selection_type, group.max_selections)}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between', width: '100%',
-                        padding: '14px 18px', marginBottom: 8, borderRadius: 10, cursor: 'pointer',
-                        border: isSelected ? '2px solid ' + LOKA.primary : '2px solid #eee',
-                        background: isSelected ? 'rgba(59,74,26,0.05)' : 'white',
-                      }}>
-                      <span style={{ fontSize: fs(18, 16) }}>{opt.option_name}</span>
-                      <span style={{ fontSize: fs(18, 16), color: '#666' }}>{opt.price_adjustment > 0 ? `+RM${opt.price_adjustment.toFixed(2)}` : ''}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-            <button onClick={confirmAddWithModifiers} disabled={!modifierRequirementsMet(modifierDrawerItem, selectedOptions)} style={{
-              width: '100%', padding: '16px', fontSize: fs(22, 20), fontWeight: 700,
-              background: LOKA.primary, color: 'white', border: 'none', borderRadius: 12,
-              cursor: modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? 'pointer' : 'not-allowed',
-              opacity: modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? 1 : 0.5,
-            }}>{modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? t('kiosk.add_to_cart') : t('kiosk.select_required')}</button>
-          </div>
-        </div>
+      {/* Item detail — full-screen page, not a modal (kiosk touch UX) */}
+      {phase === 'item' && modifierDrawerItem && (
+        <motion.div key="item" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+          style={{ position: 'absolute', inset: 0, background: 'white' }}>
+          <KioskItemPage
+            item={modifierDrawerItem}
+            qty={itemQty}
+            onQtyChange={(d) => setItemQty(q => Math.max(1, q + d))}
+            selectedOptions={selectedOptions}
+            onToggleOption={toggleOption}
+            selectedVariant={selectedVariant}
+            onSelectVariant={setSelectedVariant}
+            canConfirm={modifierRequirementsMet(modifierDrawerItem, selectedOptions)}
+            confirmLabel={modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? t('kiosk.add_to_cart') : t('kiosk.select_required')}
+            totalPrice={(() => {
+              const mods = Object.values(selectedOptions).flat().reduce((sum, modId) => {
+                for (const g of modifierDrawerItem.modifier_groups || []) {
+                  const m = g.options.find(x => x.id === modId);
+                  if (m) return sum + Number(m.price_adjustment || 0);
+                }
+                return sum;
+              }, 0);
+              const vAdj = selectedVariant !== null && modifierDrawerItem.variants
+                ? Number(modifierDrawerItem.variants.find(v => v.id === selectedVariant)?.price_adjustment || 0) : 0;
+              return formatPrice(String((parseFloat(modifierDrawerItem.base_price) + mods + vAdj) * itemQty));
+            })()}
+            onConfirm={confirmAddWithModifiers}
+            onBack={() => { setModifierDrawerItem(null); setPhase('menu'); }}
+            fs={fs}
+            isPortrait={isPortrait}
+            t={t}
+            formatPrice={formatPrice}
+          />
+        </motion.div>
       )}
     </div>
   );

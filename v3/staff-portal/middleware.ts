@@ -15,6 +15,15 @@ function getBackendUrl(): string {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // pos-disp.<domain> is the dedicated customer-display device: its root
+  // should open the display screen directly, never the staff login.
+  // Preserve ?store=&key= so a device bookmark keeps its pairing.
+  const host = request.headers.get("host") || "";
+  if (host.startsWith("pos-disp.") && pathname === "/") {
+    return NextResponse.redirect(new URL(`/pos/display${request.nextUrl.search}`, request.url));
+  }
+
   const response = NextResponse.next();
 
   response.headers.set("X-Content-Type-Options", "nosniff");

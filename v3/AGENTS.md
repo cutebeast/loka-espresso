@@ -1530,3 +1530,8 @@ User asked why item photos don't show after tapping an item or at checkout. Stat
 
 - Next dev/local servers returned the app HTML for /uploads/* (or 307→/login via auth middleware), so images looked broken locally while production nginx served them fine. All 3 portals now rewrite /uploads/:path* to the backend root, and staff/admin middleware matchers exclude /uploads. Kiosk flow verified visually end-to-end (menu card photos, item drawer photo, cart thumbnails).
 - Kiosk local route: http://localhost:13840/#kiosk (hostname `kiosk.` or `#kiosk` hash activates the kiosk shell).
+
+### Round 35 follow-up 27 — kiosk item page rebuild + pos-disp routing (2026-08-08)
+
+- **Kiosk rebuilt away from PWA modal patterns**: tapping an item opens a full-screen item page (new component `customer-pwa/src/components/kiosk/KioskItemPage.tsx`) — image on the side (landscape) or top (portrait), NEVER cropped (object-fit contain on cream), name/description/price, variants + modifiers as large touch buttons, qty stepper, Add to Cart with live total, Back to Menu. The bottom-sheet modal is gone. Menu grid cards + cart thumbnails also switched to contain (no cut-off images). Verified visually at 1920×1080 (LCD) and 768×1024 (tablet).
+- **pos-disp routing clarified**: pos-disp.loyaltysystem.uk already edge-rewrites everything to /pos/display (Caddy `fnb-pos-disp.conf`); middleware now redirects pos-disp.* root with ?store&key preserved; staff.loyaltysystem.uk/pos-disp redirects to /pos/display (the real path). Both domains work — no removal needed.
