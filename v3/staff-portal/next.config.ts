@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const API_PROXY = process.env.API_PROXY_URL || "http://127.0.0.1:13800/api";
+const UPLOADS_PROXY = process.env.UPLOADS_PROXY_URL || "http://127.0.0.1:13800";
 
 const nextConfig: NextConfig = {
   // BUILD_DIST_DIR lets scripts/rebuild-portal.sh build to a fresh directory
@@ -9,6 +10,10 @@ const nextConfig: NextConfig = {
   distDir: process.env.BUILD_DIST_DIR || ".next",
   async rewrites() {
     return [
+      {
+        source: "/uploads/:path*",
+        destination: `${UPLOADS_PROXY}/uploads/:path*`,
+      },
       {
         source: "/api/:path*",
         destination: `${API_PROXY}/:path*`,

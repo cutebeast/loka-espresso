@@ -30,7 +30,12 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    const uploadsUrl = backendUrl.replace(/\/api\/?$/, "");
     return [
+      {
+        source: "/uploads/:path*",
+        destination: `${uploadsUrl}/uploads/:path*`,
+      },
       {
         source: "/api/:path*",
         destination: `${backendUrl}/:path*`,

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const API_PROXY = process.env.API_PROXY_URL || "http://127.0.0.1:13800/api";
+const UPLOADS_PROXY = process.env.UPLOADS_PROXY_URL || "http://127.0.0.1:13800";
 
 const nextConfig: NextConfig = {
   // output: 'standalone', // disabled for 'next start' compatibility
@@ -16,7 +17,11 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
-          source: "/api/:path*",
+          source: "/uploads/:path*",
+        destination: `${UPLOADS_PROXY}/uploads/:path*`,
+      },
+      {
+        source: "/api/:path*",
           destination: `${API_PROXY}/:path*`,
         },
       ],
