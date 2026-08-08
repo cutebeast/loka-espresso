@@ -244,7 +244,7 @@ export default function ItemCustomizeSheet({
                       return <button key={v.id} onClick={() => setSelectedVariant(v)} className={`ics-option-btn ${sel ? 'selected' : ''}`}>
                         <span>{v.variant_name}</span>
                         <span className="ics-option-price">
-                          {v.price_adjustment > 0 ? `+${formatPrice(v.price_adjustment)}` : ''}
+                          {v.price_adjustment > 0 ? `+${formatPrice(v.price_adjustment)}` : t('cart.free')}
                         </span>
                       </button>;
                     })}
@@ -332,7 +332,7 @@ export default function ItemCustomizeSheet({
                     }} />}
                               <span>{opt.name}</span>
                               <span className="ics-option-price">
-                                {opt.price_adjustment > 0 ? `+${formatPrice(opt.price_adjustment)}` : ''}
+                                {opt.price_adjustment > 0 ? `+${formatPrice(opt.price_adjustment)}` : t('cart.free')}
                               </span>
                             </button>;
                 })}

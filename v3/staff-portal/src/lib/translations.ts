@@ -787,6 +787,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "inventory.photos_optional": "Photo (optional)",
   "inventory.photos_optional_hint": "Attach a photo of the shelf/item as evidence (max 1).",
   "inventory.upload_image": "Add Photo",
+  "pos.free": "Free",
   "pos.staff_meal": "Staff Meal",
   "pos.staff_meal_applied": "Staff meal discount applied",
   "pos.staff_meal_unavailable": "Staff meal discount is not configured",

@@ -101,7 +101,7 @@ export default function KioskItemPage({
                   background: selectedVariant === v.id ? "rgba(59,74,26,0.06)" : "white",
                 }}>
                   <span>{v.variant_name}</span>
-                  <span style={{ color: "#666" }}>{v.price_adjustment > 0 ? `+${formatPrice(v.price_adjustment)}` : ""}</span>
+                  <span style={{ color: "#666" }}>{v.price_adjustment > 0 ? `+${formatPrice(v.price_adjustment)}` : t("cart.free")}</span>
                 </button>
               ))}
             </div>
@@ -129,7 +129,7 @@ export default function KioskItemPage({
                       background: isSelected ? "rgba(59,74,26,0.06)" : "white",
                     }}>
                     <span>{opt.option_name}</span>
-                    <span style={{ color: "#666" }}>{opt.price_adjustment > 0 ? `+${formatPrice(opt.price_adjustment)}` : ""}</span>
+                    <span style={{ color: "#666" }}>{opt.price_adjustment > 0 ? `+${formatPrice(opt.price_adjustment)}` : t("cart.free")}</span>
                   </button>
                 );
               })}

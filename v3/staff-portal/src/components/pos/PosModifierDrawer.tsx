@@ -76,7 +76,7 @@ export default function PosModifierDrawer({
             justifyContent: "space-between"
           }} onClick={() => onToggleModifier(group.id, mod.id, group.selection_type || "single", group.max_selections || 1)}>
                   <span>{mod.option_name}</span>
-                  {Number(mod.price_adjustment || 0) > 0 && <span>{t("pos.currency_symbol")}{Number(mod.price_adjustment || 0).toFixed(2)}</span>}
+                  <span>{Number(mod.price_adjustment || 0) > 0 ? `+${t("pos.currency_symbol")}${Number(mod.price_adjustment || 0).toFixed(2)}` : t("pos.free")}</span>
                 </button>;
         })}
           </div>
