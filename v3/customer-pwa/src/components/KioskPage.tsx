@@ -743,6 +743,7 @@ export default function KioskPage() {
               ) : (
                 cart.map(item => (
                   <div key={item.lineKey} style={{ display: 'flex', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid #eee', gap: 16 }}>
+                    {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" style={{ width: fs(72, 60), height: fs(72, 60), borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} /> : null}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: fs(22, 20), fontWeight: 600 }}>{item.name}</div>
                       {item.modifier_label && <div style={{ fontSize: fs(16, 14), color: '#888' }}>{item.modifier_label}</div>}
@@ -880,6 +881,14 @@ export default function KioskPage() {
               <h2 style={{ fontSize: fs(28, 24), fontWeight: 700 }}>{modifierDrawerItem.item_name}</h2>
               <button onClick={() => setModifierDrawerItem(null)} style={{ background: 'none', border: 'none', fontSize: 32, cursor: 'pointer', color: '#999' }}>×</button>
             </div>
+            {/* item photo — kiosk customers expect to see what they picked */}
+            {modifierDrawerItem.image_url ? <div style={{
+              width: '100%', height: fs(280, 220), borderRadius: 14, overflow: 'hidden',
+              marginBottom: 16, background: '#f5f2ea',
+            }}>
+              <img src={resolveAssetUrl(modifierDrawerItem.image_url) || ''} alt={modifierDrawerItem.item_name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div> : null}
             <div style={{ fontSize: fs(24, 20), fontWeight: 700, color: LOKA.primary, marginBottom: 16 }}>
               {formatPrice(modifierDrawerItem.base_price)}
             </div>

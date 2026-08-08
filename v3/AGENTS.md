@@ -1521,3 +1521,7 @@ Screenshot review of all 20 staff pages at tablet (768×1024) and phone (390×84
 - Sidebar/dashboard "Wallet" button was actually the customer-lookup tool — renamed to "Customers" (subtitle: customer lookup — wallet, rewards & vouchers).
 - Staff inventory showed a broken-looking empty page when no stock rows existed (post-cleanup) — /staff/inventory now LEFT JOINs all active items with stock defaulting to 0, so staff can report counts/wastage on them (row created on first movement).
 - Non-issues verified: kitchen Access Denied is direct-URL only (home hides the button per role); broken images in local dev are the missing /uploads nginx route (production serves them fine — all 166 menu items + 4 real bundles have images).
+
+### Round 35 follow-up 25 — item images on detail + checkout views (2026-08-08)
+
+User asked why item photos don't show after tapping an item or at checkout. State was: PWA customize sheet had a small 180px strip + checkout thumbnails already; kiosk modifier drawer and kiosk cart had NO images; staff POS modifier drawer and checkout line items had none. Fixed: kiosk drawer now shows a large photo (fs-scaled ~280px) and cart lines show thumbnails; POS modifier drawer shows the item photo; POS checkout line items render 36px thumbs (menu_item_id → image_url map passed from the POS page); PWA customize sheet image bumped 180→240px.

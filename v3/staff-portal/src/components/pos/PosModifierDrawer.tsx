@@ -35,6 +35,22 @@ export default function PosModifierDrawer({
   const totalPrice = ((item.base_price + modPrice) * qty).toFixed(2);
   const requiredMissing = item.modifier_groups?.some(g => g.is_required && !selectedModifiers[g.id]?.length);
   return <Drawer open={!!item} onClose={onCancel} title={item.item_name} position="bottom">
+      {/* item photo — staff should see exactly what they're punching in */}
+      {item.image_url ? <div style={{
+      width: "100%",
+      height: 180,
+      borderRadius: 12,
+      overflow: "hidden",
+      marginBottom: 14,
+      background: "var(--color-bg-muted)"
+    }}>
+          {/* plain img: /uploads paths are served by the backend, not next/image */}
+          <img src={item.image_url} alt={item.item_name} style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover"
+      }} />
+        </div> : null}
       {item.modifier_groups?.map(group => <div key={group.id} style={{
       marginBottom: 20
     }}>

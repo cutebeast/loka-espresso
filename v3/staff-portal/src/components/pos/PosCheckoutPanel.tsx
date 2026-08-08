@@ -51,6 +51,8 @@ interface PosCheckoutPanelProps {
   error: string;
   msg: string;
   showDiscounts: boolean;
+  /** menu_item_id → image_url, for checkout line-item thumbnails */
+  itemImages?: Record<number, string | undefined>;
   onSetPaymentMethod: (m: PaymentMethod) => void;
   onSetAmountTendered: Dispatch<SetStateAction<string>>;
   onSetDiscountAmount: (v: number) => void;
@@ -88,6 +90,7 @@ export default function PosCheckoutPanel({
   error,
   msg,
   showDiscounts,
+  itemImages = {},
   onSetPaymentMethod,
   onSetAmountTendered,
   onSetDiscountAmount,
@@ -232,7 +235,26 @@ export default function PosCheckoutPanel({
               }}>{t("pos.price")}</th></tr></thead>
             <tbody>
               {(order.line_items || order.items || []).map((li, idx) => <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}-${idx}`}>
-                  <td>{li.item_name || li.name}</td>
+                  <td><div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                      {li.menu_item_id && itemImages[Number(li.menu_item_id)] ?
+                /* plain img: /uploads paths are served by the backend, not next/image */
+                <img src={itemImages[Number(li.menu_item_id)]} alt="" style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  objectFit: "cover",
+                  flexShrink: 0
+                }} /> : null}
+                      <span>{li.item_name || li.name}{li.modifiers_label ? <span style={{
+                  fontSize: 12,
+                  color: "var(--color-text-muted)",
+                  display: "block"
+                }}>{li.modifiers_label}</span> : null}</span>
+                    </div></td>
                   <td style={{
                 textAlign: "center"
               }}>{li.quantity}</td>
