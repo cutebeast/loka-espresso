@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -57,8 +57,10 @@ class EquipmentReportRequest(BaseSchema):
 async def list_equipment_for_staff(
     db: DBDependency,
     staff: CurrentStaff,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=500, description="Items per page"),
 ):
-    """List equipment assigned to the staff member's store."""
+    """List equipment assigned to the staff member's store (paginated)."""
     store_id = staff.store_id if hasattr(staff, "store_id") else None
     if not store_id:
         raise HTTPException(status_code=400, detail="No store assigned to this staff member")

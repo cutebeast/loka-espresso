@@ -374,3 +374,120 @@ async def get_order(customer: ActiveCustomer, db: DBDependency, order_id: int):
     order_out.payment_method = payment_row[0] if payment_row else None
     
     return APIResponse(data=order_out)
+
+
+@router.get("/{order_id}/einvoice", response_model=APIResponse[dict | None])
+async def get_order_einvoice(
+    order_id: int,
+    customer: ActiveCustomer,
+    db: DBDependency,
+):
+    """Get the e-invoice document for a customer's paid order (null if none)."""
+    from app.models.einvoice import EinvoiceDocument
+
+    order_query = select(Order).where(
+        Order.id == order_id,
+        Order.customer_id == customer.id,
+    )
+    result = await db.execute(order_query)
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    result = await db.execute(
+        select(EinvoiceDocument)
+        .where(EinvoiceDocument.order_id == order.id)
+        .order_by(EinvoiceDocument.id.desc())
+        .limit(1)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        return APIResponse(data=None)
+
+    return APIResponse(data={
+        "id": doc.id,
+        "code_number": doc.code_number,
+        "status": doc.status,
+        "document_type": doc.document_type,
+        "validation_link": doc.validation_link,
+        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+        "order_number": order.order_number,
+    })
+
+
+@router.post("/{order_id}/einvoice", response_model=APIResponse[dict])
+async def request_order_einvoice(
+    order_id: int,
+    customer: ActiveCustomer,
+    db: DBDependency,
+):
+    """Request e-invoice generation for a paid order. Idempotent — returns existing if already issued."""
+    from app.models.einvoice import EinvoiceDocument
+    from app.services.einvoice import issue_einvoice
+
+    order_query = select(Order).where(
+        Order.id == order_id,
+        Order.customer_id == customer.id,
+    )
+    result = await db.execute(order_query)
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Must be paid
+    if order.payment_status not in ("captured", "settled", "paid", "partially_refunded"):
+        raise HTTPException(
+            status_code=400,
+            detail="E-invoice can only be issued for paid orders"
+        )
+
+    # Check existing
+    result = await db.execute(
+        select(EinvoiceDocument)
+        .where(EinvoiceDocument.order_id == order.id)
+        .order_by(EinvoiceDocument.id.desc())
+        .limit(1)
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return APIResponse(data={
+            "id": existing.id,
+            "code_number": existing.code_number,
+            "status": existing.status,
+            "document_type": existing.document_type,
+            "validation_link": existing.validation_link,
+            "created_at": existing.created_at.isoformat() if existing.created_at else None,
+            "order_number": order.order_number,
+            "already_issued": True,
+        })
+
+    # Find the captured payment
+    payment_result = await db.execute(
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(["captured", "partially_refunded"]),
+        ).order_by(Payment.created_at.desc()).limit(1)
+    )
+    payment = payment_result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(
+            status_code=400,
+            detail="No captured payment found for this order"
+        )
+
+    try:
+        doc = await issue_einvoice(db, order, payment, document_type="01")
+    except Exception as e:
+        logger.exception("E-invoice issue failed for order %s", order.id)
+        raise HTTPException(status_code=500, detail="E-invoice could not be generated at this time")
+
+    return APIResponse(data={
+        "id": doc.id,
+        "code_number": doc.code_number,
+        "status": doc.status,
+        "document_type": doc.document_type,
+        "validation_link": doc.validation_link,
+        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+        "order_number": order.order_number,
+        "already_issued": False,
+    })

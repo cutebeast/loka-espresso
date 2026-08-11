@@ -449,3 +449,35 @@
   font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; padding: 0 6px;
 }
+
+/* ── Dashboard KPI stats ── */
+.dashboard-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 14px; border-radius: 12px; background: var(--brand-bg-card, #FFFDF8);
+  border: 1px solid var(--border-light, #E5E0D5); min-width: 70px;
+}
+.dashboard-stat-num { font-size: 24px; font-weight: 800; line-height: 1.2; }
+.dashboard-stat-label { font-size: 10px; text-transform: uppercase; color: var(--color-text-muted); font-weight: 600; letter-spacing: 0.5px; }
+
+/* ── Primary action card ── */
+.dashboard-primary-card:active { transform: scale(0.98); }
+
+/* ── Section labels ── */
+.section-label {
+  font-size: 11px; font-weight: 700; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 4px;
+}
+
+/* ── Home card v2 (icon + text row) ── */
+.home-btn-v2 {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  border-radius: 12px; background: var(--brand-bg-card, #FFFDF8);
+  border: 1px solid var(--border-light, #E5E0D5); position: relative;
+  cursor: pointer; transition: transform 0.1s; text-decoration: none; color: inherit;
+  font-family: inherit; font-size: inherit; width: 100%; text-align: left;
+}
+.home-btn-v2:active { transform: scale(0.97); }
+.home-btn-v2-icon { line-height: 1; display: flex; flex-shrink: 0; color: var(--color-text-muted); }
+.home-btn-v2-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.home-btn-v2-label { font-size: 14px; font-weight: 600; }
+.home-btn-v2-desc { font-size: 11px; color: var(--color-text-muted); }

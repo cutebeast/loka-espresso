@@ -15,6 +15,8 @@ Monitor, update, refund, and analyse orders across all channels (PWA, POS, deliv
 All orders with order number, customer, store, type, status, payment status, and total.
 
 ### Filters
+
+- **Category filter**: Dropdown to filter by menu category slug (e.g. `experiences` for workshop orders)
 - Store
 - Status
 - Payment status
@@ -162,3 +164,12 @@ Table reservations with date, time, party size, and status.
 - [Staff Portal — POS](../staff/pos-checkout.md)
 - [Customer PWA — Checkout](../customer/checkout-and-payment.md)
 - [Settings — Payment Gateway](settings.md)
+
+
+## Service Charge & Tax
+
+Order detail shows `serviceCharge` and `taxAmount` fields. The POS checkout screen includes toggles for:
+- **Service charge**: Percentage-based, configurable per store
+- **Tax**: GST/SST rate, configurable per store
+
+Both toggles are on by default for new POS orders and can be switched off by the cashier.

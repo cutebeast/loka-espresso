@@ -141,7 +141,7 @@ export default function PwaTranslationsTab() {
     for (const key of [...allKeyMap.keys()]) {
       const existing = allKeyMap.get(key)!;
       if (existing[locale]?.translated_text) continue;
-      const anyRecord = existing["ms"] || existing["zh"] || existing["ta"] || existing["tr"];
+      const anyRecord = existing["zh"] || existing["en"];
       const source = anyRecord?.source_text || "";
       if (!source) continue;
       missingKeys.push({ key, source });
@@ -190,7 +190,7 @@ export default function PwaTranslationsTab() {
     for (const key of [...keyMap.keys()]) {
       const existing = keyMap.get(key)!;
       if (existing[locale]?.translated_text) continue;
-      const anyRecord = existing["ms"] || existing["zh"] || existing["ta"] || existing["tr"];
+      const anyRecord = existing["zh"] || existing["en"];
       const source = anyRecord?.source_text || "";
       if (!source) continue;
       missingKeys.push({ key, source });
@@ -345,7 +345,7 @@ export default function PwaTranslationsTab() {
                   <tbody>
                     {keys.map((key) => {
                       const row = keyMap.get(key)!;
-                      const anyRecord = row["ms"] || row["zh"] || row["ta"] || row["tr"];
+                      const anyRecord = row["zh"] || row["en"];
                       const enText = anyRecord?.source_text || "";
                       const shortKey = key.split(".").slice(1).join(".") || key;
                       return (

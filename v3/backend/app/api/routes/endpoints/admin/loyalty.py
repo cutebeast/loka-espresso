@@ -434,7 +434,9 @@ async def get_my_ledger_entries(
     customer: ActiveCustomer,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
-):
+
+    date_from: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: str | None = Query(None, description="End date (YYYY-MM-DD)"),):
     """Get current customer's loyalty ledger entries. Returns empty if no account."""
     result = await db.execute(
         select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id)

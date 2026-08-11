@@ -102,7 +102,7 @@ Settings stored in platform configuration (`loyalty.*` keys). Edit a value and s
 | `loyalty.points_per_currency` | 1 | Base earning rate — points per RM 1 of eligible order spend. |
 | `loyalty.welcome_bonus` | 50 | Welcome points credited at registration (when the reward type includes points). |
 | `loyalty.welcome_reward_type` | `voucher` | What new customers receive: `points`, `voucher`, or `points_and_voucher`. |
-| `loyalty.welcome_reward_voucher_code` | `WELCOME-RM5` | Voucher definition issued on first registration when the type is `voucher` (or `points_and_voucher`). |
+| `loyalty.welcome_reward_voucher_code` | `WELCOME-RM5 (must exist in Marketing → Vouchers)` | Voucher definition issued on first registration when the type is `voucher` (or `points_and_voucher`). |
 
 > The welcome voucher code must match an existing voucher definition — create it under **Marketing → Vouchers** first. Referral reward points live under **Marketing → Referral Settings** (`loyalty.referral_reward_points`), not on this page.
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, RotateCcw, XCircle, Share2, MapPin, Phone, Coffee, Check, User, Truck, Utensils, ShoppingBag, CreditCard } from 'lucide-react';
+import { ArrowLeft, RotateCcw, XCircle, Share2, MapPin, Phone, Coffee, Check, User, Truck, Utensils, ShoppingBag, CreditCard , Loader2, FileText } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import StripePaymentSheet from '@/components/stripe/StripePaymentSheet';
 import { useOrderStore } from '@/stores/orderStore';
@@ -59,6 +59,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(currentOrder);
   const [loading, setLoading] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [einvoiceLoading, setEinvoiceLoading] = useState(false);
+  const [einvoiceData, setEinvoiceData] = useState<any>(null);
   const [cancelling, setCancelling] = useState(false);
   const [processingReturn, setProcessingReturn] = useState(false);
   const [paySheetOpen, setPaySheetOpen] = useState(false);
@@ -167,6 +169,22 @@ export default function OrderDetailPage() {
   };
 
   const CANCELLABLE = ['pending', 'confirmed'];
+  const handleRequestEinvoice = async () => {
+    if (!order) return;
+    setEinvoiceLoading(true);
+    try {
+      const res = await api.post(`/orders/${order.id}/einvoice`);
+      const data = res.data?.data || res.data;
+      setEinvoiceData(data);
+      showToast(data.already_issued ? t('orderDetail.einvoiceAlreadyIssued') : t('orderDetail.einvoiceRequested'), 'success');
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || t('orderDetail.einvoiceFailed');
+      showToast(msg, 'error');
+    } finally {
+      setEinvoiceLoading(false);
+    }
+  };
+
   const handleCancel = async () => {
     if (!order) return;
     if (!CANCELLABLE.includes(order.status?.toLowerCase())) {
@@ -400,12 +418,27 @@ export default function OrderDetailPage() {
           </button>
           <div className="od-secondary-actions">
             <button className="od-secondary-btn secondary" onClick={handleShare}><Share2 size={14} /> {t('orderDetail.share')}</button>
+            {['captured', 'paid', 'settled', 'partially_refunded'].includes(order.payment_status?.toLowerCase() || '') && (
+              <button className="od-secondary-btn primary" onClick={handleRequestEinvoice} disabled={einvoiceLoading}>
+                {einvoiceLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                {einvoiceData?.validation_link ? t('orderDetail.viewEinvoice') : t('orderDetail.requestEinvoice')}
+              </button>
+            )}
             {['pending', 'confirmed'].includes(order.status?.toLowerCase()) && (
               <button className="od-secondary-btn danger" onClick={handleCancel} disabled={cancelling}>
                 <XCircle size={14} /> {cancelling ? t('orderDetail.cancelling') : t('orderDetail.cancelOrder')}
               </button>
             )}
           </div>
+          {einvoiceData?.validation_link && (
+            <div style={{ marginTop: 12, padding: 12, background: 'var(--color-bg-card)', borderRadius: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('orderDetail.einvoiceReady')} — {einvoiceData.code_number}</div>
+              <a href={einvoiceData.validation_link} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 14, color: 'var(--color-primary)', fontWeight: 600 }}>
+                {t('orderDetail.openEinvoice')} ↗
+              </a>
+            </div>
+          )}
         </div>
       </div>
       <BottomSheet isOpen={paySheetOpen} onClose={() => setPaySheetOpen(false)} title={t('checkout.payOnline')}>

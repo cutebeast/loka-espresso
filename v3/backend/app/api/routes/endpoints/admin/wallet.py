@@ -406,7 +406,7 @@ async def get_my_wallet(
             CustomerVoucher.customer_id == customer.id,
             CustomerVoucher.status == "active",
         )
-        .order_by(CustomerVoucher.expires_at.asc())
+        .order_by(CustomerVoucher.expires_at.asc()).limit(50)
     )
     vouchers = []
     for cv, vd in v_result.all():
@@ -432,7 +432,7 @@ async def get_my_wallet(
             CustomerReward.customer_id == customer.id,
             CustomerReward.status == "active",
         )
-        .order_by(CustomerReward.expires_at.asc())
+        .order_by(CustomerReward.expires_at.asc().limit(50))
     )
     rewards = []
     for cr, rc in r_result.all():
@@ -460,7 +460,9 @@ async def get_my_ledger(
     db: DBDependency,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
-):
+
+    date_from: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: str | None = Query(None, description="End date (YYYY-MM-DD)"),):
     """Get current customer's ledger entries. Returns empty if no wallet."""
     wallet = await _get_customer_wallet(db, customer.id)
     if wallet is None:

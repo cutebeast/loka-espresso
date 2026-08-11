@@ -39,3 +39,11 @@ Tasks can be created by managers in the Admin Portal and may include:
 
 ## Related
 - [Operations](operations.md)
+
+
+## Recurring Tasks
+
+Tasks can be set to repeat automatically:
+- **Daily tasks** (e.g. "Clean grease trap") auto-create the next occurrence when completed
+- **Weekly tasks** (e.g. "Deep clean espresso machine") create a copy +7 days
+- **Recur interval**: Admin sets the repeat interval in days when creating/editing a task

@@ -21,8 +21,8 @@ After login, you see the home dashboard with buttons based on your role.
 | Inventory | shift_supervisor, store_manager, kitchen_staff, admin | Update stock levels. |
 | Wastage | shift_supervisor, store_manager, kitchen_staff, admin | Report wasted stock. |
 | Equipment | shift_supervisor, store_manager, kitchen_staff, admin | Check equipment condition. |
-| Garbage | shift_supervisor, store_manager, kitchen_staff, admin | Log garbage disposal. |
-| Grease Trap | shift_supervisor, store_manager, kitchen_staff, admin | Log grease trap cleaning. |
+| Garbage | all roles, admin | Log garbage disposal. |
+| Grease Trap | all roles, admin | Log grease trap cleaning. |
 | Time Clock | all roles | Clock in/out and breaks. |
 | Shifts | all roles | View upcoming shifts. |
 | Tasks | all roles | Complete assigned tasks. |

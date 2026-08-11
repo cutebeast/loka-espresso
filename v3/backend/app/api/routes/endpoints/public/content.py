@@ -449,7 +449,7 @@ async def get_legal_page(
 _SECTION_HEAD = re.compile(r"^(\d+)\.\s+(.+?)\s*$")
 
 
-_INTRO_HEADINGS = {"ms": "Pengenalan", "zh": "简介", "ta": "அறிமுகம்", "tr": "Giriş"}
+_INTRO_HEADINGS = {"zh": "简介"}
 
 
 def _parse_legal_sections(body: str, locale: str | None = None) -> list[dict]:

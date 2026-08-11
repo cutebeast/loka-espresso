@@ -89,7 +89,7 @@ def _compute_hash(source_locale: str, target_locale: str, text: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
+locale_names = {"zh": "Simplified Chinese"}
 
 # House-style glossary: manually approved translations (is_auto_translated=false)
 # injected into every prompt so future AI translations reference the team's

@@ -238,7 +238,7 @@ export default function MultiCourseBundleSheet({
                         </div>
                         <div className="bps-item-info">
                           <div className="bps-item-name">{item.name}</div>
-                          <div className="bps-item-price">{formatPrice(item.price)}</div>
+                          <div className="bps-item-price">{Number(item.price) > 0 ? formatPrice(item.price) : t("cart.free")}</div>
                         </div>
                       </div>;
               })}

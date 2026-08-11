@@ -47,7 +47,9 @@ Track ingredients and retail stock across stores, record stock movements, manage
 ### Link to menu items
 Some inventory items can be linked to menu item recipes so that preparing an order deducts stock automatically.
 
-## Stock Levels (`/inventory/stocks`)
+## Stock Levels
+
+**Note**: Sales never block on stock. Items can go negative — stock warnings appear in API responses when levels drop below zero. (`/inventory/stocks`)
 
 ### Set stock
 1. Select the store.
@@ -155,3 +157,12 @@ Staff submit hygiene reports from the Staff Portal under **Grease Trap** and **G
 ## Related
 - [Menu](menu.md)
 - [Staff — Inventory tasks](../staff/operations.md)
+
+
+## Wastage Reports
+
+Accessible at `/inventory/wastage` — view all staff-submitted wastage reports with:
+- Store/status/date filters
+- Photo viewer for evidence images
+- Verify/flag + notes workflow
+- Menu Item vs Inventory Item toggle

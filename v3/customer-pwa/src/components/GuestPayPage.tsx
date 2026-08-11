@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, CheckCircle, XCircle, Loader2, Smartphone, Utensils, ShoppingBag, Truck } from 'lucide-react';
+import { CreditCard, CheckCircle, XCircle, Loader2, Smartphone, Utensils, ShoppingBag, Truck, Wallet } from 'lucide-react';
 import api from '@/lib/api';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -29,6 +29,7 @@ interface GuestOrderData {
   can_pay: boolean;
   stripe_enabled: boolean;
   hitpay_enabled: boolean;
+  wallet_enabled: boolean;
 }
 
 export default function GuestPayPage() {
@@ -37,6 +38,7 @@ export default function GuestPayPage() {
   const orderId = pageParams.orderId as number | undefined;
   const token = pageParams.token as string | undefined;
   const returnStatus = pageParams.status as string | undefined;
+  const prefer = (pageParams.prefer as string) || 'stripe';
 
   const [order, setOrder] = useState<GuestOrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,15 +73,17 @@ export default function GuestPayPage() {
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
-  const handlePay = async (provider: 'stripe' | 'hitpay') => {
+  const handlePay = async (provider: 'stripe' | 'hitpay' | 'wallet') => {
     if (!orderId || !token || !order) return;
     setPaying(true);
     try {
       const params: Record<string, string> = { token, provider };
       if (phone.trim()) params.phone_number = phone.trim();
       const res = await api.post(`/payments/guest-pay/${orderId}`, null, { params });
-      const data = res.data as { redirect_url: string };
-      if (data.redirect_url) {
+      const data = res.data as { redirect_url?: string; wallet_paid?: boolean };
+      if (provider === 'wallet' && data.wallet_paid) {
+        setPaid(true);
+      } else if (data.redirect_url) {
         window.location.href = data.redirect_url;
       } else {
         showToast(t('guestPay.noRedirect'), 'error');
@@ -234,14 +238,26 @@ export default function GuestPayPage() {
 
         {/* Pay buttons */}
         <div className="guest-pay-actions">
+          {order.wallet_enabled && (
+            <button
+              className={`guest-pay-btn ${prefer === 'wallet' ? 'primary' : 'secondary'}`}
+              onClick={() => handlePay('wallet')}
+              disabled={paying || (prefer === 'wallet' && !phone.trim())}
+            >
+              {paying ? <Loader2 size={18} className="animate-spin" /> : <Wallet size={18} />}
+              {paying ? t('guestPay.processing') : t('guestPay.payWithWallet')}
+              {prefer === 'wallet' && <span className="guest-pay-recommended">{t('guestPay.recommended')}</span>}
+            </button>
+          )}
           {order.stripe_enabled && (
             <button
-              className="guest-pay-btn primary"
+              className={`guest-pay-btn ${prefer === 'stripe' ? 'primary' : 'secondary'}`}
               onClick={() => handlePay('stripe')}
               disabled={paying}
             >
               {paying ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
               {paying ? t('guestPay.processing') : t('guestPay.payWithCard')}
+              {prefer === 'stripe' && <span className="guest-pay-recommended">{t('guestPay.recommended')}</span>}
             </button>
           )}
           {order.hitpay_enabled && (
@@ -254,7 +270,7 @@ export default function GuestPayPage() {
               {t('guestPay.payWithHitPay')}
             </button>
           )}
-          {!order.stripe_enabled && !order.hitpay_enabled && (
+          {!order.stripe_enabled && !order.hitpay_enabled && !order.wallet_enabled && (
             <p className="guest-pay-no-provider">{t('guestPay.noProvider')}</p>
           )}
         </div>

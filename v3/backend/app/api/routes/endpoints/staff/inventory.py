@@ -3,8 +3,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentStaff, DBDependency
@@ -25,8 +25,10 @@ router = APIRouter(tags=["staff — inventory"])
 async def list_inventory_for_staff(
     db: DBDependency,
     staff: CurrentStaff,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=500, description="Items per page"),
 ):
-    """List inventory items for the staff member's store.
+    """List inventory items for the staff member's store (paginated).
 
     Every active item is listed — items with no stock row yet show 0, so
     staff can report counts/wastage on them (the stock row is created on

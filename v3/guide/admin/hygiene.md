@@ -1,18 +1,31 @@
-# Hygiene & Cleaning Logs
+# Hygiene Reports
 
-Maintain food-safety standards by recording cleaning tasks and hygiene inspections.
+## Overview
 
-## What you can do
+Staff submit daily hygiene reports from the staff portal. Admin reviews them here.
 
-- Log daily cleaning checks.
-- Record grease-trap cleaning and garbage disposal.
-- Assign staff members and capture signatures or photos where required.
+### Report Types
 
-## Recommended workflow
+| Type | Staff Path | Admin Path |
+|------|-----------|------------|
+| **Grease Trap** | `POST /staff/hygiene/grease-trap` | `GET /admin/hygiene/reports?type=grease_trap` |
+| **Garbage** | `POST /staff/hygiene/garbage` | `GET /admin/hygiene/reports?type=garbage` |
 
-1. Open **Store Ops > Hygiene**.
-2. Create a new hygiene report for the shift.
-3. Select the checklist template and mark each item as passed, failed, or not applicable.
-4. Add notes or photos for any failed items and assign follow-up tasks.
+### Filters
 
-Staff can also update cleaning logs from the Staff Portal so records are captured at the point of work.
+- **Date range**: `date_from` / `date_to`
+- **Store**: Filter by store
+- **Status**: Submission status
+
+### Grease Trap Fields
+
+- `level_percent`: Current fill level (0-100)
+- `needs_cleaning`: Boolean flag for cleaning required
+- `notes`: Staff notes
+- `photo_evidence`: Optional photo
+
+### Garbage Fields
+
+- `bag_count`: Number of bags disposed
+- `disposal_method`: compactor / regular / recycling
+- `notes`: Staff notes

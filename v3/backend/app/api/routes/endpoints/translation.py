@@ -252,7 +252,7 @@ async def sync_to_json(
     admin: CurrentAdmin,
 ):
     """Sync pwa-ui DB translations to static JSON locale files."""
-    LOCALES = ["ms", "zh", "ta", "tr"]
+    LOCALES = ["zh"]
     PWA_LOCALES_DIR = os.path.join(
         os.path.dirname(__file__), "..", "..", "..", "..", "..",
         "customer-pwa", "src", "locales",

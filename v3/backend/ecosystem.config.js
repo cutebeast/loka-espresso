@@ -17,5 +17,14 @@ module.exports = {
       watch: false,
       max_memory_restart: "1G",
     },
+    {
+      name: "kiosk-v3",
+      cwd: "/root/fnb-super-app/v3/customer-pwa",
+      script: "npx",
+      args: "next start -p 13840",
+      instances: 1,
+      autorestart: true,
+      watch: false,
+    },
   ],
 };

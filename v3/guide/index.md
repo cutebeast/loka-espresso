@@ -38,3 +38,4 @@ Cross-references between the three guides are included so you can follow an orde
 - [Frequently Asked Questions](faq.md)
 - [Role & Access Matrix — Admin](admin/role-access-matrix.md)
 - [Role & Access Matrix — Staff](staff/role-access-matrix.md)
+- [Customer](customer/) — Including Kiosk self-ordering

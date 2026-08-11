@@ -73,3 +73,8 @@ Tap **Profile → Help & Support** for FAQ and contact options.
 ## Related
 - [Menu & Ordering](menu-and-ordering.md)
 - [Checkout & Payment](checkout-and-payment.md)
+
+
+## Loka Tuesday
+
+Every Tuesday, all menu items earn 2× loyalty points automatically. No code needed — points are calculated at order creation time.

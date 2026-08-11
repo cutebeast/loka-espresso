@@ -1150,6 +1150,8 @@ async def get_customer_orders(
     store_id: int | None = None,
     page: int = 1,
     per_page: int = 20,
+    date_from: str | None = None,
+    date_to: str | None = None,
 ):
     """List orders for a customer."""
     from sqlalchemy import func
@@ -1160,6 +1162,10 @@ async def get_customer_orders(
     ]
     if store_id is not None:
         base_filters.append(Order.store_id == store_id)
+    if date_from:
+        base_filters.append(Order.created_at >= date_from)
+    if date_to:
+        base_filters.append(Order.created_at <= date_to + "T23:59:59")
     if status:
         # Support comma-separated status lists (e.g. "pending,preparing,ready")
         # Filter to valid enum values to avoid PostgreSQL InvalidTextRepresentationError.

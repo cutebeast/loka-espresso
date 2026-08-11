@@ -16,7 +16,7 @@ A single person can have both, but the two do not mix automatically.
 | `system_admin` | Full Admin Portal | All stores | Can create other system admins, manage IAM roles, access all settings. |
 | `regional_manager` | Full Admin Portal | All stores | Multi-store oversight; HQ bypass on store-scoped endpoints. |
 | `store_manager` | Full Admin Portal UI | Assigned stores only | Day-to-day store management. Backend store scoping restricts data to assigned stores. |
-| `readonly_analyst` | Full Admin Portal UI | All stores | Treated as HQ for viewing. Note: most write endpoints are not blocked for this role. |
+| `readonly_analyst` | Full Admin Portal UI | All stores | Treated as HQ for viewing. Note: all mutations are blocked (403) by the central write-guard. |
 
 ## Staff Portal roles (for reference)
 
@@ -57,7 +57,7 @@ These roles cannot log in to the Admin Portal. They are managed under **Staff â†
 
 - **Permission rows are informational.** The matrix under **Admin â†’ Admin Roles** stores permission rows, but most business endpoints enforce access via role-key checks and store scoping, not those permission rows.
 - **`StoreAssignment` flags are unused.** `can_approve_refunds`, `can_adjust_inventory`, and `can_manage_staff` are stored but not enforced by the backend.
-- **`readonly_analyst` is treated as HQ.** It can see all stores and is not blocked from write endpoints.
+- **`readonly_analyst` is treated as HQ for viewing data but all mutations are blocked (403) by the central write-guard.** It can see all stores and is not blocked from write endpoints.
 - **Staff roles cannot use the Admin Portal.** `/admin/auth/me` rejects pure staff-profile tokens.
 
 ## Best practice

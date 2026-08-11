@@ -99,7 +99,7 @@ Your order is prepared and waiting at the counter or designated pickup area.
 Refunds are handled by the store manager. Cash refunds are returned immediately at the counter; wallet refunds go straight back to your wallet balance; card/online refunds go back through the payment provider. **Yes — you keep your loyalty points and lucky-draw tickets** from the original order; they are not deducted when an order is refunded.
 
 ### How do I scan a table QR code?
-Open the PWA camera or tap the dine-in option in the cart, then point the camera at the table QR code. This links your order to the table.
+Open your phone camera and scan the QR code on the table. This opens the PWA with your table number pre-selected. You can then browse the menu and place your order. This links your order to the table.
 
 ## Still need help?
 Contact your system administrator or open a support request from the Staff Portal profile page. Customers can reach the store directly — find store details under **Information** in the app.

@@ -9,10 +9,10 @@
  * Supports both Portrait (standing LCD, 1080×1920) and Landscape (tablet, 1920×1080)
  * orientations with responsive layouts.
  *
- * Flow: Welcome → Order Type → Browse Menu → Cart → Checkout → Confirmation
+ * Flow: Welcome → Order Type → Phone → Menu → Item Detail / Bundle Builder → Cart → Add-on Deals → Checkout → Confirmation
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -21,9 +21,11 @@ import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import {
   Utensils, ShoppingBag, Search, Plus, Minus, Trash2,
   ShoppingCart, ArrowLeft, ArrowRight, CheckCircle, Loader2,
-  CreditCard, Smartphone, Phone
+  CreditCard, Smartphone, Phone, Sparkles, Wallet, ArrowLeftRight
 } from 'lucide-react';
 import KioskItemPage from './kiosk/KioskItemPage';
+import KioskBundlePage, { type KioskBundle, type KioskBundleComponent } from './kiosk/KioskBundlePage';
+import { previewAddonDiscount } from '@/lib/addonDeal';
 
 interface KioskModifierOption {
   id: number;
@@ -51,6 +53,10 @@ interface KioskMenuItem {
   is_available: boolean;
   modifier_groups?: KioskModifierGroup[];
   variants?: { id: number; variant_name: string; price_adjustment: number; display_order: number }[];
+  is_addon_deal_eligible?: boolean;
+  addon_discount_type?: string | null;
+  addon_discount_value?: number | null;
+  eligible_bundle_ids?: number[] | null;
 }
 
 interface KioskCategory {
@@ -69,9 +75,12 @@ interface CartItem {
   selected_modifier_options?: number[];
   selected_variant_id?: number;
   modifier_label?: string;
+  bundle_product_id?: number;
+  bundle_component_id?: number;
+  bundle_title?: string;
 }
 
-type KioskPhase = 'welcome' | 'order_type' | 'phone' | 'menu' | 'item' | 'cart' | 'checkout' | 'success' | 'setup';
+type KioskPhase = 'welcome' | 'order_type' | 'table_number' | 'phone' | 'menu' | 'item' | 'bundle' | 'cart' | 'addon_deals' | 'checkout' | 'payment_select' | 'success' | 'setup';
 type Orientation = 'portrait' | 'landscape';
 type KioskMode = 'standing' | 'tablet';
 
@@ -79,10 +88,13 @@ const INACTIVITY_TIMEOUT_MS = 60 * 1000;
 const INACTIVITY_WARNING_MS = 10 * 1000;
 const STAFF_PHONE = '+60312345678';
 const TABLET_TABLE_KEY = 'kiosk-tablet-table';
+// Bundle categories share the sidebar with menu categories — offset their ids
+// so the two id spaces can't collide.
+const BUNDLE_CAT_OFFSET = 100000;
 
-function cartLineKey(itemId: number, variantId?: number, modifierOptionIds: number[] = []): string {
+function cartLineKey(itemId: number, variantId?: number, modifierOptionIds: number[] = [], bundleProductId?: number, bundleComponentId?: number): string {
   const mods = [...modifierOptionIds].sort((a, b) => a - b).join(',');
-  return `${itemId}:${variantId ?? ''}:${mods}`;
+  return `${itemId}:${variantId ?? ''}:${mods}:${bundleProductId ?? ''}:${bundleComponentId ?? ''}`;
 }
 
 function modifierRequirementsMet(item: KioskMenuItem, selections: Record<number, number[]>): boolean {
@@ -111,11 +123,16 @@ export default function KioskPage() {
   const [error, setError] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
   const [payUrl, setPayUrl] = useState('');
+  const [orderTotal, setOrderTotal] = useState('');
   const [now, setNow] = useState(0);
   const [orientation, setOrientation] = useState<Orientation>('landscape');
   const [inactivityWarn, setInactivityWarn] = useState(false);
   const [showCallStaff, setShowCallStaff] = useState(false);
+  const [promos, setPromos] = useState<any[]>([]);
+  const [promoIdx, setPromoIdx] = useState(0);
   const _orderId = useRef<number | null>(null);
+
+  const returnPhaseRef = useRef<KioskPhase>('menu');
 
   const inactivityRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,12 +142,15 @@ export default function KioskPage() {
 
   // ── Kiosk mode detection (standing floor LCD vs tablet on table) ──
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    if (mode === 'tablet') {
+    const searchParams = new URLSearchParams(window.location.search);
+    const pathname = window.location.pathname;
+    const isTabletPath = pathname === '/tablet' || pathname.startsWith('/tablet/') || pathname.startsWith('/mode/tablet');
+    const mode = searchParams.get('mode');
+    const isTablet = mode === 'tablet' || isTabletPath;
+    if (isTablet) {
       setKioskMode('tablet');
       setOrderType('dine_in');
-      const urlTable = params.get('table');
+      const urlTable = searchParams.get('table');
       if (urlTable) {
         setTableNumber(urlTable);
         try { localStorage.setItem(TABLET_TABLE_KEY, urlTable); } catch {}
@@ -168,22 +188,36 @@ export default function KioskPage() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [catRes, itemRes] = await Promise.all([
+        const [catRes, itemRes, bundleRes, bundleCatRes] = await Promise.all([
           api.get('/menu/categories'),
           api.get('/menu/items', { params: { limit: 500 } }),
+          api.get('/menu/bundle-products'),
+          api.get('/bundle-categories').catch(() => ({ data: { data: { categories: [] } } })),
         ]);
         const cats = catRes.data?.categories || catRes.data || [];
         const items = itemRes.data?.items || itemRes.data || [];
+        const bundles = bundleRes.data?.items || bundleRes.data || [];
+        const bundleCatsRaw = (bundleCatRes as { data?: { data?: { categories?: { id: number; name: string; display_order: number }[] }; categories?: { id: number; name: string; display_order: number }[] } }).data;
+        const bundleCats = bundleCatsRaw?.data?.categories || bundleCatsRaw?.categories || [];
         // Classes/workshops are session-booked on the PWA — the kiosk backend
         // rejects them at checkout (400), so hide the category entirely
         // rather than let customers build a cart that cannot be placed.
         const expCatIds = new Set(
           cats.filter((c: KioskCategory & { slug?: string }) => c.slug === 'experiences').map((c: KioskCategory) => c.id)
         );
-        const sellableCats = cats.filter((c: KioskCategory) => !expCatIds.has(c.id));
+        const sellableCats = cats.filter((c: KioskCategory) => !expCatIds.has(c.id))
+          .sort((a: KioskCategory, b: KioskCategory) => (a.display_order ?? 0) - (b.display_order ?? 0));
         const sellableItems = items.filter((i: KioskMenuItem) => i.is_available && !expCatIds.has(i.category_id));
+        const sellableBundles = bundles.filter((b: KioskBundle) => (b.components?.length ?? 0) > 0);
+        // Only show bundle categories that have at least one product
+        const populatedBundleCatIds = new Set(sellableBundles.map((b: KioskBundle) => b.bundle_category_id).filter((id: number | null | undefined): id is number => id != null));
+        const populatedBundleCats = bundleCats
+          .filter((bc: { id: number }) => populatedBundleCatIds.has(bc.id))
+          .sort((a: { display_order?: number }, b: { display_order?: number }) => (a.display_order ?? 0) - (b.display_order ?? 0));
         setCategories(sellableCats);
         setMenuItems(sellableItems);
+        setBundles(sellableBundles);
+        setBundleCategories(populatedBundleCats);
         const firstCatWithItems = sellableCats.find((c: KioskCategory) => sellableItems.some((i: KioskMenuItem) => i.category_id === c.id));
         if (firstCatWithItems) setActiveCategory(firstCatWithItems.id);
         else if (cats.length > 0) setActiveCategory(cats[0].id);
@@ -279,11 +313,49 @@ export default function KioskPage() {
     };
   }, []);
 
+
+  // ── Fetch promo banners for welcome carousel ──
+  useEffect(() => {
+    api.get('/promos/banners?limit=10').then((res: any) => {
+      const data = res.data?.data || res.data || [];
+      setPromos(Array.isArray(data) ? data : []);
+    }).catch(() => {});
+  }, []);
+
+  // ── Promo carousel rotation ──
+  useEffect(() => {
+    if (promos.length <= 1) return;
+    const t = setInterval(() => setPromoIdx((i: number) => (i + 1) % promos.length), 8000);
+    return () => clearInterval(t);
+  }, [promos.length]);
+
   // ── Cart helpers ──
   const [modifierDrawerItem, setModifierDrawerItem] = useState<KioskMenuItem | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number[]>>({});
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
   const [itemQty, setItemQty] = useState(1);
+  const [bundles, setBundles] = useState<KioskBundle[]>([]);
+  const [bundleCategories, setBundleCategories] = useState<{ id: number; name: string; display_order: number }[]>([]);
+  const [activeBundle, setActiveBundle] = useState<KioskBundle | null>(null);
+
+  // Bundle confirm — each picked component becomes a cart line carrying the
+  // bundle linkage; the backend bundle engine validates the set and applies
+  // the bundle discount at order time.
+  const confirmBundle = (bundle: KioskBundle, picked: { component: KioskBundleComponent; qty: number }[], setQty: number) => {
+    for (const { component, qty } of picked) {
+      const asItem: KioskMenuItem = {
+        id: component.menu_item_id,
+        item_name: component.menu_item_name,
+        base_price: String(component.menu_item_price ?? 0),
+        image_url: component.menu_item_image_url || undefined,
+        category_id: 0,
+        is_available: true,
+      };
+      addToCart(asItem, [], undefined, 0, '', qty * setQty, { productId: bundle.id, componentId: component.id, title: bundle.title });
+    }
+    setActiveBundle(null);
+    setPhase('menu');
+  };
 
   // Tapping an item opens the full-screen item page (no modals on kiosk —
   // they are bad touch UX). Even modifier-free items open it, so customers
@@ -329,7 +401,8 @@ export default function KioskPage() {
     setSelectedOptions({});
     setSelectedVariant(null);
     setItemQty(1);
-    setPhase('menu');
+    setPhase(returnPhaseRef.current);
+    returnPhaseRef.current = 'menu';
   };
 
   const toggleOption = (groupId: number, optionId: number, selectionType: string, maxSelections: number) => {
@@ -348,10 +421,10 @@ export default function KioskPage() {
     });
   };
 
-  const addToCart = (item: KioskMenuItem, modifierOptionIds: number[], variantId?: number, extraCost = 0, modifierLabel = '', qty = 1) => {
+  const addToCart = (item: KioskMenuItem, modifierOptionIds: number[], variantId?: number, extraCost = 0, modifierLabel = '', qty = 1, bundleInfo?: { productId: number; componentId?: number; title: string }) => {
     const basePrice = parseFloat(item.base_price) || 0;
     const finalPrice = basePrice + extraCost;
-    const lineKey = cartLineKey(item.id, variantId, modifierOptionIds);
+    const lineKey = cartLineKey(item.id, variantId, modifierOptionIds, bundleInfo?.productId, bundleInfo?.componentId);
     setCart(prev => {
       const existing = prev.find(c => c.lineKey === lineKey);
       if (existing) {
@@ -369,6 +442,9 @@ export default function KioskPage() {
         selected_modifier_options: modifierOptionIds.length > 0 ? modifierOptionIds : undefined,
         selected_variant_id: variantId,
         modifier_label: modifierLabel || undefined,
+        bundle_product_id: bundleInfo?.productId,
+        bundle_component_id: bundleInfo?.componentId,
+        bundle_title: bundleInfo?.title,
       }];
     });
   };
@@ -387,13 +463,39 @@ export default function KioskPage() {
   const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
 
   const filteredItems = menuItems.filter(item => {
-    if (activeCategory && item.category_id !== activeCategory) return false;
+    if (activeCategory !== null && activeCategory < BUNDLE_CAT_OFFSET && item.category_id !== activeCategory) return false;
+    if (activeCategory !== null && activeCategory >= BUNDLE_CAT_OFFSET) return false; // bundle categories show bundles, not items
     if (searchQuery && !item.item_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
+  const isBundleCat = activeCategory !== null && activeCategory >= BUNDLE_CAT_OFFSET;
+  const filteredBundles = isBundleCat
+    ? bundles.filter(b => b.bundle_category_id === (activeCategory as number) - BUNDLE_CAT_OFFSET)
+    : (searchQuery ? bundles.filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase())) : []);
+  // Add-on deals: items discounted when a matching bundle is in the cart
+  const cartBundleIds = new Set(cart.map(c => c.bundle_product_id).filter(Boolean) as number[]);
+  const addonDealItems = menuItems.filter(i =>
+    i.is_addon_deal_eligible && (i.eligible_bundle_ids || []).some(bid => cartBundleIds.has(bid))
+  );
+  const addonDealItemsWithPreview = useMemo(() => {
+    return addonDealItems.map(item => ({
+      item,
+      preview: previewAddonDiscount(item as any),
+    })).filter(x => x.preview !== null);
+  }, [addonDealItems]);
+
+  const hasBundleInCart = cartBundleIds.size > 0;
+
+  const proceedFromCart = () => {
+    if (addonDealItemsWithPreview.length > 0) {
+      setPhase('addon_deals');
+    } else {
+      setPhase('checkout');
+    }
+  };
 
   // ── Place order ──
-  const placeOrder = async () => {
+  const placeOrder = async (method: 'card' | 'wallet') => {
     setLoading(true);
     setError('');
     try {
@@ -405,19 +507,29 @@ export default function KioskPage() {
           quantity: c.qty,
           ...(c.selected_modifier_options ? { modifier_option_ids: c.selected_modifier_options } : {}),
           ...(c.selected_variant_id ? { variant_id: c.selected_variant_id } : {}),
+          ...(c.bundle_product_id ? { bundle_product_id: c.bundle_product_id } : {}),
+          ...(c.bundle_component_id ? { bundle_component_id: c.bundle_component_id } : {}),
         })),
-        dining_table_number: orderType === 'dine_in' ? tableNumber : undefined,
+        dining_table_number: orderType === 'dine_in' ? (tableNumber ? (tableNumber.match(/^[0-9]+$/) ? 'T' + tableNumber : tableNumber) : undefined) : undefined,
         ...(customerPhone ? { customer_phone: customerPhone } : {}),
       };
       const res = await api.post('/kiosk/orders', payload);
       const data = res.data?.data || res.data;
       _orderId.current = data.order_id;
       setOrderNumber(data.order_number);
-      if (data.pay_token) {
+      setOrderTotal(data.total_amount);
+
+      if (method === 'wallet' && data.pay_token) {
         const pwaBase = window.location.origin;
-        setPayUrl(`${pwaBase}/#guest-pay?orderId=${data.order_id}&token=${data.pay_token}`);
+        setPayUrl(`${pwaBase}/#guest-pay?orderId=${data.order_id}&token=${data.pay_token}&prefer=wallet`);
+        setPhase('success');
+      } else if (method === 'card' && data.pay_token) {
+        const pwaBase = window.location.origin;
+        setPayUrl(`${pwaBase}/#guest-pay?orderId=${data.order_id}&token=${data.pay_token}&prefer=stripe`);
+        setPhase('success');
+      } else {
+        setPhase('success');
       }
-      setPhase('success');
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('kiosk.order_failed');
       setError(msg);
@@ -430,6 +542,7 @@ export default function KioskPage() {
     setCart([]);
     _orderId.current = null;
     setOrderNumber('');
+    setOrderTotal('');
     setPayUrl('');
     setTableNumber('');
     setCustomerPhone('');
@@ -481,6 +594,7 @@ export default function KioskPage() {
               ...kioskBtnPrimary(fs), opacity: tableNumber.trim() ? 1 : 0.4,
             }}>
               Set Table {tableNumber.trim() ? tableNumber.trim() : ''} &amp; Start
+              <ArrowRight size={fs(20, 18)} style={{ marginLeft: 8, verticalAlign: 'middle' }} />
             </button>
             <p style={{ fontSize: fs(14, 12), color: '#999', marginTop: fs(16, 12), maxWidth: 400, textAlign: 'center' }}>
               Staff: set the table number once before placing this tablet on the table.
@@ -516,9 +630,49 @@ export default function KioskPage() {
 
             <div style={{ fontSize: fs(72, 48), fontWeight: 800, color: LOKA.primary, marginBottom: 8 }}>LOKA Espresso</div>
             <div style={{ fontSize: fs(32, 24), color: '#888', marginBottom: fs(48, 32) }}>{t('kiosk.subtitle')}</div>
-            <div style={{ fontSize: fs(80, 64), fontWeight: 300, color: '#666', marginBottom: fs(64, 48) }}>
+            <div style={{ fontSize: fs(56, 40), fontWeight: 300, color: '#666', marginBottom: fs(40, 32) }}>
               {new Date(now).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
             </div>
+            {/* Promo banner carousel */}
+            {promos.length > 0 && promos[promoIdx] && (
+              <div style={{
+                maxWidth: fs(600, 480), width: '90%', marginBottom: fs(32, 24),
+                borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                position: 'relative',
+              }}>
+                {promos[promoIdx].image_url ? (
+                  <img src={promos[promoIdx].image_url.startsWith('http') ? promos[promoIdx].image_url : resolveAssetUrl(promos[promoIdx].image_url) || ''}
+                    alt={promos[promoIdx].title || ''}
+                    style={{ width: '100%', height: fs(280, 220), objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: fs(280, 220), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 48, opacity: 0.3 }}>🎉</span>
+                  </div>
+                )}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  padding: '12px 16px',
+                  background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                  color: '#fff',
+                }}>
+                  <div style={{ fontSize: fs(16, 13), fontWeight: 700 }}>{promos[promoIdx].title}</div>
+                  {promos[promoIdx].short_description && (
+                    <div style={{ fontSize: fs(12, 11), opacity: 0.85 }}>{promos[promoIdx].short_description}</div>
+                  )}
+                </div>
+                {/* Dot indicators */}
+                {promos.length > 1 && (
+                  <div style={{ position: 'absolute', top: 8, right: 12, display: 'flex', gap: 6 }}>
+                    {promos.map((_: any, i: number) => (
+                      <div key={i} style={{
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: i === promoIdx ? '#fff' : 'rgba(255,255,255,0.5)',
+                      }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <button onClick={() => setPhase('order_type')} style={kioskBtnPrimary(fs)}>
               <Utensils size={fs(40, 32)} style={{ marginRight: 12 }} />
               {t('kiosk.tap_to_order')}
@@ -532,20 +686,53 @@ export default function KioskPage() {
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <h1 style={{ fontSize: fs(48, 36), fontWeight: 800, marginBottom: fs(56, 48) }}>{t('kiosk.order_type_title')}</h1>
             <div style={{ display: 'flex', gap: fs(40, 32), flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button onClick={() => { setOrderType('dine_in'); setPhase('phone'); }} style={kioskCardBtn(fs)}>
-                <Utensils size={fs(80, 64)} style={{ marginBottom: 16, color: LOKA.primary }} />
+                <button onClick={() => { setOrderType('dine_in'); setPhase('table_number'); }} style={{...kioskCardBtn(fs), border: '3px solid #2E7D32', background: '#f1f8f1'}}>
+                <Utensils size={fs(80, 64)} style={{ marginBottom: 16, color: '#2E7D32' }} />
                 <div style={{ fontSize: fs(36, 28), fontWeight: 700 }}>{t('kiosk.dine_in')}</div>
                 <div style={{ fontSize: fs(20, 16), color: '#888', marginTop: 8 }}>{t('kiosk.dine_in_desc')}</div>
               </button>
-              <button onClick={() => { setOrderType('takeaway'); setPhase('phone'); }} style={kioskCardBtn(fs)}>
-                <ShoppingBag size={fs(80, 64)} style={{ marginBottom: 16, color: LOKA.primary }} />
+              <button onClick={() => { setOrderType('takeaway'); setPhase('phone'); }} style={{...kioskCardBtn(fs), border: '3px solid #E65100', background: '#fff7f0'}}>
+                <ShoppingBag size={fs(80, 64)} style={{ marginBottom: 16, color: '#E65100' }} />
                 <div style={{ fontSize: fs(36, 28), fontWeight: 700 }}>{t('kiosk.takeaway')}</div>
                 <div style={{ fontSize: fs(20, 16), color: '#888', marginTop: 8 }}>{t('kiosk.takeaway_desc')}</div>
               </button>
             </div>
-            <button onClick={() => setPhase('welcome')} style={kioskBtnGhost(fs)}>
+            <button onClick={() => setPhase('welcome')} style={{...kioskBtnGhost(fs), marginTop: fs(40, 32)}}>
               <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
             </button>
+          </motion.div>
+        )}
+
+        {/* ── TABLE NUMBER ── */}
+        {phase === 'table_number' && (
+          <motion.div key="table_number" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: fs(20, 16), padding: '0 24px' }}>
+            <Utensils size={fs(56, 44)} style={{ color: LOKA.primary }} />
+            <h1 style={{ fontSize: fs(32, 26), fontWeight: 800, textAlign: 'center' }}>{t('kiosk.table_number_title')}</h1>
+            <p style={{ fontSize: fs(16, 14), color: '#888', textAlign: 'center', maxWidth: 360 }}>{t('kiosk.table_number_desc')}</p>
+            <input
+              type="text"
+              inputMode="text"
+              placeholder={t('kiosk.table_number_placeholder')}
+              value={tableNumber}
+              onChange={e => setTableNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase())}
+              style={{
+                fontSize: fs(36, 28), padding: '16px 28px', borderRadius: 16,
+                border: tableNumber.trim() ? '3px solid var(--color-success)' : '3px solid #ddd',
+                width: isPortrait ? '100%' : 240, maxWidth: 360, textAlign: 'center', fontWeight: 700,
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button onClick={() => { setOrderType('dine_in'); setPhase('order_type'); }} style={kioskBtnGhost(fs)}>
+                <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
+              </button>
+              <button onClick={() => setPhase('phone')} disabled={!tableNumber.trim()} style={{
+                ...kioskBtnPrimary(fs), opacity: tableNumber.trim() ? 1 : 0.5,
+              }}>
+                {t('kiosk.continue')} <ArrowRight size={fs(24, 20)} style={{ marginLeft: 8 }} />
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -578,11 +765,15 @@ export default function KioskPage() {
                 {t('kiosk.skip')}
               </button>
               <button onClick={() => {
+                if (phoneInput.trim().length < 9) return;
                 const v = phoneInput.trim();
-                if (v.length >= 9) setCustomerPhone(v);
+                setCustomerPhone(v);
                 setPhase('menu');
-              }} style={kioskBtnPrimary(fs)}>
-                {phoneInput.trim().length >= 9 ? t('kiosk.continue_with_phone') : t('kiosk.continue_skip')}
+              }} disabled={phoneInput.trim().length < 9} style={{
+                ...kioskBtnPrimary(fs),
+                opacity: phoneInput.trim().length >= 9 ? 1 : 0.5,
+              }}>
+                {t('kiosk.continue')}
               </button>
             </div>
             <button onClick={() => setPhase('order_type')} style={{ ...kioskBtnGhost(fs), marginTop: fs(24, 16) }}>
@@ -601,17 +792,20 @@ export default function KioskPage() {
                 width: 220, minWidth: 220, background: 'white', borderRight: '1px solid #eee',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
               }}>
-                <div style={{ padding: '16px', borderBottom: '1px solid #eee' }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: LOKA.primary, marginBottom: 4 }}>{t('kiosk.menu')}</div>
-                  <div style={{
-                    display: 'inline-block', padding: '4px 12px', borderRadius: 20,
-                    fontSize: 14, fontWeight: 600,
-                    background: orderType === 'dine_in' ? 'var(--color-success-light)' : 'var(--color-warning-light)',
-                    color: orderType === 'dine_in' ? '#2E7D32' : '#E65100',
+                <div style={{ padding: '16px 16px 0', borderBottom: '1px solid #eee' }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: LOKA.primary, marginBottom: 8 }}>{t('kiosk.menu')}</div>
+                  <button onClick={() => setOrderType(orderType === 'dine_in' ? 'takeaway' : 'dine_in')} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer', border: 'none', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    background: orderType === 'dine_in' ? '#2E7D32' : '#E65100',
+                    color: '#fff',
                   }}>
+                    {orderType === 'dine_in' ? <Utensils size={16} /> : <ShoppingBag size={16} />}
                     {orderType === 'dine_in' ? t('kiosk.dine_in') : t('kiosk.takeaway')}
                     {orderType === 'dine_in' && tableNumber ? ` · ${t('kiosk.table_label')} ${tableNumber}` : ''}
-                  </div>
+                    <ArrowLeftRight size={14} style={{ marginLeft: 2, opacity: 0.7 }} />
+                  </button>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
                   {categories.map(cat => (
@@ -623,6 +817,16 @@ export default function KioskPage() {
                       border: 'none', borderLeft: activeCategory === cat.id ? `3px solid ${LOKA.primary}` : '3px solid transparent',
                       cursor: 'pointer', transition: 'all 0.15s',
                     }}>{cat.category_name}</button>
+                  ))}
+                  {bundleCategories.map(bc => (
+                    <button key={BUNDLE_CAT_OFFSET + bc.id} onClick={() => setActiveCategory(BUNDLE_CAT_OFFSET + bc.id)} style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '14px 20px', fontSize: 16, fontWeight: activeCategory === BUNDLE_CAT_OFFSET + bc.id ? 700 : 500,
+                      background: activeCategory === BUNDLE_CAT_OFFSET + bc.id ? 'rgba(59,74,26,0.08)' : 'transparent',
+                      color: activeCategory === BUNDLE_CAT_OFFSET + bc.id ? LOKA.primary : '#555',
+                      border: 'none', borderLeft: activeCategory === BUNDLE_CAT_OFFSET + bc.id ? `3px solid ${LOKA.primary}` : '3px solid transparent',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}>{bc.name}</button>
                   ))}
                 </div>
               </div>
@@ -636,20 +840,24 @@ export default function KioskPage() {
                 background: 'white', borderBottom: '2px solid #eee', gap: 16, flexWrap: 'wrap',
               }}>
                 {orderType === 'dine_in' && (
-                  <input type="text" placeholder={t('kiosk.table_number')} value={tableNumber}
-                    onChange={e => setTableNumber(e.target.value)}
+                  <input type="text" placeholder={t('kiosk.table_number_placeholder')} value={tableNumber}
+                    onChange={e => setTableNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase())}
                     style={{ fontSize: fs(22, 18), padding: '10px 16px', borderRadius: 8, border: '2px solid #ddd', width: fs(200, 160) }} />
                 )}
-                {/* Order type badge — portrait */}
+                {/* Order type tabs — portrait */}
                 {isPortrait && (
-                  <div style={{
-                    padding: '6px 14px', borderRadius: 20, fontSize: 15, fontWeight: 600,
-                    background: orderType === 'dine_in' ? 'var(--color-success-light)' : 'var(--color-warning-light)',
-                    color: orderType === 'dine_in' ? '#2E7D32' : '#E65100',
+                  <button onClick={() => setOrderType(orderType === 'dine_in' ? 'takeaway' : 'dine_in')} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', border: 'none', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    background: orderType === 'dine_in' ? '#2E7D32' : '#E65100',
+                    color: '#fff',
                   }}>
+                    {orderType === 'dine_in' ? <Utensils size={15} /> : <ShoppingBag size={15} />}
                     {orderType === 'dine_in' ? t('kiosk.dine_in') : t('kiosk.takeaway')}
                     {orderType === 'dine_in' && tableNumber ? ` · ${tableNumber}` : ''}
-                  </div>
+                    <ArrowLeftRight size={13} style={{ marginLeft: 2, opacity: 0.7 }} />
+                  </button>
                 )}
                 <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
                   <Search size={fs(22, 20)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
@@ -683,6 +891,14 @@ export default function KioskPage() {
                       minHeight: 48,
                     }}>{cat.category_name}</button>
                   ))}
+                  {bundleCategories.map(bc => (
+                    <button key={BUNDLE_CAT_OFFSET + bc.id} onClick={() => setActiveCategory(BUNDLE_CAT_OFFSET + bc.id)} style={{
+                      padding: '14px 24px', borderRadius: 24, fontSize: 18, fontWeight: 600, whiteSpace: 'nowrap',
+                      background: activeCategory === BUNDLE_CAT_OFFSET + bc.id ? LOKA.primary : 'var(--color-surface)',
+                      color: activeCategory === BUNDLE_CAT_OFFSET + bc.id ? 'white' : '#666', border: 'none', cursor: 'pointer',
+                      minHeight: 48,
+                    }}>{bc.name}</button>
+                  ))}
                 </div>
               )}
 
@@ -691,44 +907,120 @@ export default function KioskPage() {
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: 48 }}><Loader2 size={48} className="animate-spin" style={{ color: LOKA.primary }} /></div>
                 ) : (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isPortrait
-                      ? '1fr'
-                      : `repeat(auto-fill, minmax(${fs(320, 280)}px, 1fr))`,
-                    gap: fs(24, 20),
-                  }}>
-                    {filteredItems.map(item => (
-                      <div key={item.id} onClick={() => openModifierDrawer(item)} style={{
-                        background: 'white', borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)', transition: 'transform 0.15s',
-                      }}
-                        onPointerDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
-                        onPointerUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
-                        onPointerLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
-                      >
-                        {item.image_url && (
-                          <div style={{ width: '100%', height: fs(200, 160), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {/* contain — never crop item photos on kiosk cards */}
-                            <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name}
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <>
+                    {isBundleCat ? (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isPortrait
+                          ? '1fr'
+                          : `repeat(auto-fill, minmax(${fs(320, 280)}px, 1fr))`,
+                        gap: fs(24, 20),
+                      }}>
+                        {filteredBundles.map(bundle => (
+                          <div key={bundle.id} onClick={() => { setActiveBundle(bundle); setPhase('bundle'); }} style={{
+                            background: 'white', borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)', transition: 'transform 0.15s',
+                          }}
+                            onPointerDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
+                            onPointerUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                            onPointerLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                          >
+                            <div style={{ width: '100%', height: fs(280, 220), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {bundle.image_url ? (
+                                <img src={resolveAssetUrl(bundle.image_url) || ''} alt={bundle.title}
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              ) : (
+                                <ShoppingBag size={fs(64, 48)} style={{ color: '#ccc' }} />
+                              )}
+                            </div>
+                            <div style={{ padding: fs(20, 16) }}>
+                              <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 4 }}>{bundle.title}</div>
+                              {bundle.description && (
+                                <div style={{
+                                  fontSize: fs(16, 14), color: '#888', marginBottom: 8,
+                                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                }}>{bundle.description}</div>
+                              )}
+                              <div style={{ fontSize: fs(24, 20), fontWeight: 800, color: LOKA.primary }}>{formatPrice(bundle.bundle_price)}</div>
+                            </div>
                           </div>
-                        )}
-                        <div style={{ padding: fs(20, 16) }}>
-                          <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 4 }}>{item.item_name}</div>
-                          {item.description && (
-                            <div style={{
-                              fontSize: fs(16, 14), color: '#888', marginBottom: 8,
-                              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                            }}>{item.description}</div>
-                          )}
-                          <div style={{ fontSize: fs(24, 20), fontWeight: 800, color: LOKA.primary }}>{formatPrice(item.base_price)}</div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isPortrait
+                          ? '1fr'
+                          : `repeat(auto-fill, minmax(${fs(320, 280)}px, 1fr))`,
+                        gap: fs(24, 20),
+                      }}>
+                        {filteredItems.map(item => (
+                          <div key={item.id} onClick={() => openModifierDrawer(item)} style={{
+                            background: 'white', borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)', transition: 'transform 0.15s',
+                          }}
+                            onPointerDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
+                            onPointerUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                            onPointerLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                          >
+                            {item.image_url && (
+                              <div style={{ width: '100%', height: fs(280, 220), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {/* contain — never crop item photos on kiosk cards */}
+                                <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name}
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              </div>
+                            )}
+                            <div style={{ padding: fs(20, 16) }}>
+                              <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 4 }}>{item.item_name}</div>
+                              {item.description && (
+                                <div style={{
+                                  fontSize: fs(16, 14), color: '#888', marginBottom: 8,
+                                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                }}>{item.description}</div>
+                              )}
+                              <div style={{ fontSize: fs(24, 20), fontWeight: 800, color: LOKA.primary }}>{formatPrice(item.base_price)}</div>
+                            </div>
+                          </div>
+                        ))}
+                        {!isBundleCat && filteredBundles.length > 0 && (
+                          <>
+                            <div style={{ gridColumn: '1 / -1', fontSize: fs(22, 20), fontWeight: 700, paddingTop: 8 }}>🎁 {t('kiosk.bundles')}</div>
+                            {filteredBundles.map(bundle => (
+                              <div key={bundle.id} onClick={() => { setActiveBundle(bundle); setPhase('bundle'); }} style={{
+                                background: 'white', borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.06)', transition: 'transform 0.15s',
+                              }}
+                                onPointerDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
+                                onPointerUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                                onPointerLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                              >
+                                <div style={{ width: '100%', height: fs(280, 220), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {bundle.image_url ? (
+                                    <img src={resolveAssetUrl(bundle.image_url) || ''} alt={bundle.title}
+                                      style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                  ) : (
+                                    <ShoppingBag size={fs(64, 48)} style={{ color: '#ccc' }} />
+                                  )}
+                                </div>
+                                <div style={{ padding: fs(20, 16) }}>
+                                  <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 4 }}>{bundle.title}</div>
+                                  {bundle.description && (
+                                    <div style={{
+                                      fontSize: fs(16, 14), color: '#888', marginBottom: 8,
+                                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                    }}>{bundle.description}</div>
+                                  )}
+                                  <div style={{ fontSize: fs(24, 20), fontWeight: 800, color: LOKA.primary }}>{formatPrice(bundle.bundle_price)}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
-                {filteredItems.length === 0 && !loading && (
+                {filteredItems.length === 0 && filteredBundles.length === 0 && !loading && (
                   <div style={{ textAlign: 'center', padding: 48, fontSize: fs(22, 20), color: '#888' }}>{t('kiosk.no_items')}</div>
                 )}
               </div>
@@ -736,14 +1028,16 @@ export default function KioskPage() {
           </motion.div>
         )}
 
-        {/* ── CART ── */}
+         {/* ── CART ── */}
         {phase === 'cart' && (
           <motion.div key="cart" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
             style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: 'white', borderBottom: '2px solid #eee' }}>
-              <button onClick={() => setPhase('menu')} style={kioskBtnGhost(fs)}><ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back_to_menu')}</button>
+              <div style={{ flex: '0 0 200px' }}>
+                <button onClick={() => setPhase('menu')} style={kioskBtnGhost(fs)}><ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back_to_menu')}</button>
+              </div>
               <h1 style={{ flex: 1, textAlign: 'center', fontSize: fs(36, 28), fontWeight: 800 }}>{t('kiosk.your_order')}</h1>
-              <div style={{ width: 140 }} />
+              <div style={{ flex: '0 0 200px' }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 24, maxWidth: fs(800, 600), margin: '0 auto', width: '100%' }}>
               {cart.length === 0 ? (
@@ -754,6 +1048,7 @@ export default function KioskPage() {
                     {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" style={{ width: fs(72, 60), height: fs(72, 60), borderRadius: 10, objectFit: 'contain', background: 'var(--loka-cream, #f5f2ea)', flexShrink: 0 }} /> : null}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: fs(22, 20), fontWeight: 600 }}>{item.name}</div>
+                      {item.bundle_title && <div style={{ fontSize: fs(16, 14), color: LOKA.gold, fontWeight: 600 }}>{item.bundle_title}</div>}
                       {item.modifier_label && <div style={{ fontSize: fs(16, 14), color: '#888' }}>{item.modifier_label}</div>}
                       <div style={{ fontSize: fs(18, 16), color: LOKA.primary, fontWeight: 700 }}>{formatPrice(String(item.price))}</div>
                     </div>
@@ -770,10 +1065,13 @@ export default function KioskPage() {
             {cart.length > 0 && (
               <div style={{ padding: 24, background: 'white', borderTop: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: fs(18, 16), color: '#888' }}>{t('kiosk.total')}</div>
+                  <div style={{ fontSize: fs(18, 16), color: '#888' }}>
+                    {t('kiosk.total')}
+                    {hasBundleInCart && <span style={{ fontSize: fs(14, 12), color: '#888', marginLeft: 8 }}>({t('kiosk.bundle_pricing_note')})</span>}
+                  </div>
                   <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartTotal))}</div>
                 </div>
-                <button onClick={() => setPhase('checkout')} style={kioskBtnPrimary(fs)}>
+                <button onClick={proceedFromCart} style={kioskBtnPrimary(fs)}>
                   {t('kiosk.checkout')} <ArrowRight size={fs(28, 24)} style={{ marginLeft: 8 }} />
                 </button>
               </div>
@@ -781,26 +1079,197 @@ export default function KioskPage() {
           </motion.div>
         )}
 
+        {/* ── ADD-ON DEALS ── */}
+        {phase === 'addon_deals' && (
+          <motion.div key="addon_deals" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: 'white', borderBottom: '2px solid #eee' }}>
+              <button onClick={() => setPhase('cart')} style={kioskBtnGhost(fs)}><ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}</button>
+              <h1 style={{ flex: 1, textAlign: 'center', fontSize: fs(36, 28), fontWeight: 800 }}>
+                <Sparkles size={fs(28, 24)} style={{ color: LOKA.gold, verticalAlign: 'middle', marginRight: 8 }} />
+                {t('kiosk.addon_deals_title')}
+              </h1>
+              <button onClick={() => setPhase('checkout')} style={kioskBtnGhost(fs)}>
+                {t('kiosk.addon_deals_skip')}
+              </button>
+            </div>
+            <div style={{ padding: '12px 24px', background: 'white', borderBottom: '1px solid #eee' }}>
+              <div style={{ fontSize: fs(18, 16), color: '#888', textAlign: 'center' }}>{t('kiosk.addon_deals_subtitle')}</div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: fs(28, 24) }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isPortrait
+                  ? 'repeat(2, 1fr)'
+                  : `repeat(auto-fill, minmax(${fs(320, 280)}px, 1fr))`,
+                gap: fs(16, 20),
+              }}>
+                {addonDealItemsWithPreview.map(({ item, preview }) => (
+                  <div key={item.id} onClick={() => {
+                    returnPhaseRef.current = 'addon_deals';
+                    openModifierDrawer(item);
+                  }} style={{
+                    background: 'white', borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)', transition: 'transform 0.15s',
+                    border: `2px solid ${LOKA.gold}20`,
+                  }}
+                    onPointerDown={e => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
+                    onPointerUp={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                    onPointerLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                  >
+                    <div style={{ width: '100%', height: fs(280, 220), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.image_url ? (
+                        <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <Sparkles size={fs(64, 48)} style={{ color: '#ccc' }} />
+                      )}
+                    </div>
+                    <div style={{ padding: fs(20, 16) }}>
+                      <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 4 }}>{item.item_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontSize: fs(16, 14), color: '#aaa', textDecoration: 'line-through' }}>{formatPrice(item.base_price)}</span>
+                        <span style={{ fontSize: fs(24, 20), fontWeight: 800, color: LOKA.gold }}>{formatPrice((preview as any).discountedUnitPrice)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {addonDealItemsWithPreview.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 48, fontSize: fs(22, 20), color: '#888' }}>{t('kiosk.no_items')}</div>
+              )}
+            </div>
+            <div style={{ padding: 24, background: 'white', borderTop: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: fs(18, 16), color: '#888' }}>{t('kiosk.total')}</div>
+                <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartTotal))}</div>
+              </div>
+              <button onClick={() => setPhase('checkout')} style={kioskBtnPrimary(fs)}>
+                {t('kiosk.checkout')} <ArrowRight size={fs(28, 24)} style={{ marginLeft: 8 }} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── CHECKOUT ── */}
         {phase === 'checkout' && (
           <motion.div key="checkout" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <h1 style={{ fontSize: fs(44, 36), fontWeight: 800, marginBottom: 16 }}>{t('kiosk.confirm_title')}</h1>
-            {orderType === 'dine_in' && tableNumber && (
-              <div style={{ fontSize: fs(24, 20), marginBottom: 16 }}>{t('kiosk.table_label')} <strong>{tableNumber}</strong></div>
-            )}
-            <div style={{ fontSize: fs(24, 20), marginBottom: 32 }}>
-              {t('kiosk.items_count', { n: cartCount })} · <strong style={{ color: LOKA.primary, fontSize: fs(36, 28) }}>{formatPrice(String(cartTotal))}</strong>
+            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 24px', background: 'white', borderBottom: '2px solid #eee' }}>
+              <h1 style={{ fontSize: fs(36, 28), fontWeight: 800 }}>{t('kiosk.confirm_title')}</h1>
             </div>
-            {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(20, 18), marginBottom: 16 }}>{error}</div>}
-            <div style={{ display: 'flex', gap: 16 }}>
-              <button onClick={() => setPhase('cart')} style={kioskBtnGhost(fs)}>{t('kiosk.back')}</button>
-              <button onClick={placeOrder} disabled={loading} style={kioskBtnPrimary(fs)}>
-                {loading ? <Loader2 size={24} className="animate-spin" /> : <>
-                  <CreditCard size={fs(28, 24)} style={{ marginRight: 8 }} /> {t('kiosk.pay_now')}
-                </>}
+
+            {/* Body: order summary + table/pay */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: isPortrait ? 'column' : 'row', gap: fs(24, 20), padding: fs(24, 20), maxWidth: isPortrait ? 600 : 1100, margin: '0 auto', width: '100%' }}>
+              {/* Order items */}
+              <div style={{ flex: 1, background: 'white', borderRadius: 16, padding: fs(20, 16), boxShadow: '0 2px 8px rgba(0,0,0,0.04)', overflowY: 'auto' }}>
+                <div style={{ fontSize: fs(20, 18), fontWeight: 700, marginBottom: 12, color: '#888' }}>
+                  {t('kiosk.items_count', { n: cartCount })}
+                </div>
+                {cart.map(item => (
+                  <div key={item.lineKey} style={{ display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f5f5f5', gap: 12 }}>
+                    {item.image_url ? (
+                      <img src={resolveAssetUrl(item.image_url) || ''} alt="" style={{ width: fs(48, 40), height: fs(48, 40), borderRadius: 8, objectFit: 'contain', background: 'var(--loka-cream, #f5f2ea)', flexShrink: 0 }} />
+                    ) : null}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: fs(18, 16), fontWeight: 600 }}>{item.name}</div>
+                      {item.bundle_title && <div style={{ fontSize: fs(14, 12), color: LOKA.gold, fontWeight: 600 }}>{item.bundle_title}</div>}
+                      {item.modifier_label && <div style={{ fontSize: fs(14, 12), color: '#888' }}>{item.modifier_label}</div>}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: fs(16, 14), color: '#888' }}>x{item.qty}</div>
+                      <div style={{ fontSize: fs(18, 16), color: LOKA.primary, fontWeight: 700 }}>{formatPrice(String(item.price))}</div>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 12, borderTop: '2px solid #eee' }}>
+                  <div style={{ fontSize: fs(20, 18), fontWeight: 700 }}>
+                    {t('kiosk.total')}
+                    {hasBundleInCart && <span style={{ fontSize: fs(14, 12), color: '#888', marginLeft: 8, fontWeight: 400 }}>({t('kiosk.bundle_pricing_note')})</span>}
+                  </div>
+                  <div style={{ fontSize: fs(32, 28), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartTotal))}</div>
+                </div>
+              </div>
+
+              {/* Table number + Pay */}
+              <div style={{ flex: isPortrait ? 'none' : '0 0 360px', display: 'flex', flexDirection: 'column', gap: fs(20, 16) }}>
+                {orderType === 'dine_in' && (
+                  <div style={{ background: 'white', borderRadius: 16, padding: fs(20, 16), boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                    <div style={{ fontSize: fs(20, 18), fontWeight: 700, marginBottom: 10 }}>{t('kiosk.table_label').replace(':', '')}</div>
+                    <input
+                      type="text"
+                      inputMode="text"
+                      placeholder={t('kiosk.table_number_placeholder')}
+                      value={tableNumber}
+                      onChange={e => setTableNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, '').toUpperCase())}
+                      style={{
+                        fontSize: fs(32, 28), padding: '16px 20px', borderRadius: 14,
+                        border: tableNumber.trim() ? '3px solid var(--color-success)' : '3px solid #ddd',
+                        width: '100%', textAlign: 'center', fontWeight: 700,
+                      }}
+                      autoFocus
+                    />
+                    {!tableNumber.trim() && (
+                      <div style={{ fontSize: fs(15, 13), color: 'var(--color-danger)', marginTop: 8, textAlign: 'center' }}>{t('kiosk.table_required')}</div>
+                    )}
+                  </div>
+                )}
+                {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(18, 16), textAlign: 'center' }}>{error}</div>}
+                <div style={{ display: 'flex', gap: 16, marginTop: 'auto' }}>
+                  <button onClick={() => setPhase('cart')} style={{ ...kioskBtnGhost(fs), flex: 1 }}>
+                    <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
+                  </button>
+                  <button onClick={() => setPhase('payment_select')} disabled={loading || (orderType === 'dine_in' && !tableNumber.trim())} style={{
+                    ...kioskBtnPrimary(fs), flex: 1,
+                    opacity: (loading || (orderType === 'dine_in' && !tableNumber.trim())) ? 0.5 : 1,
+                  }}>
+                    {loading ? <Loader2 size={24} className="animate-spin" /> : <>
+                      <CreditCard size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.pay_now')}
+                    </>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── PAYMENT SELECT ── */}
+        {phase === 'payment_select' && (
+          <motion.div key="payment_select" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 24 }}>
+            <h1 style={{ fontSize: fs(40, 32), fontWeight: 800 }}>{t('kiosk.payment_method')}</h1>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', flexDirection: isPortrait ? 'column' : 'row', width: isPortrait ? '100%' : 'auto', maxWidth: isPortrait ? 420 : 'none', padding: isPortrait ? '0 24px' : 0 }}>
+              <button onClick={() => placeOrder('card')} disabled={loading} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+                padding: `${fs(28, 24)}px ${fs(48, 40)}px`, borderRadius: 20,
+                border: `3px solid ${LOKA.primary}`, background: loading ? '#eee' : LOKA.primary, color: '#fff',
+                cursor: 'pointer', fontSize: fs(22, 20), fontWeight: 700, flex: isPortrait ? 1 : 'none',
+                opacity: loading ? 0.5 : 1,
+              }}>
+                <CreditCard size={fs(56, 48)} />
+                {t('kiosk.pay_with_card')}
+              </button>
+              <button onClick={() => placeOrder('wallet')} disabled={loading} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+                padding: `${fs(28, 24)}px ${fs(48, 40)}px`, borderRadius: 20,
+                border: `3px solid ${LOKA.gold}`, background: loading ? '#eee' : 'transparent',
+                color: LOKA.gold, cursor: 'pointer', fontSize: fs(22, 20), fontWeight: 700, flex: isPortrait ? 1 : 'none',
+                opacity: loading ? 0.5 : 1,
+              }}>
+                <Wallet size={fs(56, 48)} />
+                {t('kiosk.pay_with_wallet')}
               </button>
             </div>
+            {loading && (
+              <div style={{ fontSize: fs(20, 18), color: '#888' }}>
+                <Loader2 size={24} className="animate-spin" style={{ marginRight: 8 }} />
+                {t('kiosk.processing')}
+              </div>
+            )}
+            <button onClick={() => setPhase('checkout')} style={{ ...kioskBtnGhost(fs), marginTop: 16 }}>
+              <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
+            </button>
           </motion.div>
         )}
 
@@ -811,6 +1280,7 @@ export default function KioskPage() {
             <CheckCircle size={fs(96, 80)} style={{ color: 'var(--color-success)', marginBottom: 24 }} />
             <h1 style={{ fontSize: fs(52, 42), fontWeight: 800, color: LOKA.primary }}>{t('kiosk.order_placed')}</h1>
             <div style={{ fontSize: fs(36, 28), color: '#666', marginTop: 8 }}>Order #{orderNumber}</div>
+            {orderTotal && <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary, marginTop: 4 }}>{formatPrice(orderTotal)}</div>}
             <div style={{ fontSize: fs(22, 20), color: '#888', marginTop: 16, maxWidth: 400, textAlign: 'center' }}>{t('kiosk.counter_note')}</div>
             {payUrl && (
               <div style={{ marginTop: 24, textAlign: 'center' }}>
@@ -822,7 +1292,7 @@ export default function KioskPage() {
               </div>
             )}
             <button onClick={startNewOrder} style={{ ...kioskBtnGhost(fs), marginTop: 32 }}>{t('kiosk.start_new_order')}</button>
-            <AutoResetTimer onTimeout={startNewOrder} seconds={30} t={t} fs={fs} />
+            <AutoResetTimer onTimeout={startNewOrder} seconds={120} t={t} fs={fs} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -901,7 +1371,23 @@ export default function KioskPage() {
               return formatPrice(String((parseFloat(modifierDrawerItem.base_price) + mods + vAdj) * itemQty));
             })()}
             onConfirm={confirmAddWithModifiers}
-            onBack={() => { setModifierDrawerItem(null); setPhase('menu'); }}
+            onBack={() => { setModifierDrawerItem(null); setPhase(returnPhaseRef.current); returnPhaseRef.current = 'menu'; }}
+            fs={fs}
+            isPortrait={isPortrait}
+            t={t}
+            formatPrice={formatPrice}
+          />
+        </motion.div>
+      )}
+
+      {/* Bundle builder — full-screen page */}
+      {phase === 'bundle' && activeBundle && (
+        <motion.div key="bundle" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+          style={{ position: 'absolute', inset: 0, background: 'white' }}>
+          <KioskBundlePage
+            bundle={activeBundle}
+            onBack={() => { setActiveBundle(null); setPhase('menu'); }}
+            onConfirm={confirmBundle}
             fs={fs}
             isPortrait={isPortrait}
             t={t}

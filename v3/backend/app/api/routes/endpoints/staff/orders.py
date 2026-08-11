@@ -935,7 +935,7 @@ async def add_staff_order_line_item(
     line_item = OrderLineItem(
         order_id=order.id,
         menu_item_id=menu_item.id,
-        item_snapshot={"item_name": menu_item.item_name},
+        item_snapshot={"item_name": menu_item.item_name, "image_url": menu_item.image_url},
         quantity=data.quantity,
         unit_price=price,
         line_total=total,

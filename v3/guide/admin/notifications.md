@@ -73,3 +73,19 @@ When creating a new notification, select a template from the **Quick fill from t
 ## Related
 - [Marketing — Campaigns](marketing.md) — for push/SMS/email marketing campaign blasts.
 - [Customer PWA — Notifications](../customer/profile-and-settings.md) — how customers manage their notification settings.
+
+
+## Notification Types
+
+| Type | Use Case |
+|------|----------|
+| **Order status** | Auto-sent when order status changes |
+| **Marketing** | Promotional push notifications |
+| **System** | Account-related notifications |
+| **Reminder** | Appointment/booking reminders |
+
+## Delivery
+
+- **Push notifications**: Via web push API (browser permission required)
+- **Email**: Via configured SMTP provider
+- **In-app**: Visible in the PWA notification center

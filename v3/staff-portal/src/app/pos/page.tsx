@@ -3,7 +3,7 @@ import { RoleGuard, canUsePOS } from "@/hooks/useStaffRole";
 
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCallback, useRef, useEffect, useState } from "react";
-import { Search, QrCode, Plus, Minus, Trash2, Pause, Wallet, User, UserPlus, Send, ImageOff, LayoutGrid, Monitor } from "lucide-react";
+import { Search, QrCode, Plus, Minus, Trash2, Pause, Wallet, User, UserPlus, Send, ImageOff, LayoutGrid, Monitor, ChevronDown, ClipboardList, Users, UtensilsCrossed } from "lucide-react";
 import Alert from "@/components/Alert";
 import SkeletonCard from "@/components/SkeletonCard";
 import EmptyState from "@/components/EmptyState";
@@ -16,7 +16,6 @@ import PosQrScannerModal from "@/components/pos/PosQrScannerModal";
 import PosHeldOrdersDrawer from "@/components/pos/PosHeldOrdersDrawer";
 import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
 import PosDrawerChip from "@/components/pos/PosDrawerChip";
-import PosOfflineQueueChip from "@/components/pos/PosOfflineQueueChip";
 import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
@@ -40,6 +39,8 @@ function PosPageContent() {
   const [storeConfig, setStoreConfig] = useState<{ store_name?: string; service_charge?: number; tax_rate?: number; display_left?: number; display_key?: string } | null>(null);
   // Split-bill progress reported by the checkout panel — forwarded to the display
   const [splitDisplay, setSplitDisplay] = useState<{ paid: number; total: number; charging: number | null } | null>(null);
+  const [posTab, setPosTab] = useState<"menu" | "queue" | "customers">("menu");
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   // Load store config for customer display branding and fees
   useEffect(() => {
@@ -226,266 +227,139 @@ function PosPageContent() {
     flexDirection: "column",
     height: "calc(100vh - 48px)"
   }}>
-      {/* Header */}
+      {/* ═══ TAB BAR ═══ */}
       <div style={{
-      padding: "12px 16px",
-      borderBottom: "1px solid var(--color-border-light)",
-      background: "var(--color-bg-card)",
-      flexShrink: 0
-    }}>
-        <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        padding: "4px 12px",
+        borderBottom: "1px solid var(--color-border-light)",
+        background: "var(--color-bg-surface, #f9fafb)",
+        flexShrink: 0
+      }}>
+        {([["menu", UtensilsCrossed, t("pos.tab_menu")], ["queue", ClipboardList, t("pos.tab_queue")], ["customers", Users, t("pos.tab_customers")]] as const).map(([tab, Icon, label]) => (
+          <button key={tab} onClick={() => setPosTab(tab)} style={{
+            padding: "10px 24px",
+            fontSize: 15,
+            fontWeight: 700,
+            border: "none",
+            borderRadius: "8px 8px 0 0",
+            borderBottom: posTab === tab ? "3px solid var(--color-primary)" : "3px solid transparent",
+            background: posTab === tab ? "var(--color-primary)" : "transparent",
+            color: posTab === tab ? "#fff" : "var(--color-text-muted)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "all 0.15s"
+          }}>
+            <Icon size={20} />
+            {label}
+          </button>
+        ))}
+        <div style={{ flex: 1 }} />
+        {pos.selectedCustomer && <span className="badge badge-primary" style={{ fontSize: 12, padding: "4px 10px" }}><User size={14} /> {pos.selectedCustomer.display_name}</span>}
+        {pos.tableId && <span className="badge" style={{ background: "var(--color-accent-gold)", color: "#1E1B18", fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>{t("pos.table")} {pos.tables.find(t => t.id === pos.tableId)?.table_number || pos.tableId}</span>}
+        <PosDrawerChip />
+        <div style={{ position: "relative" }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => setToolsOpen(!toolsOpen)} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+            {t("pos.tools")} <ChevronDown size={14} />
+          </button>
+          {toolsOpen && <div style={{
+            position: "absolute",
+            right: 0,
+            top: "100%",
+            background: "white",
+            borderRadius: 8,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+            zIndex: 60,
+            minWidth: 200,
+            padding: 4
+          }} onMouseLeave={() => setToolsOpen(false)}>
+            <button className="btn btn-ghost" style={{ width: "100%", justifyContent: "flex-start", fontSize: 13, padding: "10px 12px" }} onClick={() => { pos.fetchUnpaidOrders(); pos.setShowUnpaid(true); setToolsOpen(false); }}>
+              <Wallet size={15} /> {t("pos.unpaid")}{pos.unpaidOrders.length > 0 ? ` (${pos.unpaidOrders.length})` : ""}
+            </button>
+            <button className="btn btn-ghost" style={{ width: "100%", justifyContent: "flex-start", fontSize: 13, padding: "10px 12px" }} onClick={() => { pos.setShowHeld(true); setToolsOpen(false); }}>
+              <Pause size={15} /> {t("pos.park_order")}
+            </button>
+            <button className="btn btn-ghost" style={{ width: "100%", justifyContent: "flex-start", fontSize: 13, padding: "10px 12px" }} onClick={() => { openCustomerDisplay(storeConfig?.display_left ?? 1920, pos.storeId || undefined, storeConfig?.display_key); setToolsOpen(false); }}>
+              <Monitor size={15} /> {t("pos.display_customer_screen")}
+            </button>
+          </div>}
+        </div>
+        {pos.cart.length > 0 && <span style={{ fontSize: 16, fontWeight: 800, marginLeft: 12, color: "var(--color-primary)" }}>{t("pos.currency_symbol")}{pos.total.toFixed(2)}</span>}
+      </div>
+
+      {/* ═══ TAB: MENU ═══ */}
+      {posTab === "menu" && <>
+      {/* Header: order type + table + customer */}
+      <div style={{
+        padding: "8px 16px",
+        borderBottom: "1px solid var(--color-border-light)",
+        background: "var(--color-bg-card)",
+        flexShrink: 0,
         display: "flex",
         alignItems: "center",
         gap: 8,
-        marginBottom: 8
+        flexWrap: "wrap"
       }}>
-          <div style={{
-          display: "flex",
-          gap: 6
-        }}>
-                      {/* In-store ordering is dine-in or takeaway only — delivery is a PWA (customer app) flow, not POS. */}
-                      {(["dine_in", "takeaway"] as const).map(orderType => <button key={orderType} className={`btn btn-sm ${pos.orderType === orderType ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setOrderType(orderType)}>
-                {orderType === "dine_in" ? t("pos.dine_in_label") : t("pos.takeaway_label")}
-              </button>)}
-          </div>
-          {pos.selectedCustomer && <span className="badge badge-primary badge-sm flex items-center gap-1">
-              <User size={10} /> {pos.selectedCustomer.display_name}
-            </span>}
-          {pos.tableId && <span className="badge badge-sm" style={{
-          background: "var(--color-accent-gold)",
-          color: "#1E1B18"
-        }}>{t("pos.table")}{pos.tables.find(t => t.id === pos.tableId)?.table_number || pos.tableId}
-            </span>}
-          <PosDrawerChip />
-          <PosOfflineQueueChip items={pos.offlineQueue} onRetry={pos.retryQueuedOrder} />
-          <div style={{
-          flex: 1
-        }} />
-          {pos.cart.length > 0 && <span style={{
-          fontSize: 15,
-          fontWeight: 700
-        }}>{t("pos.currency_symbol")}{pos.total.toFixed(2)}</span>}
-        </div>
-
-        {/* Customer Search — highlighted when a workshop line needs an identified customer */}
-        {(() => {
-          const workshopNeedsCustomer = pos.cart.some(c => c.class_session_id != null) && !pos.selectedCustomer;
-          return <>
-        <div style={{
-        display: "flex",
-        gap: 6,
-        flexWrap: "wrap",
-        marginBottom: workshopNeedsCustomer ? 2 : 8,
-        padding: workshopNeedsCustomer ? 6 : 0,
-        borderRadius: workshopNeedsCustomer ? 8 : 0,
-        outline: workshopNeedsCustomer ? "2px solid var(--color-warning, #D97706)" : "none",
-        background: workshopNeedsCustomer ? "var(--color-warning-light, #FEF3C7)" : "transparent"
-      }}>
-          <div style={{
-          flex: 1,
-          position: "relative"
-        }}>
-            <Search size={14} style={{
-            position: "absolute",
-            left: 10,
-            top: "50%",
-            transform: "translateY(-50%)",
-            opacity: 0.4
-          }} />
-            <input className="form-input" style={{
-            paddingLeft: 34
-          }} value={pos.searchQ} onChange={e => {
-            pos.setSearchQ(e.target.value);
-            pos.searchCustomersDebounced(e.target.value);
-          }} placeholder={t("pos.search_customer")} />
-          </div>
-          <button className="btn btn-ghost" style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          padding: "8px 12px"
-        }} onClick={() => {
-          pos.setQrScanMode("table");
-          pos.startScanner();
-        }} aria-label={t("pos.scan_table_qr")}>
-            <QrCode size={22} />{t("pos.scan_table")}</button>
-          <button className="btn btn-ghost" style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          padding: "8px 12px"
-        }} onClick={() => {
-          pos.setQrScanMode("customer");
-          pos.startScanner();
-        }} aria-label={t("pos.scan_customer_qr")}>
-            <User size={22} />{t("pos.scan_customer")}</button>
-          <button className="btn btn-ghost" style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 12,
-          padding: "6px 10px"
-        }} onClick={() => {
-          pos.fetchUnpaidOrders();
-          pos.setShowUnpaid(true);
-        }} aria-label={t("pos.view_unpaid_orders")}>
-            <Wallet size={16} />{t("pos.unpaid")}{pos.unpaidOrders.length > 0 ? ` (${pos.unpaidOrders.length})` : ""}
-          </button>
-          <button className="btn btn-ghost" style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 12,
-          padding: "6px 10px"
-        }} onClick={() => pos.setShowHeld(true)} aria-label={t("pos.view_parked_orders")}>
-            <Pause size={16} />{t("pos.park_order")}</button>
-          <button className="btn btn-ghost" style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 12,
-          padding: "6px 10px"
-        }} onClick={() => openCustomerDisplay(storeConfig?.display_left ?? 1920, pos.storeId || undefined, storeConfig?.display_key)} aria-label={t("pos.display_open_customer_screen")}>
-            <Monitor size={16} />{t("pos.display_customer_screen")}</button>
-        </div>
-        {pos.searchResults.length > 0 && <div style={{
-        background: "white",
-        borderRadius: 8,
-        marginTop: 4,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        overflow: "hidden",
-        position: "absolute",
-        zIndex: 50,
-        left: 16,
-        right: 16,
-        maxWidth: 400
-      }}>
-            <button onClick={() => {
-          pos.setSelectedCustomer(null);
-          pos.setSearchQ("");
-          pos.setSearchResults([]);
-          pos.setCustomerWallet(null);
-        }} style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          padding: "8px 12px",
-          border: "none",
-          borderBottom: "1px solid #eee",
-          background: "white",
-          cursor: "pointer",
-          fontSize: 13,
-          opacity: 0.6
-        }}>{t("pos.walk_in_no_customer")}</button>
-            {pos.searchResults.map(c => <button key={c.id} onClick={() => pos.handleCustomerSelect(c)} style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          padding: "8px 12px",
-          border: "none",
-          borderBottom: "1px solid #eee",
-          background: "white",
-          cursor: "pointer",
-          fontSize: 13
-        }}>
-                {c.display_name} · {c.phone_number}
-              </button>)}
+        {(["dine_in", "takeaway"] as const).map(orderType => <button key={orderType} className={`btn btn-sm ${pos.orderType === orderType ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setOrderType(orderType)}>
+          {orderType === "dine_in" ? t("pos.dine_in_label") : t("pos.takeaway_label")}
+        </button>)}
+        {pos.orderType === "dine_in" && <select className="form-input" style={{ fontSize: 13, padding: "4px 8px", width: "auto" }} value={pos.tableId ?? ""} onChange={e => pos.setTableId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">{t("pos.no_table")}</option>
+          {pos.tables.filter(t => t.current_status === "available" || t.id === pos.tableId).map(t => <option key={t.id} value={t.id}>{t.table_number}</option>)}
+        </select>}
+        <div style={{ flex: 1, position: "relative", minWidth: 200 }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }} />
+          <input className="form-input" style={{ paddingLeft: 34, fontSize: 13 }} value={pos.searchQ} onChange={e => { pos.setSearchQ(e.target.value); pos.searchCustomersDebounced(e.target.value); }} placeholder={t("pos.search_customer")} />
+          {pos.searchResults.length > 0 && <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 40, maxHeight: 200, overflowY: "auto" }}>
+            <button onClick={() => { pos.setSelectedCustomer(null); pos.setSearchQ(""); pos.setSearchResults([]); }} style={{ display: "block", width: "100%", padding: "8px 12px", border: "none", background: "white", cursor: "pointer", fontSize: 13, opacity: 0.6 }}>{t("pos.walk_in_no_customer")}</button>
+            {pos.searchResults.map(c => <button key={c.id} onClick={() => pos.handleCustomerSelect(c)} style={{ display: "block", width: "100%", padding: "8px 12px", border: "none", background: "white", cursor: "pointer", fontSize: 13 }}>{c.display_name} · {c.phone_number}</button>)}
           </div>}
-
-        {/* Quick add — new customer by phone (workshop bookings need an identified customer) */}
-        {pos.searchQ.trim().length >= 3 && !pos.selectedCustomer && <div style={{
-        display: "flex",
-        gap: 6,
-        marginBottom: 8,
-        alignItems: "center"
-      }}>
-          {quickAddOpen ? <>
-            <input className="form-input" style={{ flex: 1 }} placeholder={t("pos.customer_name")} value={quickAddName} onChange={e => setQuickAddName(e.target.value)} />
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={() => { pos.setQrScanMode("table"); pos.startScanner(); }}><QrCode size={16} /></button>
+        {pos.searchQ.trim().length >= 3 && !pos.selectedCustomer && (
+          quickAddOpen ? <>
+            <input className="form-input" style={{ fontSize: 13, width: 140 }} placeholder={t("pos.customer_name")} value={quickAddName} onChange={e => setQuickAddName(e.target.value)} />
             <button className="btn btn-primary btn-sm" disabled={quickAddBusy || !quickAddName.trim()} onClick={async () => {
               setQuickAddBusy(true);
-              try {
-                const c = await findOrCreateCustomer(pos.searchQ.trim(), quickAddName.trim());
-                pos.handleCustomerSelect(c);
-                pos.setSearchQ("");
-                pos.setSearchResults([]);
-                setQuickAddName("");
-                setQuickAddOpen(false);
-              } catch (e: unknown) { pos.setError((e as Error).message); } finally { setQuickAddBusy(false); }
+              try { const c = await findOrCreateCustomer(pos.searchQ.trim(), quickAddName.trim()); pos.handleCustomerSelect(c); pos.setSearchQ(""); pos.setSearchResults([]); setQuickAddName(""); setQuickAddOpen(false); } 
+              catch (e: unknown) { pos.setError((e as Error).message); } finally { setQuickAddBusy(false); }
             }}>{quickAddBusy ? "…" : t("pos.create_customer")}</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setQuickAddOpen(false)}>{t("common.back")}</button>
-          </> : <button className="btn btn-ghost btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setQuickAddOpen(true)}>
-            <UserPlus size={14} />{t("pos.add_new_customer_by_phone")}
-          </button>}
-        </div>}
-        {workshopNeedsCustomer && <p style={{ fontSize: 11, color: "var(--color-warning, #8A7030)", margin: "0 0 8px 8px" }}>{t("pos.customer_required_for_workshop")}</p>}
-        </>;
-        })()}
-
-        {/* Table Picker */}
-        {pos.orderType === "dine_in" && <div style={{
-        display: "flex",
-        gap: 6,
-        marginBottom: 8,
-        overflowX: "auto"
-      }}>
-            <button className={`btn btn-sm ${pos.tableId === null ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setTableId(null)}>{t("pos.no_table")}</button>
-            {pos.tables.filter(t => t.current_status === "available" || t.id === pos.tableId).map(t => <button key={t.id} className={`btn btn-sm ${pos.tableId === t.id ? "btn-primary" : "btn-ghost"}`} onClick={() => pos.setTableId(t.id)}>
-                {t.table_number}
-              </button>)}
-          </div>}
-
-        {/* Category Tabs */}
-        <div style={{
-        display: "flex",
-        gap: 6,
-        overflowX: "auto",
-        paddingBottom: 4
-      }}>
-          <button className={`btn btn-sm ${pos.activeCat === null && !pos.menuSearch ? "btn-primary" : "btn-ghost"}`} onClick={() => {
-          pos.setActiveCat(null);
-          pos.setMenuSearch("");
-        }}>{t("pos.all")}{pos.items.length})
-          </button>
-          {pos.categories.map(c => {
-          const count = pos.items.filter(i => i.category_id === c.id).length;
-          return <button key={c.id} className={`btn btn-sm ${pos.activeCat === c.id ? "btn-primary" : "btn-ghost"}`} onClick={() => {
-            pos.setActiveCat(c.id);
-            pos.setMenuSearch("");
-          }}>
-                {c.category_name} ({count})
-              </button>;
-        })}
-        </div>
+          </> : <button className="btn btn-ghost btn-sm" onClick={() => setQuickAddOpen(true)}><UserPlus size={14} />{t("pos.add_new_customer_by_phone")}</button>
+        )}
       </div>
 
-      {/* Menu Search Bar */}
+      {/* Category tabs + search */}
       <div style={{
-      padding: "4px 16px",
-      display: "flex",
-      gap: 6
-    }}>
-        <Search size={14} style={{
-        opacity: 0.4,
-        marginTop: 10
-      }} />
-        <input className="form-input" style={{
-        flex: 1,
-        fontSize: 13
-      }} value={pos.menuSearchInput} onChange={e => {
-        const val = e.target.value;
-        pos.setMenuSearchInput(val);
-        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-        searchTimerRef.current = setTimeout(() => pos.setMenuSearch(val), 300);
-      }} placeholder={t("pos.search_menu_items")} />
-        {pos.menuSearchInput && <button className="btn btn-sm btn-ghost" onClick={() => {
-        pos.setMenuSearchInput("");
-        pos.setMenuSearch("");
-        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-      }}>{t("pos.clear")}</button>}
+        padding: "4px 16px",
+        borderBottom: "1px solid var(--color-border-light)",
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        background: "var(--color-bg-card)",
+        flexShrink: 0
+      }}>
+        <div style={{ display: "flex", gap: 4, overflowX: "auto", flex: 1, paddingBottom: 4 }}>
+          <button className={`btn btn-sm ${pos.activeCat === null && !pos.menuSearch ? "btn-primary" : "btn-ghost"}`} onClick={() => { pos.setActiveCat(null); pos.setMenuSearch(""); }}>
+            {t("pos.all")} ({pos.items.length})
+          </button>
+          {pos.categories.filter(c => pos.items.some(i => i.category_id === c.id)).map(c => {
+            const count = pos.items.filter(i => i.category_id === c.id).length;
+            return <button key={c.id} className={`btn btn-sm ${pos.activeCat === c.id ? "btn-primary" : "btn-ghost"}`} onClick={() => { pos.setActiveCat(c.id); pos.setMenuSearch(""); }}>
+              {c.category_name} ({count})
+            </button>;
+          })}
+        </div>
+        <div style={{ position: "relative", width: 200, flexShrink: 0 }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }} />
+          <input className="form-input" style={{ fontSize: 13, paddingLeft: 30, width: "100%" }} value={pos.menuSearchInput} onChange={e => {
+            const val = e.target.value; pos.setMenuSearchInput(val);
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+            searchTimerRef.current = setTimeout(() => pos.setMenuSearch(val), 300);
+          }} placeholder={t("pos.search_menu_items")} />
+        </div>
       </div>
 
       {pos.error && <Alert variant="error" onDismiss={() => pos.setError("")}>{pos.error}</Alert>}
@@ -912,7 +786,49 @@ function PosPageContent() {
       <PosModifierDrawer item={pos.modifierItem} selectedModifiers={pos.selectedModifiers} qty={pos.modifierQty} onToggleModifier={handleToggleModifier} onQtyChange={delta => pos.setModifierQty(q => Math.max(1, q + delta))} onAdd={pos.applyModifiers} onCancel={() => {
       pos.setModifierItem(null);
       pos.setModifierQty(1);
-    }} />
+    }} />      </>}
+
+      {/* ═══ TAB: QUEUE ═══ */}
+      {posTab === "queue" && <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { pos.fetchUnpaidOrders(); pos.setShowUnpaid(true); }}>
+            <Wallet size={15} /> {t("pos.unpaid")}{pos.unpaidOrders.length > 0 ? ` (${pos.unpaidOrders.length})` : ""}
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => pos.setShowHeld(true)}>
+            <Pause size={15} /> {t("pos.park_order")}
+          </button>
+        </div>
+        <EmptyState icon={<ClipboardList size={48} />} title={t("pos.no_active_orders")} description={t("pos.active_orders_appear_here")} />
+      </div>}
+
+      {/* ═══ TAB: CUSTOMERS ═══ */}
+      {posTab === "customers" && <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
+        <div style={{ position: "relative", maxWidth: 400, marginBottom: 16 }}>
+          <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }} />
+          <input className="form-input" style={{ paddingLeft: 38, fontSize: 14, width: "100%" }} value={pos.searchQ} onChange={e => { pos.setSearchQ(e.target.value); pos.searchCustomersDebounced(e.target.value); }} placeholder={t("pos.search_customer")} />
+        </div>
+        {pos.searchResults.length > 0 && <div style={{ maxWidth: 400 }}>
+          {pos.searchResults.map(c => <button key={c.id} onClick={() => { pos.handleCustomerSelect(c); pos.setSearchQ(""); pos.setSearchResults([]); setPosTab("menu"); }} style={{ display: "block", width: "100%", padding: "12px", border: "1px solid var(--color-border-light)", borderRadius: 8, marginBottom: 4, background: "white", cursor: "pointer", textAlign: "left", fontSize: 14 }}>
+            <div style={{ fontWeight: 600 }}>{c.display_name}</div>
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{c.phone_number}</div>
+          </button>)}
+        </div>}
+        {pos.selectedCustomer && <div style={{ maxWidth: 400, padding: 16, background: "white", borderRadius: 12, border: "1px solid var(--color-border-light)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <User size={40} style={{ color: "var(--color-primary)" }} />
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{pos.selectedCustomer.display_name}</div>
+              <div style={{ fontSize: 13, color: "var(--color-text-muted)" }}>{pos.selectedCustomer.phone_number}</div>
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{ marginLeft: "auto" }} onClick={() => pos.setSelectedCustomer(null)}>{t("common.clear")}</button>
+          </div>
+          {pos.customerWallet && <div style={{ padding: "12px 0", borderTop: "1px solid var(--color-border-light)" }}>
+            <div style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 4 }}>{t("wallet.balance")}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-success)" }}>{t("pos.currency_symbol")}{(Number(pos.customerWallet.balance) || 0).toFixed(2)}</div>
+          </div>}
+        </div>}
+        {!pos.selectedCustomer && pos.searchResults.length === 0 && <EmptyState icon={<Users size={48} />} title={t("pos.search_customer")} description="" />}
+      </div>}
 
       {/* QR Scanner Modal */}
       <PosQrScannerModal open={pos.showQrScanner} mode={pos.qrScanMode} scannerError={pos.scannerError} onClose={pos.stopScanner} />

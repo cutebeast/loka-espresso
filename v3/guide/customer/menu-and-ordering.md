@@ -89,3 +89,16 @@ Tap **Checkout** to continue.
 ## Related
 - [Checkout & Payment](checkout-and-payment.md)
 - [Promotions & Rewards](promotions-and-rewards.md)
+
+
+## The Vault — Secret Menu
+
+Tier-locked items appear in a gold-bordered "The Vault" section in the menu. Items show "Unlock at {tier}" chips until your tier qualifies.
+
+## Workshops & Experiences
+
+Items in the Experiences category require session selection (date/time/seats). Tap a class → pick your session → add to cart. Workshop items cannot be ordered at the kiosk — staff can sell workshop seats at the POS with a customer phone number attached.
+
+## Variants
+
+Some items have variants (Hot/Cold, pax packages). Select your variant in the customization sheet before adding to cart. Each variant creates a separate cart line.

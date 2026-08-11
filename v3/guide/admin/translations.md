@@ -8,14 +8,11 @@
 `/translations` redirects to the Customer PWA page. In the sidebar, **Translations** is an expandable item with these three pages.
 
 ## Purpose
-Manage the **interface text** of the three apps across all supported locales. English (`en`) is the source language; each page edits the four target locales:
+Manage the **interface text** of the three apps across all supported locales. English (`en`) is the source language; each page edits the the target locale (zh):
 
 | Locale | Language |
 |--------|----------|
-| `ms` | Bahasa Malaysia |
 | `zh` | Chinese |
-| `ta` | Tamil |
-| `tr` | Turkish |
 
 Each page is backed by its own translation namespace:
 
@@ -81,17 +78,17 @@ Example — the PWA key `checkin.pointsEarned` has the English source `+{points}
 
 The Customer PWA page has an extra **Sync to JSON** button in the header. It:
 
-1. Writes all `pwa-ui` translations from the database to the PWA's static locale files (`ms.json`, `zh.json`, `ta.json`, `tr.json`). English is skipped — `en.json` is the hand-maintained source baseline.
+1. Writes all `pwa-ui` translations from the database to the PWA's static Chinese locale file (`zh.json`). English is skipped — `en.json` is the hand-maintained source baseline.
 2. Bumps the PWA build timestamp so devices detect a new version. This matters because the PWA caches translations in the browser for 24 hours — the version bump forces every device to pick up the new text instead of waiting out the cache.
 3. Rebuilds the Customer PWA and restarts it.
 
-The result message shows how many keys were written per locale (e.g. `ms: 812 keys`). Run it after editing PWA translations; otherwise the changes go live only at the next scheduled sync.
+The result message shows how many keys were written per locale (e.g. `zh: 812 keys`). Run it after editing PWA translations; otherwise the changes go live only at the next scheduled sync.
 
 The Admin Portal and Staff Portal pages have no sync button — they read their translations from the database directly.
 
 ## Content translations (managed elsewhere)
 
-Saving a content record anywhere in the portal auto-translates its customer-facing text into all four locales. This applies to:
+Saving a content record anywhere in the portal auto-translates its customer-facing text into zh. This applies to:
 
 - Menu items, categories, and bundle products
 - Promo banners, vouchers, and rewards
@@ -149,3 +146,12 @@ Use the language selector in the portal header — the Admin Portal page edits t
 - [Menu](menu.md)
 - [Marketing](marketing.md)
 - [Content](content.md)
+
+
+## Syncing Translations
+
+Use the sync script to push EN baseline keys to the database:
+```
+sync_translations_to_json.py
+```
+This reads `customer-pwa/src/locales/en.json` and writes translations to the DB. The cron job picks up new EN keys and fills zh translations automatically.

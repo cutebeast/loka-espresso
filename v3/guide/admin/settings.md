@@ -155,3 +155,16 @@ Commit dates are also shown as relative time (`3h ago`, `2d ago`). A card that c
 - [Marketing — Campaign Settings](marketing.md)
 - [Loyalty — Settings](loyalty.md)
 - [Stores](stores.md)
+
+
+## Staff Meal
+
+- `staffmeal.discount_type`: percentage | fixed
+- `staffmeal.discount_value`: Discount amount (e.g. 50 = 50% / RM 50)
+
+Staff apply the meal discount from the POS checkout screen.
+
+## Wastage
+
+- `wastage.reason_required`: Whether staff must provide a reason
+- `wastage.photo_required`: Whether photo evidence is mandatory

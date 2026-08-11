@@ -13,6 +13,7 @@ from app.core.money import money_round, to_decimal
 from app.core.rate_limiter import limiter
 from app.core.security import create_guest_pay_token
 from app.models.cart import CartLineItem, CustomerCart
+from app.models.order import Order
 from app.models.customer import Customer
 from app.models.menu import MenuItem
 from app.models.store import DiningTable, Store
@@ -29,6 +30,10 @@ class KioskOrderItem(BaseSchema):
     quantity: int = Field(..., ge=1, le=99)
     modifier_option_ids: list[int] | None = Field(None, max_length=50)
     variant_id: int | None = None
+    # Bundle linkage — the cart/order bundle engine validates the set and
+    # applies the bundle discount server-side
+    bundle_product_id: int | None = None
+    bundle_component_id: int | None = None
 
 
 class KioskOrderCreateRequest(BaseSchema):
@@ -360,6 +365,8 @@ async def create_kiosk_order(
                 modifier_total=modifier_total,
                 selected_modifiers=selected_modifiers if selected_modifiers else {},
                 menu_variant_id=line.variant_id,
+                bundle_product_id=line.bundle_product_id,
+                bundle_component_id=line.bundle_component_id,
             )
         )
 
@@ -381,6 +388,27 @@ async def create_kiosk_order(
         order = await create_order_from_cart(db, kiosk_customer.id, order_data)
     except OrderError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    # ── Auto-cancel stale pending kiosk orders (>30 min unpaid) ──
+    from datetime import timedelta as _timedelta
+    stale_threshold = datetime.now(timezone.utc) - _timedelta(minutes=30)
+    stale_query = (
+        select(Order)
+        .where(
+            Order.store_id == data.store_id,
+            Order.order_channel == "kiosk",
+            Order.status == "pending",
+            Order.payment_status == "initiated",
+            Order.created_at < stale_threshold,
+        )
+    )
+    stale_orders = (await db.execute(stale_query)).scalars().all()
+    for stale in stale_orders:
+        stale.status = "cancelled_by_customer"
+        stale.cancellation_reason = "Auto-cancelled — unpaid after 30 minutes"
+        stale.updated_at = datetime.now(timezone.utc)
+    if stale_orders:
+        await db.commit()
 
     # Override order channel to kiosk for reporting
     order.order_channel = "kiosk"

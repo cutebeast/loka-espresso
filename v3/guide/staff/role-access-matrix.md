@@ -8,13 +8,13 @@ Your staff role is set by an admin in the Admin Portal. It controls which button
 
 | Feature | store_manager | shift_supervisor | cashier | server | kitchen_staff | delivery_coordinator |
 |---------|:-------------:|:----------------:|:-------:|:------:|:-------------:|:--------------------:|
-| POS | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Kitchen Display | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| POS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Kitchen Display | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Orders list | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Tables | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Reservations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Inventory / Wastage | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Equipment / Garbage / Grease Trap | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Inventory / Wastage | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Equipment / Garbage / Grease Trap | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Time Clock | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Shifts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Tasks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |

@@ -71,3 +71,10 @@ Occupied tables show a **duration badge** — how long the table has been occupi
 - [POS Checkout](pos-checkout.md)
 - [Kitchen Display](kitchen-display.md)
 - [Reservations](reservations.md)
+
+
+## Customer Search
+
+Search customers by phone number from the POS header. The search is debounced (300ms) and returns up to 5 results. Click a result to attach the customer to the current order.
+
+If no customer is found with 3+ digits entered, a "Quick Add" button appears — create a new customer with the entered phone number.

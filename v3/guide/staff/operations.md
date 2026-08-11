@@ -78,7 +78,7 @@ Report wasted inventory.
 
 ## Who can access
 
-These pages are available to `shift_supervisor`, `store_manager`, `kitchen_staff`, and admin users.
+Inventory, Equipment, and Wastage are available to `shift_supervisor`, `store_manager`, `kitchen_staff`, and admin users. Garbage and Grease Trap reports can be submitted by any authenticated staff member.
 
 ## Related
 - [Admin — Inventory](../admin/inventory.md)

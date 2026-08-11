@@ -71,3 +71,19 @@ Customer feedback submissions from the PWA help/support form.
 ## Related
 - [Loyalty](loyalty.md)
 - [Marketing — Campaigns](marketing.md)
+
+
+## Wallet
+
+Each customer has a wallet (created on first use). Admin can:
+- View wallet balance and ledger (all transactions)
+- Add credits or debits via admin adjustment
+- View voucher and reward balances
+
+## Vouchers
+
+Assign voucher codes to customers. Vouchers have:
+- Expiry date
+- Usage limits (total / per customer)
+- Minimum order value
+- Discount type (percentage / fixed amount)

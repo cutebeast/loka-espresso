@@ -41,7 +41,7 @@ At checkout, select **Pay with Wallet** if your balance covers the total.
 ## Loyalty / My Card page
 
 ### What you see
-- Current tier (Bronze, Silver, Gold, Platinum)
+- Current tier (Bloom, Origin, Reserve)
 - Current points balance
 - Points needed for next tier
 - Tier benefits
@@ -51,10 +51,9 @@ At checkout, select **Pay with Wallet** if your balance covers the total.
 
 | Tier | Requirement | Multiplier |
 |------|-------------|------------|
-| Bronze | 0 points | 1.0x |
-| Silver | 1,000 points | 1.2x |
-| Gold | 3,000 points | 1.5x |
-| Platinum | 5,000 points | 2.0x |
+| Bloom | Entry tier — everyone starts here | 1.0× |
+| Origin | RM 500 eligible spend (rolling 12-month window) | 1.2× |
+| Reserve | RM 1,500 eligible spend (rolling 12-month window) | 1.5× |
 
 Higher tiers earn more points per order.
 

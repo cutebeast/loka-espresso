@@ -76,3 +76,14 @@ Orders can be opened via deep link from SMS, email, or QR codes. The format uses
 ## Related
 - [Checkout & Payment](checkout-and-payment.md)
 - [Menu & Ordering](menu-and-ordering.md)
+
+
+## Workshop Orders
+
+Workshop bookings appear separately from menu orders. They include:
+- Session date and time
+- Number of seats booked
+- Venue details (Google Maps link)
+- Cancel/refund policy
+
+Workshop items cannot be ordered from the kiosk — mobile app only.

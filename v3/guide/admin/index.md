@@ -9,7 +9,7 @@ The Admin Portal is the back-office control centre for the Loka Espresso platfor
 - **System administrators** — full platform access.
 - **Regional managers** — multi-store oversight.
 - **Store managers** — single or assigned-store management.
-- **Readonly analysts** — view-only access across all stores (note: write restrictions are not enforced by most endpoints).
+- **Readonly analysts** — view-only access across all stores (note: mutations are blocked (403) for readonly_analyst — enforced server-side).
 
 ## First login
 
@@ -56,7 +56,7 @@ Most data in the Admin Portal belongs to a store. Store managers only see data f
 Effective access is based on role key and store assignment. The permission matrix under **Admin Roles** stores permission rows, but most business endpoints enforce access by role key and store scoping instead.
 
 ### Translations
-The platform supports `en`, `ms`, `zh`, `ta`, and `tr`. UI text and translatable content are managed in the **Translations** section.
+The platform supports `en` and `zh`. UI text and translatable content are managed in the **Translations** section.
 
 ### Editing records
 When you open an edit page (e.g. `/stores/123`, `/staff/456`), the portal loads the record from the API. If the ID does not exist or you do not have access, the page shows a **Not Found** state with a back button instead of a blank form. Use the back button to return to the list and check the correct ID.

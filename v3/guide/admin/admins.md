@@ -22,3 +22,12 @@ Control who can access the Admin Portal and what they are allowed to do.
 - Follow the principle of least privilege: give users only the access they need.
 - Deactivate accounts promptly when staff leave.
 - Review the Audit Log regularly for sensitive actions.
+
+
+## Store Assignments
+
+Admin accounts can be assigned to specific stores via Store Assignments. An admin with per-store access sees only their store's data. System admins see all stores.
+
+## Registration
+
+New admin accounts can be registered by existing admins. The new admin's roles are limited to what the creator holds (you cannot grant roles you don't have).

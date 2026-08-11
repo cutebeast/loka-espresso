@@ -620,7 +620,11 @@ async def staff_pos_create_order(
 
 # Fields that must never be served through the unauthenticated display-state
 # poll — they carry signed payment URLs / pay_tokens.
-_DISPLAY_STATE_SENSITIVE_KEYS = {"paymentUrl", "pwaPayUrl", "payment_url", "pay_token", "payToken"}
+# pwaPayUrl is intentionally INCLUDED (not stripped) — the customer-facing
+# display behind the counter needs to show the guest-pay QR so customers can
+# scan and pay. The kiosk also shows this URL publicly. The token is order-
+# specific and 24-hour-expiring.
+_DISPLAY_STATE_SENSITIVE_KEYS = {"paymentUrl", "payment_url", "pay_token", "payToken"}
 
 @router.post("/staff/pos/display-state")
 async def set_pos_display_state(

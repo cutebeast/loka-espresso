@@ -362,7 +362,7 @@ export default function BundlePickerModal({
               fontSize: 12,
               fontWeight: 700,
               color: "var(--color-primary)"
-            }}>{t("pos.currency_symbol")}{Number(item.price ?? 0).toFixed(2)}
+            }}>{Number(item.price ?? 0) > 0 ? `${t("pos.currency_symbol")}${Number(item.price ?? 0).toFixed(2)}` : t("pos.free")}
                 </div>
 
                 {allowDuplicates && <div style={{

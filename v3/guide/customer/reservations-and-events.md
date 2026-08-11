@@ -98,3 +98,12 @@ Workshop bookings appear with your orders: open **Orders** to see the booking an
 - [Promotions & Rewards](promotions-and-rewards.md)
 - [Orders & Order Detail](orders-and-order-detail.md)
 - [Checkout & Payment](checkout-and-payment.md)
+
+
+## Dining Reservations
+
+Book a table at any Loka outlet:
+- Choose date, time, and party size
+- Receive confirmation SMS/push notification
+- Staff manage reservations via the Tables page
+- Check in via QR code at your table

@@ -1,4 +1,4 @@
-# Staff Portal: Wallet
+# Staff Portal: Customers
 
 ## Page
 `/wallet`
@@ -8,13 +8,13 @@ Check customer wallet balances and process wallet top-ups.
 
 ## Check a customer wallet
 
-1. Open **Wallet**.
+1. Open **Customers**.
 2. Search by customer phone number or scan their QR code.
 3. View current balance and recent transactions.
 
 ## Top up a wallet
 
-1. Open **Wallet**.
+1. Open **Customers**.
 2. Search for the customer.
 3. Tap **Top Up**.
 4. Enter amount.
@@ -22,7 +22,7 @@ Check customer wallet balances and process wallet top-ups.
 6. Complete payment.
 7. Balance updates immediately.
 
-## Wallet transactions
+## Customers transactions
 
 | Type | Description |
 |------|-------------|
@@ -31,7 +31,7 @@ Check customer wallet balances and process wallet top-ups.
 | refund | Refund credited to wallet. |
 
 ## Limitations
-- Wallet top-ups via card/gateway may redirect to a payment provider.
+- Customers top-ups via card/gateway may redirect to a payment provider.
 - Maximum top-up amount is configured per store.
 
 ## Related

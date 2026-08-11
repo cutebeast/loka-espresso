@@ -35,3 +35,12 @@ View legal pages:
 
 ## Related
 - [Frequently Asked Questions](../../faq.md)
+
+
+## FAQ
+
+Browse help articles organized by category. Available in EN and 中文.
+
+## Store Locator
+
+Find the nearest Loka outlet. Powered by Google Maps. Shows address, operating hours, and contact info for each store.

@@ -102,3 +102,16 @@ Take the details (name, phone, date, time, party size) and ask a manager or admi
 - [POS Checkout](pos-checkout.md)
 - [Orders & Tables](orders-and-tables.md)
 - [Admin — Content](../admin/content.md)
+
+
+## Reservation Status
+
+| Status | Meaning |
+|--------|---------|
+| pending | Awaiting staff confirmation |
+| confirmed | Confirmed by staff |
+| seated | Customer has arrived and been seated |
+| cancelled | Cancelled by customer or staff |
+| no_show | Customer didn't arrive |
+
+Staff manage reservations from the Tables page or the POS table selector.

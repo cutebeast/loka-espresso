@@ -52,6 +52,7 @@ from app.services.webhook import (
 from app.services.payment import (
     PaymentError,
     _add_payment_event,
+    _debit_wallet_for_payment,
     cancel_payment,
     capture_payment,
     confirm_payment,
@@ -173,6 +174,7 @@ async def guest_pay_summary(
     config_service = PlatformConfigService(db)
     stripe_enabled = await config_service.get_bool("stripe.enabled", default=False)
     hitpay_enabled = await config_service.get_bool("hitpay.enabled", default=False)
+    wallet_enabled = await config_service.get_bool("wallet.enabled", default=True)
 
     return APIResponse(data={
         "order_id": order.id,
@@ -190,6 +192,7 @@ async def guest_pay_summary(
                    and order.status not in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"),
         "stripe_enabled": stripe_enabled,
         "hitpay_enabled": hitpay_enabled,
+        "wallet_enabled": wallet_enabled,
     })
 
 
@@ -203,14 +206,16 @@ async def guest_pay(
     order_id: int,
     db: DBDependency,
     token: str = Query(..., description="Guest payment token from QR code"),
-    provider: str = Query("stripe", pattern="^(stripe|hitpay)$"),
+    provider: str = Query("stripe", pattern="^(stripe|hitpay|wallet)$"),
     phone_number: str | None = Query(None, max_length=20, description="Optional — for loyalty registration"),
 ):
-    """Create a Stripe/HitPay payment session for a guest (walk-in) customer.
+    """Create a Stripe/HitPay/Wallet payment session for a guest (walk-in) customer.
 
     No auth required.  The signed token authorises payment for this order only.
     If ``phone_number`` is provided, the customer is registered/linked so they
     earn loyalty points and receive a receipt — but registration is optional.
+
+    For wallet payments, phone_number is REQUIRED to identify the customer's wallet.
     """
     order = await _validate_guest_token_or_404(order_id, token, db)
     from decimal import Decimal
@@ -263,8 +268,8 @@ async def guest_pay(
 
     payment = Payment(
         order_id=order.id,
-        provider=provider,
-        payment_method_type="credit_card" if provider == "stripe" else "qr_pay",
+        provider="internal_wallet" if provider == "wallet" else provider,
+        payment_method_type="e_wallet" if provider == "wallet" else ("credit_card" if provider == "stripe" else "qr_pay"),
         amount=order.total_amount,
         currency_code=order.total_amount_currency,
         status="pending_authorization",
@@ -277,6 +282,7 @@ async def guest_pay(
     payment_id = payment.id
 
     redirect_url: str | None = None
+    wallet_paid: bool = False
     if provider == "stripe":
         try:
             checkout = await create_stripe_checkout_session(
@@ -287,7 +293,7 @@ async def guest_pay(
             raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
         payment.provider_transaction_id = checkout["id"]
         redirect_url = checkout["url"]
-    else:  # hitpay
+    elif provider == "hitpay":
         try:
             resp = await create_hitpay_payment_request(db, payment, order, None, return_url=success_url)
         except Exception as exc:
@@ -296,12 +302,41 @@ async def guest_pay(
             raise HTTPException(status_code=503, detail="HitPay payment session could not be created") from exc
         payment.provider_transaction_id = resp["id"]
         redirect_url = resp.get("redirect_url")
+    else:  # wallet
+        if not phone_number or not phone_number.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number is required for wallet payments",
+            )
+        if not customer_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Customer not found — please enter a registered phone number",
+            )
+        payment.provider_transaction_id = f"wallet-{order.order_number}-{uuid.uuid4().hex[:8]}"
+        try:
+            config_service = PlatformConfigService(db)
+            precision = await config_service.get_accounting_precision()
+            rounding_mode = await config_service.get_accounting_rounding()
+            await _debit_wallet_for_payment(db, payment, precision, rounding_mode)
+            payment.status = "captured"
+            payment.captured_amount = order.total_amount
+            await _add_payment_event(
+                db, payment, to_status="captured", from_status="initiated",
+                amount=order.total_amount, provider_response={"guest_pay": True, "provider": "wallet"},
+            )
+            order.payment_status = "captured"
+            wallet_paid = True
+        except PaymentError as exc:
+            await db.rollback()
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
-    order.payment_status = "pending_authorization"
-    await _add_payment_event(
-        db, payment, to_status="pending_authorization", from_status="initiated",
-        amount=order.total_amount, provider_response={"guest_pay": True},
-    )
+    if not wallet_paid:
+        order.payment_status = "pending_authorization"
+        await _add_payment_event(
+            db, payment, to_status="pending_authorization", from_status="initiated",
+            amount=order.total_amount, provider_response={"guest_pay": True},
+        )
     await db.commit()
 
     return APIResponse(data={
@@ -309,6 +344,7 @@ async def guest_pay(
         "order_id": order.id,
         "redirect_url": redirect_url,
         "provider": provider,
+        "wallet_paid": wallet_paid,
     })
 
 

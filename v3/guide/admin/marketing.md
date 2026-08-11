@@ -222,3 +222,17 @@ Each segment has:
 - [Settings](settings.md)
 - [Translations](translations.md)
 - [Customer PWA — Promotions & Rewards](../customer/promotions-and-rewards.md)
+
+
+## Bundle Deals
+
+Combo meals and set deals are configured in the Menu section. Each bundle product can be assigned to a bundle category (Combos, Value Meals, etc.) and highlighted in the customer app and kiosk.
+
+### Promo Banners
+
+Active banners appear on:
+- **Kiosk welcome screen** — auto-rotating carousel (8s intervals)
+- **POS customer display** — idle screen
+- **PWA home screen** — top banner strip
+
+Banners require an image, title, optional short description, and date range.

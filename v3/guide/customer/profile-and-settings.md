@@ -68,7 +68,7 @@ Tap the star icon next to an address to set it as default for delivery.
 
 | Setting | Purpose |
 |---------|---------|
-| Language | Change app language (en, ms, zh, ta, tr). |
+| Language | Change app language (en, zh). |
 | Store | Change selected store. |
 | Notifications | Enable or disable push notifications. |
 | Marketing preferences | Opt in or out of marketing messages. |

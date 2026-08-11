@@ -67,6 +67,10 @@ The available methods depend on store configuration.
 3. Complete payment.
 4. Order details are sent via SMS or email for tracking.
 
+## BYOT (Bring Your Own Tumbler)
+
+Check the eco checkbox at checkout to earn 2x points (Bloom/Origin) or 3x points (Reserve) on your order.
+
 ## Guest Pay — Dine-in QR payment (`guest-pay`)
 
 The **Guest Pay** page is a standalone public payment screen for walk-in dine-in customers who scan a table QR code and pay without creating an account.
@@ -113,3 +117,11 @@ If payment fails:
 - [Orders & Order Detail](orders-and-order-detail.md)
 - [Wallet & Loyalty](wallet-and-loyalty.md)
 - [Admin — Payment Gateway](../admin/settings.md)
+
+
+## Receipts
+
+After payment, you can:
+- View the order confirmation in-app (Orders tab)
+- Receive SMS receipt (if phone is verified)
+- Request e-invoice via the order detail screen

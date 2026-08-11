@@ -9,7 +9,7 @@
  * 2. Cross-device (separate tablet): polls Redis via API every 2 seconds
  *
  * Features:
- * - Idle screen with welcome, clock, and wallet top-up QR
+ * - Idle screen with welcome, clock, and promo banner carousel
  * - Live cart display with item images
  * - Payment QR (Stripe) for customer to scan with their phone
  * - Split-bill progress with remaining/shares
@@ -242,7 +242,7 @@ export default function CustomerDisplayPage() {
 
         {/* Language selector */}
         <div style={{ position: "absolute", top: scale(12), left: scale(12), zIndex: 10, display: "flex", gap: scale(6) }}>
-          {([["en", "EN"], ["ms", "BM"], ["zh", "中文"], ["ta", "தமிழ்"], ["tr", "TR"]] as const).map(([code, label]) => (
+          {([["en", "EN"], ["zh", "中文"]] as const).map(([code, label]) => (
             <button key={code} aria-label={`Switch display language to ${label}`} onClick={(e) => { e.stopPropagation(); setLocale(code); try { localStorage.setItem("locale", code); } catch {} }}
               style={{
                 padding: `${scale(6)}px ${scale(10)}px`, fontSize: scale(13), fontWeight: 700, borderRadius: 8, cursor: "pointer",
@@ -363,7 +363,7 @@ export default function CustomerDisplayPage() {
           <div style={{ flex: 1, overflowY: "auto", padding: `0 ${scale(4)}px` }}>
             {state.cart.map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: scale(10), padding: `${scale(10)}px 0`, borderBottom: "1px solid var(--color-border-light)" }}>
-                {item.image_url ? <img src={item.image_url} alt="" style={{ width: scale(40), height: scale(40), borderRadius: 8, objectFit: "cover", flexShrink: 0 }} /> : null}
+                {item.image_url ? <img src={item.image_url} alt="" style={{ width: scale(40), height: scale(40), borderRadius: 8, objectFit: "contain", flexShrink: 0, background: "var(--loka-cream, #f5f2ea)" }} /> : null}
                 <div style={{ fontSize: scale(22), fontWeight: 700, color: "var(--color-primary)", minWidth: scale(48) }}>{item.qty}×</div>
                 <div style={{ flex: 1, fontSize: scale(18), fontWeight: 500, lineHeight: 1.4 }}>
                   {item.name}

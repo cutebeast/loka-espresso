@@ -50,3 +50,4 @@ The Staff Portal is where daily store operations happen: taking orders at the PO
 
 - For back-office setup, see the [Admin Portal Guide](../admin/index.md).
 - For the customer experience, see the [Customer PWA Guide](../customer/index.md).
+- [Customer Display](pos-customer-display.md) — Customer-facing display setup and usage

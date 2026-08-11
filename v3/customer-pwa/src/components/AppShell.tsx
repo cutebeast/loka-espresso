@@ -146,7 +146,8 @@ export default function AppShell() {
   useEffect(() => {
     const isKioskHost = window.location.hostname.startsWith('kiosk.');
     const isKioskRoute = (window.location.hash || '').startsWith('#kiosk');
-    if (isKioskHost || isKioskRoute) {
+    const isTabletRoute = window.location.pathname.startsWith('/tablet') || window.location.pathname.startsWith('/mode/tablet');
+    if (isKioskHost || isKioskRoute || isTabletRoute) {
       document.documentElement.dataset.theme = 'light';
     }
     if (isKioskHost) {
@@ -155,6 +156,13 @@ export default function AppShell() {
         params[k] = v;
       });
       setPage('kiosk', Object.keys(params).length > 0 ? params : undefined);
+    }
+    if (isTabletRoute) {
+      const params: Record<string, unknown> = { mode: 'tablet' };
+      new URLSearchParams(window.location.search).forEach((v, k) => {
+        params[k] = v;
+      });
+      setPage('kiosk', params);
     }
   }, [setPage]);
   const onNotificationClick = useCallback(() => {

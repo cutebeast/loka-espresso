@@ -31,3 +31,14 @@ The Dashboard gives a high-level overview of business performance. It is the fir
 ## Related
 - [Orders](orders-and-refunds.md)
 - [Reports](reports-and-audit.md)
+
+
+## Payment Status Filter
+
+All revenue and order-count widgets filter by `payment_status == "captured"`:
+- Today's orders/revenue — only paid orders
+- Period orders/revenue — only paid orders
+- Orders by type + monthly charts — only paid orders
+- Active orders KPI intentionally shows pending/confirmed/preparing (kitchen-active)
+
+Unpaid kiosk orders, abandoned PWA carts, and pending walkaway orders are excluded from all revenue metrics. Kiosk orders unpaid for >30 minutes are auto-cancelled during the next kiosk order creation.

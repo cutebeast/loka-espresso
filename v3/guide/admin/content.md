@@ -3,8 +3,8 @@
 ## Pages
 - `/content/info-cards` — Info Cards
 - `/content/products` — Product Cards
-- `/content/events` — Events
-- `/content/events/report` — Event RSVP Report
+- `/events` — Events
+- `/events/report` — Event RSVP Report
 - `/content/system` — System Pages
 - `/content/pwa-splash` — PWA Splash Screens
 
@@ -38,7 +38,7 @@ Featured product cards for marketing content.
 4. Set position and active dates.
 5. Save.
 
-## Events (`/content/events`)
+## Events (`/events`)
 
 ### What it shows
 Events that customers can view and RSVP to.
@@ -50,7 +50,7 @@ Events that customers can view and RSVP to.
 4. Upload event image.
 5. Save.
 
-### Event RSVP Report (`/content/events/report`)
+### Event RSVP Report (`/events/report`)
 View RSVPs, attendance, and capacity usage.
 
 ## System Pages (`/content/system`)

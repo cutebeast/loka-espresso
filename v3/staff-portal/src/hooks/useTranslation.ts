@@ -10,7 +10,10 @@ const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 function getStoredLocale(): string {
   if (typeof window === "undefined") return "en";
-  return localStorage.getItem("locale") || "en";
+  const stored = localStorage.getItem("locale") || "en";
+  // Only EN and CN are supported at launch (2026-08-07) — stale ms/ta/tr
+  // values from earlier development fall back to EN
+  return (stored === "en" || stored === "zh") ? stored : "en";
 }
 
 async function fetchTranslations(locale: string): Promise<Translations> {

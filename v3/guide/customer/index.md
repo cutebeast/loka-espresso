@@ -58,3 +58,4 @@ If enabled, customers can place an order without creating an account by entering
 
 - For staff handling, see the [Staff Portal Guide](../staff/index.md).
 - For back-office setup, see the [Admin Portal Guide](../admin/index.md).
+- [Kiosk](kiosk.md) — Self-ordering kiosk (standing LCD + tablet)
