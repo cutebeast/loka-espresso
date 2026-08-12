@@ -195,6 +195,41 @@ async def get_store(db: DBDependency, locale: OptionalLocale, store_id: int):
 
 # ── Table Scan (Dine-in QR) ──
 
+@router.post("/tables/scan-legacy", response_model=APIResponse[dict])
+@limiter.limit("20/minute")
+async def scan_table_legacy(
+    request: Request,
+    db: DBDependency,
+    data: dict,
+):
+    """Resolve a legacy loka:table:<token> QR payload by token only."""
+    qr_token = data.get("qr_token") or data.get("qrToken") or data.get("t")
+    if not qr_token:
+        raise HTTPException(status_code=400, detail="qr_token required")
+
+    table_result = await db.execute(
+        select(DiningTable).where(DiningTable.qr_code_token == qr_token, DiningTable.deleted_at.is_(None))
+    )
+    table = table_result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    store_result = await db.execute(
+        select(Store).where(Store.id == table.store_id, Store.is_active.is_(True))
+    )
+    store = store_result.scalar_one_or_none()
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    return APIResponse(data={
+        "store_id": store.id,
+        "store_name": store.store_name,
+        "store_slug": store.slug,
+        "table_id": table.id,
+        "table_number": table.table_number,
+    })
+
+
 @router.post("/tables/scan", response_model=APIResponse[dict])
 @limiter.limit("20/minute")
 async def scan_table(

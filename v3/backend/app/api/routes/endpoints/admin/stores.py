@@ -22,6 +22,7 @@ from app.models.store import (
     TableStatusSnapshot,
 )
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
+from app.services.platform_config import PlatformConfigService
 from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.schemas.store import (
     DiningTableOut,
@@ -714,7 +715,12 @@ async def generate_table_qr(
     # Use existing token or generate new one
     token = table.qr_code_token or uuid4().hex
     table.qr_code_token = token
-    table.qr_code_image_url = f"loka:table:{token}"
+    # Customer-facing QR: full https URL so phone cameras open the PWA directly
+    store_result = await db.execute(select(Store.slug).where(Store.id == table.store_id, Store.deleted_at.is_(None)))
+    store_slug = store_result.scalar_one_or_none() or "store"
+    config_service = PlatformConfigService(db)
+    pwa_base = await config_service.get("pwa.public_url", "https://app.loyaltysystem.uk")
+    table.qr_code_image_url = f"{pwa_base}/?store={store_slug}&table={table.id}&t={token}"
     table.qr_generated_at = datetime.now(timezone.utc)
 
     await db.commit()

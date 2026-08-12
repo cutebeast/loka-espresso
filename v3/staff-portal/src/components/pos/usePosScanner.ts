@@ -53,6 +53,7 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
               });
             return;
           }
+          // Format 1: legacy custom scheme loka:table:<token>
           const match = decodedText.match(/loka:table:(.+)/);
           if (match) {
             const token = match[1];
@@ -62,6 +63,25 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
               setShowQrScanner(false);
               scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err)).finally(() => { scannerRef.current = null; });
               return;
+            }
+          }
+          // Format 2: customer-facing URL ?store=<slug>&table=<id>&t=<token>
+          if (decodedText.startsWith("http")) {
+            try {
+              const url = new URL(decodedText);
+              const tableIdParam = url.searchParams.get("table");
+              const tokenParam = url.searchParams.get("t");
+              const byId = tableIdParam ? tables.find((t) => String(t.id) === tableIdParam) : undefined;
+              const byToken = tokenParam ? tables.find((t) => t.qr_code_token === tokenParam) : undefined;
+              const table = byId || byToken;
+              if (table) {
+                onTableSelect?.(table);
+                setShowQrScanner(false);
+                scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err)).finally(() => { scannerRef.current = null; });
+                return;
+              }
+            } catch {
+              /* fall through to plain table number match */
             }
           }
           const tableNum = tables.find((t) => t.table_number === decodedText.trim());

@@ -550,7 +550,8 @@
     "table_number_title": "Table Number",
     "table_number_desc": "Find the number on your table and enter it below",
     "continue": "Continue",
-    "continue_skipping": "Skip & Continue"
+    "continue_skipping": "Skip & Continue",
+    "phone_loyalty_note": "Enter your phone to earn loyalty points on this order"
   },
   "layouts": {
     "wizard_layout": {

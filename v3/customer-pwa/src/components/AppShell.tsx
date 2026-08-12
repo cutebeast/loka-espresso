@@ -475,6 +475,26 @@ export default function AppShell() {
             showToast(t('toast.invalidQrFormat'), 'error');
             return;
           }
+        } else if (result.startsWith('loka:table:')) {
+          // Legacy table QR: loka:table:<token> — resolve via store tables scan
+          const legacyToken = result.replace('loka:table:', '');
+          try {
+            const res = await api.post('/stores/tables/scan-legacy', { qr_token: legacyToken });
+            const data = res.data;
+            const { setOrderMode, setDineInSession } = useUIStore.getState();
+            setDineInSession({
+              storeId: data.store_id,
+              storeName: data.store_name,
+              storeSlug: data.store_slug,
+              tableId: data.table_id,
+              tableNumber: data.table_number
+            });
+            setOrderMode('dine_in');
+            showToast(t('toast.tableScanned', { table: data.table_number, store: data.store_name }), 'success');
+          } catch {
+            showToast(t('toast.invalidQrCode'), 'error');
+          }
+          return;
         } else if (result.startsWith('loka://')) {
           try {
             const url = new URL(result.replace('loka://', resolveAppUrl('/')));

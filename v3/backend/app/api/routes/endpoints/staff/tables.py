@@ -8,8 +8,9 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.routes.deps import CurrentStaff, DBDependency
-from app.models.store import DiningTable, TableStatusSnapshot
+from app.models.store import DiningTable, Store, TableStatusSnapshot
 from app.schemas.base import APIResponse
+from app.services.platform_config import PlatformConfigService
 from app.schemas.store import DiningTableOut
 
 router = APIRouter(prefix="/staff/tables", tags=["staff — tables"])
@@ -44,7 +45,13 @@ async def generate_staff_table_qr(
 
     token = table.qr_code_token or uuid4().hex
     table.qr_code_token = token
-    table.qr_code_image_url = f"loka:table:{token}"
+    # Customer-facing QR: a full https URL so the phone's native camera opens the
+    # PWA directly. Staff POS scanners read the same QR and extract the table id.
+    store_result = await db.execute(select(Store.slug).where(Store.id == staff.store_id, Store.deleted_at.is_(None)))
+    store_slug = store_result.scalar_one_or_none() or "store"
+    config_service = PlatformConfigService(db)
+    pwa_base = await config_service.get("pwa.public_url", "https://app.loyaltysystem.uk")
+    table.qr_code_image_url = f"{pwa_base}/?store={store_slug}&table={table.id}&t={token}"
     table.qr_generated_at = datetime.now(timezone.utc)
 
     await db.commit()

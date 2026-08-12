@@ -742,8 +742,11 @@ export default function KioskPage() {
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <Smartphone size={fs(64, 48)} style={{ color: LOKA.primary, marginBottom: fs(24, 16) }} />
             <h1 style={{ fontSize: fs(36, 28), fontWeight: 800, marginBottom: fs(12, 8), textAlign: 'center' }}>{t('kiosk.phone_title')}</h1>
-            <p style={{ fontSize: fs(18, 16), color: '#888', marginBottom: fs(32, 24), maxWidth: 500, textAlign: 'center' }}>
+            <p style={{ fontSize: fs(18, 16), color: '#888', marginBottom: fs(12, 8), maxWidth: 500, textAlign: 'center' }}>
               {t('kiosk.phone_desc')}
+            </p>
+            <p style={{ fontSize: fs(15, 13), color: LOKA.gold, fontWeight: 600, marginBottom: fs(28, 20), maxWidth: 500, textAlign: 'center' }}>
+              ★ {t('kiosk.phone_loyalty_note')}
             </p>
             <input
               type="tel"

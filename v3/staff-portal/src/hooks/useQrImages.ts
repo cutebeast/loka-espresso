@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 export interface TableQrInfo {
   id: number;
   qr_code_url?: string | null;
+  qr_code_image_url?: string | null;
   qr_code_token?: string | null;
   qr_generated_at?: string | null;
 }
@@ -26,7 +27,7 @@ export function useQrImages(tables: TableQrInfo[], storeId: number | string) {
         valid.map(async (t) => {
           if (signal?.aborted) return;
           try {
-            const payload = t.qr_code_url || `loka:table:${t.qr_code_token}`;
+            const payload = t.qr_code_url || (t.qr_code_image_url && t.qr_code_image_url.startsWith("http") ? t.qr_code_image_url : `loka:table:${t.qr_code_token}`);
             const dataUrl = await QRCode.toDataURL(payload, {
               width: 280,
               margin: 2,
