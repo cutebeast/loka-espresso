@@ -483,11 +483,12 @@ async def _release_order_vouchers_and_rewards(db: AsyncSession, order: Order) ->
 async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
     """Reverse side effects granted at order creation.
 
-    Claws back loyalty points (negative ledger entry mirroring the award),
-    releases any voucher/reward consumed by the order (decrementing global
-    usage counters), restores recipe-based stock, and frees booked class
-    session seats. Callers must hold a row lock on the order and manage the
-    surrounding transaction/commit.
+    Claws back loyalty points (negative ledger entry mirroring the award,
+    only when the points were actually credited on capture), releases any
+    voucher/reward consumed by the order (decrementing global usage
+    counters), restores recipe-based stock, frees booked class session
+    seats, and releases the dine-in table lock. Callers must hold a row
+    lock on the order and manage the surrounding transaction/commit.
     """
     # ── Class session seats release ──
     session_lines = await db.execute(
@@ -506,8 +507,22 @@ async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
             sess.booked_pax = max(0, sess.booked_pax - line.quantity)
 
     # ── Loyalty points clawback ──
+    # Points are credited only on payment capture (see _credit_order_loyalty_points
+    # in services/payment.py); the 'order_earned' ledger row is the idempotency
+    # probe. Claw back only when that row exists — otherwise no points were ever
+    # credited and deducting would steal points the customer earned elsewhere.
     points = int(order.loyalty_points_earned or 0)
     if points > 0 and order.customer_id:
+        earned_result = await db.execute(
+            select(func.count(LoyaltyPointsLedger.id)).where(
+                LoyaltyPointsLedger.order_id == order.id,
+                LoyaltyPointsLedger.event_type == "order_earned",
+            )
+        )
+        points_were_credited = (earned_result.scalar() or 0) > 0
+    else:
+        points_were_credited = False
+    if points_were_credited:
         la_result = await db.execute(
             select(LoyaltyAccount).where(LoyaltyAccount.customer_id == order.customer_id).with_for_update()
         )
@@ -541,6 +556,46 @@ async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
     line_items = li_result.scalars().all()
     if line_items:
         await _restore_stock_for_order(db, order, line_items)
+
+    # ── Table lock release ──
+    # Free the dine-in table if its snapshot still points at this order
+    # (mirrors the merge/transfer release in staff/orders.py).
+    if order.dining_table_id:
+        snap_result = await db.execute(
+            select(TableStatusSnapshot).where(
+                TableStatusSnapshot.table_id == order.dining_table_id
+            ).with_for_update()
+        )
+        snap = snap_result.scalar_one_or_none()
+        if snap and snap.current_order_id == order.id:
+            snap.status = "available"
+            snap.current_order_id = None
+            snap.updated_at = datetime.now(timezone.utc)
+
+
+async def auto_cancel_order(db: AsyncSession, order: Order, reason: str) -> bool:
+    """Auto-cancel a stale unpaid order, reversing all of its side effects.
+
+    Mirrors the explicit customer-cancel path: guards terminal statuses, sets
+    status + cancellation_reason, reverses vouchers/rewards/stock/loyalty/
+    table locks via reverse_order_effects, and voids any pending payments so
+    late webhooks cannot capture money onto a cancelled order. The caller
+    manages the surrounding transaction/commit. Returns True when the order
+    was cancelled, False when it was already in a non-pending status.
+    """
+    if order.status != "pending":
+        return False
+
+    order.status = "cancelled_by_customer"
+    order.cancellation_reason = reason
+    order.cancelled_at = datetime.now(timezone.utc)
+    order.updated_at = datetime.now(timezone.utc)
+    await db.flush()
+    await reverse_order_effects(db, order)
+    # Local import: services/payment.py already imports from this module.
+    from app.services.payment import cancel_pending_order_payments
+    await cancel_pending_order_payments(db, order.id)
+    return True
 
 
 async def validate_voucher_eligibility(
@@ -611,8 +666,15 @@ async def create_order_from_cart(
     db: AsyncSession,
     customer_id: int,
     data: OrderCreate,
+    order_channel: str = "mobile_app",
+    kiosk_mode: str | None = None,
 ) -> Order:
-    """Create an order from a customer's cart."""
+    """Create an order from a customer's cart.
+
+    ``order_channel``/``kiosk_mode`` decide the dine-in payment flow: a
+    standing kiosk is ALWAYS prepaid (pay before food), while a tablet on the
+    table (kiosk_mode="tablet") keeps the dine-in open tab (pay after meal).
+    """
     # Fetch cart with row lock to prevent duplicate orders
     cart_result = await db.execute(
         select(CustomerCart).where(
@@ -887,6 +949,14 @@ async def create_order_from_cart(
     )
 
     # Create order
+    # Malaysia table-service: dine-in orders are open tabs - they reach the
+    # kitchen immediately and the customer pays AFTER the meal. Takeaway
+    # and delivery stay pending until payment (pay-before-food). Exception:
+    # standing-kiosk dine-in is ALWAYS prepaid; only a tablet on the table
+    # (kiosk_mode="tablet") gets the open tab.
+    is_open_tab = data.order_type == "dine_in" and not (
+        order_channel == "kiosk" and kiosk_mode != "tablet"
+    )
     order = Order(
         customer_id=customer_id,
         store_id=cart.store_id,
@@ -894,13 +964,10 @@ async def create_order_from_cart(
         order_number=generate_order_number(),
         order_type=data.order_type,
         fulfillment_type=data.fulfillment_type,
-        order_channel="mobile_app",
-        # Malaysia table-service: dine-in orders are open tabs - they reach the
-        # kitchen immediately and the customer pays AFTER the meal. Takeaway
-        # and delivery stay pending until payment (pay-before-food).
-        status="confirmed" if data.order_type == "dine_in" else "pending",
+        order_channel=order_channel,
+        status="confirmed" if is_open_tab else "pending",
         payment_status="initiated",
-        payment_flow="pay_after_meal" if data.order_type == "dine_in" else "prepaid",
+        payment_flow="pay_after_meal" if is_open_tab else "prepaid",
         item_count=cart.item_count,
         items_subtotal=subtotal,
         modifier_subtotal=modifier_sub,

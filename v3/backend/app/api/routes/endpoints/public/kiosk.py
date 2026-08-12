@@ -20,7 +20,7 @@ from app.models.menu import MenuItem
 from app.models.store import DiningTable, Store
 from app.schemas.base import APIResponse, Money, BaseSchema
 from app.schemas.order import OrderCreate
-from app.services.order import OrderError, create_order_from_cart
+from app.services.order import OrderError, auto_cancel_order, create_order_from_cart
 from app.services.platform_config import PlatformConfigService
 
 public_router = APIRouter(prefix="/kiosk", tags=["kiosk"])
@@ -44,6 +44,9 @@ class KioskOrderCreateRequest(BaseSchema):
     items: list[KioskOrderItem] = Field(..., min_length=1, max_length=100)
     dining_table_number: str | None = Field(None, max_length=20)
     customer_phone: str | None = Field(None, max_length=20, description="Optional phone to link order to an existing or new customer profile")
+    # "kiosk" = standing kiosk (always prepaid, pay before food);
+    # "tablet" = Android tablet on the table (dine-in open tab, pay after meal)
+    kiosk_mode: str = Field("kiosk", pattern="^(kiosk|tablet)$")
 
 
 class KioskOrderOut(BaseSchema):
@@ -386,11 +389,14 @@ async def create_kiosk_order(
     )
 
     try:
-        order = await create_order_from_cart(db, kiosk_customer.id, order_data)
+        order = await create_order_from_cart(
+            db, kiosk_customer.id, order_data,
+            order_channel="kiosk", kiosk_mode=data.kiosk_mode,
+        )
     except OrderError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
-    # ── Auto-cancel stale pending kiosk orders (>30 min unpaid) ──
+    # ── Auto-cancel stale pending kiosk orders (>15 min unpaid) ──
     from datetime import timedelta as _timedelta
     stale_threshold = datetime.now(timezone.utc) - _timedelta(minutes=15)
     stale_query = (
@@ -400,22 +406,16 @@ async def create_kiosk_order(
             Order.order_channel == "kiosk",
             Order.status == "pending",
             Order.payment_status == "initiated",
+            # Open tabs (pay after meal) are never auto-cancelled
+            Order.payment_flow == "prepaid",
             Order.created_at < stale_threshold,
         )
     )
     stale_orders = (await db.execute(stale_query)).scalars().all()
     for stale in stale_orders:
-        stale.status = "cancelled_by_customer"
-        stale.cancellation_reason = "Auto-cancelled — unpaid after 15 minutes"
-        stale.updated_at = datetime.now(timezone.utc)
+        await auto_cancel_order(db, stale, "Auto-cancelled — unpaid after 15 minutes")
     if stale_orders:
         await db.commit()
-
-    # Override order channel to kiosk for reporting
-    order.order_channel = "kiosk"
-    order.updated_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(order)
 
     # Lock table if dine-in
     if order.dining_table_id and order.order_type == "dine_in":

@@ -1,5 +1,5 @@
 -- FNB Enterprise v3 — ENUM Types
--- 21 native PostgreSQL ENUMs
+-- 25 native PostgreSQL ENUMs
 
 CREATE TYPE order_status AS ENUM (
     'pending', 'confirmed', 'preparing', 'ready_for_pickup',
@@ -26,6 +26,9 @@ CREATE TYPE payment_method_type AS ENUM (
     'credit_card', 'debit_card', 'e_wallet', 'bank_transfer',
     'cash', 'crypto', 'buy_now_pay_later'
 );
+
+-- prepaid = pay before preparation; pay_after_meal = open tab settled after dining
+CREATE TYPE payment_flow AS ENUM ('prepaid', 'pay_after_meal');
 
 CREATE TYPE fulfillment_type AS ENUM (
     'dine_in_service', 'counter_pickup', 'curbside_pickup',

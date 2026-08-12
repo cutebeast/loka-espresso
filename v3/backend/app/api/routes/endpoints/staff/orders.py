@@ -81,8 +81,13 @@ async def process_staff_order_payment(
             Payment.status.in_(("captured", "partially_refunded")),
         )
     )
+    # Net paid = captured minus refunded — a partially refunded payment must
+    # not still count as fully paid (the refunded share is uncollectable).
     captured_from_payments = money_round(
-        sum(to_decimal(p.captured_amount or 0) for p in existing_payments.scalars().all()),
+        sum(
+            to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0)
+            for p in existing_payments.scalars().all()
+        ),
         precision,
         rounding_mode,
     )
@@ -302,6 +307,11 @@ async def process_staff_order_payment(
     if fully_paid_by_wallet:
         order.payment_status = "captured"
 
+    # Paid orders advance to the kitchen: pending -> confirmed (prepaid
+    # PWA/kiosk orders paid in cash at the counter must enter the queue).
+    if order.payment_status == "captured" and order.status == "pending":
+        order.status = "confirmed"
+
     # Spend-based lucky draw: grant tickets whenever the order ends up captured
     # (cash/card/QR manual capture, wallet payment — idempotent per order)
     if order.payment_status == "captured":
@@ -400,7 +410,8 @@ async def get_staff_order_split_state(
         )
     )
     payments = pay_result.scalars().all()
-    total_paid = sum(float(p.captured_amount or 0) for p in payments)
+    # Net of refunds — refunded money is not collectable towards the total.
+    total_paid = sum(float(p.captured_amount or 0) - float(p.refunded_amount or 0) for p in payments)
 
     lines = []
     for li in line_items:
@@ -1255,21 +1266,25 @@ async def staff_list_orders(
         .outerjoin(DiningTable, DiningTable.id == Order.dining_table_id)
         .where(Order.store_id == staff.store_id)
     )
-    if since:
+    if since and not issues_only:
+        # Issues view skips the timeframe cap: old unpaid orders must still
+        # surface even when they fall outside the default 24h window.
         stmt = stmt.where(Order.created_at >= since)
     if issues_only:
         # Unpaid orders older than 30 minutes, still pending/confirmed (not cancelled)
         stale_cutoff = now_utc - _td(minutes=30)
         stmt = stmt.where(
-            Order.payment_status == "initiated",
+            Order.payment_status.in_(["initiated", "pending_authorization"]),
             Order.created_at < stale_cutoff,
             Order.status.in_(["pending", "confirmed"]),
         )
     elif not status_filter:
         # Default: LIVE orders only — exclude cancelled AND unpaid-pending.
         # Unpaid orders older than 30 min surface via ?issues=true instead.
+        # Fully refunded orders are settled money-wise — they leave the queue.
         stmt = stmt.where(
-            Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant", "pending"])
+            Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant", "pending"]),
+            Order.payment_status != "refunded",
         )
     if status_filter:
         stmt = stmt.where(Order.status == status_filter)
@@ -1326,6 +1341,7 @@ async def staff_list_orders(
             "order_number": o.order_number,
             "status": o.status,
             "order_type": o.order_type,
+            "payment_flow": o.payment_flow,
             "payment_status": o.payment_status,
             "customer_id": o.customer_id,
             "customer_name": c.display_name if c else None,

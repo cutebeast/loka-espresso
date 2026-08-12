@@ -23,7 +23,7 @@ from app.schemas.order import (
     OrderOut,
     OrderStatusLogOut,
 )
-from app.services.order import OrderError, create_order_from_cart, get_customer_orders, reverse_order_effects, _build_order_out
+from app.services.order import OrderError, auto_cancel_order, create_order_from_cart, get_customer_orders, reverse_order_effects, _build_order_out
 from app.services.payment import cancel_pending_order_payments
 
 
@@ -114,13 +114,13 @@ async def create_order(
     try:
         # ── Auto-cancel stale unpaid orders (>2 hours) ──
         from datetime import timedelta as _timedelta
-        stale_threshold = datetime.now(timezone.utc) - _timedelta(minutes=30)
+        stale_threshold = datetime.now(timezone.utc) - _timedelta(hours=2)
         stale_query = (
             select(Order)
             .where(
                 Order.customer_id == customer.id,
                 Order.payment_status == "initiated",
-                Order.status.in_(["pending", "confirmed"]),
+                Order.status == "pending",
                 # Open tabs (pay after meal) are never auto-cancelled
                 Order.payment_flow == "prepaid",
                 Order.created_at < stale_threshold,
@@ -128,9 +128,7 @@ async def create_order(
         )
         stale_orders = (await db.execute(stale_query)).scalars().all()
         for stale in stale_orders:
-            stale.status = "cancelled_by_customer"
-            stale.cancellation_reason = "Auto-cancelled — unpaid for >2 hours"
-            stale.updated_at = datetime.now(timezone.utc)
+            await auto_cancel_order(db, stale, "Auto-cancelled — unpaid for >2 hours")
         if stale_orders:
             await db.commit()
 

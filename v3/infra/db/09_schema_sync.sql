@@ -162,6 +162,8 @@ CREATE TABLE IF NOT EXISTS translations (
 	CONSTRAINT uq_translations_namespace_key_locale UNIQUE (namespace, translation_key, locale)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_translations_unique ON translations (namespace, locale, translation_key, table_name, record_id);
+
 CREATE TABLE IF NOT EXISTS bundle_products (
 	id SERIAL NOT NULL, 
 	bundle_type VARCHAR(30) NOT NULL, 
@@ -203,6 +205,7 @@ CREATE TABLE IF NOT EXISTS customer_daily_checkins (
 	FOREIGN KEY(customer_id) REFERENCES customers (id)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_checkins_customer_date ON customer_daily_checkins (customer_id, checkin_date);
 CREATE INDEX IF NOT EXISTS ix_customer_daily_checkins_customer_id ON customer_daily_checkins (customer_id);
 
 CREATE TABLE IF NOT EXISTS event_invites (
@@ -237,6 +240,7 @@ CREATE TABLE IF NOT EXISTS hygiene_reports (
 	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_hygiene_reports_store_type_created ON hygiene_reports (store_id, report_type, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_hygiene_reports_store_id ON hygiene_reports (store_id);
 
 CREATE TABLE IF NOT EXISTS pos_terminals (
@@ -404,6 +408,7 @@ CREATE TABLE IF NOT EXISTS pos_sessions (
 	FOREIGN KEY(staff_id) REFERENCES staff_profiles (id) ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_pos_sessions_terminal_opened ON pos_sessions (terminal_id, opened_at DESC);
 CREATE INDEX IF NOT EXISTS ix_pos_sessions_staff_id ON pos_sessions (staff_id);
 CREATE INDEX IF NOT EXISTS ix_pos_sessions_terminal_id ON pos_sessions (terminal_id);
 
@@ -429,6 +434,7 @@ CREATE TABLE IF NOT EXISTS staff_tasks (
 	FOREIGN KEY(completed_by) REFERENCES staff_profiles (id) ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_staff_tasks_staff_status_created ON staff_tasks (staff_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_staff_tasks_staff_id ON staff_tasks (staff_id);
 CREATE INDEX IF NOT EXISTS ix_staff_tasks_store_id ON staff_tasks (store_id);
 
@@ -516,6 +522,7 @@ CREATE TABLE IF NOT EXISTS wastage_reports (
 	FOREIGN KEY(inventory_item_id) REFERENCES inventory_items (id) ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_wastage_reports_store_created ON wastage_reports (store_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_wastage_reports_store_id ON wastage_reports (store_id);
 
 CREATE TABLE IF NOT EXISTS bundle_component_modifiers (
@@ -694,6 +701,7 @@ ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS class_session_id INTEGER R
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_ref VARCHAR(64);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_flow payment_flow DEFAULT 'prepaid' NOT NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS addon_discount NUMERIC(12, 4) DEFAULT 0 NOT NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_byot BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_instructions TEXT;
@@ -740,10 +748,26 @@ ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS promo_type VARCHAR(50);
 ALTER TABLE voucher_definitions ADD COLUMN IF NOT EXISTS validity_days INTEGER;
 
 -- ============================================================
+-- Indexes declared in models but missing from 04_indexes.sql
+-- (must run after the ALTERs above when they index new columns)
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS ix_cart_line_items_bundle_product_id ON cart_line_items (bundle_product_id);
+CREATE INDEX IF NOT EXISTS ix_cart_line_items_class_session_id ON cart_line_items (class_session_id);
+CREATE INDEX IF NOT EXISTS ix_order_line_items_bundle_component_id ON order_line_items (bundle_component_id);
+CREATE INDEX IF NOT EXISTS ix_order_line_items_bundle_product_id ON order_line_items (bundle_product_id);
+CREATE INDEX IF NOT EXISTS ix_order_line_items_class_session_id ON order_line_items (class_session_id);
+CREATE INDEX IF NOT EXISTS ix_orders_cancelled_by_staff_id ON orders (cancelled_by_staff_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_orders_idempotency_key ON orders (idempotency_key);
+CREATE INDEX IF NOT EXISTS ix_orders_payment_flow_status ON orders (payment_flow, status, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_store_client_ref ON orders (store_id, client_ref) WHERE client_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_voucher_definitions_minimum_tier_id ON voucher_definitions (minimum_tier_id);
+
+-- ============================================================
 -- Alembic version stamp (current head at generation time)
 -- Lets `alembic upgrade head` in the backend container apply only
 -- migrations newer than this generated schema.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'u1c2d3e4f5a6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'v1w2x3y4z5a6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

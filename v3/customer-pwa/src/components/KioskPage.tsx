@@ -240,14 +240,21 @@ export default function KioskPage() {
         setInactivityWarn(true);
       }, INACTIVITY_TIMEOUT_MS - INACTIVITY_WARNING_MS);
       inactivityRef.current = setTimeout(() => {
-        setPhase('welcome');
+        if (kioskMode === 'tablet') {
+          // Tablet on a table: return to the menu, keeping the staff-set table
+          setPhase('menu');
+        } else {
+          setPhase('welcome');
+          setTableNumber('');
+        }
         setCart([]);
-        setTableNumber('');
+        setCustomerPhone('');
+        setPhoneInput('');
         setSearchQuery('');
         setInactivityWarn(false);
       }, INACTIVITY_TIMEOUT_MS);
     }
-  }, [phase]);
+  }, [phase, kioskMode]);
 
   useEffect(() => {
     resetInactivity();
@@ -502,6 +509,7 @@ export default function KioskPage() {
       const payload = {
         store_id: storeId,
         order_type: orderType,
+        kiosk_mode: kioskMode === 'tablet' ? 'tablet' : 'kiosk',
         items: cart.map(c => ({
           menu_item_id: c.id,
           quantity: c.qty,
@@ -544,7 +552,14 @@ export default function KioskPage() {
     setOrderNumber('');
     setOrderTotal('');
     setPayUrl('');
-    setTableNumber('');
+    setError('');
+    if (kioskMode === 'tablet') {
+      // Tablet stays on its table — restore the staff-set table number
+      const saved = (() => { try { return localStorage.getItem(TABLET_TABLE_KEY); } catch { return null; } })();
+      setTableNumber(saved || '');
+    } else {
+      setTableNumber('');
+    }
     setCustomerPhone('');
     setPhoneInput('');
     setPhase(kioskMode === 'tablet' ? 'menu' : 'welcome');
@@ -1270,6 +1285,7 @@ export default function KioskPage() {
                 {t('kiosk.processing')}
               </div>
             )}
+            {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(18, 16), textAlign: 'center' }}>{error}</div>}
             <button onClick={() => setPhase('checkout')} style={{ ...kioskBtnGhost(fs), marginTop: 16 }}>
               <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
             </button>

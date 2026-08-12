@@ -21,12 +21,11 @@ export default function PosUnpaidOrdersDrawer({
     t
   } = useTranslation();
   const router = useRouter();
-  const takeaway = orders.filter(o => (o as {
-    order_type?: string;
-  }).order_type !== "dine_in");
-  const dineIn = orders.filter(o => (o as {
-    order_type?: string;
-  }).order_type === "dine_in");
+  // payment_flow distinguishes open tabs (pay after meal) from pay-before-food
+  // orders; fall back to order_type only for old rows without payment_flow.
+  const isOpenTab = (o: Order) => o.payment_flow === "pay_after_meal" || (o.payment_flow == null && o.order_type === "dine_in");
+  const takeaway = orders.filter(o => !isOpenTab(o));
+  const dineIn = orders.filter(isOpenTab);
   return <Drawer open={open} onClose={onClose} title={t("pos.unpaid_orders")} position="bottom">
       {loading ? <div style={{
       padding: 20,

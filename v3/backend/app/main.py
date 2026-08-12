@@ -1,8 +1,10 @@
 """FNB Enterprise v3 — FastAPI application entrypoint."""
+import asyncio
 import logging
 import re
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,40 +51,85 @@ class DecimalSafeJSONResponse(JSONResponse):
         ).encode("utf-8")
 
 
+async def _sweep_stale_orders() -> None:
+    """Cancel stale unpaid prepaid orders via the shared auto-cancel helper.
+
+    Kiosk-channel prepaid orders expire after 15 minutes, all other prepaid
+    orders after 2 hours; pay_after_meal open tabs are never swept. Each order
+    is cancelled in its own session/transaction so one failure doesn't kill
+    the batch. Reverses vouchers/rewards/stock/table locks and voids pending
+    payments (auto_cancel_order → reverse_order_effects).
+    """
+    from sqlalchemy import and_, or_, select
+
+    from app.core.database import AsyncSessionLocal
+    from app.models.order import Order
+    from app.services.order import auto_cancel_order
+
+    now = datetime.now(timezone.utc)
+    kiosk_cutoff = now - timedelta(minutes=15)
+    other_cutoff = now - timedelta(hours=2)
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Order.id).where(
+                Order.payment_status == "initiated",
+                # Open tabs (pay after meal) are never auto-cancelled
+                Order.payment_flow == "prepaid",
+                Order.status == "pending",
+                or_(
+                    and_(Order.order_channel == "kiosk", Order.created_at < kiosk_cutoff),
+                    and_(Order.order_channel != "kiosk", Order.created_at < other_cutoff),
+                ),
+            )
+        )
+        order_ids = [row[0] for row in result.all()]
+
+    for order_id in order_ids:
+        try:
+            async with AsyncSessionLocal() as db:
+                order = await db.get(Order, order_id, with_for_update=True)
+                if order is None:
+                    continue
+                reason = (
+                    "Auto-cancelled — unpaid after 15 minutes"
+                    if order.order_channel == "kiosk"
+                    else "Auto-cancelled — unpaid for >2 hours"
+                )
+                if await auto_cancel_order(db, order, reason):
+                    await db.commit()
+        except Exception:
+            logger.warning("Auto-cancel sweep failed for order %s", order_id, exc_info=True)
+
+
+async def _periodic_order_sweep() -> None:
+    """Run the stale-order sweep every 5 minutes until cancelled on shutdown."""
+    while True:
+        await asyncio.sleep(300)
+        try:
+            await _sweep_stale_orders()
+        except Exception:
+            logger.warning("Periodic stale order sweep failed", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
 
-    # Stale unpaid order sweep (pay-before-food channels)
+    # Stale unpaid order sweep (pay-before-food channels) once on startup…
     try:
-        from sqlalchemy import text as _text
-        async with engine.begin() as _conn:
-            await _conn.execute(_text("""
-                UPDATE orders SET
-                    status = 'cancelled_by_customer',
-                    cancellation_reason = 'Auto-cancelled - unpaid >2 hours (server restart sweep)',
-                    updated_at = NOW()
-                WHERE payment_status = 'initiated'
-                AND status IN ('pending', 'confirmed')
-                AND order_type != 'dine_in'
-                AND created_at < NOW() - INTERVAL '2 hours'
-            """))
-            await _conn.execute(_text("""
-                UPDATE orders SET
-                    status = 'cancelled_by_customer',
-                    cancellation_reason = 'Auto-cancelled - unpaid >15 minutes (server restart sweep)',
-                    updated_at = NOW()
-                WHERE payment_status = 'initiated'
-                AND order_channel = 'kiosk'
-                AND status = 'pending'
-                AND created_at < NOW() - INTERVAL '15 minutes'
-            """))
+        await _sweep_stale_orders()
     except Exception:
         logger.warning("Stale order sweep failed on startup", exc_info=True)
 
+    # …then every 5 minutes in the background
+    sweep_task = asyncio.create_task(_periodic_order_sweep())
+
     yield
     # Shutdown
+    sweep_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await sweep_task
     await engine.dispose()
 
 

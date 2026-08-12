@@ -551,7 +551,10 @@
     "table_number_desc": "Find the number on your table and enter it below",
     "continue": "Continue",
     "continue_skipping": "Skip & Continue",
-    "phone_loyalty_note": "Enter your phone to earn loyalty points on this order"
+    "phone_loyalty_note": "Enter your phone to earn loyalty points on this order",
+    "bundle_fixed_hint": "Includes all items below",
+    "bundle_multi_hint": "Choose one item from each course",
+    "bundle_pick_hint": "Pick any {n}"
   },
   "layouts": {
     "wizard_layout": {
@@ -762,11 +765,16 @@
     "deliveryFee": "Delivery Fee",
     "deliveryInfo": "Delivery Info",
     "discount": "Discount",
+    "einvoiceAlreadyIssued": "An e-invoice was already issued for this order",
+    "einvoiceFailed": "Failed to request e-invoice. Please try again.",
+    "einvoiceReady": "E-invoice ready",
+    "einvoiceRequested": "E-invoice requested successfully",
     "enjoyOrder": "Enjoy your order!",
     "estimatedDelivery": "Estimated Delivery",
     "estimatedReady": "Estimated Ready",
     "fromStore": "From {store}",
     "lokaWallet": "Loka Wallet",
+    "openEinvoice": "Open e-invoice",
     "orderCancelled": "This order was cancelled",
     "orderItems": "Order Items",
     "orderNumber": "Order #{number}",
@@ -780,6 +788,7 @@
     "preparingDineIn": "Being prepared by our kitchen",
     "preparingPickup": "Being prepared for pickup",
     "reorderAll": "Reorder All Items",
+    "requestEinvoice": "Request E-Invoice",
     "share": "Share",
     "shareDate": "Date: {date}",
     "shareDelivery": "Delivery: {amount}",
@@ -790,7 +799,8 @@
     "shareTitle": "LOKA Espresso - Order #{number}",
     "shareTotal": "Total: {amount}",
     "storeId": "Store #{id}",
-    "title": "Order Details"
+    "title": "Order Details",
+    "viewEinvoice": "View E-Invoice"
   },
   "orders": {
     "activeOrders": "Active Orders",
@@ -1272,7 +1282,13 @@
     "payFailed": "Payment failed. Please try again.",
     "noRedirect": "Could not start payment. Please try again.",
     "noProvider": "Online payment is not available. Please pay at the counter.",
-    "browseMenu": "Browse Our Menu"
+    "browseMenu": "Browse Our Menu",
+    "walletOtpHint": "To pay with wallet, verify your phone with a one-time code.",
+    "sendCode": "Send Code",
+    "resendCode": "Resend Code",
+    "codeSent": "Verification code sent",
+    "sendCodeFailed": "Failed to send verification code. Please try again.",
+    "otpPlaceholder": "Enter 6-digit code"
   },
   "workshops": {
     "title": "Workshops & Classes",

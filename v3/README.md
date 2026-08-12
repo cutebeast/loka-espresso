@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Documentation
 
-*Last updated: 2026-07-30 (round 35)*
+*Last updated: 2026-08-12 (round 36)*
 
 ## Overview
 
@@ -344,3 +344,24 @@ Fresh 6-track audit; every finding re-verified in code before fixing. Full detai
 - **Infra**: staff portal has a CSP now; `09_schema_sync.sql` regenerated (head `k1e2f3a4b5c6`); `check-all.sh` gates alembic + pytest + lint
 
 Verification: 42/42 backend unit tests, full E2E re-run green, tsc ×3 clean, single Alembic head with no drift, live exploit probes all blocked.
+
+
+## Security & reliability hardening (2026-08-12, round 36 audit)
+
+Fresh 5-track audit focused on the three newest feature commits (kiosk overhaul, payment_flow, table QR URLs); every finding verified in code before fixing, ~30 fixes. Full details in `AGENTS.md` "Round 36 — audit & hardening". Highlights:
+
+- **Wallet security**: guest-pay wallet payments now require OTP verification to the supplied phone (same `_require_otp_or_bypass` as login — Twilio in production, bypass code in QA) BEFORE any linking/debit; no auto-registration on the wallet path; inactive/deleted customers rejected; already-paid re-check moved inside the debit row lock. Closes an unauthenticated wallet-drain (guest token + any phone number → victim's wallet debited).
+- **Kiosk payment flow split**: standing kiosk = always prepaid (pay before food, incl. dine-in); table tablet (`kiosk_mode=tablet`) dine-in = pay-after-meal open tab; PWA dine-in stays open tab. `create_order_from_cart` is channel/mode-aware; `POST /kiosk/orders` accepts `kiosk_mode` ("kiosk"|"tablet", default "kiosk"). Fixes kiosk dine-in reaching the kitchen unpaid and escaping every sweep.
+- **Sweep closure**: new shared `auto_cancel_order()` (status + reason + `reverse_order_effects` + `cancel_pending_order_payments`) used by all 4 sweeps; new 5-minute periodic sweeper in the FastAPI lifespan. Uniform predicates: `pending` + `initiated` + `prepaid`; kiosk 15 min, others 2h (was wrongly 30 min on the customer path); open tabs never swept (startup sweep was `order_type != dine_in`). Swept orders now release vouchers/rewards, restore stock, void pending payments, and free table locks.
+- **Cancel reversal**: loyalty clawback only fires when points were actually credited (`order_earned` ledger probe — unpaid cancels no longer steal points); `reverse_order_effects` releases `TableStatusSnapshot` when it points at the cancelled order.
+- **Payment lifecycle**: counter cash payments advance `pending → confirmed` (staff + admin) so paid orders always reach the kitchen; `_sync_order_payment_status` reverts `payment_status` to `initiated` when no active payments remain (abandoned Stripe/HitPay sessions become sweepable again; HitPay expiry now re-syncs); paid-amount math is net of refunds (POS, admin, split-bill); fully refunded orders leave the live queue/KDS; guest-pay wallet capture now runs the full pipeline (loyalty points, annual spend, lucky-draw, e-invoice hook).
+- **Table QR (the round-35 headline feature, actually working now)**: PWA boot parses `?store&table&t` (new shared `lib/tableScan.ts`), calls `/stores/tables/scan`, and sets the dine-in session — camera scans of printed QRs land in a dine-in session instead of the home page; admin-portal QR generator prefers the full-URL payload (was still emitting the unopenable `loka:table:` scheme); POS scanner requires token match when `t` present; scan-legacy requires active tables.
+- **GuestPay wallet UI**: phone → Send Code → 6-digit OTP → pay (matches passwordless login); wallet button disabled without phone/valid code.
+- **Kiosk UX**: order-placement errors now render on the payment-select screen; tablet mode keeps the staff-set table across orders; inactivity reset branches per mode and clears the previous customer's phone; `kiosk_mode` sent on order creation.
+- **Admin/staff API**: orders list pagination `count_stmt` fixed (default view total was 0); staff orders serializer exposes `payment_flow`; `issues=true` skips the 24h window cap.
+- **i18n**: ~45 missing locale keys added (bundle hints + all 7 e-invoice keys were missing even from `en.json` and rendered as raw key strings; 34 kiosk + guestPay keys added to `zh.json`).
+- **Infra**: all 6 production Caddy confs synced into `infra/host-caddy/` with the JWT-stripping log filter; `infra/db` schema SQL regenerated (payment_flow enum/column/index, head `v1w2x3y4z5a6`); compose app ports pinned to 127.0.0.1; Redis password now required; `ecosystem.config.js` covers all 6 pm2 services; `purge_retention.py` documented with a cron line.
+
+Verification: 58/58 backend unit tests (16 new), 219/219 E2E (16 skipped), tsc ×3 clean, all 6 pm2 services healthy on fresh builds. Live probes: kiosk dine-in → pending+prepaid, guest-pay wallet wrong-OTP → 401, admin list totals correct, staff API exposes payment_flow, periodic sweeper auto-cancels stale kiosk orders with full reversal.
+
+Known follow-up for a later round: `staff_pay_with_wallet` (staff/orders.py) still uses gross captured math for the already-paid check (the net-of-refund fix covered POS pay/admin/split-bill).

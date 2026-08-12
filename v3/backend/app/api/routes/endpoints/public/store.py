@@ -208,7 +208,11 @@ async def scan_table_legacy(
         raise HTTPException(status_code=400, detail="qr_token required")
 
     table_result = await db.execute(
-        select(DiningTable).where(DiningTable.qr_code_token == qr_token, DiningTable.deleted_at.is_(None))
+        select(DiningTable).where(
+            DiningTable.qr_code_token == qr_token,
+            DiningTable.is_active.is_(True),
+            DiningTable.deleted_at.is_(None),
+        )
     )
     table = table_result.scalar_one_or_none()
     if not table:

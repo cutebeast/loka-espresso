@@ -700,6 +700,10 @@ async def _debit_wallet_for_payment(
     order = order_result.scalar_one_or_none()
     if order is None or order.customer_id is None:
         raise PaymentError("Order has no customer to debit", 400)
+    # Re-check under the row lock — a concurrent capture may have paid the
+    # order between the caller's check and acquiring this lock.
+    if order.payment_status in ("captured", "settled", "paid"):
+        raise PaymentError("Order is already paid", 400)
 
     wallet_res = await db.execute(
         select(Wallet).where(Wallet.customer_id == order.customer_id).with_for_update()
@@ -1121,6 +1125,23 @@ async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None
         await grant_tickets_for_order(db, order)
     elif total_captured > 0:
         order.payment_status = "initiated"
+    else:
+        # No captured money on the order. If no payment is still awaiting
+        # authorization (e.g. the checkout session expired/was voided), release
+        # the order back to 'initiated' so sweeps and the staff Unpaid tab
+        # pick it up again — 'pending_authorization' limbo escapes every sweep.
+        pending_auth = (
+            await db.execute(
+                select(Payment.id)
+                .where(
+                    Payment.order_id == order.id,
+                    Payment.status == "pending_authorization",
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if pending_auth is None:
+            order.payment_status = "initiated"
     order.updated_at = datetime.now(timezone.utc)
 
 
@@ -2056,10 +2077,10 @@ async def process_webhook_event(
         elif new_status in ("refunded", "partially_refunded"):
             await db.flush()
             await _sync_order_payment_status(db, payment)
-        elif new_status in ("failed", "voided") and event_type in (
-            "checkout.session.async_payment_failed",
-            "checkout.session.expired",
-        ):
+        elif new_status in ("failed", "voided"):
+            # Any terminal failure/void (session expired, payment failed,
+            # request cancelled) re-syncs the order: with no active payments
+            # left, _sync_order_payment_status releases it back to 'initiated'.
             await db.flush()
             await _sync_order_payment_status(db, payment)
 

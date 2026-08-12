@@ -29,10 +29,10 @@ services:
     volumes:
       - fnb_v3_redis_data:/data
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_dev_password}
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_dev_password}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-redis_dev_password} ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -46,10 +46,10 @@ services:
     container_name: fnb-v3-backend
     restart: unless-stopped
     ports:
-      - "13800:13800"
+      - "127.0.0.1:13800:13800"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-fnb_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fnb_enterprise_v3}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — minimum 32 characters}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       APP_NAME: ${APP_NAME:-FNB Enterprise v3}
@@ -83,7 +83,7 @@ services:
     container_name: fnb-v3-admin
     restart: unless-stopped
     ports:
-      - "13830:3000"
+      - "127.0.0.1:13830:3000"
     environment:
       API_URL: http://backend:13800/api
       NEXT_PUBLIC_API_URL: /api
@@ -107,7 +107,7 @@ services:
     container_name: fnb-v3-customer
     restart: unless-stopped
     ports:
-      - "13810:13810"
+      - "127.0.0.1:13810:13810"
     environment:
       API_PROXY_URL: http://backend:13800/api
       NEXT_PUBLIC_API_URL: /api
@@ -131,7 +131,7 @@ services:
     container_name: fnb-v3-staff
     restart: unless-stopped
     ports:
-      - "13820:3000"
+      - "127.0.0.1:13820:3000"
     environment:
       API_PROXY_URL: http://backend:13800/api
       NEXT_PUBLIC_API_URL: /api

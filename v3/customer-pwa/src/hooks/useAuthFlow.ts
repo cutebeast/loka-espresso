@@ -9,6 +9,7 @@ import { useConfigStore } from '@/stores/configStore';
 import api from '@/lib/api';
 import { autoDetectStore } from '@/lib/geolocation';
 import { storeReferralCode } from '@/lib/referral';
+import { scanTableQr } from '@/lib/tableScan';
 import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
@@ -71,15 +72,35 @@ export function useAuthFlow() {
       storeReferralCode(ref);
     }
 
-    if (article || slug || promo || ref) {
+    // Table QR deep-link (?store=<slug>&table=<id>&t=<token>) from a phone-camera
+    // scan — same flow as the in-app scanner success path
+    const storeParam = params.get('store');
+    const tableParam = params.get('table');
+    const qrToken = params.get('t') || '';
+    if (storeParam && tableParam) {
+      const tableId = parseInt(tableParam, 10);
+      if (!isNaN(tableId)) {
+        scanTableQr(storeParam, tableId, qrToken)
+          .then((data) => showToast(`Table ${data.table_number} · ${data.store_name}`, 'success'))
+          .catch((err: unknown) => {
+            const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Invalid or expired table QR code';
+            showToast(msg, 'error');
+          });
+      }
+    }
+
+    if (article || slug || promo || ref || storeParam || tableParam || qrToken) {
       const url = new URL(window.location.href);
       url.searchParams.delete('article');
       url.searchParams.delete('slug');
       url.searchParams.delete('promo');
       url.searchParams.delete('ref');
+      url.searchParams.delete('store');
+      url.searchParams.delete('table');
+      url.searchParams.delete('t');
       window.history.replaceState({}, '', url.toString());
     }
-  }, [setPage]);
+  }, [setPage, showToast]);
 
   // When guest mode is enabled, allow browsing without auth
   useEffect(() => {

@@ -21,7 +21,7 @@ from app.models.staff import StaffProfile
 from app.models.store import DiningTable, Store, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse
 from app.schemas.staff import POSOrderCreateRequest
-from app.services.order import OrderError, _compute_bundle_discount, _deduct_stock_for_order
+from app.services.order import OrderError, auto_cancel_order, _compute_bundle_discount, _deduct_stock_for_order
 from app.services.payment import PaymentError, _add_payment_event, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
@@ -629,16 +629,14 @@ async def staff_pos_create_order(
         select(Order).where(
             Order.store_id == data.store_id,
             Order.payment_status == "initiated",
-            Order.status.in_(["pending", "confirmed"]),
+            Order.status == "pending",
             # Open tabs (pay after meal) are never auto-cancelled
             Order.payment_flow == "prepaid",
             Order.created_at < stale_cutoff,
         )
     )
     for s in stale_result.scalars().all():
-        s.status = "cancelled_by_customer"
-        s.cancellation_reason = "Auto-cancelled - unpaid for >2 hours"
-        s.updated_at = datetime.now(timezone.utc)
+        await auto_cancel_order(db, s, "Auto-cancelled - unpaid for >2 hours")
     await db.commit()
 
     return APIResponse(data=response_data)

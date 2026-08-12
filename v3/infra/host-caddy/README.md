@@ -11,6 +11,9 @@ The configs are domain-agnostic. Set these environment variables before reloadin
 | `APP_DOMAIN` | `app.loyaltysystem.uk` | Customer PWA domain |
 | `ADMIN_DOMAIN` | `admin.loyaltysystem.uk` | Admin portal domain |
 | `STAFF_DOMAIN` | `staff.loyaltysystem.uk` | Staff portal domain |
+| `API_DOMAIN` | `api.loyaltysystem.uk` | External API endpoint domain |
+| `KIOSK_DOMAIN` | `kiosk.loyaltysystem.uk` | Self-ordering kiosk domain |
+| `POS_DISP_DOMAIN` | `pos-disp.loyaltysystem.uk` | POS customer display domain |
 | `TLS_CERT_PATH` | `/etc/ssl/certs/loyaltysystem-origin.pem` | TLS certificate path |
 | `TLS_KEY_PATH` | `/etc/ssl/private/loyaltysystem-origin.key` | TLS private key path |
 
@@ -30,6 +33,11 @@ export TLS_KEY_PATH=/etc/ssl/private/lokaespresso-origin.key
 - `fnb-app.conf` — customer PWA (`{$APP_DOMAIN}`)
 - `fnb-admin.conf` — admin portal (`{$ADMIN_DOMAIN}`)
 - `fnb-staff.conf` — staff portal (`{$STAFF_DOMAIN}`)
+- `fnb-api.conf` — external API endpoint (`{$API_DOMAIN}`; webhooks/integrations only)
+- `fnb-kiosk.conf` — self-ordering kiosk (`{$KIOSK_DOMAIN}` → port 13840)
+- `fnb-pos-disp.conf` — POS customer display (`{$POS_DISP_DOMAIN}` → port 13850)
+
+All six `log` blocks strip query strings from logged URIs (`format filter … regexp "\?.*" ""`) because guest-pay links carry 24h JWTs in the query string — do not remove the filter.
 
 `lokaespresso.com` / `www.lokaespresso.com` branding is configured through the environment above.
 
@@ -39,7 +47,10 @@ Copy to `/etc/caddy/sites/` and import them from the main `/etc/caddy/Caddyfile`
 
 ```caddy
 import /etc/caddy/sites/fnb-admin.conf
+import /etc/caddy/sites/fnb-api.conf
 import /etc/caddy/sites/fnb-app.conf
+import /etc/caddy/sites/fnb-kiosk.conf
+import /etc/caddy/sites/fnb-pos-disp.conf
 import /etc/caddy/sites/fnb-staff.conf
 ```
 

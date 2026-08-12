@@ -73,7 +73,9 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
               const tokenParam = url.searchParams.get("t");
               const byId = tableIdParam ? tables.find((t) => String(t.id) === tableIdParam) : undefined;
               const byToken = tokenParam ? tables.find((t) => t.qr_code_token === tokenParam) : undefined;
-              const table = byId || byToken;
+              // When the URL carries a token, it must match — a matching id
+              // alone must not bypass a stale/invalid token.
+              const table = tokenParam ? byToken : byId;
               if (table) {
                 onTableSelect?.(table);
                 setShowQrScanner(false);

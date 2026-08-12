@@ -49,10 +49,13 @@ from app.services.webhook import (
     is_event_processed,
     mark_event_processed,
 )
+from app.api.routes.endpoints.auth import _require_otp_or_bypass
 from app.services.payment import (
     PaymentError,
+    _accrue_loyalty_annual_spend,
     _add_payment_event,
     _debit_wallet_for_payment,
+    _sync_order_payment_status,
     cancel_payment,
     capture_payment,
     confirm_payment,
@@ -208,6 +211,7 @@ async def guest_pay(
     token: str = Query(..., description="Guest payment token from QR code"),
     provider: str = Query("stripe", pattern="^(stripe|hitpay|wallet)$"),
     phone_number: str | None = Query(None, max_length=20, description="Optional — for loyalty registration"),
+    otp_code: str | None = Query(None, max_length=10, description="Required for wallet payments — proves phone ownership"),
 ):
     """Create a Stripe/HitPay/Wallet payment session for a guest (walk-in) customer.
 
@@ -215,7 +219,9 @@ async def guest_pay(
     If ``phone_number`` is provided, the customer is registered/linked so they
     earn loyalty points and receive a receipt — but registration is optional.
 
-    For wallet payments, phone_number is REQUIRED to identify the customer's wallet.
+    For wallet payments, phone_number AND otp_code are REQUIRED — the wallet
+    may only be spent after the customer proves phone ownership via OTP (same
+    check as passwordless login).
     """
     order = await _validate_guest_token_or_404(order_id, token, db)
     from decimal import Decimal
@@ -227,7 +233,53 @@ async def guest_pay(
 
     # Optionally link a customer by phone (passwordless — phone only).
     customer_id = order.customer_id
-    if phone_number:
+    if provider == "wallet":
+        # Wallet spend requires proof of phone ownership — the SAME OTP
+        # check as customer login (respects otp.bypass_enabled for QA).
+        phone = (phone_number or "").strip()
+        if not phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number is required for wallet payments",
+            )
+        verified = await _require_otp_or_bypass(PlatformConfigService(db), phone, otp_code)
+        if not verified:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired OTP")
+        # The wallet path NEVER auto-registers: only an existing, active
+        # customer's wallet may be debited.
+        existing = await db.execute(
+            select(Customer).where(
+                Customer.phone_number == phone,
+                Customer.is_active.is_(True),
+                Customer.deleted_at.is_(None),
+            )
+        )
+        customer = existing.scalar_one_or_none()
+        if customer is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No active customer registered for this phone number",
+            )
+        # Only link orders that are unassigned or sit on the shared walk-in
+        # profile — and never let a verified phone spend a wallet belonging
+        # to a different registered customer.
+        current_customer = None
+        if order.customer_id is not None:
+            cur = await db.execute(select(Customer).where(Customer.id == order.customer_id))
+            current_customer = cur.scalar_one_or_none()
+        order_is_unlinked = (
+            current_customer is None
+            or current_customer.phone_number == "+0000000000"
+        )
+        if order_is_unlinked:
+            order.customer_id = customer.id
+        elif current_customer.id != customer.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This order belongs to a different customer",
+            )
+        customer_id = customer.id
+    elif phone_number:
         phone = phone_number.strip()
         if phone:
             # Only link orders that are unassigned or sit on the shared
@@ -303,21 +355,13 @@ async def guest_pay(
         payment.provider_transaction_id = resp["id"]
         redirect_url = resp.get("redirect_url")
     else:  # wallet
-        if not phone_number or not phone_number.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Phone number is required for wallet payments",
-            )
-        if not customer_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Customer not found — please enter a registered phone number",
-            )
         payment.provider_transaction_id = f"wallet-{order.order_number}-{uuid.uuid4().hex[:8]}"
         try:
             config_service = PlatformConfigService(db)
             precision = await config_service.get_accounting_precision()
             rounding_mode = await config_service.get_accounting_rounding()
+            # Locks the order row and re-verifies it is still unpaid before
+            # debiting (closes the race with the check at the top).
             await _debit_wallet_for_payment(db, payment, precision, rounding_mode)
             payment.status = "captured"
             payment.captured_amount = order.total_amount
@@ -325,11 +369,13 @@ async def guest_pay(
                 db, payment, to_status="captured", from_status="initiated",
                 amount=order.total_amount, provider_response={"guest_pay": True, "provider": "wallet"},
             )
-            order.payment_status = "captured"
-            # Paid orders advance to the kitchen: pending -> confirmed
-            if order.status == "pending":
-                order.status = "confirmed"
-                order.updated_at = datetime.now(timezone.utc)
+            await db.flush()
+            # Route through the full capture pipeline: order payment status,
+            # pending → confirmed advance, loyalty points, lucky-draw tickets
+            # (idempotent), plus annual-spend accrual — same side effects as
+            # the staff wallet-pay path.
+            await _sync_order_payment_status(db, payment)
+            await _accrue_loyalty_annual_spend(db, payment)
             wallet_paid = True
         except PaymentError as exc:
             await db.rollback()
@@ -342,6 +388,15 @@ async def guest_pay(
             amount=order.total_amount, provider_response={"guest_pay": True},
         )
     await db.commit()
+
+    # LHDN e-invoice: auto-issue on captured payments when einvoice.auto_issue
+    # is on. Fully guarded — e-invoicing must never break the payment flow.
+    if wallet_paid:
+        try:
+            from app.services.einvoice import auto_issue_on_payment
+            await auto_issue_on_payment(db, order, payment)
+        except Exception:
+            logger.exception("e-invoice auto-issue failed for order %s", order.id)
 
     return APIResponse(data={
         "payment_id": payment_id,

@@ -115,10 +115,11 @@ async def list_orders(
 
     if status_filter:
         base_stmt = base_stmt.where(Order.status == status_filter)
+        count_stmt = count_stmt.where(Order.status == status_filter)
     else:
         # Default: exclude cancelled (noise). Staff can explicitly request them via ?status=cancelled_by_customer
         base_stmt = base_stmt.where(Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant"]))
-        count_stmt = count_stmt.where(Order.status == status_filter)
+        count_stmt = count_stmt.where(Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant"]))
     if order_type:
         base_stmt = base_stmt.where(Order.order_type == order_type)
         count_stmt = count_stmt.where(Order.order_type == order_type)
@@ -412,7 +413,10 @@ async def process_order_payment(
         )
     )
     captured_from_payments = money_round(
-        sum(to_decimal(p.captured_amount or 0) for p in existing_payments.scalars().all()),
+        sum(
+            to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0)
+            for p in existing_payments.scalars().all()
+        ),
         precision,
         rounding_mode,
     )
@@ -554,6 +558,11 @@ async def process_order_payment(
 
     if fully_paid_by_wallet:
         order.payment_status = "captured"
+
+    # Paid orders advance to the kitchen: pending -> confirmed (prepaid
+    # PWA/kiosk orders paid in cash at the counter must enter the queue).
+    if order.payment_status == "captured" and order.status == "pending":
+        order.status = "confirmed"
 
     # Grant loyalty points on capture (idempotent — this endpoint sets the
     # status directly instead of going through _sync_order_payment_status).

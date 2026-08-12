@@ -7,8 +7,12 @@ init scripts in ``infra/db`` and emits a Postgres init file containing:
 - ``CREATE TABLE IF NOT EXISTS`` (+ indexes) for model tables missing from the SQL
 - ``ALTER TABLE ... ADD COLUMN IF NOT EXISTS`` for model columns missing from
   tables that do exist in the SQL
+- ``CREATE INDEX IF NOT EXISTS`` for model indexes missing from the SQL
+  (e.g. indexes on post-baseline columns, which 04_indexes.sql cannot reference)
 - an ``alembic_version`` stamp at the current head so the backend container's
   ``alembic upgrade head`` on boot is a no-op for a fresh SQL-initialised DB
+
+New ENUM types must still be added to ``02_enums.sql`` by hand.
 
 Regenerate after model changes (from the v3 root):
 
@@ -44,8 +48,8 @@ DIALECT = postgresql.dialect()
 _CONSTRAINT_STARTERS = ("CONSTRAINT", "PRIMARY", "FOREIGN", "UNIQUE", "CHECK", "EXCLUDE", "LIKE")
 
 
-def existing_schema() -> tuple[set[str], dict[str, set[str]]]:
-    """Parse infra/db/*.sql for tables and their column names."""
+def existing_schema() -> tuple[set[str], dict[str, set[str]], set[str]]:
+    """Parse infra/db/*.sql for tables, their column names, and index names."""
     # Exclude previously generated output so regeneration stays stable
     sql = "\n".join(
         p.read_text() for p in sorted(SQL_DIR.glob("*.sql")) if "schema_sync" not in p.name
@@ -80,7 +84,14 @@ def existing_schema() -> tuple[set[str], dict[str, set[str]]]:
     ):
         columns.setdefault(m.group(1), set()).add(m.group(2))
 
-    return set(columns), columns
+    indexes = {
+        m.group(1)
+        for m in re.finditer(
+            r"CREATE\s+(?:UNIQUE\s+)?INDEX(?:\s+IF NOT EXISTS)?\s+(\w+)", sql, re.I
+        )
+    }
+
+    return set(columns), columns, indexes
 
 
 def column_ddl(column) -> str:
@@ -116,7 +127,7 @@ def alembic_heads() -> list[str]:
 
 
 def generate() -> str:
-    existing_tables, existing_columns = existing_schema()
+    existing_tables, existing_columns, existing_indexes = existing_schema()
     model_tables = Base.metadata.tables
 
     missing_tables = [t for t in Base.metadata.sorted_tables if t.name not in existing_tables]
@@ -126,6 +137,18 @@ def generate() -> str:
         if name in existing_tables
     }
     altered = {k: v for k, v in altered.items() if v}
+
+    # Model indexes on existing tables that the hand-written SQL cannot create:
+    # they reference post-baseline columns, which only this file adds (it runs
+    # after 04_indexes.sql). Indexes on baseline columns belong in 04_indexes.sql.
+    missing_indexes = [
+        index
+        for name in sorted(altered)
+        for index in sorted(model_tables[name].indexes, key=lambda i: i.name or "")
+        if index.name
+        and index.name not in existing_indexes
+        and any(c.name in {col.name for col in altered[name]} for c in index.columns)
+    ]
 
     out = [
         "-- FNB Enterprise v3 — Schema sync (GENERATED — do not hand-edit)",
@@ -160,6 +183,16 @@ def generate() -> str:
             for column in altered[name]:
                 out.append(f"ALTER TABLE {name} ADD COLUMN IF NOT EXISTS {column_ddl(column)};")
             out.append("")
+
+    if missing_indexes:
+        out.append("-- ============================================================")
+        out.append("-- Indexes declared in models but missing from 04_indexes.sql")
+        out.append("-- (must run after the ALTERs above when they index new columns)")
+        out.append("-- ============================================================")
+        out.append("")
+        for index in missing_indexes:
+            out.append(str(CreateIndex(index, if_not_exists=True).compile(dialect=DIALECT)).strip() + ";")
+        out.append("")
 
     heads = alembic_heads()
     out.append("-- ============================================================")

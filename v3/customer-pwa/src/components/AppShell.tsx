@@ -13,6 +13,7 @@ import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { usePageRouter } from '@/hooks/usePageRouter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { resolveAppUrl } from '@/lib/tokens';
+import { scanTableQr } from '@/lib/tableScan';
 import { getBrowserLocation } from '@/lib/geolocation';
 import type { PaginatedResponse } from '@/lib/api';
 import { registerCartSyncListeners } from '@/lib/cartSync';
@@ -529,34 +530,7 @@ export default function AppShell() {
           return;
         }
         try {
-          const res = await api.post('/stores/tables/scan', {
-            store_slug: storeSlug,
-            table_id: tableId,
-            qr_token: qrToken
-          });
-          const data = res.data;
-          const {
-            setOrderMode,
-            setDineInSession,
-            setSelectedStore: setStore
-          } = useUIStore.getState();
-          setDineInSession({
-            storeId: data.store_id,
-            storeName: data.store_name,
-            storeSlug: data.store_slug,
-            tableId: data.table_id,
-            tableNumber: data.table_number
-          });
-          setOrderMode('dine_in');
-          let found = stores.find(s => s.id === data.store_id);
-          if (!found) {
-            const storeRes = await api.get('/stores');
-            const storeData = storeRes.data as StoreType[] | PaginatedResponse<StoreType>;
-            const storeList = Array.isArray(storeData) ? storeData : storeData?.items ?? [];
-            if (storeList.length > 0) setStores(storeList);
-            found = storeList.find(s => s.id === data.store_id);
-          }
-          if (found) setStore(found);
+          const data = await scanTableQr(storeSlug, tableId, qrToken);
           showToast(t('toast.tableScanned', {
             table: data.table_number,
             store: data.store_name

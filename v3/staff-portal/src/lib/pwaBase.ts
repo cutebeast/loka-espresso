@@ -15,7 +15,7 @@ export function pwaBaseUrl(): string {
   const origin = window.location.origin;
 
   // Dev: map known portal ports to the PWA port (13810)
-  if (origin.includes("://localhost")) {
+  if (origin.includes("://localhost") || origin.includes("://127.0.0.1")) {
     return origin.replace(/:13[0-9]+/, ":13810");
   }
 

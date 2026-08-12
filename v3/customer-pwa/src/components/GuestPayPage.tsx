@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { normalizePhone } from '@/lib/phone';
 
 interface GuestOrderData {
   order_id: number;
@@ -44,6 +45,9 @@ export default function GuestPayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -73,12 +77,29 @@ export default function GuestPayPage() {
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
+  const handleSendOtp = async () => {
+    if (!phone.trim() || sendingOtp) return;
+    setSendingOtp(true);
+    try {
+      await api.post('/auth/send-otp', { phone_number: normalizePhone(phone.trim()) });
+      setOtpSent(true);
+      setOtpCode('');
+      showToast(t('guestPay.codeSent'), 'success');
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('guestPay.sendCodeFailed');
+      showToast(msg, 'error');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   const handlePay = async (provider: 'stripe' | 'hitpay' | 'wallet') => {
     if (!orderId || !token || !order) return;
     setPaying(true);
     try {
       const params: Record<string, string> = { token, provider };
-      if (phone.trim()) params.phone_number = phone.trim();
+      if (phone.trim()) params.phone_number = normalizePhone(phone.trim());
+      if (provider === 'wallet') params.otp_code = otpCode.trim();
       const res = await api.post(`/payments/guest-pay/${orderId}`, null, { params });
       const data = res.data as { redirect_url?: string; wallet_paid?: boolean };
       if (provider === 'wallet' && data.wallet_paid) {
@@ -222,7 +243,7 @@ export default function GuestPayPage() {
           <span className="guest-pay-total-amount">{formatPrice(order.total_amount)}</span>
         </div>
 
-        {/* Optional phone (loyalty registration — passwordless) */}
+        {/* Optional phone (loyalty registration — passwordless; required for wallet) */}
         <div className="guest-pay-phone-section">
           <label className="guest-pay-phone-label">{t('guestPay.phoneOptional')}</label>
           <p className="guest-pay-phone-hint">{t('guestPay.phoneHint')}</p>
@@ -231,9 +252,33 @@ export default function GuestPayPage() {
             className="guest-pay-phone-input"
             placeholder="+60 12-345 6789"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => { setPhone(e.target.value); setOtpSent(false); setOtpCode(''); }}
             inputMode="tel"
           />
+          {order.wallet_enabled && phone.trim() && (
+            <>
+              <p className="guest-pay-phone-hint">{t('guestPay.walletOtpHint')}</p>
+              <button
+                className="guest-pay-btn secondary"
+                onClick={handleSendOtp}
+                disabled={sendingOtp || paying}
+              >
+                {sendingOtp ? <Loader2 size={18} className="animate-spin" /> : <Smartphone size={18} />}
+                {otpSent ? t('guestPay.resendCode') : t('guestPay.sendCode')}
+              </button>
+            </>
+          )}
+          {order.wallet_enabled && otpSent && (
+            <input
+              type="text"
+              className="guest-pay-phone-input"
+              placeholder={t('guestPay.otpPlaceholder')}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+            />
+          )}
         </div>
 
         {/* Pay buttons */}
@@ -242,7 +287,7 @@ export default function GuestPayPage() {
             <button
               className={`guest-pay-btn ${prefer === 'wallet' ? 'primary' : 'secondary'}`}
               onClick={() => handlePay('wallet')}
-              disabled={paying || (prefer === 'wallet' && !phone.trim())}
+              disabled={paying || !phone.trim() || otpCode.trim().length !== 6}
             >
               {paying ? <Loader2 size={18} className="animate-spin" /> : <Wallet size={18} />}
               {paying ? t('guestPay.processing') : t('guestPay.payWithWallet')}

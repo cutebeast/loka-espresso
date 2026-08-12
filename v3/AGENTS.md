@@ -1480,6 +1480,7 @@ User asked to verify no soft-deleted legacy remains and to prevent the pattern c
 - **SOFT-DELETE POLICY**: soft delete is for entities referenced by historical/transactional records (orders, movements, ledger) — menu_items, customers, stores, staff, admin accounts, inventory items, suppliers, vouchers, rewards. Config tables without history references (allergens, dietary tags, tax categories, categories, bundle types...) keep it for safety but the traps are now closed. NEW tables: only add SoftDeleteMixin if historical records will reference the entity — otherwise hard delete.
 - **Partial unique indexes** (migration u1c2d3e4f5a6): 12 code/slug/key uniques now apply only to live rows (`WHERE deleted_at IS NULL`) — menu items/categories, inventory items, bundle categories/types, event categories, stores ×2, vouchers, rewards, surveys. Recreating a deleted "Coke" works; duplicating a live one still 409s. Verified live. Identity uniques (customer phone/email, employee_id, principals) intentionally stay full-unique — a deleted account must not be re-registered as a duplicate identity.
 - **Janitor**: `backend/scripts/purge_soft_deleted.py` — hard-deletes soft-deleted rows older than 30 days (`--all` for everything), nulls live→dead refs first, per-table savepoint so FK-blocked rows (referenced by live history) skip cleanly, then prunes orphaned translations. Cron weekly Sun 03:41. Also fixed the baseline drift it exposed: menu_categories.slug had no DB unique at all; dietary_tags has no SoftDeleteMixin (is_active only) so it keeps full unique.
+- **Retention janitor**: `backend/scripts/purge_retention.py` — deletes rows older than the per-table `retention_days` in `data_retention_policies` (only `purge_strategy='delete'`; other strategies log-and-skip). Run `--dry-run` first. Schedule weekly alongside the soft-delete janitor, e.g. Sun 03:53: `cd /root/fnb-super-app/v3/backend && .venv/bin/python3 scripts/purge_retention.py --yes --force-prod >> logs/purge_retention_cron.log 2>&1`. NOTE: documented 2026-08-12 — install into root's crontab on each server (it is NOT auto-installed; dev crontab was intentionally left untouched when this note was added).
 
 ### Round 35 follow-up 19 — workshops separation + filter sweep (2026-08-07)
 
@@ -1535,3 +1536,49 @@ User asked why item photos don't show after tapping an item or at checkout. Stat
 
 - **Kiosk rebuilt away from PWA modal patterns**: tapping an item opens a full-screen item page (new component `customer-pwa/src/components/kiosk/KioskItemPage.tsx`) — image on the side (landscape) or top (portrait), NEVER cropped (object-fit contain on cream), name/description/price, variants + modifiers as large touch buttons, qty stepper, Add to Cart with live total, Back to Menu. The bottom-sheet modal is gone. Menu grid cards + cart thumbnails also switched to contain (no cut-off images). Verified visually at 1920×1080 (LCD) and 768×1024 (tablet).
 - **pos-disp routing clarified**: pos-disp.loyaltysystem.uk already edge-rewrites everything to /pos/display (Caddy `fnb-pos-disp.conf`); middleware now redirects pos-disp.* root with ?store&key preserved; staff.loyaltysystem.uk/pos-disp redirects to /pos/display (the real path). Both domains work — no removal needed.
+
+## Round 36 — audit & hardening (2026-08-12)
+
+5-track fresh audit aimed at the three newest feature commits (978bdb20 kiosk overhaul, fe88150c payment_flow, 6ec04e1a table QR). Every finding verified in code pre-fix; ~30 fixes. Owner decisions applied: (1) wallet spending ALWAYS requires OTP-verified phone ownership (passwordless), even at kiosk/POS guest-pay QR; (2) kiosk standing = prepaid, table tablet = pay-after-meal open tab.
+
+### Critical / High
+- **Guest-pay wallet drain closed** — `payment.py guest_pay`: `provider=wallet` now requires `phone_number` + `otp_code` verified via `_require_otp_or_bypass` (same helper as customer login; respects `otp.bypass_enabled` for QA). Lookup filters `is_active`/`deleted_at`, NO auto-register on the wallet path (Stripe/HitPay loyalty-linking keeps auto-register). All OTP/customer checks run before the Payment row is created. `_debit_wallet_for_payment` re-checks already-paid inside the FOR UPDATE lock. Wallet capture routes through `_sync_order_payment_status` + `_accrue_loyalty_annual_spend` + the e-invoice hook (points/coffee-pass/lucky-draw now fire — they never did on this path). Live: wrong OTP → 401.
+- **Kiosk dine-in no longer unpaid-to-kitchen** — `create_order_from_cart(order_channel=, kiosk_mode=)`; open-tab iff `dine_in AND NOT (channel=="kiosk" AND mode!="tablet")`. `POST /kiosk/orders` takes `kiosk_mode: "kiosk"|"tablet"` (default kiosk). KioskPage sends it. Live: standing-kiosk dine-in → `pending`+`prepaid`.
+- **Sweeps closed** — new `auto_cancel_order(db, order, reason)` in services/order.py (terminal guard → cancelled_by_customer + reason + `reverse_order_effects` + `cancel_pending_order_payments` via local import — top-level would be circular). Used by all 4 sweeps (customer/order.py, kiosk.py, pos.py, main.py startup rewritten raw-SQL→ORM). New `_periodic_order_sweep()` asyncio task in lifespan (5-min cadence, per-order sessions). Uniform predicate: `status=pending AND payment_status=initiated AND payment_flow=prepaid`; kiosk-channel 15 min, others 2h (customer path was wrongly 30 min); open tabs NEVER (startup sweep was `order_type != dine_in` — cancelled POS takeaway open tabs on restart).
+- **Counter payment advance** — staff + admin payment endpoints now do `pending → confirmed` on capture (cash-paid PWA/kiosk orders were stranded invisible: not in queue, KDS, or Unpaid tab).
+- **`pending_authorization` limbo closed** — `_sync_order_payment_status` resets order to `initiated` when no active payments remain; webhook re-sync widened beyond Stripe's two event types (HitPay expiry covered); staff issues query includes `pending_authorization`.
+- **Table QR boot handling** — new `customer-pwa/src/lib/tableScan.ts` (shared by AppShell scanner + new boot deep-link in useAuthFlow): `?store&table&t` → POST `/stores/tables/scan` → setDineInSession + orderMode dine_in → strip params. The 6ec04e1a full-URL payload actually works now (previously landed on home page, params ignored).
+- **Admin orders pagination** — `count_stmt` status filter was trapped in the `else` branch (`status == None` → total=0 on default view; unfiltered count with a status filter). Both branches now filter both statements.
+
+### Medium
+- `reverse_order_effects`: loyalty clawback only when an `order_earned` LoyaltyPointsLedger row exists (unpaid cancels were stealing real points / de-tiering); releases `TableStatusSnapshot` when `current_order_id == order.id` (tables stayed occupied forever).
+- Net-of-refund paid math (Σ captured − refunded) in staff POS pay, admin pay, split-bill — partial refunds are re-collectable.
+- Fully refunded orders excluded from the default staff queue/KDS.
+- Staff orders serializer exposes `payment_flow`; `issues=true` skips the 24h cap; PosUnpaidOrdersDrawer splits on `payment_flow` (order_type fallback for legacy rows only).
+- GuestPayPage OTP UI (Send Code → 6-digit input; reuses `/auth/send-otp` + `normalizePhone`); wallet disabled without phone/code.
+- Kiosk: payment_select renders errors; tablet mode restores table from localStorage in startNewOrder; inactivity reset branches on kioskMode + clears phone.
+- Admin QRCodeGenerator prefers the full-URL payload (mirrors staff useQrImages); usePosScanner requires token match when `t` present; pwaBase matches 127.0.0.1.
+- ~45 locale keys added: bundle hints + 7 `orderDetail.einvoice*` were missing from en.json (rendered raw keys to ALL users); 34 kiosk + guestPay keys into zh.json; 6 new guestPay OTP keys in both.
+- scan-legacy requires `is_active` (matches /scan).
+
+### Infra
+- All 6 production Caddy confs now in `infra/host-caddy/` (added fnb-api/kiosk/pos-disp.conf, `{$VAR:default}` style) with the query-strip log filter everywhere — repo redeploy no longer reintroduces guest-pay JWTs in logs.
+- `infra/db` regenerated: `02_enums.sql` gains `payment_flow` enum (generator can't create enums — add new ones by hand), `09_schema_sync.sql` stamps `v1w2x3y4z5a6` + column + post-baseline indexes; `10_scalability_indexes.sql` → `11_` (prefix collision with seed data). `scripts/dump_schema_sql.py` now emits CREATE INDEX IF NOT EXISTS for model indexes on post-baseline columns.
+- compose: app ports pinned 127.0.0.1; REDIS_PASSWORD `:?required` everywhere.
+- `ecosystem.config.js` now defines all 6 pm2 apps. NOTE: live pm2 still lacks `API_PROXY_URL` on customer-pwa-v3/pos-disp-v3 (host drift; align via `pm2 restart ... --update-env` when convenient).
+- `purge_retention.py` documented with a weekly cron line (host crontab intentionally untouched).
+
+### Verification
+58/58 backend unit (16 new: test_order_autocancel.py ×9, test_guest_pay_wallet.py ×4, test_payment_sync.py ×3); 219/219 E2E (16 skipped); tsc ×3 clean; 6 pm2 services healthy on fresh builds. Live probes: kiosk dine-in pending+prepaid; wallet wrong-OTP 401; admin totals (15/14); staff payment_flow present; periodic sweeper cancelled the probe kiosk order with reversal.
+
+### Rules for agents (round 36)
+- Wallet = money movement: any new wallet-debit path MUST require an authenticated customer or `_require_otp_or_bypass`-verified phone. Guest tokens prove presence, not identity.
+- Never hand-set `order.payment_status`/`status` on capture — route through `_sync_order_payment_status` (+ `_accrue_loyalty_annual_spend`).
+- Any new order-cancel path MUST use `auto_cancel_order` (or call reverse_order_effects + cancel_pending_order_payments itself); open tabs (`pay_after_meal`) are never auto-cancelled.
+- New kiosk features must respect `kiosk_mode` (standing vs tablet) — prepaid vs open-tab depends on it.
+- New pwa-ui keys go in en.json AND zh.json (kiosk/guestPay have no DB overlay); admin page keys go in the admin-ui DB namespace (no json fallback — see round 35 follow-up 23).
+
+### Still open (later rounds / owner)
+- `staff_pay_with_wallet` already-paid check uses gross captured math (net-of-refund fix covered POS pay/admin/split-bill only).
+- Round-35 open items unchanged: F-10/F-11 store_manager scoping at go-live, L1-L8, OTP bypass still enabled until cutover, tier downgrade job unbuilt.
+- Fresh-initdb replay of infra/db SQL not end-to-end tested (static checks only).
