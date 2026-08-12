@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     BigInteger,
     DateTime,
+    Index,
     Identity,
     String,
     Text,
@@ -40,6 +41,7 @@ class Translation(Base):
             "namespace", "translation_key", "locale",
             name="uq_translations_namespace_key_locale"
         ),
+        Index("idx_translations_unique", "namespace", "locale", "translation_key", "table_name", "record_id", unique=True),
     )
 
 

@@ -326,6 +326,10 @@ async def guest_pay(
                 amount=order.total_amount, provider_response={"guest_pay": True, "provider": "wallet"},
             )
             order.payment_status = "captured"
+            # Paid orders advance to the kitchen: pending -> confirmed
+            if order.status == "pending":
+                order.status = "confirmed"
+                order.updated_at = datetime.now(timezone.utc)
             wallet_paid = True
         except PaymentError as exc:
             await db.rollback()

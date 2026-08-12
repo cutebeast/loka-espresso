@@ -87,3 +87,8 @@ Workshop bookings appear separately from menu orders. They include:
 - Cancel/refund policy
 
 Workshop items cannot be ordered from the kiosk — mobile app only.
+
+
+## Open Tab (Dine-in)
+
+Dine-in orders placed via table QR are open tabs: the kitchen prepares your food immediately and you pay after your meal — from the PWA or at the counter.

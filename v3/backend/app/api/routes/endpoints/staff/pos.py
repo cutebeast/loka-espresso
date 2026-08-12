@@ -394,6 +394,8 @@ async def staff_pos_create_order(
         fulfillment_type={"dine_in":"dine_in_service","takeaway":"counter_pickup","delivery":"standard_delivery","drive_thru":"counter_pickup"}.get(order_type,"dine_in_service"),
         status="confirmed",
         payment_status="captured" if payment_data else "initiated",
+        # Two-stage (no payment yet) = open tab; paid at creation = prepaid
+        payment_flow="prepaid" if payment_data else "pay_after_meal",
         item_count=sum(li.quantity for li in line_items),
         items_subtotal=money_round(subtotal, precision, rounding_mode),
         service_charge=service_charge,
@@ -529,7 +531,15 @@ async def staff_pos_create_order(
                 select(TableStatusSnapshot).where(TableStatusSnapshot.table_id == dining_table_id).with_for_update()
             )
             snap = existing.scalar_one_or_none()
-            if snap:
+            if not snap:
+                snap = TableStatusSnapshot(
+                    table_id=dining_table_id,
+                    status="occupied",
+                    current_order_id=order.id,
+                    store_id=store_id,
+                )
+                db.add(snap)
+            else:
                 snap.status = "occupied"
                 snap.current_order_id = order.id
                 snap.updated_at = datetime.now(timezone.utc)
@@ -611,6 +621,25 @@ async def staff_pos_create_order(
 
     if stock_warnings:
         response_data["stock_warnings"] = stock_warnings
+
+    # ── Auto-cancel stale unpaid orders (>2 hours) ──
+    from datetime import timedelta as _td
+    stale_cutoff = datetime.now(timezone.utc) - _td(hours=2)
+    stale_result = await db.execute(
+        select(Order).where(
+            Order.store_id == data.store_id,
+            Order.payment_status == "initiated",
+            Order.status.in_(["pending", "confirmed"]),
+            # Open tabs (pay after meal) are never auto-cancelled
+            Order.payment_flow == "prepaid",
+            Order.created_at < stale_cutoff,
+        )
+    )
+    for s in stale_result.scalars().all():
+        s.status = "cancelled_by_customer"
+        s.cancellation_reason = "Auto-cancelled - unpaid for >2 hours"
+        s.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
     return APIResponse(data=response_data)
 

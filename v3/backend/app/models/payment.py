@@ -11,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
@@ -70,6 +71,8 @@ class Payment(Base, TimestampMixin):
             "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay','hitpay')",
             name="ck_payments_provider",
         ),
+        Index("idx_payments_provider", "provider"),
+        Index("idx_payments_status_created", "status", "created_at"),
         CheckConstraint(
             "payment_method_type IN ('credit_card','debit_card','e_wallet','bank_transfer','cash','crypto','buy_now_pay_later','qr_pay')",
             name="ck_payments_payment_method_type",

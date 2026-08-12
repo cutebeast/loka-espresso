@@ -4,11 +4,13 @@ from datetime import datetime, time, timezone
 from typing import List
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     SmallInteger,
     String,
@@ -145,6 +147,7 @@ class NotificationMessage(Base):
     )
 
     __table_args__ = (
+        Index("idx_notification_messages_customer_created", "customer_id", desc("created_at")),
         CheckConstraint(
             "message_type IN ('order_update','promotion','system','payment','loyalty','reminder','security')",
             name="ck_notification_messages_message_type",

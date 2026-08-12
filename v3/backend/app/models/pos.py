@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -76,6 +78,7 @@ class PosSession(Base, TimestampMixin):
             "status IN ('open','closed','paused')",
             name="ck_pos_sessions_status",
         ),
+        Index("idx_pos_sessions_terminal_opened", "terminal_id", desc("opened_at")),
     )
 
 

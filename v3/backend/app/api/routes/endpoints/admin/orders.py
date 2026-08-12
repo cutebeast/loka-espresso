@@ -115,6 +115,9 @@ async def list_orders(
 
     if status_filter:
         base_stmt = base_stmt.where(Order.status == status_filter)
+    else:
+        # Default: exclude cancelled (noise). Staff can explicitly request them via ?status=cancelled_by_customer
+        base_stmt = base_stmt.where(Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant"]))
         count_stmt = count_stmt.where(Order.status == status_filter)
     if order_type:
         base_stmt = base_stmt.where(Order.order_type == order_type)

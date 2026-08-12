@@ -95,3 +95,25 @@ Read customer notes carefully (e.g., "extra hot", "no onions").
 - [POS Checkout](pos-checkout.md)
 - [Orders & Tables](orders-and-tables.md)
 - [Admin — Orders & Refunds](../admin/orders-and-refunds.md)
+
+
+## Display Mode (Wall Screen)
+
+The kitchen wall screen runs in view-only display mode:
+
+`staff.loyaltysystem.uk/kitchen?mode=display`
+
+- Full-height 3-column kanban: **New** (confirmed) → **Preparing** → **Done** (ready_for_pickup)
+- No filters, buttons, or search — pure order status
+- Live badge + auto-refresh every 3 seconds
+- Sound alert on new orders (toggleable on the staff page)
+
+Staff operate orders from the regular `/kitchen` page; the wall screen is read-only.
+
+## Kanban Columns
+
+| Column | Status | Meaning |
+|--------|--------|---------|
+| New | confirmed | Paid — start cooking |
+| Preparing | preparing | In progress |
+| Done | ready_for_pickup | Ready to hand over |

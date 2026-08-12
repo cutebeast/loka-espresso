@@ -452,6 +452,7 @@ export interface Order {
   items?: OrderItem[];
   line_items?: OrderItem[];
   payment_status?: string;
+  payment_flow?: string;
   payment_method?: string;
   order_notes?: string;
   store_name?: string;
@@ -635,11 +636,13 @@ export function getTables(_storeId: number) {
   return api.get<Table[]>(`/staff/tables`);
 }
 
-export function getOrders(_storeId?: number, status?: OrderStatus, paymentStatus?: string, station?: string) {
+export function getOrders(_storeId?: number, status?: OrderStatus, paymentStatus?: string, station?: string, opts?: { timeframe?: "today" | "24h" | "all"; issues?: boolean }) {
   const params = new URLSearchParams();
   if (status) params.append("status", status);
   if (paymentStatus) params.append("payment_status", paymentStatus);
   if (station) params.append("station", station);
+  if (opts?.timeframe) params.append("timeframe", opts.timeframe);
+  if (opts?.issues) params.append("issues", "true");
   params.append("per_page", "100");
   const qs = params.toString();
   return api.get<Order[]>(`/staff/orders?${qs}`);

@@ -18,7 +18,7 @@ from app.models.menu import MenuCategory, MenuItem, MenuItemRecipe, MenuVariant
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
-from app.models.store import Store, StoreConfiguration
+from app.models.store import Store, StoreConfiguration, TableStatusSnapshot
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleGroup
 from app.schemas.order import OrderCreate
@@ -895,8 +895,12 @@ async def create_order_from_cart(
         order_type=data.order_type,
         fulfillment_type=data.fulfillment_type,
         order_channel="mobile_app",
-        status="pending",
+        # Malaysia table-service: dine-in orders are open tabs - they reach the
+        # kitchen immediately and the customer pays AFTER the meal. Takeaway
+        # and delivery stay pending until payment (pay-before-food).
+        status="confirmed" if data.order_type == "dine_in" else "pending",
         payment_status="initiated",
+        payment_flow="pay_after_meal" if data.order_type == "dine_in" else "prepaid",
         item_count=cart.item_count,
         items_subtotal=subtotal,
         modifier_subtotal=modifier_sub,
@@ -1140,6 +1144,29 @@ async def create_order_from_cart(
     
     await db.commit()
     await db.refresh(order)
+
+    # Lock table if dine-in
+    if order.dining_table_id and order.order_type == "dine_in":
+        existing = await db.execute(
+            select(TableStatusSnapshot).where(
+                TableStatusSnapshot.table_id == order.dining_table_id
+            ).with_for_update()
+        )
+        snap = existing.scalar_one_or_none()
+        if not snap:
+            snap = TableStatusSnapshot(
+                table_id=order.dining_table_id,
+                status="occupied",
+                current_order_id=order.id,
+                store_id=order.store_id,
+            )
+            db.add(snap)
+        else:
+            snap.status = "occupied"
+            snap.current_order_id = order.id
+            snap.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+
     return order
 
 

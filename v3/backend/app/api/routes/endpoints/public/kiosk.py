@@ -14,6 +14,7 @@ from app.core.rate_limiter import limiter
 from app.core.security import create_guest_pay_token
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.order import Order
+from app.models.store import TableStatusSnapshot
 from app.models.customer import Customer
 from app.models.menu import MenuItem
 from app.models.store import DiningTable, Store
@@ -391,7 +392,7 @@ async def create_kiosk_order(
 
     # ── Auto-cancel stale pending kiosk orders (>30 min unpaid) ──
     from datetime import timedelta as _timedelta
-    stale_threshold = datetime.now(timezone.utc) - _timedelta(minutes=30)
+    stale_threshold = datetime.now(timezone.utc) - _timedelta(minutes=15)
     stale_query = (
         select(Order)
         .where(
@@ -405,7 +406,7 @@ async def create_kiosk_order(
     stale_orders = (await db.execute(stale_query)).scalars().all()
     for stale in stale_orders:
         stale.status = "cancelled_by_customer"
-        stale.cancellation_reason = "Auto-cancelled — unpaid after 30 minutes"
+        stale.cancellation_reason = "Auto-cancelled — unpaid after 15 minutes"
         stale.updated_at = datetime.now(timezone.utc)
     if stale_orders:
         await db.commit()
@@ -415,6 +416,28 @@ async def create_kiosk_order(
     order.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(order)
+
+    # Lock table if dine-in
+    if order.dining_table_id and order.order_type == "dine_in":
+        existing = await db.execute(
+            select(TableStatusSnapshot).where(
+                TableStatusSnapshot.table_id == order.dining_table_id
+            ).with_for_update()
+        )
+        snap = existing.scalar_one_or_none()
+        if not snap:
+            snap = TableStatusSnapshot(
+                table_id=order.dining_table_id,
+                status="occupied",
+                current_order_id=order.id,
+                store_id=order.store_id,
+            )
+            db.add(snap)
+        else:
+            snap.status = "occupied"
+            snap.current_order_id = order.id
+            snap.updated_at = datetime.now(timezone.utc)
+        await db.commit()
 
     pay_token = create_guest_pay_token(order.id, order.store_id)
 

@@ -53,6 +53,34 @@ class DecimalSafeJSONResponse(JSONResponse):
 async def lifespan(app: FastAPI):
     # Startup
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Stale unpaid order sweep (pay-before-food channels)
+    try:
+        from sqlalchemy import text as _text
+        async with engine.begin() as _conn:
+            await _conn.execute(_text("""
+                UPDATE orders SET
+                    status = 'cancelled_by_customer',
+                    cancellation_reason = 'Auto-cancelled - unpaid >2 hours (server restart sweep)',
+                    updated_at = NOW()
+                WHERE payment_status = 'initiated'
+                AND status IN ('pending', 'confirmed')
+                AND order_type != 'dine_in'
+                AND created_at < NOW() - INTERVAL '2 hours'
+            """))
+            await _conn.execute(_text("""
+                UPDATE orders SET
+                    status = 'cancelled_by_customer',
+                    cancellation_reason = 'Auto-cancelled - unpaid >15 minutes (server restart sweep)',
+                    updated_at = NOW()
+                WHERE payment_status = 'initiated'
+                AND order_channel = 'kiosk'
+                AND status = 'pending'
+                AND created_at < NOW() - INTERVAL '15 minutes'
+            """))
+    except Exception:
+        logger.warning("Stale order sweep failed on startup", exc_info=True)
+
     yield
     # Shutdown
     await engine.dispose()

@@ -164,3 +164,14 @@ The display resets to the idle screen when the order is done or the cart is clea
 - [Kitchen Display](kitchen-display.md)
 - [Reservations](reservations.md)
 - [Hardware Peripherals](hardware-peripherals.md)
+
+
+## Table Locking
+
+Dine-in orders immediately lock their table (status = occupied) visible on the Tables page and admin dashboard. The lock releases when the order is delivered or cancelled.
+
+
+## Prepaid vs Open Tab
+
+- **Pay now** (cash/card/QR at creation) → order marked `prepaid`
+- **Send to kitchen without payment** (two-stage) → open tab (`pay_after_meal`), charged when the customer finishes — standard Malaysian dine-in practice

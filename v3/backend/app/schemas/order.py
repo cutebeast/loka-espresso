@@ -110,6 +110,7 @@ class OrderOut(BaseSchema):
     order_channel: str
     status: str
     payment_status: str
+    payment_flow: str | None = None
     fulfillment_type: str
     dining_table_id: int | None
     item_count: int

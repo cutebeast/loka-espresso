@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -195,6 +196,7 @@ class InventoryMovementLog(Base):
             "movement_type IN ('in','out','adjustment','waste','return','transfer_in','transfer_out')",
             name="ck_inventory_movement_log_movement_type",
         ),
+        Index("idx_inv_movement_item_created", "inventory_item_id", desc("created_at")),
     )
 
 
@@ -243,6 +245,7 @@ class WastageReport(Base):
             "menu_item_id IS NOT NULL OR inventory_item_id IS NOT NULL",
             name="ck_wastage_reports_item",
         ),
+        Index("idx_wastage_reports_store_created", "store_id", desc("created_at")),
     )
 
 

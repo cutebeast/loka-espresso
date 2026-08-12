@@ -2,6 +2,13 @@
 
 from sqlalchemy import Enum
 
+PaymentFlow = Enum(
+    "prepaid", "pay_after_meal",
+    name="payment_flow",
+    native_enum=True,
+    create_type=False,
+)
+
 OrderType = Enum(
     "dine_in", "takeaway", "delivery", "drive_thru",
     name="order_type",

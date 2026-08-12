@@ -1,6 +1,6 @@
 """Customer daily check-in model (for loyalty streak tracking)."""
 from datetime import datetime, timezone
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -13,3 +13,7 @@ class CustomerDailyCheckin(Base):
     streak_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     points_earned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_daily_checkins_customer_date", "customer_id", "checkin_date", unique=True),
+    )

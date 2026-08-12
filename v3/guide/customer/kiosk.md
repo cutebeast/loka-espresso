@@ -47,3 +47,10 @@ Tablets at dining tables skip the welcome/order-type screens. Table number is se
 ## Inactivity
 
 The kiosk auto-resets after 60 seconds of inactivity. On the success screen, the success screen auto-resets after 30 seconds of inactivity.
+
+
+## Payment Timing
+
+- **Kiosk**: always pay BEFORE food (prepaid). Unpaid orders auto-cancel after 15 minutes.
+- **Table QR / PWA dine-in**: open tab — food is prepared and served, you pay after your meal.
+- **PWA takeaway/delivery**: pay before food; unpaid orders auto-cancel after 30 minutes.

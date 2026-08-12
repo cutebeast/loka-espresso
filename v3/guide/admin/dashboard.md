@@ -42,3 +42,8 @@ All revenue and order-count widgets filter by `payment_status == "captured"`:
 - Active orders KPI intentionally shows pending/confirmed/preparing (kitchen-active)
 
 Unpaid kiosk orders, abandoned PWA carts, and pending walkaway orders are excluded from all revenue metrics. Kiosk orders unpaid for >30 minutes are auto-cancelled during the next kiosk order creation.
+
+
+## Payment Flow Split
+
+Orders carry `payment_flow`: `prepaid` (pay-before-food) or `pay_after_meal` (open tab). Revenue metrics count captured payments regardless of flow; unpaid open tabs never appear in revenue — only captured amounts do.

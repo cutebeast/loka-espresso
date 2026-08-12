@@ -3,12 +3,14 @@ from decimal import Decimal
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     Boolean,
     CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -109,4 +111,5 @@ class EquipmentMaintenanceLog(Base):
             "status IN ('scheduled','in_progress','completed','cancelled')",
             name="ck_equipment_maintenance_log_status",
         ),
+        Index("idx_equip_maint_log_equip_created", "equipment_id", desc("created_at")),
     )

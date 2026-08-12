@@ -3,10 +3,12 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -49,6 +51,7 @@ class HygieneReport(Base):
             "report_type IN ('grease_trap','garbage_disposal')",
             name="ck_hygiene_reports_report_type",
         ),
+        Index("idx_hygiene_reports_store_type_created", "store_id", "report_type", desc("created_at")),
         CheckConstraint(
             "status IN ('pending','verified','flagged')",
             name="ck_hygiene_reports_status",

@@ -4,6 +4,7 @@ from datetime import date, datetime, time, timezone
 from typing import List
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
@@ -144,6 +146,7 @@ class StaffTask(Base, TimestampMixin):
             "priority IN ('low','normal','high','urgent')",
             name="ck_staff_tasks_priority",
         ),
+        Index("idx_staff_tasks_staff_status_created", "staff_id", "status", desc("created_at")),
     )
 
 

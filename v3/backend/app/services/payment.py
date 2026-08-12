@@ -1109,6 +1109,11 @@ async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None
             order.payment_status = "partially_refunded"
     elif total_captured >= order_total:
         order.payment_status = "captured"
+        # Paid orders advance to the kitchen: pending → confirmed (idempotent —
+        # later transitions preparing/ready are staff-driven and never reverted)
+        if order.status == "pending":
+            order.status = "confirmed"
+            order.updated_at = datetime.now(timezone.utc)
         # Loyalty points are granted on capture, not at order creation (idempotent).
         await _credit_order_loyalty_points(db, order)
         # Spend-based lucky draw: grant tickets on capture (idempotent).

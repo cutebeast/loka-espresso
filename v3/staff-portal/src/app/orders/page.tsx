@@ -39,7 +39,7 @@ export default function OrdersPage() {
         setStoreMissing(true);
         return;
       }
-      const data = await getOrders(storeId, undefined);
+      const data = await getOrders(storeId, undefined, undefined, undefined, { timeframe: tab === "history" ? "all" : "24h", issues: tab === "unpaid" }); 
       const list = Array.isArray(data) ? data : [];
       setOrders(list);
       setError("");
@@ -49,8 +49,8 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [storeId, t]);
-  usePolling(fetchOrders, [storeId], {
+  }, [storeId, tab, t]);
+  usePolling(fetchOrders, [storeId, tab], {
     interval: 10000
   });
   const filteredOrders = useMemo(() => {
@@ -79,10 +79,12 @@ export default function OrdersPage() {
   }, [orders, tab, typeFilter, search]);
   const unpaidByType = useMemo(() => {
     const all = orders.filter(o => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
+    // payment_flow distinguishes open tabs (pay after meal) from pay-before-food orders
+    const isOpenTab = (o: Order) => o.payment_flow === "pay_after_meal" || (o.payment_flow == null && o.order_type === "dine_in");
     return {
-      dine_in: all.filter(o => o.order_type === "dine_in"),
-      takeaway: all.filter(o => o.order_type === "takeaway"),
-      delivery: all.filter(o => o.order_type === "delivery")
+      dine_in: all.filter(isOpenTab),
+      takeaway: all.filter(o => !isOpenTab(o) && o.order_type === "takeaway"),
+      delivery: all.filter(o => !isOpenTab(o) && o.order_type === "delivery")
     };
   }, [orders]);
   const totalUnpaid = unpaidByType.dine_in.length + unpaidByType.takeaway.length + unpaidByType.delivery.length;
@@ -221,7 +223,7 @@ export default function OrdersPage() {
       gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
       gap: 12
     }}>
-          {filteredOrders.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/kitchen/${o.id}`)} />)}
+          {filteredOrders.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/pos?checkout=${o.id}`)} />)}
         </div>)}
     </div>;
 }

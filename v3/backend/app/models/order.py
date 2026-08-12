@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import List
 
 from sqlalchemy import (
+    desc,
     BigInteger,
     Boolean,
     CHAR,
@@ -29,6 +30,7 @@ from app.models.enums import (
     OrderChannel,
     OrderStatus,
     OrderType,
+    PaymentFlow,
     PaymentStatus,
 )
 
@@ -55,6 +57,9 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     client_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     order_type: Mapped[str] = mapped_column(OrderType, nullable=False)
     order_channel: Mapped[str] = mapped_column(OrderChannel, nullable=False, default="mobile_app")
+    # prepaid = pay before food (kiosk, takeaway/delivery, POS cash-now);
+    # pay_after_meal = open tab, customer pays after eating (dine-in table service)
+    payment_flow: Mapped[str] = mapped_column(PaymentFlow, nullable=False, default="prepaid", server_default="prepaid")
     status: Mapped[str] = mapped_column(OrderStatus, nullable=False, default="pending")
     payment_status: Mapped[str] = mapped_column(PaymentStatus, nullable=False, default="initiated")
     fulfillment_type: Mapped[str] = mapped_column(FulfillmentType, nullable=False)
@@ -121,6 +126,9 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
             "order_type IN ('dine_in','takeaway','delivery','drive_thru')",
             name="ck_orders_order_type",
         ),
+        Index("idx_orders_store_payment_status", "store_id", "payment_status", desc("created_at")),
+        Index("idx_orders_store_channel_created", "store_id", "order_channel", desc("created_at")),
+        Index("ix_orders_payment_flow_status", "payment_flow", "status", "created_at"),
         CheckConstraint(
             "order_channel IN ('mobile_app','web','kiosk','pos','qr_code','third_party')",
             name="ck_orders_order_channel",

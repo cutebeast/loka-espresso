@@ -1218,24 +1218,59 @@ async def staff_list_orders(
     order_type: str | None = Query(None),
     payment_status: str | None = Query(None),
     station: str | None = Query(None),
+    timeframe: str | None = Query(None, alias="timeframe", description="preset: today | 24h | all"),
+    issues_only: bool = Query(False, alias="issues", description="Only unpaid (>30 min) or stuck orders"),
     page: int = Query(1, ge=1),
     per_page: int = Query(100, ge=1, le=500),
 ):
     """List orders for the staff member's store.
 
-    `station` enables KDS station routing (bar vs kitchen tabs): only orders
-    containing at least one line item routed to that station are returned, and
-    each order carries an `items` list limited to that station's items. Routing
-    comes from the `kds.station_map` platform config (category slugs per
-    station; "*" matches any category not explicitly claimed by another
-    station, including uncategorized items).
+    Defaults to the last 24 hours and excludes cancelled orders. Staff see
+    only what they can act on — old/cancelled history belongs in the admin
+    portal, not the counter queue.
+
+    - `timeframe`: "today" (MYT midnight→now), "24h" (default), "all"
+    - `issues`: only unpaid (>30 min old) or payment-stuck orders
+    - `station` enables KDS station routing (bar vs kitchen tabs): only orders
+      containing at least one line item routed to that station are returned, and
+      each order carries an `items` list limited to that station's items. Routing
+      comes from the `kds.station_map` platform config (category slugs per
+      station; "*" matches any category not explicitly claimed by another
+      station, including uncategorized items).
     """
+    from app.core.business_time import BUSINESS_TZ, day_start_utc
+    from datetime import timedelta as _td
+
+    now_utc = datetime.now(timezone.utc)
+    if timeframe == "all":
+        since = None
+    elif timeframe == "today":
+        since = day_start_utc(now_utc)
+    else:
+        since = now_utc - _td(hours=24)
+
     stmt = (
         select(Order, Customer, DiningTable)
         .outerjoin(Customer, Customer.id == Order.customer_id)
         .outerjoin(DiningTable, DiningTable.id == Order.dining_table_id)
         .where(Order.store_id == staff.store_id)
     )
+    if since:
+        stmt = stmt.where(Order.created_at >= since)
+    if issues_only:
+        # Unpaid orders older than 30 minutes, still pending/confirmed (not cancelled)
+        stale_cutoff = now_utc - _td(minutes=30)
+        stmt = stmt.where(
+            Order.payment_status == "initiated",
+            Order.created_at < stale_cutoff,
+            Order.status.in_(["pending", "confirmed"]),
+        )
+    elif not status_filter:
+        # Default: LIVE orders only — exclude cancelled AND unpaid-pending.
+        # Unpaid orders older than 30 min surface via ?issues=true instead.
+        stmt = stmt.where(
+            Order.status.notin_(["cancelled_by_customer", "cancelled_by_merchant", "pending"])
+        )
     if status_filter:
         stmt = stmt.where(Order.status == status_filter)
     if order_type:

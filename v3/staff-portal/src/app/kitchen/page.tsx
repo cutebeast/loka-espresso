@@ -22,9 +22,6 @@ const statusFilters: {
   value: "all"
 }, {
   labelKey: "kitchen.filter_new",
-  value: "pending"
-}, {
-  labelKey: "kitchen.filter_queued",
   value: "confirmed"
 }, {
   labelKey: "kitchen.filter_preparing",
@@ -38,12 +35,8 @@ const kanbanColumns: {
   labelKey: string;
   color: string;
 }[] = [{
-  status: "pending",
-  labelKey: "kitchen.column_new",
-  color: "#D97706"
-}, {
   status: "confirmed",
-  labelKey: "kitchen.column_queued",
+  labelKey: "kitchen.column_new",
   color: "#2563EB"
 }, {
   status: "preparing",
@@ -64,6 +57,11 @@ function KitchenPageContent() {
     t
   } = useTranslation();
   const router = useRouter();
+  // Display mode: view-only wall-screen variant (no controls, larger layout)
+  const isDisplay = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("mode") === "display";
+  }, []);
   const [orders, setOrders] = useState<Order[]>([]);
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
   const [loading, setLoading] = useState(true);
@@ -131,7 +129,7 @@ function KitchenPageContent() {
     }
   }, [storeId, soundOn, station, t]);
   usePolling(fetchOrders, [storeId, soundOn, station], {
-    interval: 5000
+    interval: isDisplay ? 3000 : 5000
   });
   useEffect(() => {
     prevCountRef.current = 0;
@@ -166,7 +164,7 @@ function KitchenPageContent() {
   };
   const filteredOrders = useMemo(() => orders.filter(o => {
     // Kitchen only cares about preparation — exclude delivered/cancelled/refunded
-    const kitchenStatuses: OrderStatus[] = ["pending", "confirmed", "preparing", "ready_for_pickup"];
+    const kitchenStatuses: OrderStatus[] = ["confirmed", "preparing", "ready_for_pickup"];
     if (!kitchenStatuses.includes(o.status)) return false;
     if (filter !== "all" && o.status !== filter) return false;
     if (typeFilter === "dine_in" && o.order_type !== "dine_in") return false;
@@ -187,14 +185,12 @@ function KitchenPageContent() {
     }), [orders, filter, typeFilter, search, sort]);
   const filterLabelMap: Record<string, string> = {
     all: t("kitchen.filter_all"),
-    pending: t("kitchen.filter_new"),
-    confirmed: t("kitchen.filter_queued"),
+    confirmed: t("kitchen.filter_new"),
     preparing: t("kitchen.filter_preparing"),
     ready_for_pickup: t("kitchen.filter_done"),
   };
   const columnLabelMap: Record<string, string> = {
-    pending: t("kitchen.column_new"),
-    confirmed: t("kitchen.column_queued"),
+    confirmed: t("kitchen.column_new"),
     preparing: t("kitchen.column_preparing"),
     ready_for_pickup: t("kitchen.column_done"),
   };
@@ -203,6 +199,107 @@ function KitchenPageContent() {
     return acc;
   }, {} as Record<string, number>);
   const activeOrders = filteredOrders.filter(o => o.status !== "ready_for_pickup");
+  if (isDisplay) {
+    return <div style={{
+      padding: 16,
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      background: "var(--color-bg-page)"
+    }}>
+        {/* Compact display header */}
+        <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12
+    }}>
+          <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }}>
+            <ChefHat size={22} style={{
+          color: "var(--color-primary)"
+        }} />
+            <span style={{
+          fontSize: 18,
+          fontWeight: 800
+        }}>{t("kitchen.kitchen_display")}</span>
+          </div>
+          <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }}>
+            {connected ? <span className="badge badge-green badge-sm flex items-center gap-1"><Wifi size={10} />{t("kitchen.live")}</span> : <span className="badge badge-red badge-sm flex items-center gap-1"><WifiOff size={10} />{t("kitchen.offline")}</span>}
+            <span style={{
+          fontSize: 14,
+          color: "var(--color-text-muted)"
+        }}>{activeOrders.length} {t("staff.status.active")}</span>
+          </div>
+        </div>
+
+        {storeMissing && <Alert variant="error">{t("kitchen.err_store_not_selected")}</Alert>}
+        {error && <Alert variant="error">{error}</Alert>}
+
+        {/* Full-height kanban */}
+        <div style={{
+      flex: 1,
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+      gap: 12,
+      overflow: "hidden"
+    }}>
+          {kanbanColumns.map(col => {
+        const colOrders = filteredOrders.filter(o => o.status === col.status);
+        return <div key={col.status} style={{
+          background: "var(--color-bg-muted)",
+          borderRadius: "var(--radius-lg)",
+          padding: 12,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden"
+        }}>
+                <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+            flexShrink: 0
+          }}>
+                  <h3 style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: col.color
+            }}>{columnLabelMap[col.status] || t(col.labelKey)}</h3>
+                  <span className="badge badge-lg badge-outline" style={{
+              fontSize: 16,
+              minWidth: 32,
+              justifyContent: "center"
+            }}>{colOrders.length}</span>
+                </div>
+                <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            overflowY: "auto"
+          }}>
+                  {colOrders.map(order => <OrderCard key={order.id} order={order} compact />)}
+                  {colOrders.length === 0 && <div style={{
+              textAlign: "center",
+              padding: 24,
+              color: "var(--color-text-muted)",
+              fontSize: 14
+            }}>{t("kitchen.no")}{(columnLabelMap[col.status] || t(col.labelKey)).toLowerCase()}{t("kitchen.orders")}</div>}
+                </div>
+              </div>;
+      })}
+        </div>
+      </div>;
+  }
+
   return <div style={{
     padding: 24,
     maxWidth: 1400,

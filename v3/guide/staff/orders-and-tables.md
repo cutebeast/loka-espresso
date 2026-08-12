@@ -78,3 +78,32 @@ Occupied tables show a **duration badge** — how long the table has been occupi
 Search customers by phone number from the POS header. The search is debounced (300ms) and returns up to 5 results. Click a result to attach the customer to the current order.
 
 If no customer is found with 3+ digits entered, a "Quick Add" button appears — create a new customer with the entered phone number.
+
+
+## Order Queue Tabs
+
+The Orders page has three tabs with sensible defaults:
+
+| Tab | Shows | Window |
+|-----|-------|--------|
+| **Queue** | Live orders only — no pending, no cancelled | Last 24 hours |
+| **Unpaid** | Problem orders — unpaid for 30+ minutes | Last 24 hours |
+| **History** | Delivered + cancelled orders | All time |
+
+Queue cards open the POS checkout screen (for payment and status changes), not the kitchen detail.
+
+## Table Locking
+
+When a dine-in order is created — from POS, kiosk, or PWA — the table is marked **occupied** in `table_status_snapshot`. The table shows as occupied on the Tables page until the order is delivered or cancelled.
+
+
+## Payment Flow (prepaid vs pay-after-meal)
+
+Every order carries a `payment_flow` discriminator:
+
+| payment_flow | Meaning | Channels | Auto-cancel |
+|--------------|---------|----------|-------------|
+| **prepaid** | Pay BEFORE food | Kiosk, PWA takeaway/delivery, POS cash-now | Kiosk 15 min · others 2h unpaid |
+| **pay_after_meal** | Open tab — pay AFTER eating (Malaysia table service) | PWA/QR dine-in, POS two-stage | Never |
+
+The Unpaid tab splits by this: amber "pay after meal" = open tabs (normal — customer still eating), red "do not hand over" = prepaid problem orders. Paid orders always advance `pending → confirmed` automatically so they reach the kitchen.
