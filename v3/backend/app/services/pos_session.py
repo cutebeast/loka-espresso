@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 
 from app.models.order import Order
-from app.models.payment import Payment
+from app.models.payment import Payment, Refund
 from app.models.pos import PosSession
 
 # Provider values written by the staff POS payment endpoint
@@ -32,7 +32,6 @@ async def compute_session_report(
         select(
             Payment.provider,
             func.coalesce(func.sum(Payment.captured_amount), 0),
-            func.coalesce(func.sum(Payment.refunded_amount), 0),
             func.count(func.distinct(Payment.order_id)),
         )
         .join(Order, Order.id == Payment.order_id)
@@ -47,15 +46,29 @@ async def compute_session_report(
     )
 
     sales = {"cash": Decimal(0), "card": Decimal(0), "qr": Decimal(0)}
-    cash_refunds = Decimal(0)
-    order_ids: set[int] = set()
     order_count = 0
-    for provider, gross, refunded, cnt in pay_rows.all():
+    for provider, gross, cnt in pay_rows.all():
         bucket = PROVIDER_BUCKETS.get(provider, "qr")
         sales[bucket] += Decimal(gross)
         order_count += int(cnt)
-        if bucket == "cash":
-            cash_refunds += Decimal(refunded)
+
+    # Cash refunds are windowed on WHEN the refund completed, not on the
+    # payment's creation — a cash refund today for a payment captured in a
+    # previous session still left the drawer today and must be deducted here.
+    refund_row = await db.execute(
+        select(func.coalesce(func.sum(Refund.amount), 0))
+        .join(Payment, Payment.id == Refund.payment_id)
+        .join(Order, Order.id == Payment.order_id)
+        .where(
+            Order.store_id == store_id,
+            Order.deleted_at.is_(None),
+            Refund.status == "completed",
+            Payment.provider == "cash",
+            func.coalesce(Refund.completed_at, Refund.created_at) >= session.opened_at,
+            func.coalesce(Refund.completed_at, Refund.created_at) < end,
+        )
+    )
+    cash_refunds = Decimal(refund_row.scalar() or 0)
 
     expected_cash = Decimal(session.opening_cash or 0) + sales["cash"] - cash_refunds
     return {

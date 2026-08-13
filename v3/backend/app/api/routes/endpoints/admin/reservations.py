@@ -6,7 +6,9 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
+from app.core.business_time import BUSINESS_TZ
 from app.models.customer import Customer
+from app.models.enums import ReservationStatus
 from app.models.store import DiningTable, Reservation, Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.reservation import (
@@ -35,6 +37,39 @@ async def _get_reservation_or_404(db, reservation_id: int) -> Reservation:
             status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found"
         )
     return reservation
+
+
+async def _get_bookable_table_or_400(
+    db, dining_table_id: int, store_id: int
+) -> DiningTable:
+    """Load a dining table (locking the row) and require it to be a live,
+    active table belonging to the given store.
+
+    The FOR UPDATE lock on the table row serializes concurrent confirms of
+    the same table, closing the double-booking TOCTOU between the
+    availability check and the commit.
+    """
+    result = await db.execute(
+        select(DiningTable)
+        .where(DiningTable.id == dining_table_id, DiningTable.deleted_at.is_(None))
+        .with_for_update()
+    )
+    table = result.scalar_one_or_none()
+    if table is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dining table not found"
+        )
+    if table.store_id != store_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Table does not belong to this store",
+        )
+    if not table.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Table is not active",
+        )
+    return table
 
 
 async def _check_table_availability(
@@ -125,6 +160,11 @@ async def list_reservations(
         base_stmt = base_stmt.where(Reservation.store_id == store_id)
         count_stmt = count_stmt.where(Reservation.store_id == store_id)
     if status is not None:
+        if status not in ReservationStatus.enums:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Valid: {ReservationStatus.enums}",
+            )
         base_stmt = base_stmt.where(Reservation.status == status)
         count_stmt = count_stmt.where(Reservation.status == status)
     if date_from is not None:
@@ -182,6 +222,7 @@ async def create_reservation(
     """Create a reservation (admin)."""
     await require_store_admin(db, admin, data.store_id)
     if data.dining_table_id is not None:
+        await _get_bookable_table_or_400(db, data.dining_table_id, data.store_id)
         await _check_table_availability(
             db, data.dining_table_id, data.reservation_date,
             data.reservation_time, data.duration_minutes,
@@ -223,6 +264,8 @@ async def update_reservation(
         )
     for field, value in update_data.items():
         setattr(reservation, field, value)
+    if "dining_table_id" in update_data and reservation.dining_table_id is not None:
+        await _get_bookable_table_or_400(db, reservation.dining_table_id, reservation.store_id)
     if reservation.dining_table_id is not None and reservation.status in ("confirmed", "seated"):
         await _check_table_availability(
             db, reservation.dining_table_id, reservation.reservation_date,
@@ -248,13 +291,21 @@ async def update_reservation_status(
     reservation = await _get_reservation_or_404(db, id)
     await require_store_admin(db, admin, reservation.store_id)
     reservation.status = data.status
-    if data.dining_table_id is not None and data.status == "confirmed":
+    if data.dining_table_id is not None:
+        await _get_bookable_table_or_400(db, data.dining_table_id, reservation.store_id)
+        reservation.dining_table_id = data.dining_table_id
+    if data.status in ("confirmed", "seated") and reservation.dining_table_id is not None:
+        # Confirming/seating always re-validates the effective table — a
+        # reservation holding a table from `requested` must not slip through.
+        # The table row lock (taken above or here) serializes concurrent
+        # confirms of the same table before the overlap check runs.
+        if data.dining_table_id is None:
+            await _get_bookable_table_or_400(db, reservation.dining_table_id, reservation.store_id)
         await _check_table_availability(
-            db, data.dining_table_id, reservation.reservation_date,
+            db, reservation.dining_table_id, reservation.reservation_date,
             reservation.reservation_time, reservation.duration_minutes,
             exclude_reservation_id=reservation.id,
         )
-        reservation.dining_table_id = data.dining_table_id
     reservation.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(reservation)
@@ -325,6 +376,29 @@ async def create_my_reservation(
     data: CustomerReservationCreate,
 ):
     """Create a reservation for the current customer."""
+    result = await db.execute(
+        select(Store).where(Store.id == data.store_id, Store.deleted_at.is_(None))
+    )
+    store = result.scalar_one_or_none()
+    if store is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Store not found"
+        )
+    if not store.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Store is not accepting reservations",
+        )
+    if data.reservation_date < datetime.now(BUSINESS_TZ).date():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reservation date cannot be in the past",
+        )
+    if data.duration_minutes > 480:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Duration cannot exceed 480 minutes",
+        )
     reservation = Reservation(
         **data.model_dump(),
         customer_id=customer.id,

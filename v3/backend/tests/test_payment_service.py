@@ -43,6 +43,13 @@ def _fake_result(value=None):
     return Result()
 
 
+def _scalars_result(rows):
+    class Result:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: rows)
+    return Result()
+
+
 def _async_db():
     db = AsyncMock()
     db.add = MagicMock()
@@ -144,7 +151,12 @@ async def test_process_webhook_event_stripe_captures_payment(monkeypatch, fake_c
     )
 
     db = _async_db()
-    db.execute.return_value = _fake_result(payment)
+    order = SimpleNamespace(id=1, status="pending", total_amount=Decimal("10.00"))
+    db.execute.side_effect = [
+        _fake_result(payment),   # payment lookup by provider_transaction_id
+        _fake_result(order),     # capture safety-net: order row
+        _scalars_result([]),     # capture safety-net: no other captured payments
+    ]
     monkeypatch.setattr("app.services.payment._sync_order_payment_status", AsyncMock())
     monkeypatch.setattr("app.services.payment._add_payment_event", AsyncMock())
 
@@ -184,7 +196,12 @@ async def test_process_webhook_event_hitpay_completed_records_payment_id(monkeyp
     )
 
     db = _async_db()
-    db.execute.return_value = _fake_result(payment)
+    order = SimpleNamespace(id=1, status="pending", total_amount=Decimal("25.00"))
+    db.execute.side_effect = [
+        _fake_result(payment),   # payment lookup by provider_transaction_id
+        _fake_result(order),     # capture safety-net: order row
+        _scalars_result([]),     # capture safety-net: no other captured payments
+    ]
     monkeypatch.setattr("app.services.payment._sync_order_payment_status", AsyncMock())
     monkeypatch.setattr("app.services.payment._add_payment_event", AsyncMock())
 

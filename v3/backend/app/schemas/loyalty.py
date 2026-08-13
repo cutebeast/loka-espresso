@@ -13,7 +13,7 @@ class LoyaltyTierBase(BaseSchema):
     tier_key: str = Field(..., max_length=20)
     display_name: str = Field(..., max_length=50)
     min_lifetime_points: int = Field(..., ge=0)
-    points_multiplier: float = Field(default=1.0, ge=1.0)
+    points_multiplier: Money = Field(default=Decimal("1.0"), ge=1.0)
     benefits_config: dict | None = None
     color_hex: str | None = Field(None, max_length=7)
     sort_order: int = Field(default=0, ge=0)
@@ -38,7 +38,7 @@ class LoyaltyAccountOut(BaseSchema):
     current_points: int
     lifetime_points: int
     points_to_next_tier: int | None
-    tier_multiplier: float
+    tier_multiplier: Money
     last_activity_at: datetime | None
     last_tier_change_at: datetime | None
     created_at: datetime

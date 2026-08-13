@@ -10,7 +10,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_hq_write_admin, require_store_admin
 from app.models.order import Order
 from app.models.store import (
     DiningTable,
@@ -157,6 +157,9 @@ async def create_store(
     data: StoreCreate,
 ):
     """Create a new store with default operating hours and configuration."""
+    # Store creation is platform-level — HQ roles only (store managers must
+    # not mint stores; update/delete stay store-scoped).
+    await require_hq_write_admin(db, admin)
     payload = data.model_dump()
     create_hours = payload.pop("operating_hours", None)
     store = Store(**payload)

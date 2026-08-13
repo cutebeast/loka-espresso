@@ -1,13 +1,34 @@
 """Marketing domain schemas."""
 
+import re
 from datetime import datetime
 from app.schemas.base import Money
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
 from app.schemas.base import BaseSchema, TimestampedSchema
+
+
+# Static audience segments. In addition, dynamic segments are accepted:
+# "tier:<tier_key>" (resolved against loyalty_tiers.tier_key at send time).
+STATIC_AUDIENCE_SEGMENTS = frozenset({
+    "all_users", "new_users", "loyal_customers", "inactive_users", "platinum_members"
+})
+_TIER_SEGMENT_RE = re.compile(r"^tier:[A-Za-z0-9_\-]{1,45}$")
+
+
+def _validate_audience_segment(value: str) -> str:
+    if value in STATIC_AUDIENCE_SEGMENTS or _TIER_SEGMENT_RE.match(value):
+        return value
+    raise ValueError(
+        "audience_segment must be one of "
+        f"{sorted(STATIC_AUDIENCE_SEGMENTS)} or 'tier:<tier_key>'"
+    )
+
+
+AudienceSegment = Annotated[str, AfterValidator(_validate_audience_segment)]
 
 
 class MarketingCampaignBase(BaseSchema):
@@ -17,7 +38,7 @@ class MarketingCampaignBase(BaseSchema):
     campaign_type: Literal[
         "promotional", "transactional", "retention", "acquisition", "reactivation"
     ]
-    audience_segment: str | None = Field(None, max_length=50)
+    audience_segment: AudienceSegment | None = Field(None, max_length=50)
     audience_criteria: dict | None = None
     subject_line: str | None = Field(None, max_length=200)
     body_content: str | None = None

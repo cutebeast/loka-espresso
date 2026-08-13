@@ -22,6 +22,13 @@ def _fake_result(value=None):
     return Result()
 
 
+def _scalars_result(rows):
+    class Result:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: rows)
+    return Result()
+
+
 def _async_db():
     db = AsyncMock()
     db.add = MagicMock()
@@ -119,7 +126,12 @@ async def test_guest_pay_wallet_success_routes_through_capture_pipeline():
         patch.object(payment_endpoints, "_add_payment_event", AsyncMock()),
         patch("app.services.einvoice.auto_issue_on_payment", AsyncMock()),
     ):
-        db.execute.side_effect = [_fake_result(customer)]  # active customer lookup
+        db.execute.side_effect = [
+            _fake_result(customer),  # active customer lookup
+            _scalars_result([]),     # double-charge guard: no open payments to void
+            _scalars_result([]),     # double-charge guard: no failed sessions to expire
+            _scalars_result([]),     # net-of-refund: no captured payments
+        ]
         resp = await payment_endpoints.guest_pay(
             1, db, token="tok", provider="wallet", phone_number="+60123456789", otp_code="123456"
         )

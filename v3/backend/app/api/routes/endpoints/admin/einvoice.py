@@ -4,6 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
 from app.models.einvoice import EinvoiceDocument
@@ -201,7 +202,13 @@ async def issue_einvoice_for_order(
     if payment is None:
         raise HTTPException(status_code=400, detail="Order has no captured payment")
 
-    doc = await issue_einvoice(db, order, payment)
+    try:
+        doc = await issue_einvoice(db, order, payment)
+    except IntegrityError:
+        # Lost the check-then-insert race on uq_einvoice_order_payment_type —
+        # the document already exists, so this is a conflict, not a 500.
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="E-invoice already issued for this order")
     db.add(AuditLog(
         principal_id=admin.id,
         action="create",

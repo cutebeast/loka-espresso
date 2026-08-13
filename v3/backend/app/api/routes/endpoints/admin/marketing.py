@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, enum_filter_or_400
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount, LoyaltyTier
 from app.models.marketing import CampaignAnalytics, MarketingCampaign
@@ -144,6 +144,15 @@ async def _resolve_audience_customers(db, segment: str) -> list[int]:
         stmt = stmt.join(
             LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id
         ).where(LoyaltyAccount.current_tier_id == tier_id)
+    elif segment != "all_users":
+        # Defense in depth: the schema validator (AudienceSegment) already
+        # rejects unknown segments at create time, but a campaign row written
+        # before that guard must never silently resolve to the full customer
+        # base — a typo here would mass-message everyone.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown audience segment: {segment}",
+        )
 
     result = await db.execute(stmt)
     return [row[0] for row in result.all()]
@@ -215,6 +224,9 @@ async def list_campaigns(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List marketing campaigns with filters."""
+    from app.models.enums import CampaignChannel, CampaignStatus
+    status = enum_filter_or_400(status, CampaignStatus, "status")
+    channel = enum_filter_or_400(channel, CampaignChannel, "channel")
     base_stmt = select(MarketingCampaign)
     count_stmt = select(func.count(MarketingCampaign.id))
 
@@ -298,6 +310,15 @@ async def send_campaign(
 ):
     """Send campaign — delivers via push/in-app inbox, SMS, WhatsApp, or email based on channel."""
     campaign = await _get_campaign_or_404(db, campaign_id)
+
+    # Send is not idempotent: re-sending an already-delivered campaign would
+    # duplicate inbox rows and re-bill SMS/WhatsApp/email. Paused campaigns may
+    # be resumed (re-send to remaining audience is by design there).
+    if campaign.status in ("active", "completed"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Campaign has already been sent (status: {campaign.status})",
+        )
 
     campaign.status = "active"
     campaign.started_at = datetime.now(timezone.utc)

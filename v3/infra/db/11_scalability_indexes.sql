@@ -53,4 +53,4 @@ CREATE INDEX IF NOT EXISTS idx_wastage_reports_store_created
 
 -- 13. Translation lookup: most heavily hit read path in the system
 CREATE UNIQUE INDEX IF NOT EXISTS idx_translations_unique 
-  ON translations(namespace, locale, translation_key, entity_type, entity_id);
+  ON translations(namespace, locale, translation_key, table_name, record_id);

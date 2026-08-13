@@ -1,5 +1,7 @@
 """Admin and public notification endpoints."""
 
+import asyncio
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -54,6 +56,14 @@ NOTIFICATION_TYPE_LABEL = {
     "info": "Info",
     "event": "Event",
 }
+
+# Push-provider responses that mean the subscription is permanently dead.
+_GONE_PUSH_RE = re.compile(r"\b(404|410)\b")
+
+# Valid notification-preference keys (mirror the DB enum/check constraint —
+# invalid values fall back to the push_notification/all defaults).
+_PREFERENCE_CHANNELS = frozenset({"push_notification", "email", "sms", "in_app", "whatsapp"})
+_PREFERENCE_CATEGORIES = frozenset({"all", "order_updates", "promotions", "loyalty", "system"})
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +258,13 @@ async def send_notification(
     notif = result.scalar_one_or_none()
     if notif is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
-
+    # Send is not idempotent: a re-send would duplicate every inbox message and
+    # re-fire paid SMS/WhatsApp. There is no deliberate-resend flag — refuse.
+    if notif.status == "sent":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Notification has already been sent",
+        )
     # Build audience query based on segment
     customer_stmt = select(Customer.id).where(
         Customer.is_active.is_(True),
@@ -344,6 +360,9 @@ async def send_notification(
             body=notif.body,
             image_url=notif.image_url,
             action_url=notif.action_url,
+            # Link back to the parent admin notification — translations are
+            # stored against admin_notifications, keyed by this id.
+            campaign_id=notif.id,
         )
         db.add(msg)
         await db.flush()
@@ -448,11 +467,18 @@ async def _fan_out_channels(
                 if not cust_devices:
                     stats["push_notification"]["skipped"] += 1
                 for dev in cust_devices:
-                    result = send_web_push(dev.web_push_subscription, push_payload)
+                    # send_web_push is sync (pywebpush) — keep it off the event
+                    # loop so an all_users blast doesn't stall the worker.
+                    endpoint = str((dev.web_push_subscription or {}).get("endpoint", ""))[:255]
+                    result = await asyncio.to_thread(send_web_push, dev.web_push_subscription, push_payload)
                     ok = bool(result.get("success"))
+                    if not ok and _GONE_PUSH_RE.search(str(result.get("error") or "")):
+                        # 404/410 = subscription is gone for good — clear it so
+                        # later sends skip the dead endpoint.
+                        dev.web_push_subscription = None
                     stats["push_notification"]["sent" if ok else "failed"] += 1
                     _log(mid, "push_notification", ok, device_id=dev.id,
-                         address=str((dev.web_push_subscription or {}).get("endpoint", ""))[:255],
+                         address=endpoint,
                          provider="webpush", error=None if ok else str(result.get("error", ""))[:500])
 
         if "sms" in extra:
@@ -586,7 +612,18 @@ async def list_my_notifications(
         stmt = stmt.where(NotificationMessage.is_read.is_(is_read))
     result = await db.execute(stmt)
     item_dicts = [NotificationMessageOut.model_validate(n).model_dump() for n in result.scalars().all()]
-    await merge_translations(db, item_dicts, "admin_notifications", locale)
+    # Translations live on the parent admin_notifications row — message ids are
+    # unrelated and would miss (or collide with the wrong notification). Key
+    # the merge by campaign_id, then copy the translated fields back.
+    keyed = [dict(item, id=item["campaign_id"]) for item in item_dicts if item.get("campaign_id")]
+    if keyed:
+        await merge_translations(db, keyed, "admin_notifications", locale)
+        by_notif_id = {k["id"]: k for k in keyed}
+        for item in item_dicts:
+            translated = by_notif_id.get(item.get("campaign_id"))
+            if translated is not None:
+                item["title"] = translated["title"]
+                item["body"] = translated["body"]
 
     return APIResponse(
         data=PaginatedResponse(
@@ -642,9 +679,12 @@ async def update_my_preferences(
     db: DBDependency,
     data: list[NotificationPreferenceUpdate],
 ):
-    """Update current customer's notification preferences."""
-    # For simplicity, update all existing preferences or create defaults if none exist.
-    # A more robust implementation would match by channel/category.
+    """Update current customer's notification preferences.
+
+    Each item upserts the row keyed by (channel, message_category) — items
+    without channel info fall back to (push_notification, all) for backward
+    compatibility with older clients.
+    """
     result = await db.execute(
         select(NotificationPreference).where(NotificationPreference.customer_id == customer.id)
     )
@@ -652,31 +692,29 @@ async def update_my_preferences(
 
     updated = []
     for pref_update in data:
-        # Find or create a preference entry
-        key = None
-        for k, v in existing.items():
-            key = k
-            break
-        if key and key in existing:
-            pref = existing[key]
-            update_data = pref_update.model_dump(exclude_unset=True)
-            for field, value in update_data.items():
-                setattr(pref, field, value)
-            pref.updated_at = datetime.now(timezone.utc)
-            updated.append(pref)
-        else:
-            # Create a generic preference if none exist
-            new_pref = NotificationPreference(
+        channel = pref_update.channel if pref_update.channel in _PREFERENCE_CHANNELS else "push_notification"
+        category = (
+            pref_update.message_category
+            if pref_update.message_category in _PREFERENCE_CATEGORIES
+            else "all"
+        )
+        key = f"{channel}:{category}"
+        pref = existing.get(key)
+        if pref is None:
+            pref = NotificationPreference(
                 customer_id=customer.id,
-                channel="push_notification",
-                message_category="all",
-                is_enabled=pref_update.is_enabled if pref_update.is_enabled is not None else True,
-                quiet_hours_start=pref_update.quiet_hours_start,
-                quiet_hours_end=pref_update.quiet_hours_end,
-                timezone=pref_update.timezone or "UTC",
+                channel=channel,
+                message_category=category,
+                is_enabled=True,
+                timezone="UTC",
             )
-            db.add(new_pref)
-            updated.append(new_pref)
+            db.add(pref)
+            existing[key] = pref
+        update_data = pref_update.model_dump(exclude_unset=True, exclude={"channel", "message_category"})
+        for field, value in update_data.items():
+            setattr(pref, field, value)
+        pref.updated_at = datetime.now(timezone.utc)
+        updated.append(pref)
 
     await db.commit()
     for pref in updated:

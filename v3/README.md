@@ -364,4 +364,31 @@ Fresh 5-track audit focused on the three newest feature commits (kiosk overhaul,
 
 Verification: 58/58 backend unit tests (16 new), 219/219 E2E (16 skipped), tsc ×3 clean, all 6 pm2 services healthy on fresh builds. Live probes: kiosk dine-in → pending+prepaid, guest-pay wallet wrong-OTP → 401, admin list totals correct, staff API exposes payment_flow, periodic sweeper auto-cancels stale kiosk orders with full reversal.
 
-Known follow-up for a later round: `staff_pay_with_wallet` (staff/orders.py) still uses gross captured math for the already-paid check (the net-of-refund fix covered POS pay/admin/split-bill).
+Known follow-up for a later round: `staff_pay_with_wallet` (staff/orders.py) still uses gross captured math for the already-paid check (the net-of-refund fix covered POS pay/admin/split-bill). **Resolved in the round-36 follow-up below.**
+
+## Round 36 follow-up — re-audit & backlog closure (2026-08-13)
+
+4-track re-audit: self-review of the round-36 commit, verification of the documented round-34/35 money backlog, fresh areas (reservations, referrals, e-invoice, notifications, reports), infra residuals. ~30 findings fixed after in-code re-verification + personal diff review. Full details in `AGENTS.md` "Round 36 follow-up".
+
+- **Money seam**: L1 duplicate payment sessions closed (old sessions voided before new ones mint + `duplicate_capture` webhook flag); L5 late void/failed webhooks can no longer erase captured money; the round-36 failed-retry regression closed (swept orders expire `failed` Stripe sessions; captures on dead orders skip side-effects); staff + admin wallet pay routed through the full capture pipeline with net math; Stripe pending refunds now resolve via `charge.refund.updated` (failed provider refunds restore the books and flag manual reconciliation); guest-pay charges only the net remaining balance.
+- **Reservations/referrals**: double-booking closed (confirm always re-validates the table under a row lock); table assignment validated; referral abuse closed (code-verified, new-customer-only, server-owned status, unique pair index `w2x3y4z5a6b7`); referrals convert on first PAID order; `order_count` symmetric on cancel.
+- **E-invoice/notifications/reports**: one MyInvois invoice per order (split-bill safe) + refund notes (type 04) with BillingReference; notification send idempotent + off the event loop; preferences per channel/category; dashboards use net revenue and MYT days; Z-report windows cash refunds on completion time.
+- **Lows/infra**: reward-cap TOCTOU locked; waste/stock variant + soft-delete fixes; upload magic bytes (incl. `.jpeg`/video); `11_scalability_indexes.sql` fresh-replay verified; kiosk env block.
+
+Verification: 93/93 backend unit tests (35 new), full E2E re-run, tsc ×3 clean, live probes (duplicate session voided, reservation 400s), single alembic head with no drift.
+
+Still open (documented in AGENTS.md): failed-provider-refund benefit rollback is manual; refund-note UBL carries full-order totals; `grant_birthday_perk`/tier-renewal UTC windows; the round-35 go-live items (OTP bypass, F-10/F-11, tier downgrade job, display_key, CSP unsafe-eval).
+
+## Round 36 follow-up 2 — systemic fixes (2026-08-13)
+
+Third audit pass (diff self-review, runtime forensics, fresh surface, DB integrity sweep); ~17 findings fixed. Details in `AGENTS.md` "Round 36 follow-up 2".
+
+- **Enum-filter 500s eliminated**: shared `enum_filter_or_400` validates all enum-backed query filters (orders/payments/audit/inventory/marketing) → 400 instead of bare 500.
+- **Marketing audience typo can no longer mass-blast all customers** (schema validator + defensive resolver else→400).
+- **Store scoping** added to shift/task/template/equipment/time-event mutations; `create_store` HQ-gated; campaign send idempotent (409).
+- **`sync-to-json` HQ-gated + off the event loop** (was a 3-minute single-worker stall).
+- **Guest-pay shows `amount_due`** (net of refunds) matching what it charges.
+- **Lock discipline** Payment(s)→Order on the customer-facing session paths + a 24h `pending_authorization` limbo sweep (missed webhooks no longer strand stock/vouchers/tables).
+- Plus: banner date windows by ID, dashboard count/revenue alignment, 5xx request logging, loyalty schema Decimal types, e-invoice type-01 DB unique index (migration `x3y4z5a6b7c8`).
+
+Verification: 93/93 unit, full E2E green, tsc clean, all guards live-probed (400/403/404/422 as designed), alembic single head no drift.

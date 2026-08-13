@@ -9,7 +9,7 @@ from pydantic import Field
 from sqlalchemy import select, func, text, case, or_
 from sqlalchemy.orm import joinedload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
+from app.api.routes.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys, enum_filter_or_400
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
@@ -77,6 +77,10 @@ async def list_orders(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List all orders with pagination and filters (admin view)."""
+    from app.models.enums import OrderStatus, OrderType, PaymentStatus
+    status_filter = enum_filter_or_400(status_filter, OrderStatus, "status")
+    order_type = enum_filter_or_400(order_type, OrderType, "order_type")
+    payment_status = enum_filter_or_400(payment_status, PaymentStatus, "payment_status")
     # Enforce store scoping for staff tokens
     staff_store_id = get_staff_store_id_from_request(request)
     if staff_store_id is not None:
@@ -512,6 +516,11 @@ async def process_order_payment(
     )
     if dup_check.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Duplicate payment request")
+
+    # Void any earlier live provider session on this order before issuing a
+    # new QR session — a pending session can still be paid (double-charge).
+    if is_stripe_qr and net_amount > 0:
+        await cancel_pending_order_payments(db, order.id)
 
     payment = None
     payment_url: str | None = None
@@ -958,8 +967,13 @@ async def pay_with_wallet(
             Payment.status.in_(("captured", "partially_refunded")),
         )
     )
+    # Net paid = captured minus refunded — a partially refunded payment must
+    # not still count as fully paid (mirrors process_order_payment).
     already_paid = money_round(
-        sum(to_decimal(p.captured_amount or 0) for p in payment_result.scalars().all()),
+        sum(
+            to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0)
+            for p in payment_result.scalars().all()
+        ),
         precision,
         rounding_mode,
     )
@@ -997,14 +1011,16 @@ async def pay_with_wallet(
         idempotency_key=f"wallet-payment-{order.id}-{uuid.uuid4().hex}",
     )
     db.add(payment)
+    await db.flush()
+    await db.refresh(payment)
 
-    # Update order payment status if order is fully paid
-    new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
-    if new_total_paid >= to_decimal(order.total_amount):
-        order.payment_status = "captured"
-        # Grant loyalty points on capture (idempotent — direct status set).
-        from app.services.payment import _credit_order_loyalty_points
-        await _credit_order_loyalty_points(db, order)
+    # Route through the shared capture pipeline instead of hand-setting the
+    # status: recompute the order payment status (net of refunds), advance
+    # pending → confirmed, and grant loyalty points + lucky-draw tickets (all
+    # idempotent), plus annual-spend accrual.
+    from app.services.payment import _accrue_loyalty_annual_spend, _sync_order_payment_status
+    await _sync_order_payment_status(db, payment)
+    await _accrue_loyalty_annual_spend(db, payment)
     order.updated_at = now
 
     # Audit log
@@ -1018,6 +1034,16 @@ async def pay_with_wallet(
 
     await db.commit()
     await db.refresh(order)
+
+    # LHDN e-invoice: auto-issue on captured payments when einvoice.auto_issue
+    # is on. Fully guarded — e-invoicing must never break the payment flow.
+    if order.payment_status == "captured":
+        import logging
+        try:
+            from app.services.einvoice import auto_issue_on_payment
+            await auto_issue_on_payment(db, order, payment)
+        except Exception:
+            logging.getLogger(__name__).exception("e-invoice auto-issue failed for order %s", order.id)
 
     return APIResponse(
         data={

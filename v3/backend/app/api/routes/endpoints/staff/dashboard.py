@@ -1,11 +1,12 @@
 """Staff dashboard and store configuration endpoints."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentStaff, DBDependency
+from app.core.business_time import BUSINESS_TZ
 from app.models.order import Order
 from app.models.staff import StaffTimeEvent
 from app.models.store import Reservation, Store, StoreConfiguration, TableStatusSnapshot
@@ -35,11 +36,11 @@ async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
         )
     )).scalar() or 0
 
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    # "Today" follows the business timezone (MYT), not UTC.
     today_resv = (await db.execute(
         select(func.count(Reservation.id)).where(
             Reservation.store_id == store_id,
-            Reservation.reservation_date == today_start.date(),
+            Reservation.reservation_date == datetime.now(BUSINESS_TZ).date(),
             Reservation.status.notin_([
                 "cancelled_by_guest", "cancelled_by_merchant", "no_show"
             ]),

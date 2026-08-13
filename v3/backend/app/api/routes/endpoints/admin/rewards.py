@@ -26,13 +26,14 @@ admin_router = APIRouter(prefix="/admin/rewards", tags=["admin — rewards"])
 public_router = APIRouter(prefix="/rewards", tags=["rewards"])
 
 
-async def _get_reward_or_404(db, reward_id: int) -> RewardCatalog:
-    result = await db.execute(
-        select(RewardCatalog).where(
-            RewardCatalog.id == reward_id,
-            RewardCatalog.deleted_at.is_(None),
-        )
+async def _get_reward_or_404(db, reward_id: int, for_update: bool = False) -> RewardCatalog:
+    stmt = select(RewardCatalog).where(
+        RewardCatalog.id == reward_id,
+        RewardCatalog.deleted_at.is_(None),
     )
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     reward = result.scalar_one_or_none()
     if reward is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reward not found")
@@ -119,7 +120,7 @@ async def update_reward(
     data: RewardCatalogUpdate,
 ):
     """Update a reward catalog entry."""
-    reward = await _get_reward_or_404(db, reward_id)
+    reward = await _get_reward_or_404(db, reward_id, for_update=True)
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -145,7 +146,7 @@ async def delete_reward(
     reward_id: int,
 ):
     """Soft-delete a reward catalog entry."""
-    reward = await _get_reward_or_404(db, reward_id)
+    reward = await _get_reward_or_404(db, reward_id, for_update=True)
 
     reward.is_active = False
     reward.deleted_at = datetime.now(timezone.utc)
@@ -282,7 +283,10 @@ async def redeem_reward(
     reward_id: int,
 ):
     """Redeem a reward."""
-    reward = await _get_reward_or_404(db, reward_id)
+    # Lock the reward row: the cap check below and the total_redemptions
+    # increment are otherwise TOCTOU — concurrent redemptions of the last
+    # slot would both pass and overshoot maximum_redemptions.
+    reward = await _get_reward_or_404(db, reward_id, for_update=True)
 
     if not reward.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reward is no longer active")

@@ -16,6 +16,7 @@ interface GuestOrderData {
   status: string;
   payment_status: string;
   total_amount: string;
+  amount_due?: string;
   currency_code: string;
   store_name: string | null;
   store_logo: string | null;
@@ -237,10 +238,10 @@ export default function GuestPayPage() {
           ))}
         </div>
 
-        {/* Total */}
+        {/* Total — amount_due reflects partial refunds; total_amount is the order gross */}
         <div className="guest-pay-total-row">
           <span>{t('cart.total')}</span>
-          <span className="guest-pay-total-amount">{formatPrice(order.total_amount)}</span>
+          <span className="guest-pay-total-amount">{formatPrice(order.amount_due ?? order.total_amount)}</span>
         </div>
 
         {/* Optional phone (loyalty registration — passwordless; required for wallet) */}

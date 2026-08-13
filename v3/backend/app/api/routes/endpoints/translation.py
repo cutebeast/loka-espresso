@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, HQAdmin
+from app.api.routes.deps import CurrentAdmin, DBDependency, HQAdmin, require_hq_write_admin
 from app.models.translation import Translation, TranslationCache
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.translation import (
@@ -252,6 +252,10 @@ async def sync_to_json(
     admin: CurrentAdmin,
 ):
     """Sync pwa-ui DB translations to static JSON locale files."""
+    # This triggers a full PWA rebuild + pm2 restart — HQ write roles only,
+    # and the blocking subprocess work runs off the event loop (the backend
+    # is a single uvicorn worker; a 3-minute build would stall every request).
+    await require_hq_write_admin(db, admin)
     LOCALES = ["zh"]
     PWA_LOCALES_DIR = os.path.join(
         os.path.dirname(__file__), "..", "..", "..", "..", "..",
@@ -311,12 +315,18 @@ async def sync_to_json(
     except Exception as e:
         results["_version_error"] = str(e)
 
-    # Trigger PWA rebuild so new JSON is bundled
+    # Trigger PWA rebuild so new JSON is bundled — blocking subprocess calls,
+    # so run them in a thread to keep the event loop responsive.
+    import asyncio
     import subprocess
-    try:
+
+    def _rebuild_pwa():
         pwa_dir = os.path.abspath(os.path.join(PWA_LOCALES_DIR, "..", ".."))
         subprocess.run(["npm", "run", "build"], cwd=pwa_dir, capture_output=True, timeout=180)
         subprocess.run(["pm2", "restart", "customer-pwa-v3"], capture_output=True, timeout=30)
+
+    try:
+        await asyncio.to_thread(_rebuild_pwa)
         results["_rebuild"] = "ok"
     except Exception as e:
         results["_rebuild_error"] = str(e)

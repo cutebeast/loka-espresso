@@ -290,7 +290,13 @@ async def _deduct_stock_for_order(
         return warnings
 
     inv_item_result = await db.execute(
-        select(InventoryItem).where(InventoryItem.id.in_(list(recipe_needs.keys())))
+        select(InventoryItem).where(
+            InventoryItem.id.in_(list(recipe_needs.keys())),
+            # Skip soft-deleted/inactive items (mirrors the waste paths) —
+            # deducting stock on them resurrects phantom inventory rows.
+            InventoryItem.is_active.is_(True),
+            InventoryItem.deleted_at.is_(None),
+        )
     )
     inv_items = {inv.id: inv for inv in inv_item_result.scalars().all()}
 
@@ -480,6 +486,40 @@ async def _release_order_vouchers_and_rewards(db: AsyncSession, order: Order) ->
             rc.total_redemptions = max(0, (rc.total_redemptions or 0) - 1)
 
 
+async def _convert_referral_on_first_paid_order(db: AsyncSession, order: Order) -> None:
+    """Convert the customer's pending referral when their first order is PAID.
+
+    Documented intent (services/auth.py): a referral converts on the invitee's
+    first *paid* order — an unpaid order that gets auto-cancelled must not
+    convert it. Idempotent: the pending → converted status flip anchors
+    retries, and the prior-paid-order probe keeps later captures from
+    re-converting anything.
+    """
+    if not order.customer_id:
+        return
+    prior_paid = (
+        await db.execute(
+            select(func.count(Order.id)).where(
+                Order.customer_id == order.customer_id,
+                Order.id != order.id,
+                Order.deleted_at.is_(None),
+                Order.payment_status.in_(("captured", "settled")),
+            )
+        )
+    ).scalar() or 0
+    if prior_paid > 0:
+        return
+    from app.models.customer import ReferralEvent
+    await db.execute(
+        update(ReferralEvent)
+        .where(
+            ReferralEvent.invitee_customer_id == order.customer_id,
+            ReferralEvent.status == "pending",
+        )
+        .values(status="converted", converted_at=datetime.now(timezone.utc))
+    )
+
+
 async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
     """Reverse side effects granted at order creation.
 
@@ -572,6 +612,17 @@ async def reverse_order_effects(db: AsyncSession, order: Order) -> None:
             snap.current_order_id = None
             snap.updated_at = datetime.now(timezone.utc)
 
+    # ── Order count rollback ──
+    # create_order_from_cart increments Customer.order_count at creation for
+    # customer-originated channels; keep it symmetric so a cancelled order
+    # doesn't inflate notification/marketing segments. POS orders never
+    # incremented it (different creation path), so they are skipped.
+    if order.customer_id and getattr(order, "order_channel", None) in ("mobile_app", "kiosk"):
+        from app.models.customer import Customer
+        cust = await db.get(Customer, order.customer_id)
+        if cust is not None:
+            cust.order_count = max(0, (cust.order_count or 0) - 1)
+
 
 async def auto_cancel_order(db: AsyncSession, order: Order, reason: str) -> bool:
     """Auto-cancel a stale unpaid order, reversing all of its side effects.
@@ -582,8 +633,17 @@ async def auto_cancel_order(db: AsyncSession, order: Order, reason: str) -> bool
     late webhooks cannot capture money onto a cancelled order. The caller
     manages the surrounding transaction/commit. Returns True when the order
     was cancelled, False when it was already in a non-pending status.
+
+    The row lock is self-enforced: the order is re-fetched with FOR UPDATE and
+    the pending check re-run under the lock, so callers that only held a plain
+    SELECT (most of them) cannot cancel an order that was paid/confirmed in
+    the meantime.
     """
-    if order.status != "pending":
+    locked = await db.execute(
+        select(Order).where(Order.id == order.id).with_for_update()
+    )
+    order = locked.scalar_one_or_none()
+    if order is None or order.status != "pending":
         return False
 
     order.status = "cancelled_by_customer"
@@ -1185,23 +1245,16 @@ async def create_order_from_cart(
                 )
                 order.loyalty_points_earned = loyalty_points_earned
 
-    # Track order count + referral conversion (first order converts a pending referral)
+    # Track order count. Referral conversion is NOT done here — a referral
+    # converts on the invitee's first PAID order (services/auth.py), which is
+    # handled on the capture path (_convert_referral_on_first_paid_order via
+    # _credit_order_loyalty_points); an unpaid auto-cancelled order must not
+    # convert it.
     if customer_id:
         from app.models.customer import Customer
-        from app.models.customer import ReferralEvent
         cust = await db.get(Customer, customer_id)
         if cust is not None:
-            prior_orders = cust.order_count or 0
-            cust.order_count = prior_orders + 1
-            if prior_orders == 0:
-                await db.execute(
-                    update(ReferralEvent)
-                    .where(
-                        ReferralEvent.invitee_customer_id == customer_id,
-                        ReferralEvent.status == "pending",
-                    )
-                    .values(status="converted", converted_at=datetime.now(timezone.utc))
-                )
+            cust.order_count = (cust.order_count or 0) + 1
 
     # Clear the cart
     for ci in cart_items:

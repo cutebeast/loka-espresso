@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.models.einvoice import EinvoiceDocument
-from app.services.einvoice import build_ubl_invoice, issue_einvoice
+from app.services.einvoice import (
+    auto_issue_on_payment,
+    build_ubl_invoice,
+    issue_einvoice,
+    issue_refund_note_for_payment,
+)
 
 
 EINVOICE_CONFIG_VALUES = {
@@ -276,3 +281,131 @@ async def test_issue_einvoice_idempotent_returns_existing(fake_config):
     assert doc is existing
     db.add.assert_not_called()
     db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_issue_einvoice_type01_keyed_per_order(fake_config):
+    """Split-bill: a second captured payment must NOT create a second invoice —
+    type-01 documents are keyed per order regardless of payment."""
+    db = _async_db()
+    existing = EinvoiceDocument(
+        order_id=11,
+        payment_id=55,  # issued against the FIRST split payment
+        store_id=3,
+        document_type="01",
+        code_number="EINV-ORD-1001-01",
+        status="validated",
+    )
+    db.execute.return_value = _FakeResult(one=existing)
+
+    order = _order()
+    second_payment = SimpleNamespace(id=77, order_id=order.id, status="captured")
+
+    doc = await issue_einvoice(db, order, second_payment)
+
+    assert doc is existing
+    db.add.assert_not_called()
+    db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_issue_refund_note_code_number_and_billing_reference(fake_config):
+    """Type-04 refund notes get a per-payment codeNumber and a BillingReference
+    to the original invoice document."""
+    db = _async_db()
+    original = SimpleNamespace(myinvois_uuid="uuid-abc-123", code_number="EINV-ORD-1001-01")
+    db.execute.side_effect = [
+        _FakeResult(one=None),              # no existing refund note
+        _FakeResult(one=_store()),          # store lookup
+        _FakeResult(items=[_line_item()]),  # order line items
+        _FakeResult(one=None),              # customer lookup → walk-in
+        _FakeResult(one=original),          # original type-01 doc (BillingReference)
+    ]
+    order = _order()
+    payment = SimpleNamespace(id=55, order_id=order.id, status="partially_refunded")
+
+    doc = await issue_einvoice(db, order, payment, document_type="04")
+
+    assert doc.document_type == "04"
+    assert doc.code_number == "EINV-ORD-1001-04-P55"
+    invoice = doc.ubl_document["Invoice"][0]
+    assert _leaf(invoice["ID"]) == "EINV-ORD-1001-04-P55"
+    assert _leaf(invoice["InvoiceTypeCode"]) == "04"
+    billing_ref = invoice["BillingReference"][0]["InvoiceDocumentReference"][0]
+    assert _leaf(billing_ref["ID"]) == "uuid-abc-123"
+
+
+@pytest.mark.asyncio
+async def test_auto_issue_waits_until_order_fully_paid(fake_config):
+    """Split-bill: auto-issue must skip partially paid orders and fire once the
+    order reaches a fully-paid status."""
+    fake_config.get_bool = AsyncMock(
+        side_effect=lambda key, default=False: key == "einvoice.auto_issue"
+    )
+
+    # Partially paid (first split payment) — nothing issued.
+    db = _async_db()
+    order = _order(payment_status="initiated")
+    payment = SimpleNamespace(id=55, order_id=order.id, status="captured")
+    await auto_issue_on_payment(db, order, payment)
+    db.add.assert_not_called()
+
+    # Fully paid — the single per-order invoice is issued.
+    db = _async_db()
+    db.execute.side_effect = [
+        _FakeResult(one=None),              # no existing document
+        _FakeResult(one=_store()),          # store lookup
+        _FakeResult(items=[_line_item()]),  # order line items
+        _FakeResult(one=None),              # customer lookup
+    ]
+    order = _order(payment_status="captured")
+    await auto_issue_on_payment(db, order, payment)
+    db.add.assert_called_once()
+    issued = db.add.call_args[0][0]
+    assert issued.document_type == "01"
+    assert issued.code_number == "EINV-ORD-1001-01"
+
+
+@pytest.mark.asyncio
+async def test_issue_refund_note_for_payment_requires_original_invoice(fake_config):
+    """The fire-and-forget refund-note hook only issues when auto_issue is on,
+    the refund completed, and a type-01 invoice exists for the order."""
+    fake_config.get_bool = AsyncMock(
+        side_effect=lambda key, default=False: key == "einvoice.auto_issue"
+    )
+    payment = SimpleNamespace(id=55, order_id=11, status="partially_refunded")
+
+    # Refund not completed → skip (no DB work at all).
+    db = _async_db()
+    await issue_refund_note_for_payment(db, payment, SimpleNamespace(status="pending"))
+    db.execute.assert_not_awaited()
+
+    # Completed refund but no original invoice → skip.
+    db = _async_db()
+    db.execute.side_effect = [
+        _FakeResult(one=_order()),  # order lookup
+        _FakeResult(one=None),      # no submitted/validated type-01 doc
+    ]
+    await issue_refund_note_for_payment(db, payment, SimpleNamespace(status="completed"))
+    db.add.assert_not_called()
+
+    # Completed refund with an original invoice → refund note issued.
+    db = _async_db()
+    original = SimpleNamespace(myinvois_uuid=None, code_number="EINV-ORD-1001-01")
+    db.execute.side_effect = [
+        _FakeResult(one=_order()),          # order lookup
+        _FakeResult(one=1),                 # original type-01 doc exists (id select)
+        _FakeResult(one=None),              # no existing refund note
+        _FakeResult(one=_store()),          # store lookup
+        _FakeResult(items=[_line_item()]),  # order line items
+        _FakeResult(one=None),              # customer lookup
+        _FakeResult(one=original),          # BillingReference original doc
+    ]
+    await issue_refund_note_for_payment(db, payment, SimpleNamespace(status="completed"))
+    db.add.assert_called_once()
+    issued = db.add.call_args[0][0]
+    assert issued.document_type == "04"
+    assert issued.code_number == "EINV-ORD-1001-04-P55"
+    invoice = issued.ubl_document["Invoice"][0]
+    billing_ref = invoice["BillingReference"][0]["InvoiceDocumentReference"][0]
+    assert _leaf(billing_ref["ID"]) == "EINV-ORD-1001-01"

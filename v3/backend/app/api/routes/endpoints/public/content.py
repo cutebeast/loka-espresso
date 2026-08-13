@@ -77,6 +77,17 @@ async def _get_optional_customer(
 
 # ── Promo Banners ──
 
+def _banner_in_window(banner: PromoBanner) -> bool:
+    """Same date window as the list endpoint — an expired/not-yet-started
+    banner must not be viewable/claimable by ID either."""
+    now = datetime.now(timezone.utc)
+    if banner.start_date is not None and banner.start_date > now:
+        return False
+    if banner.end_date is not None and banner.end_date < now:
+        return False
+    return True
+
+
 @router.get("/promos/banners", response_model=APIResponse[list[PromoBannerOut]])
 async def list_promo_banners(
     db: DBDependency,
@@ -112,7 +123,7 @@ async def get_promo_banner(
 ):
     """Get a single promo banner."""
     item = await db.get(PromoBanner, banner_id)
-    if not item or not item.is_active:
+    if not item or not item.is_active or not _banner_in_window(item):
         raise HTTPException(status_code=404, detail="Banner not found")
     item_dict = PromoBannerOut.model_validate(item).model_dump()
     await translate_single(db, item_dict, "promo_banners", locale)
@@ -131,7 +142,7 @@ async def get_banner_status(
     real voucher / survey state for the banner's linked voucher or survey.
     """
     item = await db.get(PromoBanner, banner_id)
-    if not item:
+    if not item or not item.is_active or not _banner_in_window(item):
         raise HTTPException(status_code=404, detail="Banner not found")
 
     data: dict = {
@@ -183,7 +194,7 @@ async def claim_promo_banner(
     from app.models.voucher import CustomerVoucher, VoucherDefinition
 
     banner = await db.get(PromoBanner, banner_id)
-    if not banner or not banner.is_active:
+    if not banner or not banner.is_active or not _banner_in_window(banner):
         raise HTTPException(status_code=404, detail="Banner not found or inactive")
 
     voucher_id = banner.voucher_id

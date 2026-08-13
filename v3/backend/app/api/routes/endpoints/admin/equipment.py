@@ -215,6 +215,10 @@ async def update_equipment(
     await require_store_admin(db, admin, item.store_id)
 
     update_data = data.model_dump(exclude_unset=True)
+    # Moving equipment to another store requires access to the TARGET store too.
+    new_store_id = update_data.get("store_id")
+    if new_store_id is not None and new_store_id != item.store_id:
+        await require_store_admin(db, admin, new_store_id)
     for field, value in update_data.items():
         setattr(item, field, value)
 

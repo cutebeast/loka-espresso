@@ -246,9 +246,13 @@ async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: ShiftFl
     sid = data.staff_id
     if not sid:
         raise HTTPException(status_code=400, detail="staff_id required")
+    await require_store_admin(db, admin, data.store_id)
     profile_result = await db.execute(select(StaffProfile).where(StaffProfile.id == sid, StaffProfile.deleted_at.is_(None)))
-    if profile_result.scalar_one_or_none() is None:
+    profile = profile_result.scalar_one_or_none()
+    if profile is None:
         raise HTTPException(status_code=404, detail="Staff not found")
+    if profile.store_id != data.store_id:
+        raise HTTPException(status_code=400, detail="Staff member does not belong to this store")
 
     planned_start = data.planned_start
     planned_end = data.planned_end
@@ -283,6 +287,7 @@ async def delete_shift_flat(db: DBDependency, admin: CurrentAdmin, shift_id: int
     shift = result.scalar_one_or_none()
     if not shift:
         raise HTTPException(status_code=404, detail="Shift not found")
+    await require_store_admin(db, admin, shift.store_id)
     await db.delete(shift); await db.commit()
     return APIResponse(data={"id": shift_id, "deleted": True})
 
@@ -349,8 +354,12 @@ async def create_staff_shift(
             StaffProfile.deleted_at.is_(None),
         )
     )
-    if profile_result.scalar_one_or_none() is None:
+    profile = profile_result.scalar_one_or_none()
+    if profile is None:
         raise HTTPException(status_code=404, detail="Staff not found")
+    await require_store_admin(db, admin, data.store_id)
+    if profile.store_id != data.store_id:
+        raise HTTPException(status_code=400, detail="Staff member does not belong to this store")
 
     shift_data = data.model_dump()
     shift_data["staff_id"] = staff_id
@@ -389,6 +398,7 @@ async def update_staff_shift(
     shift = result.scalar_one_or_none()
     if shift is None:
         raise HTTPException(status_code=404, detail="Shift not found")
+    await require_store_admin(db, admin, shift.store_id)
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -432,6 +442,7 @@ async def list_shift_templates(
 @router.post("/shift-templates", response_model=APIResponse[dict], status_code=201)
 async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: ShiftTemplateCreate):
     from app.models.staff import ShiftTemplate
+    await require_store_admin(db, admin, data.store_id)
     t = ShiftTemplate(store_id=data.store_id, name=data.name, start_time=data.start_time, end_time=data.end_time)
     db.add(t); await db.commit(); await db.refresh(t)
     return APIResponse(data={"id": t.id, "name": t.name})
@@ -511,8 +522,12 @@ async def create_staff_task(
             StaffProfile.deleted_at.is_(None),
         )
     )
-    if profile_result.scalar_one_or_none() is None:
+    profile = profile_result.scalar_one_or_none()
+    if profile is None:
         raise HTTPException(status_code=404, detail="Staff not found")
+    await require_store_admin(db, admin, data.store_id)
+    if profile.store_id != data.store_id:
+        raise HTTPException(status_code=400, detail="Staff member does not belong to this store")
 
     task = StaffTask(**data.model_dump())
     db.add(task)
@@ -533,6 +548,7 @@ async def update_staff_task(
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_store_admin(db, admin, task.store_id)
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -553,6 +569,7 @@ async def delete_staff_task(
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_store_admin(db, admin, task.store_id)
     await db.delete(task)
     await db.commit()
     return APIResponse(data={"id": task_id, "deleted": True})

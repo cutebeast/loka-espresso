@@ -58,6 +58,11 @@ class NotificationPreferenceOut(TimestampedSchema):
 
 
 class NotificationPreferenceUpdate(BaseSchema):
+    # Optional key fields: which preference row this update targets. Plain str
+    # (not Literal) so unknown values don't 422 — the endpoint falls back to
+    # push_notification/all for backward compatibility.
+    channel: str | None = Field(None, max_length=50)
+    message_category: str | None = Field(None, max_length=50)
     is_enabled: bool | None = None
     quiet_hours_start: time | None = None
     quiet_hours_end: time | None = None

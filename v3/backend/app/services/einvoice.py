@@ -70,8 +70,13 @@ def _money_node(value, precision: int, rounding_mode: str) -> list[dict]:
     return _node(float(money_round(value, precision, rounding_mode)), currencyID="MYR")
 
 
-def _code_number(order: Order, document_type: str) -> str:
-    return f"EINV-{order.order_number}-{document_type}"
+def _code_number(order: Order, document_type: str, payment: Payment | None = None) -> str:
+    base = f"EINV-{order.order_number}-{document_type}"
+    # Refund notes are keyed per payment (an order can be refunded in several
+    # payments) — suffix the payment id so each codeNumber stays unique.
+    if document_type == DOC_TYPE_REFUND_NOTE and payment is not None:
+        base += f"-P{payment.id}"
+    return base
 
 
 def _is_walkin_customer(customer: Customer | None) -> bool:
@@ -91,11 +96,14 @@ async def build_ubl_invoice(
     order: Order,
     store: Store | None,
     document_type: str = DOC_TYPE_INVOICE,
+    payment: Payment | None = None,
 ) -> dict:
     """Build the MyInvois UBL 2.1 JSON document for an order.
 
     ``document_type`` is "01" (invoice) or "04" (refund note); it drives the
-    Invoice ID / code number and the InvoiceTypeCode.
+    Invoice ID / code number and the InvoiceTypeCode. Refund notes also carry
+    a BillingReference back to the order's original type-01 document when one
+    exists (``payment`` scopes the code number to the refunded payment).
     """
     config = PlatformConfigService(db)
     precision = await config.get_accounting_precision()
@@ -223,7 +231,7 @@ async def build_ubl_invoice(
         )
 
     invoice = {
-        "ID": _node(_code_number(order, document_type)),
+        "ID": _node(_code_number(order, document_type, payment)),
         "IssueDate": _node(issue_dt.strftime("%Y-%m-%d")),
         "IssueTime": _node(issue_dt.strftime("%H:%M:%SZ")),
         "InvoiceTypeCode": _node(document_type, listVersionID="1.0"),
@@ -263,6 +271,28 @@ async def build_ubl_invoice(
     if allowance_charges:
         invoice["AllowanceCharge"] = allowance_charges
 
+    if document_type == DOC_TYPE_REFUND_NOTE:
+        # MyInvois requires refund notes to reference the original invoice.
+        ref_result = await db.execute(
+            select(EinvoiceDocument)
+            .where(
+                EinvoiceDocument.order_id == order.id,
+                EinvoiceDocument.document_type == DOC_TYPE_INVOICE,
+                EinvoiceDocument.status.in_(("submitted", "validated")),
+            )
+            .order_by(EinvoiceDocument.id.desc())
+            .limit(1)
+        )
+        original = ref_result.scalar_one_or_none()
+        if original is not None:
+            invoice["BillingReference"] = [
+                {
+                    "InvoiceDocumentReference": [
+                        {"ID": _node(original.myinvois_uuid or original.code_number)}
+                    ]
+                }
+            ]
+
     return {
         "_D": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
         "_A": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
@@ -283,16 +313,28 @@ async def issue_einvoice(
 ) -> EinvoiceDocument:
     """Create (idempotently) and submit an e-invoice document for an order.
 
-    If a row already exists for (order, payment, document_type) it is
-    returned unchanged — issuance is safe to retry.
+    Type-01 invoices are keyed per ORDER: one order gets exactly one invoice
+    for its full totals, no matter how many split-bill payments settled it
+    (per-payment documents would duplicate the same codeNumber/totals, which
+    real MyInvois rejects). Refund notes stay keyed per (order, payment,
+    document_type). If a matching row already exists it is returned unchanged
+    — issuance is safe to retry.
     """
-    existing = await db.execute(
-        select(EinvoiceDocument).where(
-            EinvoiceDocument.order_id == order.id,
-            EinvoiceDocument.payment_id == payment.id,
-            EinvoiceDocument.document_type == document_type,
+    if document_type == DOC_TYPE_INVOICE:
+        existing = await db.execute(
+            select(EinvoiceDocument).where(
+                EinvoiceDocument.order_id == order.id,
+                EinvoiceDocument.document_type == document_type,
+            )
         )
-    )
+    else:
+        existing = await db.execute(
+            select(EinvoiceDocument).where(
+                EinvoiceDocument.order_id == order.id,
+                EinvoiceDocument.payment_id == payment.id,
+                EinvoiceDocument.document_type == document_type,
+            )
+        )
     doc = existing.scalar_one_or_none()
     if doc is not None:
         return doc
@@ -300,14 +342,14 @@ async def issue_einvoice(
     store_result = await db.execute(select(Store).where(Store.id == order.store_id))
     store = store_result.scalar_one_or_none()
 
-    ubl = await build_ubl_invoice(db, order, store, document_type=document_type)
+    ubl = await build_ubl_invoice(db, order, store, document_type=document_type, payment=payment)
 
     doc = EinvoiceDocument(
         order_id=order.id,
         payment_id=payment.id,
         store_id=order.store_id,
         document_type=document_type,
-        code_number=_code_number(order, document_type),
+        code_number=_code_number(order, document_type, payment),
         status="pending",
         ubl_document=ubl,
     )
@@ -410,7 +452,9 @@ async def auto_issue_on_payment(db: AsyncSession, order: Order, payment: Payment
     """Fire-and-forget issuance after a captured payment.
 
     Gated on ``einvoice.auto_issue``; every failure is logged and swallowed so
-    the payment flow is never affected.
+    the payment flow is never affected. The type-01 invoice covers the WHOLE
+    order, so it is only issued once the order is fully paid — issuing on the
+    first captured payment of a split bill would invoice money not yet paid.
     """
     try:
         config = PlatformConfigService(db)
@@ -420,6 +464,55 @@ async def auto_issue_on_payment(db: AsyncSession, order: Order, payment: Payment
             return
         if order.deleted_at is not None:
             return
+        if order.payment_status not in ("captured", "settled"):
+            return
         await issue_einvoice(db, order, payment)
     except Exception:
         logger.exception("Auto-issue e-invoice failed for order %s", getattr(order, "id", None))
+
+
+async def issue_refund_note_for_payment(
+    db: AsyncSession,
+    payment: Payment,
+    refund=None,
+) -> None:
+    """Fire-and-forget MyInvois refund note (type 04) after a completed refund.
+
+    Gated on ``einvoice.auto_issue`` and on the order already having a
+    submitted/validated type-01 invoice to reference. Like
+    ``auto_issue_on_payment`` every failure is logged and swallowed so the
+    refund flow is never affected.
+
+    Wiring (lives in app/services/payment.py, owned by another team): call
+    ``await issue_refund_note_for_payment(db, payment, refund)`` at the end of
+    ``refund_payment`` right after its final ``await db.commit()``.
+    """
+    try:
+        config = PlatformConfigService(db)
+        if not await config.get_bool("einvoice.auto_issue", default=False):
+            return
+        if payment is None:
+            return
+        if refund is not None and getattr(refund, "status", None) != "completed":
+            return
+        order_result = await db.execute(
+            select(Order).where(Order.id == payment.order_id)
+        )
+        order = order_result.scalar_one_or_none()
+        if order is None or order.deleted_at is not None:
+            return
+        # A refund note is only meaningful against an issued original invoice.
+        original_result = await db.execute(
+            select(EinvoiceDocument.id).where(
+                EinvoiceDocument.order_id == order.id,
+                EinvoiceDocument.document_type == DOC_TYPE_INVOICE,
+                EinvoiceDocument.status.in_(("submitted", "validated")),
+            ).limit(1)
+        )
+        if original_result.scalar_one_or_none() is None:
+            return
+        await issue_einvoice(db, order, payment, document_type=DOC_TYPE_REFUND_NOTE)
+    except Exception:
+        logger.exception(
+            "Refund-note issuance failed for payment %s", getattr(payment, "id", None)
+        )

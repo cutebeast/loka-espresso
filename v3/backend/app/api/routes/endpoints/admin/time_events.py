@@ -152,15 +152,18 @@ async def create_time_event(
     """Create a time event (admin or manager)."""
     await require_store_admin(db, admin, data.store_id)
 
-    # Verify staff exists
+    # Verify staff exists and belongs to the event's store
     staff_result = await db.execute(
         select(StaffProfile).where(
             StaffProfile.id == data.staff_id,
             StaffProfile.deleted_at.is_(None),
         )
     )
-    if staff_result.scalar_one_or_none() is None:
+    staff_profile = staff_result.scalar_one_or_none()
+    if staff_profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
+    if staff_profile.store_id != data.store_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff member does not belong to this store")
 
     event_data = data.model_dump(exclude_unset=True)
     if event_data.get("event_timestamp") is None:

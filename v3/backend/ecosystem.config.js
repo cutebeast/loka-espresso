@@ -22,6 +22,10 @@ module.exports = {
       cwd: "/root/fnb-super-app/v3/customer-pwa",
       script: "npx",
       args: "next start -p 13840",
+      env: {
+        API_PROXY_URL: "http://127.0.0.1:13800/api",
+        NEXT_PUBLIC_API_URL: "/api",
+      },
       instances: 1,
       autorestart: true,
       watch: false,

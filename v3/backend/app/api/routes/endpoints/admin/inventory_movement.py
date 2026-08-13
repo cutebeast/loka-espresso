@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
+from app.api.routes.deps import CurrentAdmin, DBDependency, enum_filter_or_400, require_store_admin
 from app.core.business_time import day_start_utc, day_end_utc
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, WastageReport
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
@@ -71,6 +71,8 @@ async def list_movements(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List inventory movement logs with filters."""
+    from app.models.enums import InventoryMovementType
+    movement_type = enum_filter_or_400(movement_type, InventoryMovementType, "movement_type")
     base_stmt = select(InventoryMovementLog)
     count_stmt = select(func.count(InventoryMovementLog.id))
 

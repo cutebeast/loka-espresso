@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.core.business_time import day_start_utc, day_end_utc
-from app.api.routes.deps import CurrentAdmin, DBDependency
+from app.api.routes.deps import CurrentAdmin, DBDependency, enum_filter_or_400
 from app.models.platform import AuditLog
 from app.schemas.audit import AuditLogOut
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -29,6 +29,8 @@ async def list_audit_logs(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List audit logs with filters."""
+    from app.models.enums import AuditAction
+    action = enum_filter_or_400(action, AuditAction, "action")
     base_stmt = select(AuditLog)
     count_stmt = select(func.count(AuditLog.id))
 

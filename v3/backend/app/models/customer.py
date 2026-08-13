@@ -12,10 +12,12 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -233,6 +235,16 @@ class ReferralEvent(Base):
         CheckConstraint(
             "status IN ('pending','converted','expired','rewarded')",
             name="ck_referral_events_status",
+        ),
+        # One active referral per (referrer, invitee) pair — duplicates crashed
+        # credit_referral_points and allowed multi-referrer rewards. Expired
+        # events may be superseded by a fresh referral.
+        Index(
+            "uq_referral_events_pair_active",
+            "referrer_customer_id",
+            "invitee_customer_id",
+            unique=True,
+            postgresql_where=text("status != 'expired'"),
         ),
     )
 

@@ -23,6 +23,7 @@ from app.api.routes.deps import (
     CurrentAdmin,
     DBDependency,
     _get_admin_role_keys,
+    enum_filter_or_400,
     require_store_admin,
 )
 from app.models.order import Order
@@ -50,6 +51,7 @@ from app.services.webhook import (
     mark_event_processed,
 )
 from app.api.routes.endpoints.auth import _require_otp_or_bypass
+from app.core.money import money_round, to_decimal
 from app.services.payment import (
     PaymentError,
     _accrue_loyalty_annual_spend,
@@ -57,6 +59,7 @@ from app.services.payment import (
     _debit_wallet_for_payment,
     _sync_order_payment_status,
     cancel_payment,
+    cancel_pending_order_payments,
     capture_payment,
     confirm_payment,
     create_payment_intent,
@@ -179,6 +182,29 @@ async def guest_pay_summary(
     hitpay_enabled = await config_service.get_bool("hitpay.enabled", default=False)
     wallet_enabled = await config_service.get_bool("wallet.enabled", default=True)
 
+    # Amount still owed — net of refunds (matches what POST guest-pay charges).
+    # After a partial refund the gross total overstates what is due.
+    from app.core.money import money_round, to_decimal
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+    paid_result = await db.execute(
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
+    )
+    net_paid = money_round(
+        sum(
+            to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0)
+            for p in paid_result.scalars().all()
+        ),
+        precision,
+        rounding_mode,
+    )
+    amount_due = money_round(
+        max(Decimal(0), to_decimal(order.total_amount) - net_paid), precision, rounding_mode
+    )
+
     return APIResponse(data={
         "order_id": order.id,
         "order_number": order.order_number,
@@ -187,12 +213,14 @@ async def guest_pay_summary(
         "status": order.status,
         "payment_status": order.payment_status,
         "total_amount": str(order.total_amount),
+        "amount_due": str(amount_due),
         "currency_code": order.total_amount_currency,
         "store_name": order.store.store_name if order.store else None,
         "store_logo": order.store.logo_url if order.store and hasattr(order.store, "logo_url") else None,
         "line_items": line_items,
-        "can_pay": order.payment_status not in ("captured", "settled", "paid")
-                   and order.status not in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"),
+        "can_pay": order.payment_status not in ("captured", "settled")
+                   and order.status not in ("cancelled_by_customer", "cancelled_by_merchant", "refunded")
+                   and amount_due > 0,
         "stripe_enabled": stripe_enabled,
         "hitpay_enabled": hitpay_enabled,
         "wallet_enabled": wallet_enabled,
@@ -226,7 +254,7 @@ async def guest_pay(
     order = await _validate_guest_token_or_404(order_id, token, db)
     from decimal import Decimal
 
-    if order.payment_status in ("captured", "settled", "paid"):
+    if order.payment_status in ("captured", "settled"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
     if order.status in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is cancelled/refunded")
@@ -318,11 +346,37 @@ async def guest_pay(
     success_url = f"{base_return}?orderId={order.id}&token={token}&status=success"
     cancel_url = f"{base_return}?orderId={order.id}&token={token}&status=cancel"
 
+    # Close any earlier live checkout session for this order before issuing a
+    # new one — a pending session can still be paid (double-charge guard).
+    await cancel_pending_order_payments(db, order.id)
+
+    # Charge only what is still owed: after a partial refund the order total
+    # overstates the remaining balance (net of refunds, same as staff POS).
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+    existing_payments = await db.execute(
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
+    )
+    net_paid = money_round(
+        sum(
+            to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0)
+            for p in existing_payments.scalars().all()
+        ),
+        precision,
+        rounding_mode,
+    )
+    amount_due = money_round(to_decimal(order.total_amount) - net_paid, precision, rounding_mode)
+    if amount_due <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
+
     payment = Payment(
         order_id=order.id,
         provider="internal_wallet" if provider == "wallet" else provider,
         payment_method_type="e_wallet" if provider == "wallet" else ("credit_card" if provider == "stripe" else "qr_pay"),
-        amount=order.total_amount,
+        amount=amount_due,
         currency_code=order.total_amount_currency,
         status="pending_authorization",
         net_amount=Decimal(0),
@@ -357,17 +411,14 @@ async def guest_pay(
     else:  # wallet
         payment.provider_transaction_id = f"wallet-{order.order_number}-{uuid.uuid4().hex[:8]}"
         try:
-            config_service = PlatformConfigService(db)
-            precision = await config_service.get_accounting_precision()
-            rounding_mode = await config_service.get_accounting_rounding()
             # Locks the order row and re-verifies it is still unpaid before
             # debiting (closes the race with the check at the top).
             await _debit_wallet_for_payment(db, payment, precision, rounding_mode)
             payment.status = "captured"
-            payment.captured_amount = order.total_amount
+            payment.captured_amount = payment.amount
             await _add_payment_event(
                 db, payment, to_status="captured", from_status="initiated",
-                amount=order.total_amount, provider_response={"guest_pay": True, "provider": "wallet"},
+                amount=payment.amount, provider_response={"guest_pay": True, "provider": "wallet"},
             )
             await db.flush()
             # Route through the full capture pipeline: order payment status,
@@ -385,7 +436,7 @@ async def guest_pay(
         order.payment_status = "pending_authorization"
         await _add_payment_event(
             db, payment, to_status="pending_authorization", from_status="initiated",
-            amount=order.total_amount, provider_response={"guest_pay": True},
+            amount=payment.amount, provider_response={"guest_pay": True},
         )
     await db.commit()
 
@@ -491,8 +542,11 @@ async def create_checkout_session(
     """Create a Stripe Checkout session for an order (customer-facing redirect flow)."""
     from app.models.order import Order
 
+    # Unlocked fetch for 404/ownership — the row lock is taken AFTER voiding
+    # stale sessions to keep the codebase-wide lock order Payment(s) → Order
+    # (the webhook capture path locks payment first, then the order).
     order_result = await db.execute(
-        select(Order).where(Order.id == data.order_id, Order.deleted_at.is_(None)).with_for_update()
+        select(Order).where(Order.id == data.order_id, Order.deleted_at.is_(None))
     )
     order = order_result.scalar_one_or_none()
     if order is None:
@@ -500,7 +554,18 @@ async def create_checkout_session(
     if order.customer_id != customer.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    if order.payment_status in ("captured", "settled", "paid"):
+    # Close any earlier live checkout session for this order before issuing a
+    # new one — a pending session can still be paid (double-charge guard).
+    await cancel_pending_order_payments(db, order.id)
+
+    # Re-read under the row lock and re-verify — a capture webhook may have
+    # landed while the old session was being voided.
+    order = (
+        await db.execute(
+            select(Order).where(Order.id == data.order_id, Order.deleted_at.is_(None)).with_for_update()
+        )
+    ).scalar_one()
+    if order.payment_status in ("captured", "settled"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
 
     from decimal import Decimal
@@ -944,6 +1009,9 @@ async def list_payments(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List payments (admin only)."""
+    from app.models.enums import PaymentProvider, PaymentStatus
+    status = enum_filter_or_400(status, PaymentStatus, "status")
+    provider = enum_filter_or_400(provider, PaymentProvider, "provider")
     base_stmt = select(Payment)
     count_stmt = select(func.count(Payment.id))
 

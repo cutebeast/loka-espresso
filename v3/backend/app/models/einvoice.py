@@ -6,9 +6,11 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
     ForeignKey,
+    Index,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -57,4 +59,13 @@ class EinvoiceDocument(Base, TimestampMixin):
         # Nullable payment_id keeps Postgres NULL semantics: NULLs never
         # collide, so docs without a payment are not deduplicated.
         UniqueConstraint("order_id", "payment_id", "document_type", name="uq_einvoice_order_payment_type"),
+        # Type-01 invoices are per-ORDER (one invoice for the whole order no
+        # matter how many split payments) — enforce the app-level keying at
+        # the DB so concurrent captures cannot double-issue.
+        Index(
+            "uq_einvoice_order_type01",
+            "order_id",
+            unique=True,
+            postgresql_where=text("document_type = '01'"),
+        ),
     )

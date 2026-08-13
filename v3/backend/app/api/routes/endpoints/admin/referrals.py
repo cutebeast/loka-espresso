@@ -165,7 +165,39 @@ async def create_referral(
     if invitee is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitee customer not found")
 
-    referral = ReferralEvent(**data.model_dump())
+    # The invitee must have actually registered via this referrer's code
+    if invitee.referred_by_customer_id != customer.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitee did not register with your referral code",
+        )
+
+    # Referral rewards target NEW customers only (no orders yet)
+    if (invitee.order_count or 0) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitee is not a new customer",
+        )
+
+    # One active referral event per (referrer, invitee) pair — an expired
+    # event may be superseded by a fresh referral (mirrors the DB partial
+    # unique index uq_referral_events_pair_active).
+    existing = await db.execute(
+        select(ReferralEvent.id).where(
+            ReferralEvent.referrer_customer_id == customer.id,
+            ReferralEvent.invitee_customer_id == invitee.id,
+            ReferralEvent.status != "expired",
+        ).limit(1)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Referral already recorded for this invitee",
+        )
+
+    # Status is server-owned: events start pending and convert on the
+    # invitee's first paid order — never trust a client-supplied status.
+    referral = ReferralEvent(**data.model_dump(exclude={"status"}), status="pending")
     db.add(referral)
     await db.commit()
     await db.refresh(referral)

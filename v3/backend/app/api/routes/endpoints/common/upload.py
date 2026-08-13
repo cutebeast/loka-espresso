@@ -33,17 +33,34 @@ _CONTENT_TYPE_MAP = {
 
 _MAGIC_BYTES: dict[str, bytes] = {
     ".jpg": b"\xff\xd8\xff",
+    ".jpeg": b"\xff\xd8\xff",
     ".png": b"\x89PNG\r\n\x1a\n",
     ".gif": b"GIF8",
     ".webp": b"RIFF",
     ".mp4": b"\x00\x00\x00\x18ftyp",
     ".webm": b"\x1a\x45\xdf\xa3",
+    ".mkv": b"\x1a\x45\xdf\xa3",
+}
+
+# Container formats whose reliable signature is not at offset 0:
+# .mov (ISO-BMFF/QuickTime) has a variable-length box size before the "ftyp"
+# brand at offset 4; .avi is a RIFF container identified by the "AVI " form
+# type at offset 8.
+_OFFSET_SIGNATURES: dict[str, tuple[int, bytes]] = {
+    ".mov": (4, b"ftyp"),
+    ".avi": (8, b"AVI "),
 }
 
 
 def _validate_file_content(contents: bytes, ext: str) -> bool:
     """Validate file magic bytes match the extension."""
+    if ext in _OFFSET_SIGNATURES:
+        offset, sig = _OFFSET_SIGNATURES[ext]
+        return contents[offset:offset + len(sig)] == sig
     if ext not in _MAGIC_BYTES:
+        # Every extension in ALLOWED_EXTENSIONS is mapped above; an unmapped
+        # extension reaches here only if the allowlist grows without a
+        # signature — allowed, but add a mapping when extending it.
         return True
     magic = _MAGIC_BYTES[ext]
     return contents[:len(magic)] == magic

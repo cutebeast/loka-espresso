@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.routes.deps import CurrentStaff, DBDependency
+from app.api.routes.endpoints.common.upload import _validate_file_content
 from app.core.config import get_settings
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.hygiene import HygieneReport
@@ -38,6 +39,8 @@ def _save_uploaded_images(files: list[UploadFile], subdir: str = "equipment") ->
         contents = f.file.read()
         if len(contents) > 10 * 1024 * 1024:
             continue
+        if not _validate_file_content(contents, ext):
+            raise HTTPException(status_code=400, detail=f"File content does not match extension {ext}")
         # Compress server-side: max 1200px edge, progressive JPEG q80
         from app.services.images import MAX_EDGE_EQUIPMENT, compress_image
         contents, ext = compress_image(contents, ext, max_edge=MAX_EDGE_EQUIPMENT)

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer, ReferralEvent
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
+from app.core.business_time import BUSINESS_TZ
 
 
 async def _recalculate_tier(db: AsyncSession, account: LoyaltyAccount):
@@ -44,7 +45,8 @@ async def _birthday_points_multiplier(db: AsyncSession, customer_id: int) -> Dec
         select(Customer.date_of_birth).where(Customer.id == customer_id)
     )
     dob = result.scalar_one_or_none()
-    if dob and dob.month == datetime.now(timezone.utc).month:
+    # Business-local month: at MYT month boundaries UTC lags/leads by hours.
+    if dob and dob.month == datetime.now(BUSINESS_TZ).month:
         return Decimal(2)
     return Decimal(1)
 
@@ -242,7 +244,9 @@ async def credit_referral_points(
                 ReferralEvent.status == "converted",
             )
         )
-        referral = result.scalar_one_or_none()
+        # Legacy duplicate (referrer, invitee) rows may exist — take the
+        # first instead of crashing on MultipleResultsFound.
+        referral = result.scalars().first()
         if not referral:
             await db.flush()
             return 0

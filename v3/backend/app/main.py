@@ -84,6 +84,20 @@ async def _sweep_stale_orders() -> None:
         )
         order_ids = [row[0] for row in result.all()]
 
+        # Limbo fallback: orders stuck in pending_authorization whose provider
+        # session is long dead (Stripe sessions expire after ~24h) but the
+        # expiry webhook never arrived — without this they hold stock/voucher/
+        # table forever and escape every initiated-only sweep.
+        limbo_cutoff = now - timedelta(hours=24)
+        limbo_result = await db.execute(
+            select(Order.id).where(
+                Order.payment_status == "pending_authorization",
+                Order.status == "pending",
+                Order.created_at < limbo_cutoff,
+            )
+        )
+        limbo_ids = [row[0] for row in limbo_result.all()]
+
     for order_id in order_ids:
         try:
             async with AsyncSessionLocal() as db:
@@ -99,6 +113,17 @@ async def _sweep_stale_orders() -> None:
                     await db.commit()
         except Exception:
             logger.warning("Auto-cancel sweep failed for order %s", order_id, exc_info=True)
+
+    for order_id in limbo_ids:
+        try:
+            async with AsyncSessionLocal() as db:
+                order = await db.get(Order, order_id, with_for_update=True)
+                if order is None:
+                    continue
+                if await auto_cancel_order(db, order, "Auto-cancelled — payment session expired"):
+                    await db.commit()
+        except Exception:
+            logger.warning("Limbo sweep failed for order %s", order_id, exc_info=True)
 
 
 async def _periodic_order_sweep() -> None:

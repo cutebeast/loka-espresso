@@ -77,6 +77,7 @@ async def test_auto_cancel_order_guards_non_pending():
     """Orders already past 'pending' are left untouched."""
     db = _async_db()
     order = SimpleNamespace(id=5, status="confirmed")
+    db.execute.side_effect = [_FakeResult(one=order)]  # self-enforced lock re-fetch
 
     result = await auto_cancel_order(db, order, "Auto-cancelled — unpaid for >2 hours")
 
@@ -97,6 +98,7 @@ async def test_auto_cancel_order_reverses_effects_and_voids_payments(monkeypatch
 
     db = _async_db()
     order = SimpleNamespace(id=5, status="pending", dining_table_id=None)
+    db.execute.side_effect = [_FakeResult(one=order)]  # self-enforced lock re-fetch
 
     result = await auto_cancel_order(db, order, "Auto-cancelled — unpaid after 15 minutes")
 

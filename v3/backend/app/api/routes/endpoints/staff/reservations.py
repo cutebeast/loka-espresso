@@ -7,10 +7,14 @@ from sqlalchemy import select
 
 from app.api.routes.deps import CurrentStaff, DBDependency
 from app.models.customer import Customer
+from app.models.enums import ReservationStatus
 from app.models.store import DiningTable, Reservation
 from app.schemas.base import APIResponse
 from app.schemas.reservation import ReservationStatusUpdate
-from app.api.routes.endpoints.admin.reservations import _check_table_availability
+from app.api.routes.endpoints.admin.reservations import (
+    _check_table_availability,
+    _get_bookable_table_or_400,
+)
 
 router = APIRouter(tags=["staff — reservations"])
 
@@ -33,6 +37,11 @@ async def staff_list_reservations(
         .where(Reservation.store_id == staff.store_id)
     )
     if status_filter:
+        if status_filter not in ReservationStatus.enums:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Valid: {ReservationStatus.enums}",
+            )
         stmt = stmt.where(Reservation.status == status_filter)
     if date_from:
         from datetime import date as date_cls
@@ -92,13 +101,19 @@ async def staff_update_reservation_status(
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
     reservation.status = data.status
-    if data.dining_table_id is not None and data.status == "confirmed":
+    if data.dining_table_id is not None:
+        await _get_bookable_table_or_400(db, data.dining_table_id, reservation.store_id)
+        reservation.dining_table_id = data.dining_table_id
+    if data.status in ("confirmed", "seated") and reservation.dining_table_id is not None:
+        # Confirming/seating always re-validates the effective table and
+        # re-checks the slot, even when the table was assigned earlier.
+        if data.dining_table_id is None:
+            await _get_bookable_table_or_400(db, reservation.dining_table_id, reservation.store_id)
         await _check_table_availability(
-            db, data.dining_table_id, reservation.reservation_date,
+            db, reservation.dining_table_id, reservation.reservation_date,
             reservation.reservation_time, reservation.duration_minutes,
             exclude_reservation_id=reservation.id,
         )
-        reservation.dining_table_id = data.dining_table_id
     reservation.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"id": reservation.id, "status": reservation.status})

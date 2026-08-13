@@ -6,9 +6,11 @@ Seat RELEASE on cancellation lives in services/order.reverse_order_effects
 (shared by customer + staff cancel paths).
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import select
+
+from app.core.business_time import BUSINESS_TZ
 
 
 class ClassSessionError(Exception):
@@ -45,7 +47,10 @@ async def consume_session_seats(
         raise ClassSessionError("The selected class session is no longer available")
     if sess.menu_item_id != menu_item_id:
         raise ClassSessionError("The selected class session does not match this class")
-    if sess.session_date < datetime.now(timezone.utc).date():
+    # Compare the full start datetime in business time — a session that
+    # started earlier today must not still be bookable.
+    session_start = datetime.combine(sess.session_date, sess.start_time, tzinfo=BUSINESS_TZ)
+    if session_start <= datetime.now(BUSINESS_TZ):
         raise ClassSessionError("The selected class session has already passed")
     if sess.booked_pax + quantity > sess.capacity:
         remaining = sess.capacity - sess.booked_pax

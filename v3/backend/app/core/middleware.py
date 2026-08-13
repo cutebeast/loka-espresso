@@ -91,7 +91,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # Unhandled exceptions bubble to ServerErrorMiddleware (bare 500)
+            # without ever producing a response object — log them here or
+            # 5xxs are invisible in the request log.
+            duration = (time.perf_counter() - start) * 1000
+            logger.info(
+                "request",
+                method=request.method,
+                path=request.url.path,
+                status_code=500,
+                duration_ms=round(duration, 2),
+            )
+            raise
         duration = (time.perf_counter() - start) * 1000
         logger.info(
             "request",

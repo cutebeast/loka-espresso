@@ -268,6 +268,12 @@ async def staff_report_waste(
         recipes = menu_item.recipes or []
         deducted_items = []
         for recipe in recipes:
+            # The waste form has no variant context — deduct only generic
+            # recipes (menu_variant_id IS NULL), mirroring the generic
+            # fallback in services/order.py::_compute_recipe_needs. Deducting
+            # variant-specific recipes too would double-count every variant.
+            if recipe.menu_variant_id is not None:
+                continue
             inv_id = recipe.inventory_item_id
             qty_per_unit = recipe.quantity_required or Decimal(0)
             waste_factor = recipe.waste_factor or Decimal(0)

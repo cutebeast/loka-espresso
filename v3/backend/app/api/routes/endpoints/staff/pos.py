@@ -434,6 +434,10 @@ async def staff_pos_create_order(
         if paid_now and customer_id:
             from app.services.payment import _grant_coffee_pass_if_purchased
             await _grant_coffee_pass_if_purchased(db, order)
+            # First PAID order converts a pending referral (idempotent) — the
+            # pay-later/QR paths get this from the capture hook instead.
+            from app.services.order import _convert_referral_on_first_paid_order
+            await _convert_referral_on_first_paid_order(db, order)
 
         # Create payment (skip if total is zero — e.g. complimentary orders)
         payment_url: str | None = None

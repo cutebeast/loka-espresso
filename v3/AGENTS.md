@@ -1582,3 +1582,54 @@ User asked why item photos don't show after tapping an item or at checkout. Stat
 - `staff_pay_with_wallet` already-paid check uses gross captured math (net-of-refund fix covered POS pay/admin/split-bill only).
 - Round-35 open items unchanged: F-10/F-11 store_manager scoping at go-live, L1-L8, OTP bypass still enabled until cutover, tier downgrade job unbuilt.
 - Fresh-initdb replay of infra/db SQL not end-to-end tested (static checks only).
+
+### Round 36 follow-up — re-audit & backlog closure (2026-08-12/13)
+
+Fresh 4-track re-audit: (R1) self-review of the round-36 commit, (R2) verification of the round-34/35 documented money backlog, (R3) fresh areas (reservations, referrals, e-invoice, notifications, reports), (R4) infra residuals. ~30 findings, all re-verified in code pre-fix; fixed in 4 workstreams + personal diff review of every change.
+
+**Money seam (the priority cluster):**
+- **L1 duplicate payment sessions — FIXED**: every session-creation path (customer checkout, guest-pay, staff/admin Stripe QR) now voids+expires any earlier live session via `cancel_pending_order_payments` before minting a new one. Webhook safety net: a capture when another payment already fully covers the order is recorded but flagged `duplicate_capture` (no side-effects, no auto-refund, loud warning).
+- **L5 late void/failed — FIXED**: `failed`/`voided` webhook events are ignored (with warning) when the payment is in a terminal money state (captured/partially_refunded/refunded/chargeback). Previously a late `payment_intent.canceled` flipped captured→voided and the round-36 reversion erased it from the books.
+- **Round-36 regression (failed-retry window) — FIXED**: swept orders now also expire Stripe checkout sessions of `failed` payments (`cs_…`, live ~24h); captures landing on cancelled/refunded orders are recorded for the books but skip all side-effects and are flagged `capture_on_dead_order`.
+- **Staff + admin wallet pay — FIXED**: net-of-refund already-paid math, routed through `_sync_order_payment_status` + `_accrue_loyalty_annual_spend` + e-invoice hook (was hand-set captured, kitchen-invisible, no spend accrual).
+- **Stripe pending refunds — FIXED**: `charge.refund.updated` handled (`_handle_stripe_refund_update_webhook`) — succeeded → completed; failed/canceled → refund marked failed, `payment.refunded_amount`/status restored, flagged `refund_failed_needs_reconciliation` (benefit reversals are NOT auto-rolled-back — manual reconciliation, documented in the handler).
+- L4 zero-delta refund no longer flips status; M8 capture amount/currency cross-check flags mismatches into `extra_metadata`; guest-pay charges only the net remaining balance; `auto_cancel_order` self-enforces its row lock; reversion probe covers `authorized`.
+- Split-bill allocations are pro-rata net of refunds (money and quantities stay consistent). NOTE: a partial refund on a split payment leaves fractional remaining quantities — collect the shortfall via a non-allocation payment.
+
+**Reservations/referrals/classes:**
+- Confirm/seat ALWAYS re-validates the effective table (row lock + overlap check, self-excluded) — double-booking closed; table assignment validates store/active/not-deleted everywhere; `?status=` validated → 400; public create validates store/past-date/duration ≤480.
+- Referrals: public POST requires the code was actually used + new customer + no duplicate pair; status is server-owned (was client-controllable — clients could mint `converted` events); conversion moved to first PAID order (`_convert_referral_on_first_paid_order` via `_credit_order_loyalty_points`); `order_count` decremented on cancel (customer channels only); `credit_referral_points` tolerant of legacy duplicates; partial unique index `uq_referral_events_pair_active` (migration `w2x3y4z5a6b7`, declared in the model).
+- Class sessions reject same-day past starts (business TZ); birthday multiplier uses MYT month.
+
+**E-invoice / notifications / reports:**
+- Type-01 invoices keyed per ORDER (split bills → one invoice, one codeNumber, issued only when fully paid); refund notes (type 04) with BillingReference + per-payment codeNumber, wired into `refund_payment`; issue race → 409.
+- Notification send 409s when already sent; push fan-out via `asyncio.to_thread`; dead push subs cleared on 404/410; preferences upsert per (channel, category); zh message translations keyed by `campaign_id` (was message-id collision).
+- Dashboards: net revenue Σ(captured−refunded) from payments, MYT day bounds (admin + staff); Z-report deducts cash refunds windowed on refund completion time.
+
+**Lows/infra:** reward-cap TOCTOU locked; waste deducts generic recipes only; stock deduction skips soft-deleted/inactive items; staff uploads magic-byte sniffed (+`.jpeg`/`.mov`/`.avi`/`.mkv`); `11_scalability_indexes.sql` fixed (`table_name, record_id` — fresh replay verified on scratch DB); `kiosk-v3` env in ecosystem.config.js.
+
+**Verification:** 93/93 backend unit (35 new across 5 test files); full E2E re-run; tsc ×3 clean; live probes: duplicate session voided (payments 71→voided/72→live), bogus reservation status 400, valid 200; single alembic head `w2x3y4z5a6b7`, `alembic check` clean.
+
+**Still open (documented):** failed-provider-refund benefit rollback is manual (flagged); `grant_birthday_perk` + tier-renewal windows still UTC; refund-note UBL carries full-order totals (per-refund scoping with tax proration deferred); POS cash paths hand-set payment_status (behaviorally equivalent to _sync today); admin/staff reservation duration cap lives in the endpoint (not the schema); round-35 go-live items unchanged (F-10/F-11, OTP bypass, tier downgrade job, display_key, CSP unsafe-eval).
+
+**GOTCHA (caught by E2E, broke 13 tests pre-fix):** `"paid"` is a PYTHON-side status alias only — the PG enum `payment_status` has no such value. Using it in a SQL predicate (`Order.payment_status.in_((...,"paid"))`) raises `InvalidTextRepresentationError` → 500 at runtime; the mocked unit suite cannot catch this. RULE: SQL predicates against native enums may only use real enum labels (`payment_status`: initiated, pending_authorization, authorized, captured, failed, refunded, partially_refunded, chargeback, voided, settled); alias sets like `("captured","settled","paid")` are for in-Python attribute checks only.
+
+### Round 36 follow-up 2 — systemic fixes from the S-track audit (2026-08-13)
+
+Third audit pass (self-review of the follow-up diff + runtime forensics + fresh surface + DB integrity sweep). ~17 findings; all fixed by the parent agent directly (subagent pool hit a quota limit mid-batch — partial subagent edits were reviewed and completed by hand). Note: quota-killed subagents left the tree in a valid state; always `pytest` + `import app.main` after any interruption.
+
+**High:**
+- **Enum-filter 500 class eliminated system-wide** — new shared `enum_filter_or_400` (api/routes/deps.py) validates query filters against SQLAlchemy enum `.enums` labels → 400 with valid list. Applied: admin+staff orders (status/order_type/payment_status), payments list (status/provider), audit log (action), inventory movements (movement_type), marketing campaigns (status/channel). Live-verified 400s + valid values still 200.
+- **Marketing audience typo no longer mass-blasts** — `AudienceSegment` schema validator (5 static segments + `tier:<key>`) on campaign create (422) + defensive `else: raise 400` in `_resolve_audience_customers` (a pre-validator DB row can't resolve to all 966 customers either). `all_users` intentionally falls through to the base filter.
+
+**Medium:**
+- Campaign send 409s when already active/completed (re-send duplicated paid SMS/email; paused may resume by design).
+- Store scoping added to 8 staff-admin mutations: shift create/update/delete (flat + per-staff), shift-template create, task create/update/delete — all `require_store_admin` + staff↔store match checks (400). Equipment cross-store move now authorizes the TARGET store. Admin time-event create verifies staff↔store. `create_store` gated to HQ (`require_hq_write_admin`). Live-verified 403s.
+- `sync-to-json` gated to HQ + rebuild/pm2-restart subprocesses moved to `asyncio.to_thread` (single-worker backend stalled up to 3 min before).
+- Guest-pay GET returns `amount_due` (net of refunds) + `can_pay` false when nothing owed; GuestPayPage displays amount_due (falls back to total_amount). Display/charge mismatch after partial refund closed; re-collection stays (owner-approved semantics).
+- **Lock discipline**: codebase-wide order is Payment(s) → Order. `cancel_pending_order_payments` locks payments `ORDER BY id FOR UPDATE` and documents the rule; `create_payment_intent` + `create_checkout_session` now void stale sessions BEFORE taking the order row lock, then re-verify guards under the lock. KNOWN RESIDUAL: staff/admin POS QR + order-cancel paths still lock Order→Payment (deep money-flow refactor not worth it — PG deadlock detector self-heals the narrow race, Stripe retries its side).
+- **pending_authorization limbo fallback**: periodic sweeper gained a second pass — orders pending+pending_authorization older than 24h (Stripe sessions dead) are auto-cancelled with full reversal, so a missed `checkout.session.expired` webhook no longer strands stock/voucher/table forever.
+
+**Low:** expired/early promo banners 404 by ID (view/status/claim, same window as the list); dashboard order counts use the same paid population as net revenue; request-logging middleware logs 500s (try/except + re-raise — unhandled exceptions were invisible in the request log); loyalty tier multiplier fields typed `Money` (kills the Decimal→float serializer warnings); dead `"paid"` literals removed from Python membership checks (Stripe payload checks keep it — it's Stripe's value); referral-pair 409 respects the expired-supersede design; e-invoice type-01 per-order keying backed by DB partial unique index `uq_einvoice_order_type01` (migration `x3y4z5a6b7c8`, model declared, `alembic check` clean).
+
+**Verification:** 93/93 unit; full E2E re-run green; live probes: enum 400s ×5 + valid 200, audience typo 422, expired banner 404, cross-store 403, create_store 403 (store@loyaltysystem.uk login is broken — pre-existing data issue, use tester-store@); QA residue cleaned (probe refund reverted, kiosk probe orders cancelled via the real flow, probe shift-templates deleted).

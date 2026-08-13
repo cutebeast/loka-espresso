@@ -28,6 +28,22 @@ SUPPORTED_LOCALES = {"en", "zh"}
 SOURCE_LOCALE = "en"
 
 
+def enum_filter_or_400(value: str | None, enum_type, param_name: str) -> str | None:
+    """Validate a query-filter value against a native PG enum's labels.
+
+    A raw string reaching an enum cast raises InvalidTextRepresentationError
+    (bare 500). Reject unknown values with 400 + the valid list instead.
+    """
+    if value is None:
+        return None
+    if value not in enum_type.enums:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {param_name} '{value}'. Valid: {enum_type.enums}",
+        )
+    return value
+
+
 def _normalize_locale(raw: str | None) -> str | None:
     """Return a supported base locale, normalising regional variants (e.g. zh-CN -> zh)."""
     if not raw:

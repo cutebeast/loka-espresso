@@ -593,16 +593,30 @@ async def create_payment_intent(
                 }
             return existing_payment, provider_response
 
-    # Verify order exists and belongs to customer
+    # Verify order exists and belongs to customer (unlocked fetch — the row
+    # lock is taken AFTER cancelling stale sessions to keep the codebase-wide
+    # lock order Payment(s) → Order and avoid deadlocking the webhook path).
     order_result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
     )
     order = order_result.scalar_one_or_none()
     if order is None:
         raise PaymentError("Order not found", 404)
     if order.customer_id != customer_id:
         raise PaymentError("Order does not belong to customer", 403)
-    if order.payment_status in ("captured", "settled", "paid", "refunded"):
+
+    # An earlier attempt may have left a live provider session on this order —
+    # void it so the customer can never complete two sessions for one order.
+    await cancel_pending_order_payments(db, order_id)
+
+    # Re-read under the row lock and re-verify before minting the new session —
+    # a capture webhook may have landed while we were voiding the old one.
+    order = (
+        await db.execute(
+            select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+        )
+    ).scalar_one()
+    if order.payment_status in ("captured", "settled", "refunded"):
         raise PaymentError("Order is already paid", 400)
     if order.status in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise PaymentError("Order is cancelled or refunded", 400)
@@ -702,7 +716,7 @@ async def _debit_wallet_for_payment(
         raise PaymentError("Order has no customer to debit", 400)
     # Re-check under the row lock — a concurrent capture may have paid the
     # order between the caller's check and acquiring this lock.
-    if order.payment_status in ("captured", "settled", "paid"):
+    if order.payment_status in ("captured", "settled"):
         raise PaymentError("Order is already paid", 400)
 
     wallet_res = await db.execute(
@@ -1034,6 +1048,10 @@ async def _credit_order_loyalty_points(db: AsyncSession, order: Order) -> None:
     order_id-linked ledger row, which the idempotency check below detects.
     """
     points = int(order.loyalty_points_earned or 0)
+    # First PAID order converts a pending referral (idempotent — status flip).
+    # Must run even when the order earned no points / has no loyalty account.
+    from app.services.order import _convert_referral_on_first_paid_order
+    await _convert_referral_on_first_paid_order(db, order)
     # Purchase-based product benefits (Coffee Pass) — must run even when the
     # customer has no loyalty account / zero point estimate
     await _grant_coffee_pass_if_purchased(db, order)
@@ -1127,15 +1145,15 @@ async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None
         order.payment_status = "initiated"
     else:
         # No captured money on the order. If no payment is still awaiting
-        # authorization (e.g. the checkout session expired/was voided), release
-        # the order back to 'initiated' so sweeps and the staff Unpaid tab
-        # pick it up again — 'pending_authorization' limbo escapes every sweep.
+        # authorization/capture (e.g. the checkout session expired/was voided),
+        # release the order back to 'initiated' so sweeps and the staff Unpaid
+        # tab pick it up again — 'pending_authorization' limbo escapes every sweep.
         pending_auth = (
             await db.execute(
                 select(Payment.id)
                 .where(
                     Payment.order_id == order.id,
-                    Payment.status == "pending_authorization",
+                    Payment.status.in_(("pending_authorization", "authorized")),
                 )
                 .limit(1)
             )
@@ -1294,12 +1312,18 @@ async def cancel_payment(db: AsyncSession, payment_id: int, commit: bool = True)
 
 
 async def cancel_pending_order_payments(db: AsyncSession, order_id: int) -> list[int]:
-    """Void every pending Stripe/simulated payment for an order when it is cancelled."""
+    """Void every pending Stripe/simulated payment for an order when it is cancelled.
+
+    Locks payment rows in ascending id order — lock discipline across the
+    codebase is Payment(s) BEFORE Order (the webhook capture path locks the
+    payment first, then the order), so this function must only ever be
+    called BEFORE the caller takes the order row lock.
+    """
     result = await db.execute(
         select(Payment).where(
             Payment.order_id == order_id,
             Payment.status.in_(["initiated", "pending_authorization", "authorized"]),
-        )
+        ).order_by(Payment.id).with_for_update()
     )
     payments = result.scalars().all()
     cancelled_ids: list[int] = []
@@ -1309,6 +1333,27 @@ async def cancel_pending_order_payments(db: AsyncSession, order_id: int) -> list
             cancelled_ids.append(payment.id)
         except PaymentError:
             logger.warning("Could not cancel payment %s for order %s", payment.id, order_id, exc_info=True)
+
+    # A 'failed' payment's Stripe checkout session stays payable for ~24h —
+    # expire it so a customer retry cannot capture onto a cancelled order.
+    failed_result = await db.execute(
+        select(Payment).where(
+            Payment.order_id == order_id,
+            Payment.status == "failed",
+            Payment.provider == "stripe",
+            Payment.provider_transaction_id.startswith("cs_"),
+        )
+    )
+    for payment in failed_result.scalars().all():
+        try:
+            if await _stripe_enabled(db):
+                api_key = await _get_stripe_secret_key(db)
+                await _expire_stripe_checkout_session(payment.provider_transaction_id, api_key)
+        except PaymentError:
+            logger.warning(
+                "Could not expire checkout session %s for failed payment %s on order %s",
+                payment.provider_transaction_id, payment.id, order_id, exc_info=True,
+            )
     return cancelled_ids
 
 
@@ -1528,6 +1573,12 @@ async def refund_payment(
     await _sync_order_payment_status(db, payment)
     await db.commit()
     await db.refresh(refund)
+
+    # MyInvois refund note (type 04) — self-gated on einvoice.auto_issue,
+    # requires the original type-01 doc, swallows all failures.
+    from app.services.einvoice import issue_refund_note_for_payment
+    await issue_refund_note_for_payment(db, payment, refund)
+
     return refund
 
 
@@ -1580,8 +1631,13 @@ async def _handle_stripe_refund_webhook(
     db: AsyncSession,
     payment: Payment,
     data: dict,
-) -> None:
-    """Record a Stripe refund from a charge.refunded webhook and update payment/order state."""
+) -> Decimal:
+    """Record a Stripe refund from a charge.refunded webhook and update payment/order state.
+
+    Returns the newly recorded refund delta; Decimal(0) when the webhook was a
+    replay/dedupe and nothing changed (the caller must skip the status
+    transition in that case).
+    """
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
@@ -1594,7 +1650,7 @@ async def _handle_stripe_refund_webhook(
     refund_amount = _from_cents(refund_cents) if refund_cents else Decimal(0)
 
     if refund_amount <= 0:
-        return
+        return Decimal(0)
 
     # Stripe's charge.amount_refunded is the cumulative refunded total on the
     # charge, not the delta of this refund. API-initiated refunds have already
@@ -1605,7 +1661,7 @@ async def _handle_stripe_refund_webhook(
         new_total = payment.captured_amount
     refund_delta = money_round(new_total - existing_total, precision, rounding_mode)
     if refund_delta <= 0:
-        return
+        return Decimal(0)
 
     refund = Refund(
         payment_id=payment.id,
@@ -1624,6 +1680,119 @@ async def _handle_stripe_refund_webhook(
     # for refunds initiated outside the API (e.g. Stripe Dashboard).
     is_full = bool(payment.captured_amount) and new_total >= payment.captured_amount
     await _reverse_order_benefits_on_refund(db, payment, refund_delta, is_full)
+    return refund_delta
+
+
+async def _handle_stripe_refund_update_webhook(db: AsyncSession, data: dict) -> None:
+    """Resolve a pending provider refund from a charge.refund.updated webhook.
+
+    refund_payment books the refund (payment.refunded_amount, status, benefit
+    reversal) at request time while the provider refund is still pending; this
+    handler reconciles the outcome. On 'succeeded' the pending row completes.
+    On 'failed'/'canceled' the provider never moved the money, so the booked
+    amounts are restored and the payment status recomputed. The loyalty /
+    voucher / annual-spend reversal applied at request time is NOT rolled back
+    automatically (clawbacks were capped and vouchers may have been
+    re-consumed) — it is flagged for manual reconciliation instead.
+    """
+    provider_refund_id = data.get("id")
+    refund_status = (data.get("status") or "").lower()
+    if not provider_refund_id or refund_status not in ("succeeded", "failed", "canceled"):
+        return
+
+    result = await db.execute(
+        select(Refund).where(Refund.provider_refund_id == provider_refund_id).with_for_update()
+    )
+    refund = result.scalar_one_or_none()
+
+    if refund is None:
+        # Fallback: match by payment + amount among recent pending refunds.
+        payment = None
+        for tx_id in (data.get("payment_intent"), data.get("charge")):
+            if not tx_id:
+                continue
+            payment = (
+                await db.execute(
+                    select(Payment).where(Payment.provider_transaction_id == tx_id).with_for_update()
+                )
+            ).scalar_one_or_none()
+            if payment is not None:
+                break
+        if payment is None:
+            logger.warning("Refund update webhook: no payment found for refund %s", provider_refund_id)
+            return
+        amount = _from_cents(data.get("amount", 0))
+        refund = (
+            await db.execute(
+                select(Refund)
+                .where(
+                    Refund.payment_id == payment.id,
+                    Refund.amount == amount,
+                    Refund.status == "pending",
+                )
+                .order_by(Refund.id.desc())
+                .limit(1)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if refund is None:
+            logger.warning(
+                "Refund update webhook: no pending refund matching payment %s amount %s (provider refund %s)",
+                payment.id, amount, provider_refund_id,
+            )
+            return
+        refund.provider_refund_id = provider_refund_id
+
+    if refund.status != "pending":
+        return  # already resolved (e.g. completed at request time) — idempotent
+
+    if refund_status == "succeeded":
+        refund.status = "completed"
+        refund.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        return
+
+    # failed/canceled — the provider did not move the money; restore the books.
+    refund.status = "failed"
+    payment = (
+        await db.execute(
+            select(Payment).where(Payment.id == refund.payment_id).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if payment is not None:
+        config_service = PlatformConfigService(db)
+        precision = await config_service.get_accounting_precision()
+        rounding_mode = await config_service.get_accounting_rounding()
+
+        payment.refunded_amount = money_round(
+            max(Decimal(0), to_decimal(payment.refunded_amount or 0) - to_decimal(refund.amount)),
+            precision,
+            rounding_mode,
+        )
+        payment.refund_count = max(0, (payment.refund_count or 0) - 1)
+        old_status = payment.status
+        if old_status in ("refunded", "partially_refunded"):
+            payment.status = "partially_refunded" if payment.refunded_amount > 0 else "captured"
+        payment.extra_metadata = {
+            **(payment.extra_metadata or {}),
+            "refund_failed_needs_reconciliation": refund.id,
+        }
+        await _add_payment_event(
+            db,
+            payment,
+            to_status=payment.status,
+            from_status=old_status,
+            amount=refund.amount,
+            provider_response={"action": "refund_failed", "refund_id": refund.id, "provider_refund_id": provider_refund_id},
+        )
+        await db.flush()
+        await _sync_order_payment_status(db, payment)
+        logger.warning(
+            "Provider refund %s (refund row %s) %s — restored payment %s refunded_amount; "
+            "loyalty/voucher/annual-spend reversals booked at request time need MANUAL reconciliation",
+            provider_refund_id, refund.id, refund_status, payment.id,
+        )
+    await db.commit()
 
 
 async def _complete_wallet_topup(
@@ -1828,6 +1997,29 @@ async def _handle_stripe_dispute_webhook(
         order.updated_at = datetime.now(timezone.utc)
 
 
+def _cross_check_capture_amount(payment: Payment, provider_currency: str | None) -> None:
+    """Flag capture webhooks whose amount/currency disagree with our books.
+
+    The capture is still recorded (the provider moved real money) but the
+    payment is visibly flagged for reconciliation.
+    """
+    issues: list[str] = []
+    if payment.captured_amount is not None and payment.amount is not None:
+        if abs(to_decimal(payment.captured_amount) - to_decimal(payment.amount)) > Decimal("0.01"):
+            issues.append(f"amount {payment.captured_amount} != expected {payment.amount}")
+    if provider_currency and payment.currency_code:
+        if provider_currency.lower() != payment.currency_code.lower():
+            issues.append(f"currency {provider_currency} != expected {payment.currency_code}")
+    if issues:
+        detail = "; ".join(issues)
+        logger.warning("Capture amount/currency mismatch for payment %s: %s", payment.id, detail)
+        payment.extra_metadata = {
+            **(payment.extra_metadata or {}),
+            "capture_amount_mismatch": True,
+            "capture_mismatch_detail": detail,
+        }
+
+
 async def process_webhook_event(
     db: AsyncSession,
     provider: str,
@@ -1912,6 +2104,12 @@ async def process_webhook_event(
             await db.refresh(payment)
             return payment
 
+    # Stripe refund lifecycle events reference the provider Refund id, not a
+    # PaymentIntent/session id — resolve pending refunds booked at request time.
+    if provider == "stripe" and event_type == "charge.refund.updated":
+        await _handle_stripe_refund_update_webhook(db, data)
+        return None
+
     if not transaction_id:
         logger.warning("Webhook payload missing transaction identifier")
         return None
@@ -1993,6 +2191,7 @@ async def process_webhook_event(
         elif event_type in ("payment_intent.succeeded", "charge.succeeded"):
             new_status = "captured"
             payment.captured_amount = _from_cents(data.get("amount_received")) if data.get("amount_received") is not None else payment.amount
+            _cross_check_capture_amount(payment, data.get("currency"))
         elif event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
             if event_type == "checkout.session.completed" and data.get("payment_status") != "paid":
                 # Delayed-notification methods (fpx, grabpay) complete with
@@ -2005,6 +2204,7 @@ async def process_webhook_event(
                 return payment
             new_status = "captured"
             payment.captured_amount = _from_cents(data.get("amount_total")) if data.get("amount_total") is not None else payment.amount
+            _cross_check_capture_amount(payment, data.get("currency"))
             # Link the payment to the underlying PaymentIntent id when available.
             if data.get("payment_intent"):
                 payment.provider_transaction_id = data["payment_intent"]
@@ -2019,11 +2219,12 @@ async def process_webhook_event(
         elif event_type == "checkout.session.expired":
             new_status = "voided"
         elif event_type == "charge.refunded":
-            await _handle_stripe_refund_webhook(db, payment, data)
-            if payment.refunded_amount and payment.refunded_amount >= payment.captured_amount:
-                new_status = "refunded"
-            else:
-                new_status = "partially_refunded"
+            refund_delta = await _handle_stripe_refund_webhook(db, payment, data)
+            if refund_delta > 0:
+                if payment.refunded_amount and payment.refunded_amount >= payment.captured_amount:
+                    new_status = "refunded"
+                else:
+                    new_status = "partially_refunded"
     elif provider == "grabpay":
         if event_type in ("payment.success", "session.completed"):
             new_status = "captured"
@@ -2040,6 +2241,7 @@ async def process_webhook_event(
                 payment.captured_amount = to_decimal(data.get("amount", payment.amount))
             except Exception:
                 payment.captured_amount = payment.amount
+            _cross_check_capture_amount(payment, data.get("currency"))
             _record_hitpay_payment_id(payment, data)
             hitpay_fee_amount = _parse_hitpay_fee(data)
         elif hitpay_status == "failed":
@@ -2052,6 +2254,17 @@ async def process_webhook_event(
     if new_status == "captured" and old_status in ("refunded", "partially_refunded", "chargeback", "voided"):
         logger.warning(
             "Ignoring late capture event for payment %s (current status: %s)",
+            payment.id,
+            old_status,
+        )
+        return payment
+
+    # Guard against late void/failed events erasing captured money — a
+    # captured (possibly refunded/charged-back) payment must never revert.
+    if new_status in ("failed", "voided") and old_status in ("captured", "partially_refunded", "refunded", "chargeback"):
+        logger.warning(
+            "Ignoring late %s event for payment %s (current status: %s)",
+            new_status,
             payment.id,
             old_status,
         )
@@ -2072,8 +2285,58 @@ async def process_webhook_event(
                 fee_amount=hitpay_fee_amount if provider == "hitpay" else None,
             )
             await db.flush()
-            await _sync_order_payment_status(db, payment)
-            await _accrue_loyalty_annual_spend(db, payment)
+
+            # Safety nets before booking capture side-effects: a capture onto a
+            # cancelled/refunded order (late customer retry on an expired-but-
+            # still-live session), or a second capture when another payment
+            # already fully paid the order (duplicate live sessions). Both are
+            # recorded for the books and flagged for manual review — never
+            # auto-refunded, never silently booked.
+            order_row = (
+                await db.execute(
+                    select(Order).where(Order.id == payment.order_id).with_for_update()
+                )
+            ).scalar_one_or_none()
+            dead_order = order_row is not None and order_row.status in (
+                "cancelled_by_customer", "cancelled_by_merchant", "refunded",
+            )
+            duplicate_capture = False
+            if order_row is not None and not dead_order:
+                others = (
+                    await db.execute(
+                        select(Payment).where(
+                            Payment.order_id == payment.order_id,
+                            Payment.id != payment.id,
+                            Payment.status.in_(("captured", "partially_refunded")),
+                        )
+                    )
+                ).scalars().all()
+                already_captured = money_round(
+                    sum(to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0) for p in others),
+                    precision,
+                    rounding_mode,
+                )
+                duplicate_capture = already_captured >= money_round(
+                    to_decimal(order_row.total_amount or 0), precision, rounding_mode
+                )
+
+            if dead_order:
+                logger.warning(
+                    "Capture webhook for payment %s landed on %s order %s — recorded for the books, "
+                    "capture side-effects (points/annual spend/e-invoice) skipped; needs manual review",
+                    payment.id, order_row.status, payment.order_id,
+                )
+                payment.extra_metadata = {**(payment.extra_metadata or {}), "capture_on_dead_order": True}
+            elif duplicate_capture:
+                logger.warning(
+                    "Duplicate capture: payment %s captured but order %s was already fully paid by "
+                    "another payment — recorded and flagged; do NOT auto-refund, manual review required",
+                    payment.id, payment.order_id,
+                )
+                payment.extra_metadata = {**(payment.extra_metadata or {}), "duplicate_capture": True}
+            else:
+                await _sync_order_payment_status(db, payment)
+                await _accrue_loyalty_annual_spend(db, payment)
         elif new_status in ("refunded", "partially_refunded"):
             await db.flush()
             await _sync_order_payment_status(db, payment)
