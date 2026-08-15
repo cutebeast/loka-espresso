@@ -23,6 +23,7 @@ export default function OrdersPage() {
   } = useTranslation();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [unpaidList, setUnpaidList] = useState<Order[]>([]);
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,6 +43,14 @@ export default function OrdersPage() {
       const data = await getOrders(storeId, undefined, undefined, undefined, { timeframe: tab === "history" ? "all" : "24h", issues: tab === "unpaid" }); 
       const list = Array.isArray(data) ? data : [];
       setOrders(list);
+      // The Unpaid badge must not depend on the current tab's dataset — on the
+      // queue tab it otherwise counts only the 24h non-pending window (36 vs 43).
+      if (tab === "unpaid") {
+        setUnpaidList(list);
+      } else {
+        const issues = await getOrders(storeId, undefined, undefined, undefined, { issues: true });
+        setUnpaidList(Array.isArray(issues) ? issues : []);
+      }
       setError("");
     } catch (err: unknown) {
       console.error("Failed to load orders:", err);
@@ -78,7 +87,7 @@ export default function OrdersPage() {
     return list;
   }, [orders, tab, typeFilter, search]);
   const unpaidByType = useMemo(() => {
-    const all = orders.filter(o => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
+    const all = unpaidList.filter(o => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
     // payment_flow distinguishes open tabs (pay after meal) from pay-before-food orders
     const isOpenTab = (o: Order) => o.payment_flow === "pay_after_meal" || (o.payment_flow == null && o.order_type === "dine_in");
     return {
@@ -86,7 +95,7 @@ export default function OrdersPage() {
       takeaway: all.filter(o => !isOpenTab(o) && o.order_type === "takeaway"),
       delivery: all.filter(o => !isOpenTab(o) && o.order_type === "delivery")
     };
-  }, [orders]);
+  }, [unpaidList]);
   const totalUnpaid = unpaidByType.dine_in.length + unpaidByType.takeaway.length + unpaidByType.delivery.length;
   const tabConfig = [{
     key: "queue" as Tab,

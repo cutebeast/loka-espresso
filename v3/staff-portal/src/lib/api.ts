@@ -666,7 +666,10 @@ export function getOrderEinvoice(id: string | number) {
 }
 
 export function updateOrderStatus(id: string | number, status: OrderStatus, reason?: string) {
-  return api.patch(`/staff/orders/${id}/status`, { status, ...(reason ? { reason } : {}) });
+  // Backend takes status/reason as QUERY params (PATCH has no body schema) —
+  // sending them in the JSON body 422s with "Field required".
+  const qs = new URLSearchParams({ status, ...(reason ? { reason } : {}) });
+  return api.patch(`/staff/orders/${id}/status?${qs.toString()}`);
 }
 
 export function updateOrderPayment(id: string | number, payload: {
@@ -859,7 +862,8 @@ export interface BundleProduct {
   title: string;
   description: string | null;
   image_url: string | null;
-  bundle_price: number;
+  // API serializes Decimal as string — coerce with Number() before math
+  bundle_price: number | string;
   category_id: number | null;
   display_order: number;
   is_active: boolean;

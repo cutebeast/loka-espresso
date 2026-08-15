@@ -45,6 +45,18 @@ async def test_staff_clock_event_and_admin_verification(
     store_id: int,
 ):
     """Staff can clock in; admin can list and verify the time event."""
+    # The backend enforces a shift state machine (no double clock-in) — close
+    # any open shift left over from a previous run first.
+    r = await client.get(f"{base_url}/staff/time-events/me?per_page=1", headers=staff_headers)
+    assert r.status_code == 200
+    latest = (r.json()["data"]["items"] or [None])[0]
+    if latest and latest["event_type"] in ("clock_in", "break_start", "break_end", "overtime_start"):
+        r = await client.post(
+            f"{base_url}/staff/time-events?event_type=clock_out",
+            headers=staff_headers,
+        )
+        assert r.status_code == 201, f"Pre-test clock-out failed: {r.text}"
+
     r = await client.post(
         f"{base_url}/staff/time-events?event_type=clock_in",
         headers=staff_headers,

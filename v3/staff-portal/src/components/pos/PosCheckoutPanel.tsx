@@ -148,9 +148,13 @@ export default function PosCheckoutPanel({
   // Split bill — when active, the payment covers only the selected share
   const [split, setSplit] = useState<import("./PosSplitBillSection").SplitSelection>({ mode: "full", allocations: [], chargeAmount: null, shareTotal: checkoutTotal });
   const splitActive = split.mode !== "full";
-  const activeTotal = splitActive ? split.shareTotal : checkoutTotal;
   // Echo split progress to the customer display (paid/total + current share)
   const [splitProgress, setSplitProgress] = useState<{ paid: number; total: number } | null>(null);
+  // Remaining due nets out earlier split shares — a partially paid order must
+  // not present (or charge) the full total again.
+  const paidSoFar = splitProgress?.paid ?? 0;
+  const remainingDue = Math.max(0, checkoutTotal - paidSoFar);
+  const activeTotal = splitActive ? split.shareTotal : remainingDue;
   useEffect(() => {
     if (!onSplitDisplayChange) return;
     onSplitDisplayChange(splitProgress ? { ...splitProgress, charging: splitActive ? split.shareTotal : null } : null);
@@ -318,7 +322,7 @@ export default function PosCheckoutPanel({
         paddingTop: 8,
         borderTop: "1px solid var(--color-border-light)"
       }}>
-          <span>{t("pos.total_due")}</span><span>{t("pos.currency_symbol")}{checkoutTotal.toFixed(2)}</span>
+          <span>{t("pos.total_due")}</span><span>{t("pos.currency_symbol")}{remainingDue.toFixed(2)}</span>
         </div>
       </div>
 
@@ -534,7 +538,7 @@ export default function PosCheckoutPanel({
             }}>{t("pos.wallet_balance")}</span>
                   <span className="badge badge-primary">{t("pos.currency_symbol")}{Number(walletData.balance ?? 0).toFixed(2)}</span>
                 </div>
-                {checkoutTotal > 0 && walletData.balance > 0 && <button className="btn btn-primary w-full" onClick={() => onWalletPayment(Math.min(walletData.balance, checkoutTotal))}>{t("pos.pay_rm")}{Math.min(walletData.balance, checkoutTotal).toFixed(2)}{t("pos.from_wallet")}</button>}
+                {remainingDue > 0 && walletData.balance > 0 && <button className="btn btn-primary w-full" onClick={() => onWalletPayment(Math.min(walletData.balance, remainingDue))}>{t("pos.pay_rm")}{Math.min(walletData.balance, remainingDue).toFixed(2)}{t("pos.from_wallet")}</button>}
               </div>}
 
             {walletData.vouchers && walletData.vouchers.length > 0 && <div>

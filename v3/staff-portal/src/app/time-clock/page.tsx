@@ -73,7 +73,14 @@ export default function TimeClockPage() {
   const fetchEvents = useCallback(async () => {
     try {
       const data = await getMyTimeEvents(today);
-      setEvents(Array.isArray(data) ? data : []);
+      // The API returns newest-first; the state machine below derives the
+      // current status from the LAST element, so sort ascending first —
+      // otherwise the page shows "Working Now" after clock-out and never
+      // offers End Break / Clock In.
+      const sorted = (Array.isArray(data) ? data : []).slice().sort(
+        (a, b) => new Date(a.event_timestamp).getTime() - new Date(b.event_timestamp).getTime()
+      );
+      setEvents(sorted);
       setError("");
     } catch (err: unknown) {
       console.error("Time clock: Failed to load events:", err);
@@ -364,7 +371,7 @@ export default function TimeClockPage() {
         flexDirection: "column",
         gap: 8
       }}>
-            {events.slice().reverse().map(evt => <div key={evt.id} style={{
+            {events.map(evt => <div key={evt.id} style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",

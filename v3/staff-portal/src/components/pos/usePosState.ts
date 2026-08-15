@@ -333,7 +333,7 @@ export function usePosState() {
       }
 
       if (numSets > 0 && bundledSum > 0) {
-        const disc = bundledSum - bp.bundle_price * numSets;
+        const disc = bundledSum - Number(bp.bundle_price) * numSets;
         if (disc > 0) bundleDiscount += disc;
       }
     }

@@ -725,7 +725,7 @@ function PosPageContent() {
               }}>{t("pos.combo_price")}<span style={{
                   fontWeight: 700,
                   color: "var(--color-primary)"
-                }}>{t("pos.currency_symbol")}{(bp?.bundle_price ?? 0).toFixed(2)}</span>
+                }}>{t("pos.currency_symbol")}{Number(bp?.bundle_price ?? 0).toFixed(2)}</span>
                       </div>
                     </div>;
           })}

@@ -246,6 +246,40 @@ async def staff_clock_event(
     """Staff clocks in/out or records a break/overtime event."""
     if staff.id == 0:
         raise HTTPException(status_code=403, detail="Admin users cannot clock in/out. Use the admin portal for time audits.")
+
+    # State machine: derive the current shift state from the latest event and
+    # reject impossible transitions (double clock-in, break without an open
+    # shift, break_end without a break, ...). Without this, mis-taps and
+    # double-taps write garbage sequences that break payroll math.
+    last_result = await db.execute(
+        select(StaffTimeEvent)
+        .where(StaffTimeEvent.staff_id == staff.id)
+        .order_by(StaffTimeEvent.event_timestamp.desc(), StaffTimeEvent.id.desc())
+        .limit(1)
+    )
+    last = last_result.scalar_one_or_none()
+    current_state = "out"
+    if last is not None:
+        current_state = {
+            "clock_in": "in",
+            "break_start": "break",
+            "break_end": "in",
+            "overtime_start": "in",
+        }.get(last.event_type, "out")
+    ALLOWED = {
+        "clock_in": {"out"},
+        "clock_out": {"in", "break"},
+        "break_start": {"in"},
+        "break_end": {"break"},
+        "overtime_start": {"in"},
+    }
+    if current_state not in ALLOWED[event_type]:
+        state_label = {"out": "not clocked in", "in": "already clocked in", "break": "on break"}[current_state]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot record '{event_type}' while {state_label}",
+        )
+
     event = StaffTimeEvent(
         staff_id=staff.id,
         store_id=staff.store_id,

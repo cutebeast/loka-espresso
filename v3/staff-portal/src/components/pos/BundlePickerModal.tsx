@@ -228,7 +228,7 @@ export default function BundlePickerModal({
       gap: 8
     }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>{t("pos.cancel")}</button>
-          <button type="button" className="btn btn-primary" disabled={!canAdd} onClick={handleAdd}>{t("pos.add_to_cart_rm")}{bundle?.bundle_price?.toFixed(2) ?? t("wallet.zero_amount")}
+          <button type="button" className="btn btn-primary" disabled={!canAdd} onClick={handleAdd}>{t("pos.add_to_cart_rm")}{Number(bundle?.bundle_price ?? 0).toFixed(2)}
           </button>
         </div>
       </div>}>
