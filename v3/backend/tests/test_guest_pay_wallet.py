@@ -19,6 +19,9 @@ def _fake_result(value=None):
     class Result:
         def scalar_one_or_none(self):
             return value
+
+        def scalar_one(self):
+            return value
     return Result()
 
 
@@ -130,6 +133,7 @@ async def test_guest_pay_wallet_success_routes_through_capture_pipeline():
             _fake_result(customer),  # active customer lookup
             _scalars_result([]),     # double-charge guard: no open payments to void
             _scalars_result([]),     # double-charge guard: no failed sessions to expire
+            _fake_result(order),     # post-cancel order re-read under row lock
             _scalars_result([]),     # net-of-refund: no captured payments
         ]
         resp = await payment_endpoints.guest_pay(

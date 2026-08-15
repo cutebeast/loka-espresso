@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.routes.deps import DBDependency, RequireStaffRole
 from app.models.pos import PosSession, PosTerminal
@@ -78,6 +78,9 @@ async def open_session(
     data: PosSessionOpenIn,
 ):
     """Open the store drawer with a starting float. One open session per store."""
+    # Serialize opens per store — the check-then-insert below races otherwise
+    # (same advisory-lock pattern as the lucky-draw free-spin guard).
+    await db.execute(select(func.pg_advisory_xact_lock(91000000 + staff.store_id)))
     existing = await _open_session_for_store(db, staff.store_id)
     if existing is not None:
         raise HTTPException(
@@ -107,6 +110,14 @@ async def close_session(
     session = await _open_session_for_store(db, staff.store_id)
     if session is None:
         raise HTTPException(status_code=404, detail="No open drawer session for this store")
+    # Lock the session row — concurrent closes would silently overwrite each other.
+    session = (
+        await db.execute(
+            select(PosSession).where(PosSession.id == session.id).with_for_update()
+        )
+    ).scalar_one()
+    if session.status != "open":
+        raise HTTPException(status_code=409, detail="Drawer session is already closed")
     await close_session_with_report(db, session, staff.store_id, data.closing_cash, data.discrepancy_notes)
     await db.commit()
     await db.refresh(session)

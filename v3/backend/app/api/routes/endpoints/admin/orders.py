@@ -1,8 +1,11 @@
 """Admin order management endpoints."""
 
+import logging
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import Field
@@ -13,7 +16,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency, get_staff_store_id_f
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
-from app.models.menu import MenuItem, MenuCategory
+from app.models.menu import MenuItem, MenuCategory, MenuModifierOption
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
@@ -52,8 +55,11 @@ VALID_STATUS_TRANSITIONS: dict[str, list[str]] = {
     "ready_for_pickup": ["confirmed", "preparing", "delivered", "cancelled_by_merchant"],
     "out_for_delivery": ["confirmed", "preparing", "ready_for_pickup", "delivered", "cancelled_by_merchant"],
     "delivered": ["confirmed", "preparing", "ready_for_pickup", "out_for_delivery", "refunded", "partially_refunded", "disputed", "cancelled_by_merchant"],
-    "cancelled_by_customer": ["confirmed", "preparing", "refunded"],
-    "cancelled_by_merchant": ["confirmed", "preparing", "refunded"],
+    # Cancelled orders are terminal except the money-reconciliation exit
+    # (refunded) — resurrection to confirmed/preparing would silently undo
+    # the cancel-time reversal (stock/vouchers/points/order_count).
+    "cancelled_by_customer": ["refunded"],
+    "cancelled_by_merchant": ["refunded"],
     "refunded": [],
     "partially_refunded": [],
     "disputed": ["refunded", "partially_refunded"],
@@ -509,8 +515,10 @@ async def process_order_payment(
     provider = provider_map.get(payment_method, "cash")
     is_stripe_qr = payment_method == "stripe_qr"
 
-    # Idempotency: stable key. Reject duplicate captured payments.
-    idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}"
+    # Idempotency: stable key including the running paid total so legitimate
+    # equal split shares (3× RM12) are distinct while exact double-taps 409
+    # (mirrors the staff POS path).
+    idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}-{already_paid:.2f}"
     dup_check = await db.execute(
         select(Payment).where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
     )
@@ -582,6 +590,9 @@ async def process_order_payment(
         await grant_tickets_for_order(db, order)
         from app.services.payment import _credit_order_loyalty_points
         await _credit_order_loyalty_points(db, order)
+        if payment is not None:
+            from app.services.payment import _accrue_loyalty_annual_spend
+            await _accrue_loyalty_annual_spend(db, payment)
 
     # Log status change
     log = OrderStatusLog(
@@ -595,6 +606,15 @@ async def process_order_payment(
     db.add(log)
     await db.commit()
     await db.refresh(order)
+
+    # LHDN e-invoice: auto-issue on captured payments when einvoice.auto_issue
+    # is on. Fully guarded — e-invoicing must never break the payment flow.
+    if order.payment_status == "captured" and payment is not None:
+        try:
+            from app.services.einvoice import auto_issue_on_payment
+            await auto_issue_on_payment(db, order, payment)
+        except Exception:
+            logger.exception("e-invoice auto-issue failed for order %s", order.id)
 
     response_data: dict = {
         "id": order.id,
@@ -1092,17 +1112,31 @@ async def add_order_line_item(
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise HTTPException(status_code=400, detail="Cannot modify a completed or cancelled order")
 
-    menu_result = await db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id))
+    menu_result = await db.execute(
+        select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.deleted_at.is_(None))
+    )
     menu_item = menu_result.scalar_one_or_none()
     if not menu_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
+    if not menu_item.is_available:
+        raise HTTPException(status_code=400, detail=f"{menu_item.item_name} is currently unavailable")
 
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
     # Always derive price from the menu item; do not trust client-supplied unit_price.
+    # Modifier options add to the unit price (mirrors the staff/POS path).
     price = to_decimal(menu_item.base_price)
+    modifier_total = Decimal(0)
+    modifier_ids = data.modifier_ids or []
+    if modifier_ids:
+        mod_result = await db.execute(
+            select(MenuModifierOption).where(MenuModifierOption.id.in_(modifier_ids))
+        )
+        for mod in mod_result.scalars().all():
+            modifier_total += to_decimal(mod.price_adjustment)
+        price += modifier_total
     total = money_round(price * data.quantity, precision, rounding_mode)
 
     line_item = OrderLineItem(
@@ -1112,25 +1146,30 @@ async def add_order_line_item(
         quantity=data.quantity,
         unit_price=price,
         line_total=total,
-        selected_modifiers={},
+        modifier_total=modifier_total,
+        selected_modifiers={"modifier_ids": modifier_ids},
         special_instructions=data.special_instructions,
     )
     db.add(line_item)
+    await db.flush()
 
-    order.items_subtotal = to_decimal(order.items_subtotal) + total
-    order.item_count = (order.item_count or 0) + data.quantity
-    order.total_amount = money_round(
-        to_decimal(order.items_subtotal)
-        + to_decimal(order.modifier_subtotal)
-        + to_decimal(order.delivery_fee)
-        + to_decimal(order.service_charge)
-        + to_decimal(order.tax_amount)
-        + to_decimal(order.tip_amount)
-        - to_decimal(order.discount_amount),
-        precision,
-        rounding_mode,
+    # Added lines must deduct stock — creation did, and cancel-time reversal
+    # restores whatever the current lines hold.
+    from app.api.routes.endpoints.staff.orders import (
+        _reprice_order_from_lines,
+        _resync_payment_status_after_total_change,
     )
+    from app.services.order import _deduct_stock_for_order
+    stock_warnings = await _deduct_stock_for_order(db, order, [line_item])
+    for w in stock_warnings:
+        logger.warning("order %s: %s", order.order_number, w)
+
+    order.item_count = (order.item_count or 0) + data.quantity
+    await _reprice_order_from_lines(db, order, precision, rounding_mode)
     order.updated_at = datetime.now(timezone.utc)
+
+    # If money was already captured, drop payment_status back to collectible.
+    await _resync_payment_status_after_total_change(db, order)
 
     log = OrderModificationLog(
         order_id=order.id,
@@ -1175,33 +1214,58 @@ async def remove_order_line_item(
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
-    removed_total = to_decimal(line_item.line_total)
-    order.items_subtotal = to_decimal(order.items_subtotal) - removed_total
-    order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
-    order.total_amount = money_round(
-        to_decimal(order.items_subtotal)
-        + to_decimal(order.modifier_subtotal)
-        + to_decimal(order.delivery_fee)
-        + to_decimal(order.service_charge)
-        + to_decimal(order.tax_amount)
-        + to_decimal(order.tip_amount)
-        - to_decimal(order.discount_amount),
-        precision,
-        rounding_mode,
+    # A line covered by a captured split-bill share can't be removed — the
+    # allocation rows would orphan and the per-line paid math corrupts.
+    from app.models.payment import Payment, PaymentLineAllocation
+    alloc_result = await db.execute(
+        select(func.coalesce(func.sum(
+            PaymentLineAllocation.quantity * case(
+                (Payment.captured_amount > 0,
+                 (Payment.captured_amount - func.coalesce(Payment.refunded_amount, 0)) / Payment.captured_amount),
+                else_=0,
+            )
+        ), 0))
+        .join(Payment, Payment.id == PaymentLineAllocation.payment_id)
+        .where(
+            PaymentLineAllocation.order_line_item_id == line_item.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
     )
-    order.total_amount = max(Decimal(0), order.total_amount)
-    order.updated_at = datetime.now(timezone.utc)
+    if (alloc_result.scalar() or 0) > 0:
+        raise HTTPException(status_code=400, detail="Cannot remove an item that has been (partially) paid via split bill — refund the share first")
 
+    removed_total = to_decimal(line_item.line_total)
+    order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
+
+    # Restore this line's recipe stock (single-line scope) so cancel-time
+    # reversal stays symmetric with creation-time deduction.
+    from app.api.routes.endpoints.staff.orders import (
+        _reprice_order_from_lines,
+        _resync_payment_status_after_total_change,
+    )
+    from app.services.order import _restore_stock_for_order
+    await _restore_stock_for_order(db, order, [line_item])
+
+    # Write the log BEFORE deleting the line: the FK is ON DELETE SET NULL,
+    # so inserting after the delete would reference a dead row (409), while
+    # inserting first lets the delete null the reference cleanly.
     log = OrderModificationLog(
         order_id=order.id,
         staff_id=admin.id,
         modification_type="remove_item",
         line_item_id=line_item.id,
-        previous_value={"item_name": line_item.item_snapshot.get("item_name"), "total_price": removed_total},
+        # JSONB can't hold Decimal — float() or the flush 500s.
+        previous_value={"item_name": line_item.item_snapshot.get("item_name"), "total_price": float(removed_total)},
         reason=reason,
     )
     db.add(log)
+    await db.flush()
     await db.delete(line_item)
+    await db.flush()
+    await _reprice_order_from_lines(db, order, precision, rounding_mode)
+    order.updated_at = datetime.now(timezone.utc)
+    await _resync_payment_status_after_total_change(db, order)
+
     await db.commit()
     return APIResponse(data={"id": line_item_id, "order_id": order.id, "removed": True, "new_total": order.total_amount})
 

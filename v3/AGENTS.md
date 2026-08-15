@@ -1646,3 +1646,27 @@ Tester sweep on staff.loyaltysystem.uk found 5 issues the audit rounds missed (a
 6. **Bonus (screenshot 8)** — POS checkout showed/charged the FULL total on partially split-paid orders ("RM 4 of RM 12 paid" but Total Due RM 12). The panel already receives split progress; `Total Due`/confirm/wallet amounts now use `remainingDue = checkoutTotal − paidSoFar`. Backend already guarded the overcharge (400), this fixes the display + flow.
 
 Verification: 93/93 unit, tsc staff clean, live probes (status→preparing 200; time-clock full cycle + 400s on invalid transitions), staff portal rebuilt + restarted, full E2E re-run.
+
+## Round 37 — ordering & payment flow audit (2026-08-15)
+
+Focused 2-track audit (ordering lifecycle, payment lifecycle) after the tester findings; 27 verified findings. Subagent pool hit quota limits twice mid-batch — C-batch completed by subagent, O/P batches finished inline by the parent; every partial edit reviewed and completed by hand. Rules of thumb added: after any interrupted agent, run pytest + import check before trusting the tree.
+
+**Ordering (O-batch + C-batch):**
+- Remove-line-item was fully broken: Decimal into JSONB log field → 500, then a second latent bug (log inserted after the line delete → FK 409). Both fixed; log written before delete (FK is ON DELETE SET NULL — pg confdeltype 'n').
+- Add/remove reprice now recomputes from line items (`_reprice_order_from_lines`): items_subtotal = Σ line_total (modifier-inclusive), modifier_subtotal derived, tax re-derived at the order's effective rate — no more modifier double-count or tax drift. Shared `_resync_payment_status_after_total_change` drops payment_status back to collectible when totals change on a paid order.
+- Item add/remove now move stock per line (deduct on add, restore on remove) so cancel-time reversal stays symmetric.
+- Staff status PATCH enforces a monotonic machine (pending→confirmed→preparing→ready_for_pickup→out_for_delivery→delivered; terminal = no exit) + row lock + OrderStatusLog; admin map no longer resurrects cancelled orders (only →refunded).
+- POS stripe_qr orders are created pending+prepaid (order-level payment_status stays "initiated" so the 2h prepaid sweep covers them); capture advances to confirmed. Kiosk orders accept idempotency_key (KioskPage sends a per-cart key). PWA dine-in validates the table (exists/active/same-store). Table locks taken inside the creation transaction.
+- Merge: item_count/delivery_fee merged, same-table service charge not doubled, status log fixed. Remove blocked for lines with net-paid split allocations. Transfer-table guards mirror admin. Add-item applies modifiers + availability checks.
+
+**Payments (P-batch):**
+- Customer PWA re-payment nets prior payments (was gross — the RM150-on-RM100 double charge), both intent + checkout paths, 400 when nothing owed. Guest-pay re-locks the order after voiding stale sessions.
+- Webhook hardening: Stripe dedup net actually engages now (event id was never in the payload); capture on voided payments is recorded + flagged `capture_after_void` (was silently dropped with money collected); `_sync_order_payment_status` excludes flagged captures (capture_on_dead_order/duplicate_capture/capture_after_void) from order state + benefits and never flips terminal orders to captured; chargeback included in the sync set; dispute zero-delta no longer rewrites refunded payments; dispute-won (charge.dispute.closed status=won) restores payment/order and reverses the booked withdrawal.
+- Wallet top-up refund/dispute events route to `_reverse_wallet_topup` (wallet credit clawed back) via metadata.
+- E-invoice: auto_issue_on_payment now fires on webhook captures, confirm_payment, capture_payment, POS one-shot, and admin counter payments; refund notes fire when a pending provider refund completes. Type-01 per-order unique index (`x3y4z5a6b7c8`).
+- POS drawer: per-store advisory lock on open, row lock + 409 on double close.
+- Admin POS pay: idempotency key includes the running paid total (equal split shares no longer 409) + annual-spend accrual + e-invoice.
+- Limbo sweep now filters payment_flow='prepaid' (defense-in-depth for open tabs).
+- SKIPPED deliberately: lucky-draw ticket clawback on refund — the model + AGENTS.md document it as intentional design; needs an owner decision, not a code change.
+
+**Verification:** 99/99 backend unit (6 new C-batch + mock repairs), full E2E green, live probes: remove-item 200 with correct repricing, status machine 400s on jumps/resurrection, POS QR order pending. Alembic single head y4z5a6b7c8d9, check clean.

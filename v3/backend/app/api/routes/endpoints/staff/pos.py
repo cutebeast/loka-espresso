@@ -382,6 +382,12 @@ async def staff_pos_create_order(
     from uuid import uuid4
     order_number = f"POS-{datetime.now(timezone.utc).strftime('%m%d')}-{uuid4().hex[:8].upper()}"
 
+    # Stripe QR is pay-before-food: the money arrives later via webhook, so the
+    # order stays pending (kept out of the kitchen/queue and covered by the 2h
+    # prepaid stale sweep) until capture advances it pending → confirmed via
+    # _sync_order_payment_status.
+    is_stripe_qr = bool(payment_data) and payment_data.method == "stripe_qr"
+
     order = Order(
         customer_id=customer_id,
         store_id=store_id,
@@ -392,8 +398,8 @@ async def staff_pos_create_order(
         order_type=order_type,
         order_channel="pos",
         fulfillment_type={"dine_in":"dine_in_service","takeaway":"counter_pickup","delivery":"standard_delivery","drive_thru":"counter_pickup"}.get(order_type,"dine_in_service"),
-        status="confirmed",
-        payment_status="captured" if payment_data else "initiated",
+        status="pending" if is_stripe_qr else "confirmed",
+        payment_status="captured" if (payment_data and not is_stripe_qr) else "initiated",
         # Two-stage (no payment yet) = open tab; paid at creation = prepaid
         payment_flow="prepaid" if payment_data else "pay_after_meal",
         item_count=sum(li.quantity for li in line_items),
@@ -465,7 +471,6 @@ async def staff_pos_create_order(
                 "e_wallet": "grabpay",
             }
             provider = provider_map.get(payment_data.method, "cash")
-            is_stripe_qr = payment_data.method == "stripe_qr"
 
             # Cash tender validation
             if payment_data.method == "cash" and amount_tendered < total:
@@ -504,7 +509,13 @@ async def staff_pos_create_order(
             await db.refresh(payment)
 
             if is_stripe_qr:
-                order.payment_status = "pending_authorization"
+                # order.payment_status deliberately stays "initiated" (the
+                # Payment ROW is pending_authorization, but at order level the
+                # customer has not authorized anything yet): the prepaid stale
+                # sweeps filter payment_status="initiated", so a never-scanned
+                # QR order expires after 2h like any other unpaid prepaid
+                # order instead of lingering until the 24h limbo pass. Capture
+                # flips it to "captured" via _sync_order_payment_status.
                 try:
                     checkout = await create_stripe_checkout_session(db, payment, order)
                 except PaymentError as exc:
@@ -549,6 +560,15 @@ async def staff_pos_create_order(
                 snap.updated_at = datetime.now(timezone.utc)
 
         await db.commit()
+
+        # LHDN e-invoice: auto-issue on captured one-shot POS payments when
+        # einvoice.auto_issue is on (self-gated, failure-swallowing).
+        if paid_now and payment is not None:
+            try:
+                from app.services.einvoice import auto_issue_on_payment
+                await auto_issue_on_payment(db, order, payment)
+            except Exception:
+                logger.exception("e-invoice auto-issue failed for order %s", order.id)
     except IntegrityError as exc:
         await db.rollback()
         if data.idempotency_key:

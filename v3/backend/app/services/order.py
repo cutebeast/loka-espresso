@@ -18,7 +18,7 @@ from app.models.menu import MenuCategory, MenuItem, MenuItemRecipe, MenuVariant
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
-from app.models.store import Store, StoreConfiguration, TableStatusSnapshot
+from app.models.store import DiningTable, Store, StoreConfiguration, TableStatusSnapshot
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleGroup
 from app.schemas.order import OrderCreate
@@ -768,6 +768,23 @@ async def create_order_from_cart(
     store = store_result.scalar_one_or_none()
     if store is None:
         raise OrderError("Store is not active or does not exist", 400)
+
+    # Validate the dine-in table (mirrors the kiosk/POS checks): it must exist,
+    # be active, not deleted, and belong to the cart's store — otherwise a
+    # customer could occupy another store's table.
+    if data.dining_table_id is not None:
+        table_result = await db.execute(
+            select(DiningTable).where(
+                DiningTable.id == data.dining_table_id,
+                DiningTable.store_id == cart.store_id,
+                DiningTable.is_active.is_(True),
+                DiningTable.deleted_at.is_(None),
+            )
+        )
+        if table_result.scalar_one_or_none() is None:
+            raise OrderError(
+                f"Dining table {data.dining_table_id} not found for store {cart.store_id}", 400
+            )
     
     # Fetch line items
     items_result = await db.execute(
@@ -1183,7 +1200,7 @@ async def create_order_from_cart(
     status_log = OrderStatusLog(
         order_id=order.id,
         from_status=None,
-        to_status="pending",
+        to_status=order.status,
         reason="; ".join(reason_parts),
         actor_type="system",
     )
@@ -1261,11 +1278,9 @@ async def create_order_from_cart(
         await db.delete(ci)
     cart.item_count = 0
     cart.subtotal = Decimal("0")
-    
-    await db.commit()
-    await db.refresh(order)
 
-    # Lock table if dine-in
+    # Lock table if dine-in — inside the order-creation transaction so a crash
+    # can never leave an order committed with its table unlocked.
     if order.dining_table_id and order.order_type == "dine_in":
         existing = await db.execute(
             select(TableStatusSnapshot).where(
@@ -1285,7 +1300,9 @@ async def create_order_from_cart(
             snap.status = "occupied"
             snap.current_order_id = order.id
             snap.updated_at = datetime.now(timezone.utc)
-        await db.commit()
+
+    await db.commit()
+    await db.refresh(order)
 
     return order
 

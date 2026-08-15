@@ -87,11 +87,13 @@ async def _sweep_stale_orders() -> None:
         # Limbo fallback: orders stuck in pending_authorization whose provider
         # session is long dead (Stripe sessions expire after ~24h) but the
         # expiry webhook never arrived — without this they hold stock/voucher/
-        # table forever and escape every initiated-only sweep.
+        # table forever and escape every initiated-only sweep. Prepaid-only:
+        # open tabs (pay_after_meal) must never be auto-cancelled.
         limbo_cutoff = now - timedelta(hours=24)
         limbo_result = await db.execute(
             select(Order.id).where(
                 Order.payment_status == "pending_authorization",
+                Order.payment_flow == "prepaid",
                 Order.status == "pending",
                 Order.created_at < limbo_cutoff,
             )

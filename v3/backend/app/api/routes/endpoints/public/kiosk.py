@@ -14,7 +14,6 @@ from app.core.rate_limiter import limiter
 from app.core.security import create_guest_pay_token
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.order import Order
-from app.models.store import TableStatusSnapshot
 from app.models.customer import Customer
 from app.models.menu import MenuItem
 from app.models.store import DiningTable, Store
@@ -47,6 +46,9 @@ class KioskOrderCreateRequest(BaseSchema):
     # "kiosk" = standing kiosk (always prepaid, pay before food);
     # "tablet" = Android tablet on the table (dine-in open tab, pay after meal)
     kiosk_mode: str = Field("kiosk", pattern="^(kiosk|tablet)$")
+    # Client-generated key so a double-tap / retry replays the existing order
+    # instead of creating a duplicate (see create_order_from_cart)
+    idempotency_key: str | None = Field(None, max_length=255)
 
 
 class KioskOrderOut(BaseSchema):
@@ -386,6 +388,7 @@ async def create_kiosk_order(
         # dine_in_service; the schema default (counter_pickup) violates it.
         fulfillment_type="dine_in_service" if data.order_type == "dine_in" else "counter_pickup",
         dining_table_id=dining_table_id,
+        idempotency_key=data.idempotency_key,
     )
 
     try:
@@ -417,27 +420,8 @@ async def create_kiosk_order(
     if stale_orders:
         await db.commit()
 
-    # Lock table if dine-in
-    if order.dining_table_id and order.order_type == "dine_in":
-        existing = await db.execute(
-            select(TableStatusSnapshot).where(
-                TableStatusSnapshot.table_id == order.dining_table_id
-            ).with_for_update()
-        )
-        snap = existing.scalar_one_or_none()
-        if not snap:
-            snap = TableStatusSnapshot(
-                table_id=order.dining_table_id,
-                status="occupied",
-                current_order_id=order.id,
-                store_id=order.store_id,
-            )
-            db.add(snap)
-        else:
-            snap.status = "occupied"
-            snap.current_order_id = order.id
-            snap.updated_at = datetime.now(timezone.utc)
-        await db.commit()
+    # The dine-in table lock is taken inside create_order_from_cart's own
+    # transaction (single commit with the order), so no duplicate lock here.
 
     pay_token = create_guest_pay_token(order.id, order.store_id)
 

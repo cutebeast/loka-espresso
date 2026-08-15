@@ -131,6 +131,9 @@ export default function KioskPage() {
   const [promos, setPromos] = useState<any[]>([]);
   const [promoIdx, setPromoIdx] = useState(0);
   const _orderId = useRef<number | null>(null);
+  // Stable idempotency key per cart-checkout attempt: a double-tap / retry of
+  // the same cart replays the existing order instead of duplicating it.
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const returnPhaseRef = useRef<KioskPhase>('menu');
 
@@ -501,15 +504,30 @@ export default function KioskPage() {
     }
   };
 
+  // Any cart change starts a new checkout attempt → fresh idempotency key,
+  // so a retry after editing the cart creates a new order rather than
+  // replaying the stale one.
+  useEffect(() => {
+    idempotencyKeyRef.current = null;
+  }, [cart]);
+
   // ── Place order ──
   const placeOrder = async (method: 'card' | 'wallet') => {
     setLoading(true);
     setError('');
     try {
+      // Reuse the same key across retries of THIS cart so the backend replays
+      // instead of double-charging; any cart change mints a fresh key below.
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? `kiosk-${crypto.randomUUID()}`
+          : `kiosk-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
       const payload = {
         store_id: storeId,
         order_type: orderType,
         kiosk_mode: kioskMode === 'tablet' ? 'tablet' : 'kiosk',
+        idempotency_key: idempotencyKeyRef.current,
         items: cart.map(c => ({
           menu_item_id: c.id,
           quantity: c.qty,

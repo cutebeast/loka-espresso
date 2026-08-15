@@ -14,7 +14,7 @@ from app.api.routes.deps import CurrentStaff, DBDependency, RequireStaffRole, en
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderLineItem, OrderStatusLog
-from app.models.menu import MenuCategory, MenuItem
+from app.models.menu import MenuCategory, MenuItem, MenuModifierOption
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
@@ -30,7 +30,13 @@ from app.schemas.order import (
     PayWithWalletRequest,
     ProcessOrderPaymentRequest,
 )
-from app.services.order import OrderError, reverse_order_effects, validate_voucher_eligibility
+from app.services.order import (
+    OrderError,
+    _deduct_stock_for_order,
+    _restore_stock_for_order,
+    reverse_order_effects,
+    validate_voucher_eligibility,
+)
 from app.services.payment import PaymentError, cancel_pending_order_payments, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
@@ -48,6 +54,78 @@ def _audit_principal_id(staff) -> int | None:
 async def _require_store_order(staff, order: Order) -> None:
     if order.store_id != staff.store_id:
         raise HTTPException(status_code=403, detail="Access denied for this store")
+
+
+# Staff status machine: monotonic forward only. Terminal statuses
+# (delivered, cancelled_*, refunded, partially_refunded, disputed) have no
+# outgoing transitions — a reversed order must never be resurrected.
+_STAFF_STATUS_TRANSITIONS: dict[str, list[str]] = {
+    "pending": ["confirmed"],
+    "confirmed": ["preparing"],
+    "preparing": ["ready_for_pickup", "out_for_delivery"],
+    "ready_for_pickup": ["out_for_delivery", "delivered"],
+    "out_for_delivery": ["delivered"],
+}
+
+
+async def _reprice_order_from_lines(db, order: Order, precision: int, rounding_mode: str) -> None:
+    """Recompute items_subtotal / modifier_subtotal / tax / total from the
+    order's current line items.
+
+    Cart- and POS-originated lines both store line_total INCLUSIVE of
+    modifiers (cart lines keep unit_price excl. modifiers, POS lines incl.),
+    so items_subtotal = Σ line_total and modifier_subtotal = Σ(line_total −
+    unit_price × qty) — adding modifier_subtotal on top would double-count.
+    Tax follows the creation convention (services/order.py: pre-discount
+    items_subtotal × rate) using the order's own effective rate.
+    """
+    lines = (await db.execute(
+        select(OrderLineItem).where(OrderLineItem.order_id == order.id)
+    )).scalars().all()
+    items_subtotal = sum((to_decimal(li.line_total) for li in lines), Decimal(0))
+    modifier_subtotal = sum(
+        (to_decimal(li.line_total) - to_decimal(li.unit_price) * li.quantity for li in lines),
+        Decimal(0),
+    )
+    old_subtotal = to_decimal(order.items_subtotal)
+    effective_rate = (to_decimal(order.tax_amount) / old_subtotal) if old_subtotal > 0 else Decimal(0)
+    order.items_subtotal = money_round(items_subtotal, precision, rounding_mode)
+    order.modifier_subtotal = money_round(max(Decimal(0), modifier_subtotal), precision, rounding_mode)
+    order.tax_amount = money_round(order.items_subtotal * effective_rate, precision, rounding_mode)
+    order.total_amount = money_round(
+        max(
+            Decimal(0),
+            order.items_subtotal
+            + to_decimal(order.delivery_fee)
+            + to_decimal(order.service_charge)
+            + order.tax_amount
+            + to_decimal(order.tip_amount)
+            - to_decimal(order.discount_amount),
+        ),
+        precision,
+        rounding_mode,
+    )
+
+
+async def _resync_payment_status_after_total_change(db, order: Order) -> None:
+    """Re-derive payment_status after an add/remove changed the order total.
+
+    Adding items to an already-paid order must not leave 'captured' hiding an
+    uncovered balance — route through the shared capture-pipeline helper so
+    the net-of-refunds math (captured → initiated/partially_refunded) stays
+    in one place.
+    """
+    from app.models.payment import Payment
+    from app.services.payment import _sync_order_payment_status
+
+    paid = (await db.execute(
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        ).limit(1)
+    )).scalar_one_or_none()
+    if paid is not None:
+        await _sync_order_payment_status(db, paid)
 
 
 @router.patch("/{order_id}/payment", response_model=APIResponse[dict])
@@ -971,16 +1049,31 @@ async def add_staff_order_line_item(
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise HTTPException(status_code=400, detail="Cannot modify a completed or cancelled order")
 
-    menu_result = await db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id))
+    menu_result = await db.execute(
+        select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.deleted_at.is_(None))
+    )
     menu_item = menu_result.scalar_one_or_none()
     if not menu_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
+    if not menu_item.is_available:
+        raise HTTPException(status_code=400, detail=f"{menu_item.item_name} is currently unavailable")
 
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
+    # Price from the menu item (never the client); modifier options add to the
+    # unit price, mirroring POS line construction (staff/pos.py).
     price = to_decimal(menu_item.base_price)
+    modifier_total = Decimal(0)
+    modifier_ids = data.modifier_ids or []
+    if modifier_ids:
+        mod_result = await db.execute(
+            select(MenuModifierOption).where(MenuModifierOption.id.in_(modifier_ids))
+        )
+        for mod in mod_result.scalars().all():
+            modifier_total += to_decimal(mod.price_adjustment)
+        price += modifier_total
     total = money_round(price * data.quantity, precision, rounding_mode)
 
     line_item = OrderLineItem(
@@ -990,25 +1083,27 @@ async def add_staff_order_line_item(
         quantity=data.quantity,
         unit_price=price,
         line_total=total,
-        selected_modifiers={},
+        modifier_total=modifier_total,
+        selected_modifiers={"modifier_ids": modifier_ids},
         special_instructions=data.special_instructions,
     )
     db.add(line_item)
+    await db.flush()
 
-    order.items_subtotal = to_decimal(order.items_subtotal) + total
+    # Stock: creation deducts recipe needs, so an added line must deduct too —
+    # otherwise a later cancel's reverse_order_effects restores stock that was
+    # never taken.
+    stock_warnings = await _deduct_stock_for_order(db, order, [line_item])
+    for w in stock_warnings:
+        logger.warning("order %s: %s", order.order_number, w)
+
     order.item_count = (order.item_count or 0) + data.quantity
-    order.total_amount = money_round(
-        to_decimal(order.items_subtotal)
-        + to_decimal(order.modifier_subtotal)
-        + to_decimal(order.delivery_fee)
-        + to_decimal(order.service_charge)
-        + to_decimal(order.tax_amount)
-        + to_decimal(order.tip_amount)
-        - to_decimal(order.discount_amount),
-        precision,
-        rounding_mode,
-    )
+    await _reprice_order_from_lines(db, order, precision, rounding_mode)
     order.updated_at = datetime.now(timezone.utc)
+
+    # Totals grew — if money was already captured, drop payment_status back to
+    # collectible so the new balance resurfaces instead of hiding under 'captured'.
+    await _resync_payment_status_after_total_change(db, order)
 
     log = OrderModificationLog(
         order_id=order.id,
@@ -1053,33 +1148,55 @@ async def remove_staff_order_line_item(
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
-    removed_total = to_decimal(line_item.line_total)
-    order.items_subtotal = to_decimal(order.items_subtotal) - removed_total
-    order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
-    order.total_amount = money_round(
-        to_decimal(order.items_subtotal)
-        + to_decimal(order.modifier_subtotal)
-        + to_decimal(order.delivery_fee)
-        + to_decimal(order.service_charge)
-        + to_decimal(order.tax_amount)
-        + to_decimal(order.tip_amount)
-        - to_decimal(order.discount_amount),
-        precision,
-        rounding_mode,
+    # A line covered by a captured split-bill share can't be removed — the
+    # allocation rows would orphan and the per-line paid math corrupts.
+    from app.models.payment import Payment, PaymentLineAllocation
+    alloc_result = await db.execute(
+        select(func.coalesce(func.sum(
+            PaymentLineAllocation.quantity * case(
+                (Payment.captured_amount > 0,
+                 (Payment.captured_amount - func.coalesce(Payment.refunded_amount, 0)) / Payment.captured_amount),
+                else_=0,
+            )
+        ), 0))
+        .join(Payment, Payment.id == PaymentLineAllocation.payment_id)
+        .where(
+            PaymentLineAllocation.order_line_item_id == line_item.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
     )
-    order.total_amount = max(Decimal(0), order.total_amount)
-    order.updated_at = datetime.now(timezone.utc)
+    if (alloc_result.scalar() or 0) > 0:
+        raise HTTPException(status_code=400, detail="Cannot remove an item that has been (partially) paid via split bill — refund the share first")
 
+    removed_total = to_decimal(line_item.line_total)
+    order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
+
+    # Stock: creation deducted this line's recipe needs — removal restores
+    # them (single-line scope), keeping cancel-time reversal symmetric.
+    await _restore_stock_for_order(db, order, [line_item])
+
+    # Write the log BEFORE deleting the line: the FK is ON DELETE SET NULL,
+    # so inserting after the delete would reference a dead row (409), while
+    # inserting first lets the delete null the reference cleanly.
     log = OrderModificationLog(
         order_id=order.id,
         staff_id=staff.id,
         modification_type="remove_item",
         line_item_id=line_item.id,
-        previous_value={"item_name": line_item.item_snapshot.get("item_name"), "total_price": removed_total},
+        # JSONB can't hold Decimal — float() or the flush 500s.
+        previous_value={"item_name": line_item.item_snapshot.get("item_name"), "total_price": float(removed_total)},
         reason=reason,
     )
     db.add(log)
+    await db.flush()
     await db.delete(line_item)
+    await db.flush()
+    await _reprice_order_from_lines(db, order, precision, rounding_mode)
+    order.updated_at = datetime.now(timezone.utc)
+
+    # Totals shrank/grew — keep payment_status honest about captured money.
+    await _resync_payment_status_after_total_change(db, order)
+
     await db.commit()
     return APIResponse(data={"id": line_item_id, "order_id": order.id, "removed": True, "new_total": order.total_amount})
 
@@ -1203,10 +1320,20 @@ async def merge_staff_order(
     # Additive totals — both orders are same-store, same tax/service config
     target.items_subtotal += source.items_subtotal
     target.modifier_subtotal += source.modifier_subtotal
-    target.service_charge += source.service_charge
+    # Flat service charge: two orders on the SAME table are one table's
+    # service — don't double it; different tables keep both.
+    if source.dining_table_id and source.dining_table_id == target.dining_table_id:
+        target.service_charge = max(target.service_charge, source.service_charge)
+    else:
+        target.service_charge += source.service_charge
     target.tax_amount += source.tax_amount
     target.discount_amount += source.discount_amount
+    target.delivery_fee += source.delivery_fee
+    target.item_count = (target.item_count or 0) + (source.item_count or 0)
     target.total_amount += source.total_amount
+    # Mixed flows: merging a prepaid-pending source into an open tab keeps the
+    # target's flow — merge already blocks captured payments, so nothing is
+    # prepaid-and-waived; the source has no money attached by construction.
     target.updated_at = datetime.now(timezone.utc)
 
     # Free the source table if its snapshot points at the source order
@@ -1225,6 +1352,7 @@ async def merge_staff_order(
 
     # Cancel the (now empty) source order — no reverse_order_effects: seats
     # and loyalty stay attached to the moved line items.
+    source_status_before = source.status
     source.status = "cancelled_by_merchant"
     source.cancellation_reason = f"Merged into order {target.order_number}"
     source.cancelled_by = "merchant"
@@ -1234,7 +1362,7 @@ async def merge_staff_order(
 
     db.add(OrderStatusLog(
         order_id=source.id,
-        from_status="pending",
+        from_status=source_status_before,
         to_status="cancelled_by_merchant",
         reason=f"Merged into order {target.order_number}",
         actor_type="staff",
@@ -1500,16 +1628,36 @@ async def staff_update_order_status(
         select(Order).where(
             Order.id == order_id,
             Order.store_id == staff.store_id,
-        )
+        ).with_for_update()
     )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Enforce the monotonic state machine — no jumps (pending→delivered skips
+    # payment) and no resurrection of terminal orders (a cancelled order had
+    # its stock/vouchers/points reversed; confirming it again undoes nothing).
+    allowed = _STAFF_STATUS_TRANSITIONS.get(order.status, [])
+    if status not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot move order from '{order.status}' to '{status}'",
+        )
+
+    from_status = order.status
     order.status = status
     if status == "delivered":
         order.completed_at = datetime.now(timezone.utc)
     elif status == "preparing":
         order.prepared_at = datetime.now(timezone.utc)
+    db.add(OrderStatusLog(
+        order_id=order.id,
+        from_status=from_status,
+        to_status=status,
+        reason=reason,
+        actor_type="staff",
+        actor_id=staff.id,
+    ))
     await db.commit()
     return APIResponse(data={"id": order.id, "status": order.status})
 
@@ -1526,11 +1674,17 @@ async def staff_transfer_table(
         select(Order).where(
             Order.id == order_id,
             Order.store_id == staff.store_id,
-        )
+        ).with_for_update()
     )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    # Only live dine-in orders can move tables (mirrors the admin guards) —
+    # transferring a terminal order would occupy the new table for a dead order.
+    if order.order_type != "dine_in":
+        raise HTTPException(status_code=400, detail="Only dine-in orders can be transferred between tables")
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot transfer a completed or cancelled order")
 
     # Validate the target table belongs to this store, then move table-status
     # snapshots too (was: order moved only, leaving the old table stuck

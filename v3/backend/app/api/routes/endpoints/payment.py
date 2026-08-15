@@ -350,6 +350,21 @@ async def guest_pay(
     # new one — a pending session can still be paid (double-charge guard).
     await cancel_pending_order_payments(db, order.id)
 
+    # Re-read under the row lock and re-verify before minting the new session —
+    # a capture webhook may have landed while the old session was being voided
+    # (round-36 lock discipline: Payment(s) before Order, mirror of
+    # create_payment_intent). The amount-due math below then runs under the
+    # lock, so two concurrent QR scans cannot both mint a live session.
+    order = (
+        await db.execute(
+            select(Order).where(Order.id == order.id, Order.deleted_at.is_(None)).with_for_update()
+        )
+    ).scalar_one()
+    if order.payment_status in ("captured", "settled"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
+    if order.status in ("cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is cancelled/refunded")
+
     # Charge only what is still owed: after a partial refund the order total
     # overstates the remaining balance (net of refunds, same as staff POS).
     precision = await config_service.get_accounting_precision()
@@ -570,11 +585,37 @@ async def create_checkout_session(
 
     from decimal import Decimal
 
+    # Charge only what is still owed (net of captured−refunded) — a POS cash
+    # split or partial refund makes the gross total an overcharge.
+    from app.core.money import money_round, to_decimal
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+    existing_payments = await db.execute(
+        select(Payment).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded")),
+        )
+    )
+    net_paid = money_round(
+        sum(
+            to_decimal(p.captured_amount or 0) - to_decimal(p.refunded_amount or 0)
+            for p in existing_payments.scalars().all()
+        ),
+        precision,
+        rounding_mode,
+    )
+    amount_due = money_round(
+        max(Decimal(0), to_decimal(order.total_amount) - net_paid), precision, rounding_mode
+    )
+    if amount_due <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
+
     payment = Payment(
         order_id=order.id,
         provider="stripe",
         payment_method_type="credit_card",
-        amount=order.total_amount,
+        amount=amount_due,
         currency_code=order.total_amount_currency,
         status="pending_authorization",
         net_amount=Decimal(0),
@@ -1121,7 +1162,9 @@ async def stripe_webhook(
         logger.warning("Stripe webhook rejected: invalid signature")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
 
-    payload = {"type": event.type, "data": {"object": event.data.object.to_dict()}}
+    # Include the event id — extract_event_id reads payload["id"], without it
+    # the Stripe dedup net (is_event_processed) never engages.
+    payload = {"id": event.id, "type": event.type, "data": {"object": event.data.object.to_dict()}}
     event_id = extract_event_id("stripe", payload)
     if event_id and await is_event_processed("stripe", event_id):
         logger.info("Stripe webhook duplicate event ignored: %s", event_id)

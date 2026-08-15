@@ -392,3 +392,13 @@ Third audit pass (diff self-review, runtime forensics, fresh surface, DB integri
 - Plus: banner date windows by ID, dashboard count/revenue alignment, 5xx request logging, loyalty schema Decimal types, e-invoice type-01 DB unique index (migration `x3y4z5a6b7c8`).
 
 Verification: 93/93 unit, full E2E green, tsc clean, all guards live-probed (400/403/404/422 as designed), alembic single head no drift.
+
+## Round 37 — ordering & payment flow audit (2026-08-15)
+
+Focused audit of the ordering and payment lifecycles (27 findings, all fixed). Details in `AGENTS.md` "Round 37".
+
+- **Order editing repaired**: remove-item 500/409 (two stacked bugs), modifier double-count in repricing + tax recompute, per-line stock movement on add/remove, paid-order totals resurface as collectible.
+- **Lifecycle guards**: staff status machine (no jumps, no resurrection of cancelled orders), POS QR orders stay pending until paid (kitchen-safe + sweepable), kiosk idempotency, dine-in table validation, transactional table locks.
+- **Payments**: customer re-payment nets prior payments; webhook Stripe dedup engages; flagged captures (dead-order/duplicate/after-void) never move order state; dispute won/lost handled; top-up money-back clawed; e-invoice auto-issue on every capture path + refund notes on delayed completions; drawer open/close races locked.
+
+Verification: 99/99 unit, full E2E green, live probes pass, alembic clean (head y4z5a6b7c8d9).
