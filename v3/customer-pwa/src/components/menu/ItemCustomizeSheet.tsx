@@ -139,9 +139,11 @@ export default function ItemCustomizeSheet({
     if (tags.some(t => t.toLowerCase() === 'vegan')) return null;
     return t('menu.allergenWarning');
   }, [t]);
-  const basePrice = item?.base_price ?? 0;
-  const variantDelta = selectedVariant?.price_adjustment ?? 0;
-  const optionDelta = selectedOptions.reduce((sum, o) => sum + o.price_adjustment, 0);
+  // base_price arrives as a Decimal STRING from the API — coerce before
+  // arithmetic or `+` silently concatenates ("21.9900" + 2 = "21.99002").
+  const basePrice = Number(item?.base_price ?? 0);
+  const variantDelta = Number(selectedVariant?.price_adjustment ?? 0);
+  const optionDelta = selectedOptions.reduce((sum, o) => sum + Number(o.price_adjustment), 0);
   const totalPrice = basePrice + variantDelta + optionDelta;
   const groupedOptions = customizations.reduce<Record<string, CustomizationOption[]>>((acc, opt) => {
     const type = opt.option_type || 'other';
