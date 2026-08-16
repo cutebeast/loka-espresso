@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Membership</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { background: #D8D2C6; }
+  .screen { background: linear-gradient(180deg, #2A3413 0%, var(--primary-deep) 340px, var(--bg) 340px); }
+
+  /* Tier hero card — champagne gold */
+  .tier-hero {
+    margin: 6px 16px 0;
+    background: linear-gradient(135deg, #EFE3BC 0%, var(--gold) 55%, var(--copper) 100%);
+    border-radius: var(--r-xl);
+    padding: 20px;
+    color: var(--primary-deep);
+    box-shadow: 0 18px 36px -14px rgba(201,168,76,0.55);
+    position: relative;
+    overflow: hidden;
+  }
+  .tier-hero::after {
+    content: "☕";
+    position: absolute; right: 10px; top: 8px;
+    font-size: 74px; opacity: 0.18;
+  }
+  .tier-hero .t-label { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.75; }
+  .tier-hero .t-name { font-family: var(--font-display); font-size: 32px; font-weight: 800; line-height: 1.1; }
+  .tier-hero .t-pts { font-size: 12.5px; font-weight: 700; margin-top: 2px; }
+  .tier-hero .pbar { background: rgba(26,35,9,0.15); margin-top: 12px; }
+  .tier-hero .pbar .fill { background: var(--primary-deep); }
+  .tier-hero .retain { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; font-size: 11px; font-weight: 600; }
+  .tier-hero .days-pill { background: rgba(26,35,9,0.85); color: var(--gold-light); padding: 3px 10px; border-radius: var(--r-full); font-size: 10px; font-weight: 800; }
+  .carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+  .carousel-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .carousel-dots i.on { width: 18px; border-radius: var(--r-full); background: var(--gold); }
+
+  /* Milestone rail */
+  .milestone-card { margin: 16px 16px 0; padding: 16px; }
+  .rail-track { display: flex; align-items: flex-start; position: relative; margin-top: 14px; }
+  .rail-track::before {
+    content: ""; position: absolute; top: 9px; left: 20px; right: 20px;
+    height: 3px; background: var(--primary-100); border-radius: 2px;
+  }
+  .rail-track .prog { position: absolute; top: 9px; left: 20px; width: 44%; height: 3px; background: var(--gold); border-radius: 2px; }
+  .mnode { flex: 1; text-align: center; position: relative; z-index: 1; }
+  .mnode .dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--card); border: 2.5px solid var(--border);
+    margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mnode.done .dot { background: var(--gold); border-color: var(--gold); color: #fff; }
+  .mnode.now .dot { border-color: var(--tier-origin); box-shadow: 0 0 0 4px rgba(255,152,0,0.18); background: var(--tier-origin); }
+  .mnode .mname { font-size: 10px; font-weight: 800; margin-top: 6px; color: var(--text-2); display: block; }
+  .mnode .mcup { font-size: 9px; color: var(--muted); display: block; }
+
+  /* Comparison table */
+  .compare { margin: 16px 16px 0; overflow: hidden; }
+  .compare table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .compare th, .compare td { padding: 11px 10px; text-align: center; }
+  .compare th:first-child, .compare td:first-child { text-align: left; color: var(--text-2); font-weight: 600; }
+  .compare thead th { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .compare thead th.bloom { color: var(--tier-bloom); }
+  .compare thead th.origin { color: var(--tier-origin); background: rgba(255,152,0,0.07); }
+  .compare thead th.reserve { color: var(--tier-reserve); }
+  .compare tbody tr + tr td { border-top: 1px solid var(--border-subtle); }
+  .compare td.origin-col { background: rgba(255,152,0,0.07); font-weight: 800; }
+
+  /* Benefits */
+  .benefit { display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
+  .benefit + .benefit { border-top: 1px solid var(--border-subtle); }
+  .benefit .bicon { width: 36px; height: 36px; border-radius: 12px; background: var(--gold-soft); color: #8A6D1F; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .benefit .bt { flex: 1; font-size: 13px; font-weight: 600; }
+  .benefit .bt span { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar on-dark" style="background:#2A3413;">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen" style="padding-top:0;">
+    <div class="subhead" style="color:#fff;">
+      <a class="icon-btn" href="profile.html" style="background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.15);color:#fff;"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="title" style="color:#fff;">Membership</span>
+      <span class="spacer"></span>
+    </div>
+
+    <!-- Tier hero -->
+    <div class="tier-hero">
+      <span class="t-label">My Tier</span>
+      <div class="t-name">ORIGIN</div>
+      <div class="t-pts">RM 186 / RM 260 to Reserve</div>
+      <div class="pbar"><div class="fill" style="width:71%;"></div></div>
+      <div class="retain">
+        <span>Spend RM 74 by 30 Sep to reach Reserve</span>
+        <span class="days-pill">48 DAYS LEFT</span>
+      </div>
+    </div>
+    <div class="carousel-dots"><i></i><i class="on"></i><i></i></div>
+
+    <!-- Milestone rail -->
+    <div class="card milestone-card">
+      <div class="row between">
+        <strong style="font-size:14px;">Tier Journey</strong>
+        <span class="small gold-text" style="font-weight:700;">RM 74 more to level up!</span>
+      </div>
+      <div class="rail-track">
+        <span class="prog"></span>
+        <div class="mnode done"><span class="dot"><svg class="ic sm" viewBox="0 0 24 24" style="stroke-width:3;width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg></span><span class="mname">Bloom</span><span class="mcup">RM 0</span></div>
+        <div class="mnode now"><span class="dot"></span><span class="mname">Origin</span><span class="mcup">RM 120</span></div>
+        <div class="mnode"><span class="dot"></span><span class="mname">Reserve</span><span class="mcup">RM 260</span></div>
+        <div class="mnode"><span class="dot"></span><span class="mname">Sultans</span><span class="mcup">RM 500</span></div>
+      </div>
+    </div>
+
+    <!-- Comparison table -->
+    <div class="section" style="padding:0;">
+      <div class="card compare">
+        <table>
+          <thead>
+            <tr><th>Benefit</th><th class="bloom">Bloom</th><th class="origin">Origin</th><th class="reserve">Reserve</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Beans per RM 1</td><td>1×</td><td class="origin-col">2×</td><td>3×</td></tr>
+            <tr><td>Welcome voucher</td><td>RM 3</td><td class="origin-col">RM 8</td><td>RM 20</td></tr>
+            <tr><td>Birthday treat</td><td>—</td><td class="origin-col">Free drink</td><td>Drink + cake</td></tr>
+            <tr><td>Member prices</td><td>—</td><td class="origin-col">✓</td><td>✓</td></tr>
+            <tr><td>Priority pickup</td><td>—</td><td class="origin-col">—</td><td>✓</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Benefits list -->
+    <div class="section" style="padding:0;margin-top:16px;">
+      <div class="section-head" style="padding:0 16px;"><h2>My Origin Benefits</h2></div>
+      <div class="card">
+        <div class="benefit">
+          <span class="bicon">🎂</span>
+          <span class="bt">Free Birthday Drink<span>Any handcrafted drink, regular size</span></span>
+          <span class="chip chip-dark">CLAIMED</span>
+        </div>
+        <div class="benefit">
+          <span class="bicon">🏷️</span>
+          <span class="bt">Member-Only Prices<span>Up to 15% off daily classics</span></span>
+          <span class="chip chip-green">ACTIVE</span>
+        </div>
+        <div class="benefit">
+          <span class="bicon">🫘</span>
+          <span class="bt">2× Beans Multiplier<span>On every ringgit spent</span></span>
+          <span class="chip chip-green">ACTIVE</span>
+        </div>
+        <div class="benefit" style="opacity:0.55;">
+          <span class="bicon">⚡</span>
+          <span class="bt">Priority Pickup Lane<span>Reserve tier &amp; above</span></span>
+          <span class="chip chip-grey">LOCKED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-bar">
+    <a class="btn btn-gold btn-block" href="menu.html" style="flex:1;">Order Now · Earn 2× Beans</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Product (Clean)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .hero-photo {
+    height: 220px;
+    background: var(--accent-tint);
+    border-bottom: 1px solid var(--hair);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 92px;
+  }
+  .hero-photo .badge-new { position: absolute; top: 102px; left: 16px; }
+  .hero-photo .stamp {
+    position: absolute; bottom: 12px; right: 16px;
+    background: var(--white); color: var(--accent);
+    border: 1px solid var(--hair);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.09em;
+    padding: 4px 9px; border-radius: var(--r-sm);
+    text-transform: uppercase;
+  }
+  .hero-photo .close {
+    position: absolute; top: 54px; left: 16px;
+  }
+
+  .sheet {
+    padding: 16px 16px 0;
+  }
+  .p-title { font-size: 19px; font-weight: 800; letter-spacing: -0.015em; }
+  .p-price-line { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+  .p-price-line .now { font-size: 19px; font-weight: 800; color: var(--danger); letter-spacing: -0.01em; }
+  .p-desc { font-size: 12px; color: var(--muted); line-height: 1.55; margin-top: 8px; }
+
+  .group { margin-top: 18px; }
+  .group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .group-head h3 { font-size: 13.5px; font-weight: 700; }
+  .req-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 7px; border-radius: var(--r-full); text-transform: uppercase; }
+  .req-tag.req { background: var(--danger-light); color: var(--danger); }
+  .req-tag.opt { background: #F2F1ED; color: var(--muted); }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 7px; }
+
+  /* Topping rows */
+  .top-row {
+    display: flex; align-items: center; gap: 11px;
+    background: var(--white);
+    border: 1px solid var(--hair);
+    border-radius: var(--r-md);
+    padding: 10px 11px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .top-row + .top-row { margin-top: 7px; }
+  .top-row.selected { border-color: var(--accent); background: var(--accent-tint); }
+  .top-row .ticon { width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--bg); border: 1px solid var(--hair-2); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .top-row .tname { flex: 1; font-size: 12.5px; font-weight: 500; }
+  .top-row .tprice { font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .top-row .tick {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--hair);
+    display: flex; align-items: center; justify-content: center;
+    color: transparent; flex-shrink: 0;
+  }
+  .top-row.selected .tick { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .top-row.oos { opacity: 0.5; pointer-events: none; }
+  .top-row.oos .tprice { color: var(--muted); font-weight: 400; font-size: 11px; }
+
+  /* Notes */
+  .notes-box { position: relative; }
+  .notes-box textarea {
+    width: 100%;
+    border: 1px solid var(--hair);
+    border-radius: var(--r-md);
+    background: var(--white);
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    padding: 11px;
+    resize: none;
+    height: 72px;
+    outline: none;
+  }
+  .notes-box textarea:focus { border-color: var(--accent); }
+  .notes-box .counter {
+    position: absolute; bottom: 8px; right: 10px;
+    font-size: 10px; color: var(--muted);
+  }
+  .reset-link { background: none; border: none; color: var(--accent); font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar" style="position:absolute;top:0;left:0;right:0;z-index:10;">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen has-cta" style="padding-top:0;">
+    <div class="hero-photo">
+      ☕
+      <a class="icon-btn close" href="menu.html"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+      <span class="badge-new">NEW</span>
+      <span class="stamp">100% Turkish Arabica</span>
+    </div>
+
+    <div class="sheet">
+      <h1 class="p-title">Pistachio Turkish Latte</h1>
+      <div class="p-price-line">
+        <span class="now">RM 11.90</span>
+        <span class="s small">RM 16.90</span>
+        <span class="chip chip-red">FLASH -30%</span>
+      </div>
+      <p class="p-desc">Slow-brewed Turkish espresso folded with steamed milk and house-made Gaziantep pistachio cream, finished with crushed pistachio dust.</p>
+
+      <!-- Size — required -->
+      <div class="group">
+        <div class="group-head"><h3>Size</h3><span class="req-tag req">Required · Pick 1</span></div>
+        <div class="pill-row" data-single data-price-group>
+          <span class="opt-pill selected" data-price="11.90">Regular</span>
+          <span class="opt-pill" data-price="13.90">Large <span class="add-price">+RM 2.00</span></span>
+        </div>
+      </div>
+
+      <!-- Temperature — required -->
+      <div class="group">
+        <div class="group-head"><h3>Temperature</h3><span class="req-tag req">Required · Pick 1</span></div>
+        <div class="pill-row" data-single>
+          <span class="opt-pill selected">🔥 Hot</span>
+          <span class="opt-pill">🧊 Iced</span>
+        </div>
+      </div>
+
+      <!-- Sweetness — required -->
+      <div class="group">
+        <div class="group-head"><h3>Sweetness</h3><span class="req-tag req">Required · Pick 1</span></div>
+        <div class="pill-row" data-single>
+          <span class="opt-pill">Less Sweet</span>
+          <span class="opt-pill selected">Normal</span>
+          <span class="opt-pill">Extra Sweet</span>
+        </div>
+      </div>
+
+      <!-- Milk — optional -->
+      <div class="group">
+        <div class="group-head"><h3>Milk</h3><span class="req-tag opt">Optional</span></div>
+        <div class="pill-row" data-single data-price-group>
+          <span class="opt-pill selected" data-price="0">Fresh Milk</span>
+          <span class="opt-pill" data-price="2">Oat Milk <span class="add-price">+RM 2.00</span></span>
+          <span class="opt-pill" data-price="2">Soy Milk <span class="add-price">+RM 2.00</span></span>
+        </div>
+      </div>
+
+      <!-- Toppings — optional multi -->
+      <div class="group">
+        <div class="group-head"><h3>Toppings</h3><span class="req-tag opt">Optional · Max 3</span></div>
+        <div class="top-row" data-price="2.5">
+          <span class="ticon">🌰</span>
+          <span class="tname">Extra Pistachio Cream</span>
+          <span class="tprice">+RM 2.50</span>
+          <span class="tick"><svg class="ic sm" viewBox="0 0 24 24" style="stroke-width:3;width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg></span>
+        </div>
+        <div class="top-row" data-price="1.5">
+          <span class="ticon">🍯</span>
+          <span class="tname">Karak Honey Drizzle</span>
+          <span class="tprice">+RM 1.50</span>
+          <span class="tick"><svg class="ic sm" viewBox="0 0 24 24" style="stroke-width:3;width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg></span>
+        </div>
+        <div class="top-row" data-price="2">
+          <span class="ticon">🍦</span>
+          <span class="tname">Whipped Cream</span>
+          <span class="tprice">+RM 2.00</span>
+          <span class="tick"><svg class="ic sm" viewBox="0 0 24 24" style="stroke-width:3;width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg></span>
+        </div>
+        <div class="top-row oos">
+          <span class="ticon">🌹</span>
+          <span class="tname">Rose Petal Dust</span>
+          <span class="tprice">Out of stock</span>
+          <span class="tick"></span>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="group">
+        <div class="group-head"><h3>Note to Barista</h3><span class="req-tag opt">Optional</span></div>
+        <div class="notes-box">
+          <textarea id="notes" maxlength="200" placeholder="e.g. less foam, extra hot…"></textarea>
+          <span class="counter"><span id="ncount">0</span>/200</span>
+        </div>
+        <button class="reset-link" id="resetBtn">↺ Reset Recipe</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky CTA -->
+  <div class="cta-bar">
+    <div class="stepper">
+      <button id="minus">−</button>
+      <span class="qty" id="qty">1</span>
+      <button class="solid" id="plus">+</button>
+    </div>
+    <a class="btn btn-primary btn-block" href="cart.html" style="flex:1;">
+      Add to Cart · <span id="ctaPrice">RM 11.90</span>
+    </a>
+  </div>
+</div>
+<script>
+  const BASE = 11.90;
+  let qty = 1;
+
+  // Single-select pill groups
+  document.querySelectorAll('[data-single]').forEach(group => {
+    group.querySelectorAll('.opt-pill').forEach(p => p.addEventListener('click', () => {
+      group.querySelectorAll('.opt-pill').forEach(x => x.classList.remove('selected'));
+      p.classList.add('selected');
+      update();
+    }));
+  });
+
+  // Multi-select toppings
+  document.querySelectorAll('.top-row:not(.oos)').forEach(r => r.addEventListener('click', () => {
+    r.classList.toggle('selected');
+    update();
+  }));
+
+  // Qty
+  document.getElementById('minus').onclick = () => { qty = Math.max(1, qty - 1); update(); };
+  document.getElementById('plus').onclick = () => { qty = Math.min(9, qty + 1); update(); };
+
+  // Notes counter
+  const notes = document.getElementById('notes');
+  notes.addEventListener('input', () => document.getElementById('ncount').textContent = notes.value.length);
+
+  // Reset
+  document.getElementById('resetBtn').onclick = () => location.reload();
+
+  function update() {
+    let unit = BASE;
+    const sizeSel = document.querySelectorAll('[data-price-group]')[0].querySelector('.selected');
+    const milkSel = document.querySelectorAll('[data-price-group]')[1].querySelector('.selected');
+    unit = 0;
+    unit += parseFloat(sizeSel.dataset.price);
+    unit += parseFloat(milkSel.dataset.price);
+    document.querySelectorAll('.top-row.selected').forEach(r => unit += parseFloat(r.dataset.price));
+    document.getElementById('qty').textContent = qty;
+    document.getElementById('ctaPrice').textContent = 'RM ' + (unit * qty).toFixed(2);
+  }
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,555 @@
+/* ============================================
+   LOKA ESPRESSO — UI/UX Redesign Prototypes
+   Variant: ELEGANT / HIGH-CLASS (dark luxury)
+   Deep espresso/olive surfaces, champagne gold,
+   Playfair Display serif, hairline dividers.
+   ============================================ */
+
+:root {
+  /* Dark surfaces */
+  --bg: #141B08;            /* deep olive-black page */
+  --bg-2: #1A2309;          /* primary-deep */
+  --surface: #1E2810;       /* card */
+  --surface-2: #232E14;     /* raised card */
+  --ink: #10160A;
+
+  /* Brand olive */
+  --primary: #3B4A1A;
+  --primary-dark: #263210;
+  --primary-deep: #1A2309;
+
+  /* Champagne gold spectrum */
+  --gold: #C9A84C;
+  --gold-light: #E8D9A8;
+  --gold-deep: #A9873B;
+  --copper: #C4893A;
+  --gold-line: rgba(201, 168, 76, 0.28);      /* hairline */
+  --gold-line-soft: rgba(201, 168, 76, 0.16);
+  --gold-glow: rgba(201, 168, 76, 0.10);
+
+  /* Text — ivory scale */
+  --text: #F3EEE2;          /* ivory */
+  --text-2: #CFC6B2;
+  --muted: #8F8774;
+
+  /* Semantic (muted, luxe-tuned) */
+  --success: #7FB07F;
+  --danger: #D98A8A;
+  --danger-deep: #B96A6A;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-full: 9999px;
+
+  /* Shadows — soft, low, dark */
+  --sh-card: 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+  --sh-gold: 0 10px 26px -10px rgba(201, 168, 76, 0.35);
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  background: #0D1006; /* desktop backdrop behind phone frame */
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  padding: 24px 12px;
+}
+
+/* ---------- Phone frame ---------- */
+.phone {
+  width: 390px;
+  max-width: 100%;
+  height: 844px;
+  max-height: calc(100vh - 48px);
+  background: var(--bg);
+  border-radius: 36px;
+  border: 10px solid #05060A;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(201,168,76,0.18);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 460px) {
+  body { padding: 0; }
+  .phone { border: none; border-radius: 0; height: 100vh; max-height: none; width: 100%; box-shadow: none; }
+}
+
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: 118px; /* room for floating bottom nav */
+  background:
+    radial-gradient(120% 55% at 50% -8%, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0) 55%),
+    linear-gradient(180deg, #1A2309 0%, #141B08 340px);
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.no-nav { padding-bottom: 24px; }
+.screen.has-cta { padding-bottom: 108px; }
+
+/* ---------- Status bar (fake) ---------- */
+.statusbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  letter-spacing: 0.03em;
+}
+.statusbar .sicons { display: flex; gap: 5px; align-items: center; }
+
+/* ---------- Generic components ---------- */
+.card {
+  background: linear-gradient(170deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--gold-line-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+}
+
+.section { padding: 0 16px; margin-top: 24px; }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.section-head h2 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+.section-head h2::after {
+  content: "";
+  display: block;
+  width: 26px; height: 1px;
+  background: var(--gold);
+  margin-top: 6px;
+}
+.section-head a {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+/* Letterspaced small-caps label */
+.label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.display-num { font-family: var(--font-display); font-weight: 700; }
+
+/* Thin gold hairline divider */
+.hairline {
+  height: 1px;
+  border: none;
+  background: linear-gradient(90deg, transparent, var(--gold-line), transparent);
+}
+
+/* Buttons — gold pills with dark text */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  border-radius: var(--r-full);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 55%, var(--gold-deep) 100%);
+  color: #1A2309;
+  box-shadow: var(--sh-gold);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--gold-line);
+  color: var(--gold-light);
+}
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #1A2309;
+  box-shadow: var(--sh-gold);
+}
+.btn-ghost { background: transparent; color: var(--gold); font-weight: 600; }
+.btn-block { width: 100%; padding: 15px 20px; font-size: 13.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+.btn-pill { padding: 9px 18px; font-size: 12px; }
+.btn:disabled, .btn.disabled {
+  background: #2A2A22;
+  color: #6E685A;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.chip-gold { border-color: var(--gold-line); color: var(--gold-light); background: var(--gold-glow); }
+.chip-green { border-color: rgba(127,176,127,0.4); color: var(--success); }
+.chip-red { border-color: rgba(217,138,138,0.4); color: var(--danger); }
+.chip-dark { background: var(--gold); color: #1A2309; }
+.chip-grey { border-color: rgba(143,135,116,0.4); color: var(--muted); }
+
+.badge-new {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #1A2309;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  text-transform: uppercase;
+}
+
+/* Option pills — hairline gold when selected */
+.opt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid rgba(243,238,226,0.16);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+.opt-pill.selected {
+  border-color: var(--gold);
+  color: var(--gold-light);
+  background: var(--gold-glow);
+  box-shadow: 0 0 0 1px var(--gold-line);
+}
+.opt-pill .add-price { color: var(--muted); font-weight: 400; font-size: 12px; }
+.opt-pill.selected .add-price { color: var(--gold); }
+
+/* Tabs — hairline row, gold active underline */
+.tabs {
+  display: flex;
+  gap: 26px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--gold-line-soft);
+}
+.tab {
+  padding: 13px 2px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1.5px solid transparent;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+.tab.active { color: var(--gold-light); border-bottom-color: var(--gold); }
+.tab .dot {
+  position: absolute;
+  top: 11px; right: -8px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+/* Header (subpages) */
+.subhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 14px;
+}
+.subhead .title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.subhead .spacer { width: 36px; }
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(243,238,226,0.05);
+  border: 1px solid var(--gold-line-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  text-decoration: none;
+}
+.icon-btn .badge {
+  position: absolute;
+  top: -3px; right: -3px;
+  min-width: 15px; height: 15px;
+  border-radius: var(--r-full);
+  background: var(--gold);
+  color: #1A2309;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--bg);
+}
+
+/* ---------- Floating glass bottom nav ---------- */
+.bottomnav {
+  position: absolute;
+  bottom: 14px; left: 14px; right: 14px;
+  background: rgba(16, 22, 10, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--gold-line-soft);
+  border-radius: 26px;
+  box-shadow: 0 18px 40px -10px rgba(0,0,0,0.7), inset 0 1px 0 rgba(232,217,168,0.08);
+  display: flex;
+  padding: 10px 6px 12px;
+  z-index: 40;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  position: relative;
+  padding-top: 2px;
+}
+.nav-item.active { color: var(--gold-light); }
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 22px; height: 2px;
+  border-radius: 2px;
+  background: var(--gold);
+}
+.nav-item .nbadge {
+  position: absolute;
+  top: -3px;
+  left: calc(50% + 5px);
+  min-width: 15px; height: 15px;
+  border-radius: var(--r-full);
+  background: var(--gold);
+  color: #1A2309;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* ---------- Perforated ticket voucher card (dark luxe) ---------- */
+.ticket {
+  display: flex;
+  background: linear-gradient(165deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--gold-line-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+  overflow: hidden;
+  position: relative;
+}
+.ticket .stub {
+  width: 96px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  background:
+    radial-gradient(90% 80% at 50% 0%, rgba(232,217,168,0.28) 0%, rgba(232,217,168,0) 70%),
+    linear-gradient(160deg, var(--gold-deep), #7A5F22 70%, #5E4A1A);
+  color: var(--gold-light);
+  text-align: center;
+  position: relative;
+}
+.ticket .stub .big {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.08;
+}
+.ticket .stub .small {
+  font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  opacity: 0.85; margin-top: 4px;
+}
+.ticket .body {
+  flex: 1;
+  padding: 14px 14px 12px;
+  border-left: 1px dashed var(--gold-line);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ticket .notch {
+  position: absolute;
+  left: 96px;
+  width: 16px; height: 16px;
+  background: var(--bg);
+  border: 1px solid var(--gold-line-soft);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.ticket .notch.top { top: -9px; }
+.ticket .notch.bottom { bottom: -9px; }
+.ticket .body h4 { font-size: 13px; font-weight: 600; color: var(--text); }
+.ticket .body .meta { font-size: 11px; color: var(--muted); }
+.ticket .foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 9px;
+  border-top: 1px dashed var(--gold-line-soft);
+}
+.ticket .pts { font-size: 12.5px; font-weight: 800; color: var(--gold-light); }
+.ticket .pts s { color: var(--muted); font-weight: 500; margin-left: 5px; font-size: 11px; }
+.ticket.inactive { filter: grayscale(0.85); opacity: 0.5; }
+
+/* ---------- Sticky CTA bar (floating glass) ---------- */
+.cta-bar {
+  position: absolute;
+  bottom: 14px; left: 14px; right: 14px;
+  background: rgba(16, 22, 10, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--gold-line-soft);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px -10px rgba(0,0,0,0.7), inset 0 1px 0 rgba(232,217,168,0.08);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 40;
+}
+
+/* Qty stepper */
+.stepper { display: inline-flex; align-items: center; gap: 14px; }
+.stepper button {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-line);
+  background: transparent;
+  color: var(--gold-light);
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.stepper button.solid { background: var(--gold); border-color: var(--gold); color: #1A2309; }
+.stepper .qty { font-family: var(--font-display); font-size: 17px; font-weight: 700; min-width: 18px; text-align: center; }
+
+/* Progress bar — gold thread */
+.pbar {
+  height: 3px;
+  background: rgba(243,238,226,0.10);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+.pbar .fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-light));
+  box-shadow: 0 0 8px rgba(201,168,76,0.55);
+}
+
+/* List rows */
+.listrow {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: var(--text);
+}
+.listrow + .listrow { border-top: 1px solid rgba(243,238,226,0.06); }
+.listrow .licon {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-line-soft);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.listrow .ltext { flex: 1; font-size: 13.5px; font-weight: 600; }
+.listrow .lsub { font-size: 11px; color: var(--muted); font-weight: 400; display: block; margin-top: 1px; }
+.listrow .chev { color: var(--muted); flex-shrink: 0; }
+
+/* Utility */
+.row { display: flex; align-items: center; }
+.between { justify-content: space-between; }
+.gap8 { gap: 8px; }
+.mt8 { margin-top: 8px; } .mt12 { margin-top: 12px; } .mt16 { margin-top: 16px; } .mt20 { margin-top: 20px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.s { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.price { font-weight: 700; }
+.price-promo { color: var(--gold-light); font-weight: 700; }
+.gold-text { color: var(--gold); }
+.hide { display: none !important; }
+
+/* SVG icon sizing */
+svg.ic { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+svg.ic.sm { width: 15px; height: 15px; }
+svg.ic.lg { width: 23px; height: 23px; }

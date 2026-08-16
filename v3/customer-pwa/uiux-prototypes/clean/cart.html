@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Cart (Clean)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* Pickup store card */
+  .pickup-card { margin: 2px 16px 0; padding: 12px 13px; }
+  .pickup-card .prow1 { display: flex; gap: 10px; align-items: flex-start; }
+  .pickup-card .pin { width: 32px; height: 32px; border-radius: var(--r-md); background: var(--accent-tint); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pickup-card strong { font-size: 12.5px; display: block; }
+  .pickup-card .addr { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+  .ready-line {
+    display: flex; align-items: center; gap: 7px;
+    margin-top: 9px; padding-top: 9px;
+    border-top: 1px solid var(--hair-2);
+    font-size: 11.5px; font-weight: 600; color: var(--success);
+  }
+
+  /* Cart items */
+  .cart-item { display: flex; gap: 11px; padding: 12px 13px; }
+  .cart-item + .cart-item { border-top: 1px solid var(--hair-2); }
+  .cart-item .thumb { width: 48px; height: 48px; border-radius: var(--r-md); background: var(--accent-tint); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .cart-item .info { flex: 1; min-width: 0; }
+  .cart-item .info strong { font-size: 13px; display: block; }
+  .cart-item .mods { font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .cart-item .links { display: flex; gap: 12px; margin-top: 5px; }
+  .cart-item .links button { background: none; border: none; font-family: var(--font-sans); font-size: 11px; font-weight: 600; cursor: pointer; padding: 0; }
+  .cart-item .links .edit { color: var(--accent); }
+  .cart-item .links .del { color: var(--danger); }
+  .cart-item .right { text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
+  .cart-item .iprice { font-size: 12.5px; font-weight: 700; }
+  .mini-stepper { display: inline-flex; align-items: center; gap: 8px; }
+  .mini-stepper button {
+    width: 22px; height: 22px; border-radius: var(--r-sm);
+    border: 1px solid var(--hair); background: var(--white);
+    color: var(--text-2); font-size: 13px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+  .mini-stepper .q { font-size: 12px; font-weight: 700; min-width: 12px; text-align: center; }
+
+  .add-more {
+    display: block; text-align: center;
+    margin: 8px 16px 0;
+    padding: 10px;
+    border: 1px dashed var(--hair);
+    border-radius: var(--r-md);
+    color: var(--accent);
+    font-size: 12.5px; font-weight: 600;
+    text-decoration: none;
+    background: var(--white);
+  }
+
+  /* Voucher + promo rows */
+  .vrow {
+    margin: 10px 16px 0;
+    padding: 11px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .vrow .vicon { width: 32px; height: 32px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .vrow .vt { flex: 1; }
+  .vrow .vt strong { font-size: 12.5px; display: block; }
+  .vrow .vt span { font-size: 10.5px; color: var(--muted); }
+  .vrow.applied { border-color: var(--accent); background: var(--accent-tint); }
+  .promo-input { display: flex; gap: 8px; margin: 8px 16px 0; }
+  .promo-input input {
+    flex: 1;
+    border: 1px solid var(--hair);
+    border-radius: var(--r-md);
+    padding: 10px 11px;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    outline: none;
+    background: var(--white);
+    letter-spacing: 0.03em;
+  }
+  .promo-input input:focus { border-color: var(--accent); }
+
+  /* Discount toast */
+  .discount-toast {
+    margin: 10px 16px 0;
+    background: var(--success-light);
+    border: 1px solid #D5E5D5;
+    color: var(--success);
+    border-radius: var(--r-md);
+    padding: 9px 12px;
+    font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Breakdown */
+  .breakdown { margin: 12px 16px 0; padding: 12px 14px; }
+  .brow { display: flex; justify-content: space-between; font-size: 12.5px; padding: 4px 0; color: var(--text-2); }
+  .brow .neg { color: var(--danger); font-weight: 600; }
+  .brow.total {
+    border-top: 1px solid var(--hair);
+    margin-top: 7px; padding-top: 10px;
+    font-size: 14.5px; font-weight: 800; color: var(--text);
+  }
+  .tax-note { font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+  /* Points earned banner — plain strip */
+  .earn-banner {
+    margin: 10px 16px 0;
+    background: var(--accent-tint);
+    border: 1px solid var(--hair);
+    color: var(--text-2);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12px; font-weight: 500;
+  }
+  .earn-banner svg { color: var(--gold-text); flex-shrink: 0; }
+  .earn-banner .bcount { font-weight: 800; color: var(--gold-text); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen has-cta">
+    <div class="subhead">
+      <a class="icon-btn" href="menu.html"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="title">Your Order</span>
+      <span class="icon-btn" title="Clear cart"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span>
+    </div>
+
+    <!-- Pickup card -->
+    <div class="card pickup-card">
+      <div class="prow1">
+        <span class="pin"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <div style="flex:1;">
+          <strong>Pickup · LOKA Bangsar Village II</strong>
+          <div class="addr">Lot F-12, Jalan Telawi 1, Bangsar · 0.4 km</div>
+        </div>
+        <span class="chip chip-grey">0.4 km</span>
+      </div>
+      <div class="ready-line">
+        <svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Ready at 10:05 AM · 5 cups in production
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="section">
+      <div class="section-head"><h2>Order Summary</h2><a href="menu.html">Add items ›</a></div>
+      <div class="card">
+        <div class="cart-item">
+          <span class="thumb">☕</span>
+          <div class="info">
+            <strong>Pistachio Turkish Latte</strong>
+            <div class="mods">Regular · Hot · Normal Sweet<br>+ Pistachio Cream</div>
+            <div class="links">
+              <button class="edit">Edit</button>
+              <button class="del">Remove</button>
+            </div>
+          </div>
+          <div class="right">
+            <span class="iprice">RM 14.40</span>
+            <span class="mini-stepper"><button>−</button><span class="q">1</span><button>+</button></span>
+          </div>
+        </div>
+        <div class="cart-item">
+          <span class="thumb">🍮</span>
+          <div class="info">
+            <strong>Spanish Latte</strong>
+            <div class="mods">Large · Iced · Less Sweet</div>
+            <div class="links">
+              <button class="edit">Edit</button>
+              <button class="del">Remove</button>
+            </div>
+          </div>
+          <div class="right">
+            <span class="iprice">RM 27.00</span>
+            <span class="mini-stepper"><button>−</button><span class="q">2</span><button>+</button></span>
+          </div>
+        </div>
+      </div>
+      <a class="add-more" href="menu.html">+ Add more items</a>
+    </div>
+
+    <!-- Voucher -->
+    <div class="card vrow applied">
+      <span class="vicon" style="background:#F7F1DF;color:var(--gold-text);">
+        <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg>
+      </span>
+      <div class="vt">
+        <strong>20% OFF Total Bill</strong>
+        <span>Voucher applied · saves RM 8.28</span>
+      </div>
+      <svg class="ic sm muted" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <!-- Promo code -->
+    <div class="promo-input">
+      <input placeholder="Enter promo code" value="">
+      <button class="btn btn-outline btn-pill" id="redeemBtn">Redeem</button>
+    </div>
+
+    <!-- Discount toast -->
+    <div class="discount-toast">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M22 11.1V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+      You got a discount of RM 8.28!
+    </div>
+
+    <!-- Breakdown -->
+    <div class="card breakdown">
+      <div class="brow"><span>Subtotal</span><span>RM 41.40</span></div>
+      <div class="brow"><span>Voucher discount</span><span class="neg">− RM 8.28</span></div>
+      <div class="brow"><span>SST (6%)</span><span>RM 1.99</span></div>
+      <div class="brow"><span>Rounding</span><span>− RM 0.01</span></div>
+      <div class="brow total"><span>Total</span><span>RM 35.10</span></div>
+      <div class="tax-note">Prices inclusive of 6% SST where applicable. Rounding to nearest RM 0.05.</div>
+    </div>
+
+    <!-- Points earned preview -->
+    <div class="earn-banner">
+      <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+      <span>You'll earn <span class="bcount">70 Beans</span> on this order · Origin 2× multiplier</span>
+    </div>
+
+    <!-- Payment method -->
+    <div class="card vrow" style="margin-top:10px;">
+      <span class="vicon" style="background:var(--accent-tint);color:var(--accent);">
+        <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+      </span>
+      <div class="vt">
+        <strong>LOKA Wallet · RM 42.50</strong>
+        <span>Balance sufficient for this order</span>
+      </div>
+      <span class="chip chip-green">Default</span>
+    </div>
+  </div>
+
+  <!-- Sticky total + CTA -->
+  <div class="cta-bar">
+    <div style="flex-shrink:0;">
+      <div class="label">Total</div>
+      <div style="font-size:19px;font-weight:800;letter-spacing:-0.01em;">RM 35.10</div>
+    </div>
+    <a class="btn btn-primary btn-block" href="home.html" style="flex:1;">Place Order · Pickup</a>
+  </div>
+</div>
+<script>
+  document.getElementById('redeemBtn').addEventListener('click', function () {
+    this.textContent = 'Applied ✓';
+    this.classList.remove('btn-outline');
+    this.classList.add('btn-primary');
+  });
+</script>
+</body>
+</html>

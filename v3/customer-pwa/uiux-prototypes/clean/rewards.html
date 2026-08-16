@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Rewards (Clean)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* Points header — plain white strip */
+  .pts-head {
+    background: var(--white);
+    border-bottom: 1px solid var(--hair);
+    padding: 12px 16px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pts-head .plabel { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .pts-head .pnum { font-size: 30px; font-weight: 800; color: var(--gold-text); letter-spacing: -0.02em; line-height: 1.15; margin-top: 1px; }
+  .pts-head .expire { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .pts-head .expire b { color: var(--danger); }
+  .pts-head .bean-ic {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent-tint); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Check-in strip */
+  .checkin-card { margin: 14px 16px 0; padding: 13px 13px 12px; }
+  .checkin-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .checkin-head strong { font-size: 13px; }
+  .streak-chip { background: #F7F1DF; color: var(--gold-text); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: var(--r-full); }
+  .days { display: flex; gap: 4px; }
+  .day {
+    flex: 1;
+    border-radius: var(--r-md);
+    background: var(--bg);
+    border: 1px solid var(--hair-2);
+    padding: 6px 1px 5px;
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .day .d-ic { font-size: 14px; display: block; margin-bottom: 2px; }
+  .day .d-pts { display: block; font-weight: 700; font-size: 9.5px; color: var(--text-2); }
+  .day.done { background: var(--accent-tint); color: var(--accent); }
+  .day.done .d-pts { color: var(--accent); }
+  .day.today { border-color: var(--accent); background: var(--white); color: var(--text); box-shadow: 0 0 0 1px var(--accent); }
+  .day.gift { background: var(--gold); border-color: var(--gold); color: var(--text); }
+  .day.gift .d-pts { color: var(--text); }
+  .checkin-btn { margin-top: 10px; }
+
+  /* Filter chips */
+  .filters { display: flex; gap: 7px; padding: 11px 16px 0; overflow-x: auto; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .fchip {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: var(--r-full);
+    border: 1px solid var(--hair);
+    background: var(--white);
+    font-size: 11.5px; font-weight: 600;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .fchip.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+  .ticket-list { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 12px; }
+  .flash-tag {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--danger); color: #fff;
+    font-size: 8px; font-weight: 700; letter-spacing: 0.07em;
+    padding: 2px 7px; border-radius: var(--r-sm);
+    z-index: 3;
+    text-transform: uppercase;
+  }
+  .use-link { font-size: 11.5px; font-weight: 700; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .end-marker { text-align: center; color: var(--muted); font-size: 10.5px; letter-spacing: 0.15em; margin: 20px 0 6px; }
+
+  .locked-card {
+    margin: 0;
+    padding: 12px 13px;
+    display: flex; align-items: center; gap: 11px;
+    background: #F2F1ED;
+    border: 1px solid var(--hair);
+    border-radius: var(--r-lg);
+    color: var(--text-2);
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar" style="background:var(--white);">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen" style="padding-top:0;">
+    <!-- Points header -->
+    <div class="pts-head">
+      <div>
+        <div class="plabel">LOKA Beans</div>
+        <div class="pnum">1,286</div>
+        <div class="expire">⚠ <b>120 Beans</b> expiring in 12 days · <u>view details</u></div>
+      </div>
+      <span class="bean-ic">
+        <svg class="ic lg" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+      </span>
+    </div>
+
+    <!-- Daily check-in -->
+    <div class="card checkin-card">
+      <div class="checkin-head">
+        <strong>Daily Check-in</strong>
+        <span class="streak-chip">🔥 3-day streak</span>
+      </div>
+      <div class="days">
+        <div class="day done"><span class="d-ic">✓</span><span class="d-pts">+5</span>Mon</div>
+        <div class="day done"><span class="d-ic">✓</span><span class="d-pts">+5</span>Tue</div>
+        <div class="day done"><span class="d-ic">✓</span><span class="d-pts">+10</span>Wed</div>
+        <div class="day today"><span class="d-ic">🫘</span><span class="d-pts">+10</span>Thu</div>
+        <div class="day"><span class="d-ic">🫘</span><span class="d-pts">+15</span>Fri</div>
+        <div class="day"><span class="d-ic">🫘</span><span class="d-pts">+15</span>Sat</div>
+        <div class="day gift"><span class="d-ic">🎁</span><span class="d-pts">+30</span>Sun</div>
+      </div>
+      <button class="btn btn-primary btn-block checkin-btn">Check in today · earn 10 Beans</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-top:16px;">
+      <span class="tab active">Redeem</span>
+      <span class="tab">Active <span class="dot"></span></span>
+      <span class="tab">Past</span>
+    </div>
+
+    <!-- Cost filter chips -->
+    <div class="filters">
+      <span class="fchip on">All</span>
+      <span class="fchip">≤ 300 🫘</span>
+      <span class="fchip">≤ 600 🫘</span>
+      <span class="fchip">≤ 1200 🫘</span>
+      <span class="fchip">Drinks</span>
+      <span class="fchip">Food</span>
+    </div>
+
+    <!-- Ticket vouchers -->
+    <div class="ticket-list">
+      <div class="ticket">
+        <span class="flash-tag">Flash Sale</span>
+        <span class="notch top"></span><span class="notch bottom"></span>
+        <div class="stub gold">
+          <span class="big">RM 5<br>OFF</span>
+          <span class="small">Any Drink</span>
+        </div>
+        <div class="body">
+          <h4>RM 5 Off Any Handcrafted Drink</h4>
+          <span class="meta">Min. spend RM 15 · App only</span>
+          <span class="meta">Valid until 31 Aug 2026</span>
+          <div class="foot">
+            <span class="pts">600 🫘 <s>1,200</s></span>
+            <a class="use-link" href="#">Redeem</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="ticket">
+        <span class="notch top"></span><span class="notch bottom"></span>
+        <div class="stub">
+          <span class="big">FREE<br>1</span>
+          <span class="small">Turkish Coffee</span>
+        </div>
+        <div class="body">
+          <h4>Free Traditional Turkish Coffee</h4>
+          <span class="meta">Regular size · Hot only</span>
+          <span class="meta">Valid until 15 Sep 2026</span>
+          <div class="foot">
+            <span class="pts">900 🫘</span>
+            <a class="use-link" href="#">Redeem</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="ticket">
+        <span class="notch top"></span><span class="notch bottom"></span>
+        <div class="stub">
+          <span class="big">25%<br>OFF</span>
+          <span class="small">Bakery</span>
+        </div>
+        <div class="body">
+          <h4>25% Off All Bakery Items</h4>
+          <span class="meta">Croissants, simit &amp; baklava</span>
+          <span class="meta">Valid until 30 Sep 2026</span>
+          <div class="foot">
+            <span class="pts">350 🫘</span>
+            <a class="use-link" href="#">Redeem</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Locked tier voucher -->
+      <div class="locked-card">
+        <svg class="ic lg" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <div style="flex:1;">
+          <strong style="font-size:12.5px;">Reserve Exclusive · RM 20 Voucher</strong>
+          <div class="small muted">Unlock at Reserve tier · 2,000 🫘</div>
+        </div>
+        <span class="chip chip-dark">Reserve</span>
+      </div>
+
+      <!-- Used/inactive state -->
+      <div class="ticket inactive">
+        <span class="notch top"></span><span class="notch bottom"></span>
+        <div class="stub">
+          <span class="big">10%<br>OFF</span>
+          <span class="small">Total Bill</span>
+        </div>
+        <div class="body">
+          <h4>10% Off Total Bill</h4>
+          <span class="meta">Used on 2 Aug 2026 · LOKA Bangsar</span>
+          <div class="foot">
+            <span class="pts" style="color:var(--muted);">USED</span>
+            <span class="small muted">View receipt ›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="end-marker">— THE END —</p>
+  </div>
+
+  <nav class="bottomnav">
+    <a class="nav-item" href="home.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>
+      Home
+    </a>
+    <a class="nav-item" href="menu.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>
+      Menu
+    </a>
+    <a class="nav-item active" href="rewards.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+      Rewards
+      <span class="nbadge">6</span>
+    </a>
+    <a class="nav-item" href="cart.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+      Orders
+    </a>
+    <a class="nav-item" href="profile.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+  </nav>
+</div>
+<script>
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+  }));
+  // Filter chips
+  document.querySelectorAll('.fchip').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('.fchip').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+  }));
+</script>
+</body>
+</html>

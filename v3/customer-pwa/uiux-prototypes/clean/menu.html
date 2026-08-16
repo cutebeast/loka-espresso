@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Menu (Clean)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .screen { padding-bottom: 0; } /* custom sticky stack at bottom */
+  /* Pickup/Delivery segmented toggle */
+  .mode-toggle {
+    display: flex;
+    background: #F0EFEB;
+    border-radius: var(--r-md);
+    padding: 2px;
+    margin: 4px 16px 0;
+  }
+  .mode-toggle button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 7px 0;
+    border-radius: 6px;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .mode-toggle button.on { background: var(--white); color: var(--text); box-shadow: 0 0 0 1px var(--hair); }
+
+  /* Store bar */
+  .store-bar {
+    margin: 10px 16px 0;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--white);
+    border: 1px solid var(--hair);
+    border-radius: var(--r-lg);
+    padding: 10px 12px;
+  }
+  .store-bar .heart { color: var(--danger); flex-shrink: 0; }
+  .store-bar .sinfo { flex: 1; min-width: 0; }
+  .store-bar .sinfo strong { font-size: 12.5px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .store-bar .sinfo span { font-size: 10.5px; color: var(--muted); }
+  .queue-note { color: var(--gold-text); font-weight: 600; }
+
+  /* Flash sale — simple outlined notice */
+  .flash-chip {
+    margin: 8px 16px 0;
+    background: var(--white);
+    border: 1px solid var(--hair);
+    border-left: 3px solid var(--danger);
+    border-radius: var(--r-md);
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; font-weight: 600;
+  }
+  .flash-chip .timer { font-variant-numeric: tabular-nums; margin-left: auto; color: var(--danger); font-weight: 700; font-size: 11.5px; }
+
+  /* Body: rail + grid */
+  .menu-body { display: flex; margin-top: 12px; align-items: flex-start; }
+  .rail {
+    width: 80px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .rail button {
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    padding: 10px 4px 10px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    position: relative;
+  }
+  .rail button .ricon {
+    width: 38px; height: 38px; border-radius: var(--r-md);
+    background: var(--white); border: 1px solid var(--hair);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .rail button.on { color: var(--accent); font-weight: 700; border-left-color: var(--accent); background: var(--white); }
+  .rail button.on .ricon { background: var(--accent-tint); border-color: var(--accent); }
+  .rail button .cat-badge {
+    position: absolute; top: 4px; right: 2px;
+    background: var(--danger); color: #fff;
+    font-size: 7.5px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 1px 5px; border-radius: var(--r-full);
+  }
+
+  .grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 14px 130px 4px;
+  }
+  .prod {
+    background: var(--white);
+    border: 1px solid var(--hair);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--text);
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .prod .photo {
+    height: 90px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--hair-2);
+  }
+  .prod .badge-new { position: absolute; top: 7px; left: 7px; z-index: 2; }
+  .prod .pinfo { padding: 8px 9px 9px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .prod .tag { font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-text); }
+  .prod .pname { font-size: 12px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .prod .prow { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 4px; }
+  .prod .pprice { font-size: 12.5px; font-weight: 700; }
+  .prod .pprice s { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
+  .add-btn {
+    width: 26px; height: 26px;
+    border-radius: var(--r-sm);
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .prod.soldout { opacity: 0.55; }
+  .prod.soldout .photo::after {
+    content: "SOLD OUT";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(250,250,248,0.78);
+    color: var(--text-2);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    z-index: 3;
+  }
+  .cat-title { grid-column: 1 / -1; font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+  /* Sticky stack: mini cart + nav */
+  .sticky-bottom { position: absolute; bottom: 0; left: 0; right: 0; z-index: 40; }
+  .mini-cart {
+    margin: 0 12px 8px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: var(--r-md);
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 8px 10px 14px;
+    text-decoration: none;
+  }
+  .mini-cart .count {
+    background: var(--gold); color: var(--text);
+    font-size: 10.5px; font-weight: 800;
+    min-width: 20px; height: 20px; border-radius: var(--r-full);
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+  }
+  .mini-cart .lbl { flex: 1; font-size: 12.5px; font-weight: 600; }
+  .mini-cart .total { font-weight: 700; font-size: 13.5px; }
+  .mini-cart .view {
+    background: #fff; color: var(--accent);
+    font-size: 11.5px; font-weight: 700;
+    padding: 7px 14px; border-radius: var(--r-sm);
+  }
+  .sticky-bottom .bottomnav { position: static; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen">
+    <!-- Header -->
+    <div class="subhead" style="padding-bottom:4px;">
+      <a class="icon-btn" href="home.html"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="title">Order</span>
+      <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="on">Pickup</button>
+      <button>Delivery</button>
+    </div>
+
+    <!-- Store bar -->
+    <div class="store-bar">
+      <svg class="ic heart" viewBox="0 0 24 24" style="fill:var(--danger);stroke:var(--danger);"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg>
+      <div class="sinfo">
+        <strong>LOKA Espresso · Bangsar Village II</strong>
+        <span>0.4 km · Open until 10:00 PM · <span class="queue-note">Preparing 5 cups ≈ 8 min</span></span>
+      </div>
+      <svg class="ic sm muted" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <!-- Flash sale chip -->
+    <div class="flash-chip">
+      ⚡ <span>Flash Sale: Pistachio Latte 30% OFF</span>
+      <span class="timer" id="flashTimer">02:41:07</span>
+    </div>
+
+    <!-- Rail + grid -->
+    <div class="menu-body">
+      <div class="rail" id="rail">
+        <button class="on"><span class="ricon">⭐</span>Signature</button>
+        <button><span class="ricon">☕</span>Espresso</button>
+        <button><span class="ricon">🥛</span>Latte<span class="cat-badge">NEW</span></button>
+        <button><span class="ricon">🍵</span>Matcha</button>
+        <button><span class="ricon">🧊</span>Frappe</button>
+        <button><span class="ricon">🥐</span>Bakery</button>
+        <button><span class="ricon">🍰</span>Dessert<span class="cat-badge">-50%</span></button>
+        <button><span class="ricon">🫖</span>Brew Bar</button>
+      </div>
+      <div class="grid">
+        <div class="cat-title">Signature</div>
+
+        <a class="prod" href="product.html">
+          <div class="photo">☕</div>
+          <span class="badge-new">NEW</span>
+          <div class="pinfo">
+            <span class="tag">Turkish Classic</span>
+            <span class="pname">Pistachio Turkish Latte</span>
+            <div class="prow">
+              <span class="pprice price-promo">RM 11.90<s>RM 16.90</s></span>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </a>
+
+        <a class="prod" href="product.html">
+          <div class="photo">🍮</div>
+          <div class="pinfo">
+            <span class="tag">Bestseller</span>
+            <span class="pname">Spanish Latte</span>
+            <div class="prow">
+              <span class="pprice">RM 13.50</span>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </a>
+
+        <a class="prod" href="product.html">
+          <div class="photo">🫖</div>
+          <div class="pinfo">
+            <span class="tag">Slow Brew</span>
+            <span class="pname">Traditional Turkish Coffee</span>
+            <div class="prow">
+              <span class="pprice">RM 9.90</span>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </a>
+
+        <a class="prod" href="product.html">
+          <div class="photo">🥤</div>
+          <span class="badge-new">NEW</span>
+          <div class="pinfo">
+            <span class="tag">Coffee-Free</span>
+            <span class="pname">Saffron Rose Frappe</span>
+            <div class="prow">
+              <span class="pprice price-promo">RM 12.40<s>RM 15.90</s></span>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </a>
+
+        <a class="prod soldout">
+          <div class="photo">🍯</div>
+          <div class="pinfo">
+            <span class="tag">Limited</span>
+            <span class="pname">Honey Baklava Latte</span>
+            <div class="prow">
+              <span class="pprice">RM 17.90</span>
+              <button class="add-btn" disabled style="background:#EFEEE9;color:var(--muted);">+</button>
+            </div>
+          </div>
+        </a>
+
+        <a class="prod" href="product.html">
+          <div class="photo">🍵</div>
+          <div class="pinfo">
+            <span class="tag">Ceremonial</span>
+            <span class="pname">Pistachio Matcha Cloud</span>
+            <div class="prow">
+              <span class="pprice">RM 15.50</span>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky mini cart + bottom nav -->
+  <div class="sticky-bottom">
+    <a class="mini-cart" href="cart.html">
+      <span class="count">3</span>
+      <span class="lbl">View Cart</span>
+      <span class="total">RM 37.30</span>
+      <span class="view">Checkout</span>
+    </a>
+    <nav class="bottomnav">
+      <a class="nav-item" href="home.html">
+        <svg class="ic lg" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>
+        Home
+      </a>
+      <a class="nav-item active" href="menu.html">
+        <svg class="ic lg" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>
+        Menu
+        <span class="nbadge">3</span>
+      </a>
+      <a class="nav-item" href="rewards.html">
+        <svg class="ic lg" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+        Rewards
+      </a>
+      <a class="nav-item" href="cart.html">
+        <svg class="ic lg" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        Orders
+      </a>
+      <a class="nav-item" href="profile.html">
+        <svg class="ic lg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Profile
+      </a>
+    </nav>
+  </div>
+</div>
+<script>
+  // Category rail active state
+  document.querySelectorAll('#rail button').forEach(b =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#rail button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    }));
+
+  // Mode toggle
+  document.querySelectorAll('.mode-toggle button').forEach(b =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mode-toggle button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    }));
+
+  // Flash countdown
+  let t = 2 * 3600 + 41 * 60 + 7;
+  const el = document.getElementById('flashTimer');
+  setInterval(() => {
+    t = Math.max(0, t - 1);
+    const h = String(Math.floor(t / 3600)).padStart(2, '0');
+    const m = String(Math.floor(t % 3600 / 60)).padStart(2, '0');
+    const s = String(t % 60).padStart(2, '0');
+    el.textContent = `${h}:${m}:${s}`;
+  }, 1000);
+</script>
+</body>
+</html>

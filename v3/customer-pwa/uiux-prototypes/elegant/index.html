@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA Espresso — Elegant Variant Prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { display: block; background: #0D1006; padding: 40px 20px 60px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .page-head { text-align: center; margin-bottom: 34px; }
+  .page-head .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid var(--gold-line); color: var(--gold-light);
+    font-family: var(--font-display); font-weight: 800; font-size: 21px;
+    padding: 10px 26px; border-radius: var(--r-full);
+    letter-spacing: 0.14em;
+    background: var(--gold-glow);
+  }
+  .page-head h1 { font-family: var(--font-display); font-size: 32px; font-weight: 800; margin: 20px 0 8px; color: var(--text); }
+  .page-head h1 em { font-style: italic; color: var(--gold-light); }
+  .page-head p { color: var(--muted); font-size: 13.5px; max-width: 660px; margin: 0 auto; line-height: 1.7; }
+  .page-head .rule { width: 60px; height: 1px; background: var(--gold); margin: 18px auto 0; }
+
+  .palette { display: flex; justify-content: center; gap: 12px; margin: 24px 0 8px; flex-wrap: wrap; }
+  .swatch { text-align: center; font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .swatch i { display: block; width: 58px; height: 38px; border-radius: 10px; margin-bottom: 5px; border: 1px solid var(--gold-line-soft); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 28px; margin-top: 34px; }
+  .shot { text-decoration: none; display: block; }
+  .shot .frame {
+    height: 380px;
+    border-radius: 26px;
+    border: 7px solid #05060A;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,168,76,0.15);
+    overflow: hidden;
+    background: var(--bg);
+    position: relative;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .shot:hover .frame { transform: translateY(-5px); box-shadow: 0 26px 50px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.3); }
+  .shot iframe {
+    width: 390px; height: 844px;
+    border: none;
+    transform: scale(0.485);
+    transform-origin: top left;
+    pointer-events: none;
+  }
+  .shot .cap { margin-top: 13px; text-align: center; }
+  .shot .cap strong { display: block; font-family: var(--font-display); font-size: 16px; color: var(--text); }
+  .shot .cap span { font-size: 11px; color: var(--muted); line-height: 1.55; display: block; margin-top: 3px; }
+
+  .note {
+    margin-top: 40px;
+    background: linear-gradient(170deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--gold-line-soft);
+    border-radius: var(--r-lg);
+    padding: 18px 22px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    line-height: 1.75;
+  }
+  .note code { background: rgba(201,168,76,0.1); color: var(--gold-light); padding: 1px 7px; border-radius: 5px; font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <span class="logo">☕ LOKA</span>
+    <h1>Customer PWA — <em>Elegant</em> Variant</h1>
+    <p>Dark-luxury redesign mockups for the LOKA Espresso customer app (loyalty · ordering · vouchers · rewards · wallet). Deep espresso-olive surfaces, champagne gold, Playfair Display serif. Click any screen to open it full-size — best viewed at ~390px width. Compare against the <a href="../index.html" style="color:var(--gold);">baseline variant</a>.</p>
+    <div class="palette">
+      <span class="swatch"><i style="background:#1A2309;"></i>Deep #1A2309</span>
+      <span class="swatch"><i style="background:#263210;"></i>Olive #263210</span>
+      <span class="swatch"><i style="background:#C9A84C;"></i>Gold #C9A84C</span>
+      <span class="swatch"><i style="background:#E8D9A8;"></i>Champagne #E8D9A8</span>
+      <span class="swatch"><i style="background:#4A2210;"></i>Brown #4A2210</span>
+      <span class="swatch"><i style="background:#F3EEE2;"></i>Ivory #F3EEE2</span>
+    </div>
+    <div class="rule"></div>
+  </div>
+
+  <div class="grid">
+    <a class="shot" href="home.html">
+      <div class="frame"><iframe src="home.html" loading="lazy" scrolling="no" title="Home"></iframe></div>
+      <div class="cap"><strong>Home</strong><span>Serif greeting · glass tri-stat · tier progress thread · pickup/delivery · promo carousel · floating gold nav</span></div>
+    </a>
+    <a class="shot" href="menu.html">
+      <div class="frame"><iframe src="menu.html" loading="lazy" scrolling="no" title="Menu"></iframe></div>
+      <div class="cap"><strong>Menu</strong><span>Gold pill toggle · store bar with live queue · circular category rail · dark grid · glass mini-cart</span></div>
+    </a>
+    <a class="shot" href="product.html">
+      <div class="frame"><iframe src="product.html" loading="lazy" scrolling="no" title="Product"></iframe></div>
+      <div class="cap"><strong>Product Detail</strong><span>Gold-glow hero plate · hairline option pills · topping rows · notes counter · price-in-CTA stepper bar</span></div>
+    </a>
+    <a class="shot" href="cart.html">
+      <div class="frame"><iframe src="cart.html" loading="lazy" scrolling="no" title="Cart"></iframe></div>
+      <div class="cap"><strong>Cart / Checkout</strong><span>Edit-in-place items · voucher + promo rows · SST/rounding breakdown · Beans-earned banner · Place Order CTA</span></div>
+    </a>
+    <a class="shot" href="rewards.html">
+      <div class="frame"><iframe src="rewards.html" loading="lazy" scrolling="no" title="Rewards"></iframe></div>
+      <div class="cap"><strong>Rewards</strong><span>Glowing points hero · 7-day check-in strip · Redeem/Active/Past tabs · perforated gold ticket vouchers</span></div>
+    </a>
+    <a class="shot" href="wallet.html">
+      <div class="frame"><iframe src="wallet.html" loading="lazy" scrolling="no" title="Wallet"></iframe></div>
+      <div class="cap"><strong>Wallet &amp; Top-Up</strong><span>Black &amp; gold balance card · top-up tiers with FREE BONUS ribbons · expandable breakdowns · signed transactions</span></div>
+    </a>
+    <a class="shot" href="profile.html">
+      <div class="frame"><iframe src="profile.html" loading="lazy" scrolling="no" title="Profile"></iframe></div>
+      <div class="cap"><strong>Profile</strong><span>Gold-ringed avatar + tier pill · glass tri-stat · Show QR · completion ring · grouped link lists · masked PII</span></div>
+    </a>
+    <a class="shot" href="vip.html">
+      <div class="frame"><iframe src="vip.html" loading="lazy" scrolling="no" title="Membership"></iframe></div>
+      <div class="cap"><strong>Membership / VIP</strong><span>Champagne club card · milestone rail · Bloom/Origin/Reserve comparison table · benefit status chips</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <strong>Notes.</strong> All screens share <code>shared.css</code> — a dark-luxury token set derived from the same LOKA brand palette (olive <code>#3B4A1A</code> → deep espresso backgrounds, gold <code>#C9A84C</code> → champagne accents). Plain HTML/CSS/JS — no build step; works over <code>file://</code>. Product photos are emoji placeholders; swap for real imagery in implementation. Information architecture and feature content mirror the baseline variant exactly for side-by-side comparison.
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* Hero greeting band on olive */
+  .hero {
+    background: linear-gradient(160deg, var(--primary) 0%, var(--primary-dark) 78%, var(--primary-deep) 100%);
+    padding: 6px 16px 66px;
+    color: #fff;
+    position: relative;
+  }
+  .hero::after {
+    content: "LOKA";
+    position: absolute;
+    right: -8px; bottom: 26px;
+    font-family: var(--font-display);
+    font-size: 64px;
+    font-weight: 800;
+    color: rgba(255,255,255,0.05);
+    letter-spacing: 0.06em;
+  }
+  .hero-top { display: flex; align-items: center; justify-content: space-between; }
+  .hero-top .greet small { font-size: 12px; opacity: 0.75; display: block; }
+  .hero-top .greet strong { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+  .hero-actions { display: flex; gap: 10px; }
+  .hero-actions .icon-btn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.15); color: #fff; box-shadow: none; }
+  .hero-actions .icon-btn .badge { border-color: var(--primary-dark); }
+  .tier-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 10px;
+    background: rgba(201,168,76,0.18);
+    border: 1px solid rgba(201,168,76,0.45);
+    color: var(--gold-light);
+    padding: 5px 12px;
+    border-radius: var(--r-full);
+    font-size: 11.5px; font-weight: 700;
+  }
+
+  /* Tri-stat member card overlapping hero */
+  .stat-card {
+    margin: -52px 16px 0;
+    background: var(--card);
+    border-radius: var(--r-xl);
+    box-shadow: var(--sh-lg);
+    padding: 18px 8px 14px;
+    display: flex;
+    position: relative;
+    z-index: 5;
+    border: 1px solid var(--border-subtle);
+  }
+  .stat {
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .stat + .stat { border-left: 1px solid var(--border-subtle); }
+  .stat .sicon { color: var(--gold); display: flex; justify-content: center; margin-bottom: 4px; }
+  .stat .val { font-family: var(--font-display); font-size: 19px; font-weight: 800; display: block; }
+  .stat .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-top: 2px; display: block; }
+
+  /* Tier progress card */
+  .tier-card { margin: 14px 16px 0; padding: 16px; }
+  .tier-card .thead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .tier-card .thead .tname { font-size: 13.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+  .tier-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tier-origin); box-shadow: 0 0 0 3px rgba(255,152,0,0.18); }
+  .tier-card .sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .tier-card .targets { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 6px; font-weight: 600; }
+
+  /* Fulfillment duo cards */
+  .duo { display: flex; gap: 12px; padding: 0 16px; margin-top: 16px; }
+  .duo a {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+    padding: 16px 14px;
+    text-decoration: none;
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+  }
+  .duo a .dicon {
+    width: 42px; height: 42px;
+    border-radius: 14px;
+    background: var(--primary);
+    color: var(--gold-light);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .duo a.alt .dicon { background: var(--gold-soft); color: #8A6D1F; }
+  .duo strong { font-size: 14.5px; font-weight: 800; display: block; }
+  .duo span { font-size: 11px; color: var(--muted); }
+
+  /* Quick actions */
+  .quick { display: flex; padding: 0 16px; margin-top: 16px; justify-content: space-between; }
+  .quick a { display: flex; flex-direction: column; align-items: center; gap: 7px; text-decoration: none; color: var(--text-2); font-size: 11px; font-weight: 600; width: 72px; text-align: center; }
+  .quick .qicon {
+    width: 50px; height: 50px; border-radius: 18px;
+    background: var(--card); border: 1px solid var(--border-subtle);
+    box-shadow: var(--sh-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--primary);
+    position: relative;
+  }
+  .quick .qicon .mini {
+    position: absolute; top: -4px; right: -4px;
+    background: var(--promo); color: #fff;
+    font-size: 8.5px; font-weight: 800;
+    padding: 2px 5px; border-radius: var(--r-full);
+  }
+
+  /* Promo carousel */
+  .carousel { margin-top: 20px; padding-left: 16px; overflow-x: auto; display: flex; gap: 12px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .carousel::-webkit-scrollbar { display: none; }
+  .slide {
+    min-width: 312px;
+    scroll-snap-align: start;
+    border-radius: var(--r-lg);
+    padding: 18px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    min-height: 128px;
+    display: flex; flex-direction: column; justify-content: center;
+    box-shadow: var(--sh-md);
+  }
+  .slide.a { background: linear-gradient(120deg, var(--brown), #7A4A28); }
+  .slide.b { background: linear-gradient(120deg, var(--primary), var(--primary-light)); }
+  .slide.c { background: linear-gradient(120deg, var(--copper), var(--gold)); color: var(--primary-deep); }
+  .slide .kicker { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; }
+  .slide h3 { font-family: var(--font-display); font-size: 21px; font-weight: 800; margin: 5px 0 8px; max-width: 200px; line-height: 1.15; }
+  .slide .code-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.16);
+    border: 1px dashed rgba(255,255,255,0.55);
+    padding: 5px 10px; border-radius: var(--r-md);
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em;
+    width: fit-content;
+  }
+  .slide.c .code-chip { background: rgba(26,35,9,0.08); border-color: rgba(26,35,9,0.4); }
+  .slide .art {
+    position: absolute; right: -14px; bottom: -18px;
+    width: 110px; height: 110px; border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 46px;
+  }
+  .dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .dots i.on { width: 18px; border-radius: var(--r-full); background: var(--gold); }
+
+  /* Last order card */
+  .last-order { display: flex; align-items: center; gap: 12px; padding: 14px; }
+  .last-order .thumb { width: 52px; height: 52px; border-radius: 14px; background: var(--cream); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+  .last-order .info { flex: 1; }
+  .last-order .info strong { font-size: 13.5px; display: block; }
+  .last-order .info span { font-size: 11.5px; color: var(--muted); }
+
+  .signoff { text-align: center; color: var(--muted); font-size: 11.5px; margin: 28px 0 8px; font-family: var(--font-display); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar on-dark" style="position:relative;z-index:6;background:var(--primary);">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen" style="padding-top:0;">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-top">
+        <div class="greet">
+          <small>Good morning,</small>
+          <strong>Aisyah R.</strong>
+        </div>
+        <div class="hero-actions">
+          <span class="icon-btn" title="Scan QR">
+            <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1v1h-1zM14 20h1v1h-1zM18 18h3v3h-3z"/></svg>
+          </span>
+          <span class="icon-btn" title="Notifications">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span class="badge">3</span>
+          </span>
+        </div>
+      </div>
+      <span class="tier-chip">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z"/></svg>
+        ORIGIN MEMBER
+      </span>
+    </div>
+
+    <!-- Tri-stat card -->
+    <div class="stat-card">
+      <a class="stat" href="wallet.html">
+        <span class="sicon"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
+        <span class="val display-num">RM 42.50</span>
+        <span class="lbl">Wallet</span>
+      </a>
+      <a class="stat" href="rewards.html">
+        <span class="sicon"><svg class="ic" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span>
+        <span class="val display-num">1,286</span>
+        <span class="lbl">Beans</span>
+      </a>
+      <a class="stat" href="rewards.html">
+        <span class="sicon"><svg class="ic" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg></span>
+        <span class="val display-num">6</span>
+        <span class="lbl">Vouchers</span>
+      </a>
+    </div>
+
+    <!-- Tier progress -->
+    <div class="card tier-card">
+      <div class="thead">
+        <span class="tname"><span class="tier-dot"></span>Origin Tier</span>
+        <a href="vip.html" class="small gold-text" style="font-weight:700;text-decoration:none;">My Benefits ›</a>
+      </div>
+      <div class="sub">RM 74 more to unlock <strong style="color:var(--tier-reserve);">Reserve</strong> by 30 Sep</div>
+      <div class="pbar"><div class="fill" style="width:63%;"></div></div>
+      <div class="targets"><span>Bloom</span><span>Origin</span><span>Reserve</span></div>
+    </div>
+
+    <!-- Pickup / Delivery -->
+    <div class="duo">
+      <a href="menu.html">
+        <span class="dicon"><svg class="ic lg" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg></span>
+        <strong>Pickup</strong>
+        <span>Skip the queue · 8 min</span>
+      </a>
+      <a href="menu.html" class="alt">
+        <span class="dicon"><svg class="ic lg" viewBox="0 0 24 24"><path d="M5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 17V7h3l3 5"/><path d="M5.5 17H9l3-6"/></svg></span>
+        <strong>Delivery</strong>
+        <span>To your door · 25–35 min</span>
+      </a>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="quick">
+      <a href="rewards.html">
+        <span class="qicon"><svg class="ic" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg><span class="mini">6</span></span>
+        Vouchers
+      </a>
+      <a href="vip.html">
+        <span class="qicon"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 16l2 2 4-4"/></svg></span>
+        Check-in
+      </a>
+      <a href="wallet.html">
+        <span class="qicon"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+        Top Up
+      </a>
+      <a href="profile.html">
+        <span class="qicon"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
+        Refer &amp; Earn
+      </a>
+    </div>
+
+    <!-- Promo carousel -->
+    <div class="section-head" style="padding:0 16px;margin-top:22px;">
+      <h2>For You</h2><a href="#">View all ›</a>
+    </div>
+    <div class="carousel" id="carousel">
+      <div class="slide a">
+        <span class="kicker">Members Exclusive</span>
+        <h3>20% OFF Turkish Classics</h3>
+        <span class="code-chip">CODE: LOKA20</span>
+        <span class="art">☕</span>
+      </div>
+      <div class="slide c">
+        <span class="kicker">Flash Beans Sale</span>
+        <h3>RM5 Voucher for 600 Beans</h3>
+        <span class="code-chip">ENDS IN 04:12:33</span>
+        <span class="art">🫘</span>
+      </div>
+      <div class="slide b">
+        <span class="kicker">Weekend Treat</span>
+        <h3>Free Baklava with Any Brew</h3>
+        <span class="code-chip">SAT–SUN ONLY</span>
+        <span class="art">🍯</span>
+      </div>
+    </div>
+    <div class="dots" id="dots"><i class="on"></i><i></i><i></i></div>
+
+    <!-- Last order -->
+    <div class="section">
+      <div class="section-head"><h2>Your Last Order</h2></div>
+      <div class="card last-order">
+        <span class="thumb">🥐</span>
+        <div class="info">
+          <strong>Butter Croissant + Spanish Latte</strong>
+          <span>LOKA Bangsar · Yesterday, 9:12 AM</span>
+        </div>
+        <a class="btn btn-outline btn-pill" href="menu.html">Reorder</a>
+      </div>
+    </div>
+
+    <p class="signoff">— brewed with love, the LOKA way —</p>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottomnav">
+    <a class="nav-item active" href="home.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>
+      Home
+    </a>
+    <a class="nav-item" href="menu.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>
+      Menu
+    </a>
+    <a class="nav-item" href="rewards.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+      Rewards
+    </a>
+    <a class="nav-item" href="cart.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+      Orders
+      <span class="nbadge">2</span>
+    </a>
+    <a class="nav-item" href="profile.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+  </nav>
+</div>
+<script>
+  // Sync carousel dots
+  const c = document.getElementById('carousel');
+  const dots = document.getElementById('dots').children;
+  c.addEventListener('scroll', () => {
+    const i = Math.round(c.scrollLeft / 324);
+    [...dots].forEach((d, k) => d.classList.toggle('on', k === i));
+  }, { passive: true });
+</script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA Espresso — UI/UX Redesign Prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { display: block; background: #E5E0D6; padding: 32px 20px 60px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .page-head { text-align: center; margin-bottom: 30px; }
+  .page-head .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--primary); color: var(--gold-light);
+    font-family: var(--font-display); font-weight: 800; font-size: 22px;
+    padding: 10px 22px; border-radius: var(--r-full);
+    letter-spacing: 0.06em;
+  }
+  .page-head h1 { font-family: var(--font-display); font-size: 30px; margin: 18px 0 6px; }
+  .page-head p { color: var(--text-2); font-size: 14px; max-width: 640px; margin: 0 auto; line-height: 1.6; }
+
+  .palette { display: flex; justify-content: center; gap: 10px; margin: 20px 0 8px; flex-wrap: wrap; }
+  .swatch { text-align: center; font-size: 10px; font-weight: 700; color: var(--text-2); }
+  .swatch i { display: block; width: 56px; height: 36px; border-radius: 10px; margin-bottom: 4px; box-shadow: var(--sh-sm); border: 1px solid rgba(0,0,0,0.06); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 26px; margin-top: 30px; }
+  .shot { text-decoration: none; color: var(--text); display: block; }
+  .shot .frame {
+    height: 380px;
+    border-radius: 26px;
+    border: 7px solid #23211D;
+    box-shadow: 0 16px 36px rgba(30,27,24,0.28);
+    overflow: hidden;
+    background: var(--bg);
+    position: relative;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .shot:hover .frame { transform: translateY(-5px); box-shadow: 0 22px 44px rgba(30,27,24,0.34); }
+  .shot iframe {
+    width: 390px; height: 844px;
+    border: none;
+    transform: scale(0.485);
+    transform-origin: top left;
+    pointer-events: none;
+  }
+  .shot .cap { margin-top: 12px; text-align: center; }
+  .shot .cap strong { display: block; font-size: 14.5px; }
+  .shot .cap span { font-size: 11.5px; color: var(--muted); line-height: 1.5; display: block; margin-top: 2px; }
+
+  .note {
+    margin-top: 36px;
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    padding: 16px 20px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    line-height: 1.7;
+  }
+  .note code { background: var(--primary-50); padding: 1px 6px; border-radius: 5px; font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <span class="logo">☕ LOKA</span>
+    <h1>Customer PWA — UI/UX Redesign Prototypes</h1>
+    <p>Static redesign mockups for the LOKA Espresso customer app (loyalty · ordering · vouchers · rewards · wallet). Light theme, olive + Turkish gold brand system. Click any screen to open it full-size — best viewed at ~390px width.</p>
+    <div class="palette">
+      <span class="swatch"><i style="background:#3B4A1A;"></i>Olive #3B4A1A</span>
+      <span class="swatch"><i style="background:#C9A84C;"></i>Gold #C9A84C</span>
+      <span class="swatch"><i style="background:#C4893A;"></i>Copper #C4893A</span>
+      <span class="swatch"><i style="background:#4A2210;"></i>Brown #4A2210</span>
+      <span class="swatch"><i style="background:#F2EEE6;"></i>Parchment #F2EEE6</span>
+      <span class="swatch"><i style="background:#FFFDF8;"></i>Card #FFFDF8</span>
+      <span class="swatch"><i style="background:#C75050;"></i>Promo #C75050</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <a class="shot" href="home.html">
+      <div class="frame"><iframe src="home.html" loading="lazy" scrolling="no" title="Home"></iframe></div>
+      <div class="cap"><strong>Home</strong><span>Greeting · tri-stat Wallet/Beans/Vouchers · tier progress · pickup/delivery · promo carousel · 5-tab nav</span></div>
+    </a>
+    <a class="shot" href="menu.html">
+      <div class="frame"><iframe src="menu.html" loading="lazy" scrolling="no" title="Menu"></iframe></div>
+      <div class="cap"><strong>Menu</strong><span>Store bar with live queue · category rail · 2-col grid · NEW badges · strikethrough deals · flash timer · mini-cart</span></div>
+    </a>
+    <a class="shot" href="product.html">
+      <div class="frame"><iframe src="product.html" loading="lazy" scrolling="no" title="Product"></iframe></div>
+      <div class="cap"><strong>Product Detail</strong><span>Required/Optional groups · gold-outlined pills · toppings +RM · notes counter · price-in-CTA stepper bar</span></div>
+    </a>
+    <a class="shot" href="cart.html">
+      <div class="frame"><iframe src="cart.html" loading="lazy" scrolling="no" title="Cart"></iframe></div>
+      <div class="cap"><strong>Cart / Checkout</strong><span>Edit-in-place items · voucher + promo rows · SST/rounding breakdown · Beans-earned banner · Place Order CTA</span></div>
+    </a>
+    <a class="shot" href="rewards.html">
+      <div class="frame"><iframe src="rewards.html" loading="lazy" scrolling="no" title="Rewards"></iframe></div>
+      <div class="cap"><strong>Rewards</strong><span>Points hero · 7-day check-in strip · Redeem/Active/Past tabs · perforated ticket vouchers · flash-sale ribbon</span></div>
+    </a>
+    <a class="shot" href="wallet.html">
+      <div class="frame"><iframe src="wallet.html" loading="lazy" scrolling="no" title="Wallet"></iframe></div>
+      <div class="cap"><strong>Wallet &amp; Top-Up</strong><span>Balance card · top-up tiers with FREE BONUS ribbons · expandable voucher breakdown · signed transactions</span></div>
+    </a>
+    <a class="shot" href="profile.html">
+      <div class="frame"><iframe src="profile.html" loading="lazy" scrolling="no" title="Profile"></iframe></div>
+      <div class="cap"><strong>Profile</strong><span>Avatar + tier pill · tri-stat card · Show QR · profile-completion ring · grouped link lists · masked PII</span></div>
+    </a>
+    <a class="shot" href="vip.html">
+      <div class="frame"><iframe src="vip.html" loading="lazy" scrolling="no" title="Membership"></iframe></div>
+      <div class="cap"><strong>Membership / VIP</strong><span>Champagne tier card · milestone rail · Bloom/Origin/Reserve comparison table · benefit status chips</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <strong>Notes.</strong> All screens share <code>shared.css</code> (brand CSS variables taken from the app's <code>src/styles/variables.css</code>). Plain HTML/CSS/JS — no build step; works over <code>file://</code>. Product photos are emoji placeholders; swap for real imagery in implementation. Reference patterns adopted from CHAGEE, ZUS, Luckin, Starbucks MY, Secret Recipe, Bungkus KawKaw, Marrybrown and Kenangan Coffee audits.
+  </div>
+</div>
+</body>
+</html>

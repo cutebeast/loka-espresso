@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Wallet · Elegant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* Balance card — the black & gold credit card */
+  .balance-card {
+    margin: 2px 16px 0;
+    background:
+      radial-gradient(110% 120% at 100% 0%, rgba(201,168,76,0.22) 0%, rgba(201,168,76,0) 55%),
+      linear-gradient(140deg, #10160A 0%, #1A2309 55%, #263210 130%);
+    border: 1px solid var(--gold-line);
+    border-radius: var(--r-xl);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 22px 44px -16px rgba(0, 0, 0, 0.75), var(--sh-gold);
+  }
+  .balance-card::after {
+    content: "LOKA";
+    position: absolute;
+    right: 12px; bottom: -10px;
+    font-family: var(--font-display);
+    font-size: 58px; font-weight: 800;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(201,168,76,0.22);
+    letter-spacing: 0.1em;
+  }
+  .balance-card .blabel { font-size: 9.5px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 6px; }
+  .balance-card .bval { font-family: var(--font-display); font-size: 42px; font-weight: 800; color: var(--gold-light); margin: 6px 0 3px; text-shadow: 0 0 26px rgba(201,168,76,0.3); }
+  .balance-card .bmax { font-size: 10.5px; color: var(--muted); }
+  .balance-card .actions { display: flex; gap: 10px; margin-top: 18px; position: relative; z-index: 2; }
+  .balance-card .actions .btn { flex: 1; }
+
+  /* Top-up tiers */
+  .tier-topup {
+    margin: 12px 16px 0;
+    border: 1px solid rgba(243,238,226,0.08);
+    border-radius: var(--r-lg);
+    background: linear-gradient(170deg, var(--surface-2), var(--surface));
+    box-shadow: var(--sh-card);
+    overflow: hidden;
+    position: relative;
+  }
+  .tier-topup.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-line), var(--sh-gold); }
+  .tier-topup .ribbon {
+    position: absolute; top: 12px; right: -28px;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    color: #1A2309;
+    font-size: 7.5px; font-weight: 800; letter-spacing: 0.12em;
+    padding: 3px 30px;
+    transform: rotate(38deg);
+    z-index: 2;
+  }
+  .tier-head { display: flex; align-items: center; gap: 13px; padding: 16px; cursor: pointer; user-select: none; }
+  .tier-head .amount { font-family: var(--font-display); font-size: 23px; font-weight: 800; color: var(--gold-light); }
+  .tier-head .tinfo { flex: 1; }
+  .tier-head .tinfo strong { font-size: 13px; font-weight: 600; display: block; }
+  .tier-head .tinfo span { font-size: 10.5px; color: var(--muted); }
+  .tier-head .radio {
+    width: 19px; height: 19px; border-radius: 50%;
+    border: 1px solid rgba(243,238,226,0.22); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tier-topup.selected .radio { border-color: var(--gold); }
+  .tier-topup.selected .radio::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px rgba(201,168,76,0.7); }
+  .tier-detail {
+    display: none;
+    border-top: 1px dashed var(--gold-line-soft);
+    padding: 11px 16px 14px;
+    background: rgba(201,168,76,0.05);
+  }
+  .tier-topup.open .tier-detail { display: block; }
+  .tier-detail .drow { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; color: var(--text-2); }
+  .tier-detail .drow .v { margin-left: auto; font-weight: 700; color: var(--success); }
+  .expand-hint { font-size: 9.5px; color: var(--gold); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+
+  .custom-amt { display: flex; gap: 8px; margin: 14px 16px 0; }
+  .custom-amt input {
+    flex: 1;
+    border: 1px solid rgba(243,238,226,0.12);
+    border-radius: var(--r-full);
+    padding: 13px 16px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text);
+    background: rgba(243,238,226,0.03);
+    outline: none;
+  }
+  .custom-amt input:focus { border-color: var(--gold); }
+
+  /* Transactions */
+  .txn { display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
+  .txn + .txn { border-top: 1px solid rgba(243,238,226,0.06); }
+  .txn .ticon { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--gold-line-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+  .txn .tt { flex: 1; }
+  .txn .tt strong { font-size: 13px; font-weight: 600; display: block; }
+  .txn .tt span { font-size: 10.5px; color: var(--muted); }
+  .txn .amt { font-size: 13px; font-weight: 700; }
+  .txn .amt.plus { color: var(--gold-light); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen has-cta">
+    <div class="subhead">
+      <a class="icon-btn" href="home.html"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="title">LOKA Wallet</span>
+      <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span>
+    </div>
+
+    <!-- Balance -->
+    <div class="balance-card">
+      <span class="blabel">Wallet Balance
+        <svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+      </span>
+      <div class="bval">RM 42.50</div>
+      <div class="bmax">Max balance RM 500 · Auto-reload off</div>
+      <div class="actions">
+        <a class="btn btn-outline btn-pill" href="#">Pay at Store</a>
+        <a class="btn btn-gold btn-pill" href="#topup">+ Top Up</a>
+      </div>
+    </div>
+
+    <!-- Top-up tiers -->
+    <div class="section" id="topup">
+      <div class="section-head"><h2>Select Top-Up Amount</h2></div>
+
+      <div class="tier-topup">
+        <span class="ribbon">FREE BONUS</span>
+        <div class="tier-head" data-toggle>
+          <span class="amount">RM 35</span>
+          <div class="tinfo">
+            <strong>Starter Boost</strong>
+            <span>Free RM 5 worth of vouchers</span>
+            <span class="expand-hint">View breakdown <svg class="ic sm" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="m6 9 6 6 6-6"/></svg></span>
+          </div>
+          <span class="radio"></span>
+        </div>
+        <div class="tier-detail">
+          <div class="drow">🎟 RM 3 OFF any drink voucher <span class="v">+RM 3.00</span></div>
+          <div class="drow">🥐 Free croissant upgrade <span class="v">+RM 2.00</span></div>
+        </div>
+      </div>
+
+      <div class="tier-topup selected open">
+        <span class="ribbon">FREE BONUS</span>
+        <div class="tier-head" data-toggle>
+          <span class="amount">RM 65</span>
+          <div class="tinfo">
+            <strong>Regular's Pick · Most Popular</strong>
+            <span>Free RM 12 worth of vouchers</span>
+            <span class="expand-hint">Hide breakdown <svg class="ic sm" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="m18 15-6-6-6 6"/></svg></span>
+          </div>
+          <span class="radio"></span>
+        </div>
+        <div class="tier-detail">
+          <div class="drow">🎟 RM 5 OFF total bill voucher <span class="v">+RM 5.00</span></div>
+          <div class="drow">☕ Free Turkish coffee (regular) <span class="v">+RM 5.00</span></div>
+          <div class="drow">🫘 100 bonus Beans <span class="v">+RM 2.00</span></div>
+        </div>
+      </div>
+
+      <div class="tier-topup">
+        <span class="ribbon">FREE BONUS</span>
+        <div class="tier-head" data-toggle>
+          <span class="amount">RM 100</span>
+          <div class="tinfo">
+            <strong>Connoisseur Bundle</strong>
+            <span>Free RM 22 worth of vouchers</span>
+            <span class="expand-hint">View breakdown <svg class="ic sm" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="m6 9 6 6 6-6"/></svg></span>
+          </div>
+          <span class="radio"></span>
+        </div>
+        <div class="tier-detail">
+          <div class="drow">🎟 2 × RM 8 OFF vouchers <span class="v">+RM 16.00</span></div>
+          <div class="drow">🍰 Free baklava box (4 pc) <span class="v">+RM 6.00</span></div>
+        </div>
+      </div>
+
+      <div class="custom-amt">
+        <input placeholder="Or enter custom amount (min RM 10)" inputmode="decimal">
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="section">
+      <div class="section-head"><h2>Transaction History</h2><a href="#">All Types ▾</a></div>
+      <div class="card">
+        <div class="txn">
+          <span class="ticon">☕</span>
+          <div class="tt"><strong>Order #LK-2481</strong><span>12 Aug, 9:12 AM · Bangsar Village II</span></div>
+          <span class="amt">− RM 35.10</span>
+        </div>
+        <div class="txn">
+          <span class="ticon">💰</span>
+          <div class="tt"><strong>Top Up — Regular's Pick</strong><span>10 Aug, 6:40 PM · TNG eWallet</span></div>
+          <span class="amt plus">+ RM 65.00</span>
+        </div>
+        <div class="txn">
+          <span class="ticon">🎁</span>
+          <div class="tt"><strong>Top-Up Bonus Vouchers</strong><span>10 Aug, 6:40 PM</span></div>
+          <span class="amt plus">+ RM 12.00</span>
+        </div>
+        <div class="txn">
+          <span class="ticon">☕</span>
+          <div class="tt"><strong>Order #LK-2402</strong><span>9 Aug, 8:03 AM · Drive-thru</span></div>
+          <span class="amt">− RM 13.50</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment CTA -->
+  <div class="cta-bar">
+    <div style="flex-shrink:0;">
+      <div class="label">Top Up</div>
+      <div class="display-num" style="font-size:20px;color:var(--gold-light);" id="ctaAmt">RM 65.00</div>
+    </div>
+    <a class="btn btn-primary btn-block" href="#" style="flex:1;">Choose Payment</a>
+  </div>
+</div>
+<script>
+  const amounts = ['RM 35.00', 'RM 65.00', 'RM 100.00'];
+  document.querySelectorAll('.tier-topup').forEach((t, i) => {
+    t.querySelector('[data-toggle]').addEventListener('click', () => {
+      const wasSelected = t.classList.contains('selected');
+      document.querySelectorAll('.tier-topup').forEach(x => x.classList.remove('selected'));
+      t.classList.add('selected');
+      document.getElementById('ctaAmt').textContent = amounts[i];
+      t.classList.toggle('open', !wasSelected || !t.classList.contains('open'));
+      if (!wasSelected) t.classList.add('open');
+    });
+  });
+</script>
+</body>
+</html>

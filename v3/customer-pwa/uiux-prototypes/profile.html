@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOKA — Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .p-hero {
+    background: linear-gradient(160deg, var(--primary), var(--primary-dark));
+    padding: 4px 16px 58px;
+    color: #fff;
+  }
+  .p-hero .top-icons { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 6px; }
+  .p-hero .top-icons .icon-btn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.15); color: #fff; box-shadow: none; }
+  .p-hero .who { display: flex; align-items: center; gap: 14px; }
+  .avatar {
+    width: 62px; height: 62px; border-radius: 50%;
+    background: linear-gradient(140deg, var(--gold-light), var(--copper));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 26px; font-weight: 800;
+    color: var(--primary-deep);
+    border: 3px solid rgba(255,255,255,0.35);
+    flex-shrink: 0;
+  }
+  .p-hero .who strong { font-size: 18px; display: block; }
+  .p-hero .who .phone-mask { font-size: 12px; opacity: 0.75; }
+  .p-hero .who .tier-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 5px;
+    background: rgba(255,152,0,0.2);
+    border: 1px solid rgba(255,152,0,0.5);
+    color: #FFCC80;
+    padding: 3px 10px; border-radius: var(--r-full);
+    font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em;
+  }
+
+  /* Tri-stat overlap card */
+  .stat-card {
+    margin: -44px 16px 0;
+    background: var(--card);
+    border-radius: var(--r-xl);
+    box-shadow: var(--sh-lg);
+    padding: 16px 8px;
+    display: flex;
+    position: relative; z-index: 5;
+    border: 1px solid var(--border-subtle);
+  }
+  .stat { flex: 1; text-align: center; text-decoration: none; color: var(--text); }
+  .stat + .stat { border-left: 1px solid var(--border-subtle); }
+  .stat .val { font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+  .stat .lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-top: 2px; display: block; }
+
+  /* QR + check-in dual buttons */
+  .dual { display: flex; gap: 10px; padding: 0 16px; margin-top: 14px; }
+  .dual .btn { flex: 1; }
+
+  /* Profile completion */
+  .complete-card { margin: 14px 16px 0; padding: 14px 16px; display: flex; align-items: center; gap: 13px; }
+  .ring {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: conic-gradient(var(--gold) 0 65%, var(--primary-100) 65% 100%);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ring::after {
+    content: "65%";
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--card);
+    font-size: 10.5px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .list-group { margin: 14px 16px 0; overflow: hidden; }
+  .group-label { padding: 0 18px; margin: 18px 0 8px; }
+  .version { text-align: center; color: var(--muted); font-size: 10.5px; margin: 22px 0 6px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar on-dark" style="background:var(--primary);">
+    <span>9:41</span>
+    <span class="sicons">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </span>
+  </div>
+  <div class="screen" style="padding-top:0;">
+    <!-- Hero -->
+    <div class="p-hero">
+      <div class="top-icons">
+        <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge">3</span></span>
+        <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+      </div>
+      <div class="who">
+        <span class="avatar">A</span>
+        <div>
+          <strong>Aisyah Rahman</strong>
+          <span class="phone-mask">+60 12••• ••88 · ai•••@gmail.com</span><br>
+          <span class="tier-pill">◆ ORIGIN MEMBER</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tri-stat -->
+    <div class="stat-card">
+      <a class="stat" href="wallet.html">
+        <span class="val display-num">RM 42.50</span>
+        <span class="lbl">Wallet</span>
+      </a>
+      <a class="stat" href="rewards.html">
+        <span class="val display-num">1,286</span>
+        <span class="lbl">Beans</span>
+      </a>
+      <a class="stat" href="rewards.html">
+        <span class="val display-num">6</span>
+        <span class="lbl">Vouchers</span>
+      </a>
+    </div>
+
+    <!-- Show QR + check-in -->
+    <div class="dual">
+      <a class="btn btn-gold btn-block" href="#">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/></svg>
+        Show QR
+      </a>
+      <a class="btn btn-outline btn-block" href="rewards.html">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>
+        Check-in · Day 4
+      </a>
+    </div>
+
+    <!-- Profile completion -->
+    <div class="card complete-card">
+      <span class="ring"></span>
+      <div style="flex:1;">
+        <strong style="font-size:13.5px;">Complete Your Profile!</strong>
+        <div class="small muted">Add birthday &amp; favourite store for +50 Beans</div>
+      </div>
+      <a class="btn btn-primary btn-pill" href="#">Go</a>
+    </div>
+
+    <!-- Link groups -->
+    <div class="group-label label">My Activity</div>
+    <div class="card list-group">
+      <a class="listrow" href="cart.html">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></span>
+        <span class="ltext">Order History<span class="lsub">2 orders this week</span></span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="rewards.html">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></svg></span>
+        <span class="ltext">My Vouchers</span>
+        <span class="chip chip-gold">6 active</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="wallet.html">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+        <span class="ltext">Payment Methods</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <span class="ltext">Saved Addresses</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+    </div>
+
+    <div class="group-label label">Especially For You</div>
+    <div class="card list-group">
+      <a class="listrow" href="vip.html">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z"/></svg></span>
+        <span class="ltext">Membership &amp; Benefits</span>
+        <span class="chip chip-gold">Origin</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
+        <span class="ltext">Refer Friends</span>
+        <span class="chip chip-red">Earn RM 5</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
+        <span class="ltext">Gift Cards</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+    </div>
+
+    <div class="group-label label">Support &amp; Settings</div>
+    <div class="card list-group">
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span>
+        <span class="ltext">Help Centre</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+        <span class="ltext">Biometric Login</span>
+        <span class="chip chip-green">On</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <span class="ltext">Terms &amp; Privacy</span>
+        <svg class="ic sm chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <a class="listrow" href="#">
+        <span class="licon"><svg class="ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg></span>
+        <span class="ltext" style="color:var(--danger);">Sign Out</span>
+      </a>
+    </div>
+
+    <p class="version">LOKA Espresso v3.2.1 (PWA)</p>
+  </div>
+
+  <nav class="bottomnav">
+    <a class="nav-item" href="home.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>
+      Home
+    </a>
+    <a class="nav-item" href="menu.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>
+      Menu
+    </a>
+    <a class="nav-item" href="rewards.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+      Rewards
+    </a>
+    <a class="nav-item" href="cart.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+      Orders
+    </a>
+    <a class="nav-item active" href="profile.html">
+      <svg class="ic lg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+  </nav>
+</div>
+</body>
+</html>
