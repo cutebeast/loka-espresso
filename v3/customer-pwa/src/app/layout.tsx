@@ -65,7 +65,7 @@ export default function RootLayout({
             in-store LCD reads better in the light theme than the dark one. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(location.hostname.indexOf('kiosk.')===0||(location.hash||'').indexOf('#kiosk')===0){document.documentElement.dataset.theme='light';return;}var t=localStorage.getItem('loka-theme');document.documentElement.dataset.theme=(t==='light'||t==='dark')?t:'dark';}catch(e){document.documentElement.dataset.theme='dark';}})()`,
+            __html: `(function(){try{if(location.hostname.indexOf('kiosk.')===0||(location.hash||'').indexOf('#kiosk')===0){document.documentElement.dataset.theme='light';var v=document.querySelector('meta[name=viewport]');if(v){v.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');}return;}var t=localStorage.getItem('loka-theme');document.documentElement.dataset.theme=(t==='light'||t==='dark')?t:'dark';}catch(e){document.documentElement.dataset.theme='dark';}})()`,
           }}
         />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}

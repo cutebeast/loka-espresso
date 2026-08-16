@@ -192,8 +192,12 @@ def _sess(days_ahead=0, start_time=None):
 @pytest.mark.asyncio
 async def test_same_day_started_session_rejected():
     db = _async_db()
-    one_hour_ago = (datetime.now(BUSINESS_TZ) - timedelta(hours=1)).time()
-    db.execute.return_value = _FakeResult(one=_sess(start_time=one_hour_ago))
+    # -1h from now — date+time move together (post-midnight runs would
+    # otherwise combine "today" with a yesterday-evening time and look future).
+    ago = datetime.now(BUSINESS_TZ) - timedelta(hours=1)
+    sess = _sess(start_time=ago.time())
+    sess.session_date = ago.date()
+    db.execute.return_value = _FakeResult(one=sess)
     with pytest.raises(ClassSessionError, match="already passed"):
         await consume_session_seats(db, menu_item_id=9, class_session_id=1, quantity=1)
 
@@ -201,8 +205,11 @@ async def test_same_day_started_session_rejected():
 @pytest.mark.asyncio
 async def test_same_day_future_session_bookable():
     db = _async_db()
-    in_one_hour = (datetime.now(BUSINESS_TZ) + timedelta(hours=1)).time()
-    sess = _sess(start_time=in_one_hour)
+    # +1h from now — date+time must move together (late-evening runs cross
+    # midnight; a "today" date with a tomorrow-morning time would look past).
+    soon = datetime.now(BUSINESS_TZ) + timedelta(hours=1)
+    sess = _sess(days_ahead=0, start_time=soon.time())
+    sess.session_date = soon.date()
     db.execute.return_value = _FakeResult(one=sess)
     await consume_session_seats(db, menu_item_id=9, class_session_id=1, quantity=2)
     assert sess.booked_pax == 2

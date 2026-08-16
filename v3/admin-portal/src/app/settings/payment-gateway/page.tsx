@@ -72,8 +72,8 @@ const PUBLIC_URL_KEYS = [{
   label: "Staff Portal Public URL",
   type: "text"
 }];
-const STRIPE_METHOD_OPTIONS = ["card", "fpx", "grabpay", "alipay", "wechat_pay"];
-const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "grabpay", "fpx", "card"];
+const STRIPE_METHOD_OPTIONS = ["card", "fpx", "alipay", "wechat_pay"];
+const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "fpx", "card"];
 const LABEL_MAP: Record<string, string> = Object.fromEntries([...STRIPE_KEYS, ...HITPAY_KEYS, ...PUBLIC_URL_KEYS].map(cfg => [cfg.key, cfg.label]));
 function normalizeValue(value: unknown): string {
   if (value === null || value === undefined) return "";

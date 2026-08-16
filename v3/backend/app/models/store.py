@@ -242,7 +242,7 @@ class TableStatusSnapshot(Base):
         ForeignKey("dining_tables.id", ondelete="CASCADE"), primary_key=True
     )
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     current_order_id: Mapped[int | None] = mapped_column(
         ForeignKey("orders.id", ondelete="SET NULL"), nullable=True

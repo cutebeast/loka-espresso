@@ -96,7 +96,7 @@ PaymentMethodType = Enum(
 
 PaymentProvider = Enum(
     "stripe", "adyen", "braintree", "paypal", "cash", "store_credit", "internal_wallet",
-    "grabpay", "gcash", "alipay", "wechat_pay", "hitpay",
+    "gcash", "alipay", "wechat_pay", "hitpay",
     name="payment_provider",
     native_enum=True,
     create_type=False,

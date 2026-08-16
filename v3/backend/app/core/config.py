@@ -135,7 +135,6 @@ class Settings(BaseSettings):
 
     # Webhooks
     webhook_signing_secret: str | None = None  # generic fallback secret
-    grabpay_webhook_secret: str | None = None
     resend_webhook_secret: str | None = None
     webhook_verify_in_dev: bool = False  # If true, webhook signatures are required even in development
 
@@ -155,7 +154,6 @@ class Settings(BaseSettings):
     stripe_checkout_success_url: str | None = None
     stripe_checkout_cancel_url: str | None = None
     stripe_simulator_checkout_url: str | None = "https://checkout.stripe.com/test-session/{session_id}"
-    grabpay_simulator_session_url: str | None = "https://partner-api.grab.com/payments/v1/session/{session_id}?return_url={return_url}"
 
     @property
     def is_production(self) -> bool:

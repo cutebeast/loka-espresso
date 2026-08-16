@@ -85,6 +85,7 @@ export default function PosDrawerChip() {
         className={`badge badge-sm ${session ? "badge-primary" : ""}`}
         style={{
           display: "flex", alignItems: "center", gap: 4, cursor: "pointer", border: "none",
+          minHeight: 34, padding: "6px 12px",
           ...(session ? {} : { background: "var(--color-warning-light, #FEF3C7)", color: "var(--color-warning, #8A7030)" }),
         }}
         onClick={() => { setError(""); setAmount(""); setNotes(""); setDialogOpen(true); if (session) refresh(); }}

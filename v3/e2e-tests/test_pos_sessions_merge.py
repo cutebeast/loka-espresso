@@ -203,6 +203,79 @@ async def test_merge_preserves_workshop_seats(client: httpx.AsyncClient, base_ur
 
 
 @pytest.mark.asyncio
+async def test_merge_same_table_counts_service_charge_once(client: httpx.AsyncClient, base_url: str, staff_headers: dict):
+    """Merging two orders on the SAME table must not double the flat service
+    charge, and the merged total must equal the sum of its components."""
+    import psycopg2
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from conftest import _get_database_url
+
+    r = await client.get(f"{base_url}/staff/tables", headers=staff_headers)
+    assert r.status_code == 200, r.text
+    tables = r.json()["data"]
+    assert tables, "no dining tables seeded"
+    table_id = tables[0]["id"]
+
+    # Temporarily raise the store's flat service charge so the merge math is
+    # actually exercised (seeded value is 0, which would mask the bug).
+    conn = psycopg2.connect(_get_database_url())
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT config_value FROM store_configuration WHERE store_id = 1 AND config_key = 'order.service_charge'"
+    )
+    row = cur.fetchone()
+    original_svc = row[0] if row else None
+    try:
+        cur.execute(
+            "UPDATE store_configuration SET config_value = '2.00' WHERE store_id = 1 AND config_key = 'order.service_charge'"
+        )
+        item = await _pick_item(client, base_url)
+        src = await _create_order(client, base_url, staff_headers, item["id"], 1, order_type="dine_in", dining_table_id=table_id)
+        tgt = await _create_order(client, base_url, staff_headers, item["id"], 2, order_type="dine_in", dining_table_id=table_id)
+
+        r = await client.get(f"{base_url}/staff/orders/{src}", headers=staff_headers)
+        src_state = r.json()["data"]
+        r = await client.get(f"{base_url}/staff/orders/{tgt}", headers=staff_headers)
+        tgt_state = r.json()["data"]
+        assert _money(src_state["service_charge"]) == 2.0
+        assert _money(tgt_state["service_charge"]) == 2.0
+
+        r = await client.post(f"{base_url}/staff/orders/{src}/merge", headers=staff_headers, json={"target_order_id": tgt})
+        assert r.status_code == 200, r.text
+
+        r = await client.get(f"{base_url}/staff/orders/{tgt}", headers=staff_headers)
+        state = r.json()["data"]
+        # Same table → service charge is max(2, 2) = 2, not 2 + 2 = 4
+        assert _money(state["service_charge"]) == 2.0
+        # Total equals the component sum (no hidden double-count)
+        expected = _money(
+            _money(state["items_subtotal"])
+            + _money(state["service_charge"])
+            + _money(state["tax_amount"])
+            - _money(state["discount_amount"])
+        )
+        assert _money(state["total_amount"]) == expected
+
+        # Cleanup: cancel the merged (unpaid) order, then free the table
+        await client.post(f"{base_url}/staff/orders/{tgt}/cancel", headers=staff_headers, json={"reason": "e2e"})
+    finally:
+        if original_svc is None:
+            cur.execute(
+                "DELETE FROM store_configuration WHERE store_id = 1 AND config_key = 'order.service_charge'"
+            )
+        else:
+            cur.execute(
+                "UPDATE store_configuration SET config_value = %s WHERE store_id = 1 AND config_key = 'order.service_charge'",
+                (str(original_svc),),
+            )
+        conn.close()
+
+
+@pytest.mark.asyncio
 async def test_admin_session_detail_breakdown(client: httpx.AsyncClient, base_url: str, staff_headers: dict, admin_headers: dict):
     """Admin session detail: live report + payment breakdown while open,
     snapshot (report=None) + same payments after close."""

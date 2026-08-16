@@ -15,8 +15,8 @@ from app.models.payment import Payment, Refund
 from app.models.pos import PosSession
 
 # Provider values written by the staff POS payment endpoint
-# (cash → cash, card/stripe_qr → stripe, qr/e_wallet → grabpay).
-PROVIDER_BUCKETS = {"cash": "cash", "stripe": "card", "grabpay": "qr"}
+# (cash → cash, card/stripe_qr → stripe; qr removed with GrabPay 2026-08-17).
+PROVIDER_BUCKETS = {"cash": "cash", "stripe": "card"}
 
 
 async def compute_session_report(

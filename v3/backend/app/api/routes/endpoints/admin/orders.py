@@ -16,7 +16,7 @@ from app.api.routes.deps import CurrentAdmin, DBDependency, get_staff_store_id_f
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
-from app.models.menu import MenuItem, MenuCategory, MenuModifierOption
+from app.models.menu import MenuItem, MenuCategory
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
@@ -36,7 +36,7 @@ from app.schemas.order import (
     ProcessOrderPaymentRequest,
     UpdateOrderStatusRequest,
 )
-from app.services.order import OrderError, reverse_order_effects, validate_voucher_eligibility, _build_order_out
+from app.services.order import OrderError, reverse_order_effects, validate_voucher_eligibility, _build_order_out, _priced_modifier_options
 from app.services.payment import PaymentError, cancel_pending_order_payments, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
@@ -506,11 +506,9 @@ async def process_order_payment(
     provider_map = {
         "cash": "cash",
         "card": "stripe",
-        "qr": "grabpay",
         "stripe_qr": "stripe",
         "credit_card": "stripe",
         "debit_card": "stripe",
-        "e_wallet": "grabpay",
     }
     provider = provider_map.get(payment_method, "cash")
     is_stripe_qr = payment_method == "stripe_qr"
@@ -1126,17 +1124,15 @@ async def add_order_line_item(
     rounding_mode = await config_service.get_accounting_rounding()
 
     # Always derive price from the menu item; do not trust client-supplied unit_price.
-    # Modifier options add to the unit price (mirrors the staff/POS path).
+    # Modifier options add to the unit price (mirrors the staff/POS path);
+    # ownership of every option is enforced (foreign options inflate the price).
     price = to_decimal(menu_item.base_price)
-    modifier_total = Decimal(0)
     modifier_ids = data.modifier_ids or []
-    if modifier_ids:
-        mod_result = await db.execute(
-            select(MenuModifierOption).where(MenuModifierOption.id.in_(modifier_ids))
-        )
-        for mod in mod_result.scalars().all():
-            modifier_total += to_decimal(mod.price_adjustment)
-        price += modifier_total
+    try:
+        modifier_total = await _priced_modifier_options(db, menu_item.id, modifier_ids)
+    except OrderError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    price += modifier_total
     total = money_round(price * data.quantity, precision, rounding_mode)
 
     line_item = OrderLineItem(

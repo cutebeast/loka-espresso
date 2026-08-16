@@ -98,7 +98,10 @@ async def test_auto_cancel_order_reverses_effects_and_voids_payments(monkeypatch
 
     db = _async_db()
     order = SimpleNamespace(id=5, status="pending", dining_table_id=None)
-    db.execute.side_effect = [_FakeResult(one=order)]  # self-enforced lock re-fetch
+    db.execute.side_effect = [
+        _FakeResult(one=order),   # self-enforced lock re-fetch
+        _FakeResult(one=None),    # captured-money probe (none → proceed)
+    ]
 
     result = await auto_cancel_order(db, order, "Auto-cancelled — unpaid after 15 minutes")
 
@@ -108,6 +111,26 @@ async def test_auto_cancel_order_reverses_effects_and_voids_payments(monkeypatch
     assert order.cancelled_at is not None
     reverse.assert_awaited_once_with(db, order)
     cancel_payments.assert_awaited_once_with(db, 5)
+
+
+@pytest.mark.asyncio
+async def test_auto_cancel_order_skips_when_captured_money_attached():
+    """An order holding captured money (e.g. a capture_after_void webhook
+    landed after the expiry void) must never be auto-cancelled — reversing it
+    would undo stock/table/vouchers on an order the customer already paid for.
+    Manual reconciliation is required instead."""
+    db = _async_db()
+    order = SimpleNamespace(id=5, order_number="ORD-5", status="pending", dining_table_id=9)
+    db.execute.side_effect = [
+        _FakeResult(one=order),   # self-enforced lock re-fetch
+        _FakeResult(one=42),      # captured payment row exists
+    ]
+
+    result = await auto_cancel_order(db, order, "Auto-cancelled — unpaid for >2 hours")
+
+    assert result is False
+    assert order.status == "pending"
+    db.flush.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

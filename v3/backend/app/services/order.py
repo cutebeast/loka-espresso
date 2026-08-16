@@ -1,5 +1,6 @@
 """Order service layer."""
 
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -24,6 +25,8 @@ from app.models.bundle_product import BundleProduct, BundleProductComponent, Bun
 from app.schemas.order import OrderCreate
 from app.services.bundle_types import resolve_bundle_mechanic
 from app.services.platform_config import PlatformConfigService
+
+logger = logging.getLogger(__name__)
 
 
 class OrderError(Exception):
@@ -59,6 +62,42 @@ def _consumed_items_price(bundle_items: list, consume_qty: int) -> Decimal:
         unit_total = to_decimal(ci.unit_price) + to_decimal(ci.modifier_total)
         total += unit_total * take
         remaining -= take
+    return total
+
+
+async def _priced_modifier_options(
+    db: AsyncSession, menu_item_id: int, modifier_ids: list[int]
+) -> Decimal:
+    """Validate modifier options belong to the given menu item and sum their
+    price adjustments.
+
+    Client price-manipulation guard: every option must resolve through a
+    modifier group of THIS menu item (mirrors the kiosk checkout validation).
+    Raises OrderError(400) for foreign or unknown option ids.
+    """
+    if not modifier_ids:
+        return Decimal(0)
+    from app.models.menu import MenuModifierGroup, MenuModifierOption
+
+    rows = (
+        await db.execute(
+            select(MenuModifierOption, MenuModifierGroup.menu_item_id)
+            .join(MenuModifierGroup, MenuModifierGroup.id == MenuModifierOption.modifier_group_id)
+            .where(MenuModifierOption.id.in_(modifier_ids))
+        )
+    ).all()
+    seen: set[int] = set()
+    total = Decimal(0)
+    for option, group_item_id in rows:
+        if group_item_id != menu_item_id:
+            raise OrderError(
+                f"Modifier option {option.id} does not belong to menu item {menu_item_id}",
+                400,
+            )
+        seen.add(option.id)
+        total += to_decimal(option.price_adjustment)
+    if len(seen) != len(set(modifier_ids)):
+        raise OrderError("One or more modifier options were not found", 400)
     return total
 
 
@@ -644,6 +683,27 @@ async def auto_cancel_order(db: AsyncSession, order: Order, reason: str) -> bool
     )
     order = locked.scalar_one_or_none()
     if order is None or order.status != "pending":
+        return False
+
+    # Never auto-cancel an order that holds real money. A capture_after_void
+    # webhook (Stripe completed the session after our expiry voided the
+    # payment) leaves the order pending+initiated while the payment row is
+    # captured and flagged — auto-cancelling it would reverse stock/table/
+    # vouchers on an order the customer already paid for. Manual
+    # reconciliation (serve or refund) is required instead.
+    from app.models.payment import Payment
+    money_row = await db.execute(
+        select(Payment.id).where(
+            Payment.order_id == order.id,
+            Payment.status.in_(("captured", "partially_refunded", "chargeback")),
+        ).limit(1)
+    )
+    if money_row.scalar_one_or_none() is not None:
+        logger.warning(
+            "Skipping auto-cancel of order %s (id=%s) — captured money is attached "
+            "(possible capture_after_void); manual reconciliation required",
+            order.order_number, order.id,
+        )
         return False
 
     order.status = "cancelled_by_customer"

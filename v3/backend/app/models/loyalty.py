@@ -94,10 +94,10 @@ class LoyaltyPointsLedger(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     loyalty_account_id: Mapped[int] = mapped_column(
-        ForeignKey("loyalty_accounts.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("loyalty_accounts.id", ondelete="CASCADE"), nullable=False, index=True
     )
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     event_type: Mapped[str] = mapped_column(LoyaltyEventType, nullable=False)
     points_delta: Mapped[int] = mapped_column(Integer, nullable=False)

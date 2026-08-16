@@ -17,6 +17,7 @@ from app.services.payment import (
     _debit_wallet_for_payment,
     _sync_order_payment_status,
 )
+from app.services.webhook import extract_event_id
 
 
 @pytest.fixture
@@ -110,3 +111,14 @@ async def test_sync_keeps_pending_authorization_while_payment_active(fake_config
     await _sync_order_payment_status(db, payment)
 
     assert order.payment_status == "pending_authorization"
+
+
+def test_extract_event_id_never_returns_literal_none():
+    """Regression (round 38 pass 7): str(payload.get("id")) on a None id
+    produced the string "None" — every id-less webhook event collided on one
+    Redis dedup key, so only the first event per day processed and all later
+    events were dropped as duplicates."""
+    assert extract_event_id("stripe", {"id": None, "type": "x"}) is None
+    assert extract_event_id("stripe", {}) is None
+    assert extract_event_id("stripe", {"id": ""}) is None
+    assert extract_event_id("stripe", {"id": "evt_123"}) == "evt_123"

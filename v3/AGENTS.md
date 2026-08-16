@@ -1,6 +1,6 @@
 # FNB Super App v3 — Agent Notes
 
-*Last updated: 2026-07-30*
+*Last updated: 2026-08-15*
 
 ## Active code
 
@@ -1670,3 +1670,192 @@ Focused 2-track audit (ordering lifecycle, payment lifecycle) after the tester f
 - SKIPPED deliberately: lucky-draw ticket clawback on refund — the model + AGENTS.md document it as intentional design; needs an owner decision, not a code change.
 
 **Verification:** 99/99 backend unit (6 new C-batch + mock repairs), full E2E green, live probes: remove-item 200 with correct repricing, status machine 400s on jumps/resurrection, POS QR order pending. Alembic single head y4z5a6b7c8d9, check clean.
+
+## Round 38 — sweep/money guard, merge math, touch & gesture support (2026-08-15)
+
+Fresh audit of the round-37 commit + touch/gesture hardening for kiosk/tablet/PWA. 4 findings fixed; every finding re-verified in code before fixing (no false positives), including live proofs for two of them.
+
+### Findings
+1. **Sweep could auto-cancel an order holding captured money** — the round-37 capture_after_void path (Stripe completed the session after our expiry voided the payment) leaves the order pending+initiated+prepaid while the payment row is captured-and-flagged; `_sync` correctly excludes flagged money, but the 2h prepaid sweep only reads Order columns, so it auto-cancelled a PAID order (stock/table/voucher reversal with the customer's money captured, no auto-refund). `auto_cancel_order` (services/order.py) now refuses to cancel when any captured/partially_refunded/chargeback payment exists — all 4 sweep call sites (main periodic+startup, kiosk, customer/order, pos) inherit the guard. RULE: any new sweep path MUST go through `auto_cancel_order`; money attached = manual reconciliation, never auto-cancel.
+2. **Merge total math inconsistent** — same-table merges took max() for service_charge but still added raw totals, so the customer paid double service charge (proven live pre-fix: total RM40 vs component-sum RM38 with RM2 flat charge); source tip was dropped from tip_amount but stayed inside total. Merge now adds `tip_amount` and recomputes total from components. E2E regression: `test_merge_same_table_counts_service_charge_once` (temporarily sets store charge to RM2 via psycopg2, asserts component-sum equality, restores).
+3. **KDS status PATCH had no idempotency** — re-clicking the same status (double-tap) or retrying after a timeout 400'd even though the change landed. Same-status PATCH is now a 200 no-op (`unchanged: true`).
+4. **Modifier ownership not validated on staff POS create + staff/admin add-line-item** (kiosk already did) — any option id from any item inflated the line price. New shared `_priced_modifier_options()` in services/order.py enforces group→item ownership + unknown-id rejection; used by staff/pos.py, staff/orders.py, admin/orders.py. Unit tests ×3 in test_audit_order_creation_guards.py.
+
+### Touch & gesture support (kiosk, tablet, PWA)
+- New `useSwipe` hook (`customer-pwa/src/hooks/useSwipe.ts`): pointer-based horizontal swipe (60px threshold, must be horizontally dominant so vertical scrolling is never hijacked) + post-swipe click suppression.
+- Kiosk promo carousel (welcome screen): swipe left/right + prev/next chevrons (mouse fallback) + existing dots/auto-rotate.
+- Kiosk menu grid: swipe left/right moves between categories (portrait tabs and landscape sidebar share `activeCategory`, so both stay in sync).
+- Kiosk hardening: long-press context menu suppressed (`onContextMenu` preventDefault), `-webkit-touch-callout: none`, images not draggable, grid uses `touch-action: pan-y`.
+- Kiosk viewport zoom-locked: boot script (layout.tsx) patches the viewport meta to `maximum-scale=1, user-scalable=no` on `kiosk.*` hosts and `#kiosk` routes — pinch/double-tap zoom can no longer break the fullscreen LCD layout. Mobile PWA keeps pinch zoom (accessibility).
+- Touch hardening CSS (customer PWA + staff portal): tap-highlight transparent, `touch-action: manipulation` on buttons (kills double-tap zoom delay), `-webkit-overflow-scrolling: touch` on home carousels, image drag/long-press disabled.
+- Verified live on kiosk.loyaltysystem.uk: viewport meta patched, promo swipe advances (Eco-Campaign → Welcome Reward), grid swipe changes category (Café → Beyond Coffee), card taps still open the item page, chevrons work.
+- RULE: kiosk/tablet UI must never rely on hover; tap targets ≥48px (fs-scaled); new touch surfaces use `useSwipe`.
+- Known cosmetic (pre-existing, LOW): kiosk guest boot logs 4 console errors (401 /me, 422 /auth/refresh, splash fetch cancel) — AppShell session validation noise, handled by the auth flow, no user impact.
+
+### Verification
+- Backend unit: 105/105 (new: auto-cancel money guard, capture_after_void flag + sync exclusion, modifier ownership ×3)
+- Full E2E: 220 passed, 16 skipped, 0 failed (new merge service-charge test)
+- tsc ×3 clean; customer-pwa + staff-portal rebuilt via rebuild-portal.sh; kiosk-v3 + pos-disp-v3 restarted; all portals healthy (app 200, staff/admin 307, pos-disp 200, kiosk 200)
+- Alembic single head y4z5a6b7c8d9, check clean (unchanged this round)
+
+### Round 38 extension — staff portal touch compatibility + re-audit (2026-08-15, same day)
+
+Staff portal (POS/KDS on tablets) verified touch-compatible end-to-end:
+- **Global touch CSS (staff)**: buttons/`.clickable`/`.keypad-btn` get `user-select: none` + `-webkit-touch-callout: none` (fast tapping never opens the text-selection UI; inputs keep selection); `touch-action: manipulation` on buttons (no double-tap zoom delay); `.table-container` momentum scrolling; **`@media (pointer: coarse), (any-pointer: coarse)`** bumps `.btn-sm` to min-height 40px, `.btn-icon`/`.pagination-btn` to 44px (covers hybrid Windows/Android tablets that report a fine primary pointer).
+- **Header icon buttons** (Help/Logout in StoreHeader) now 44×44; **PosDrawerChip** min-height 34 + padding.
+- **Audited the toFixed string-money class across staff POS + admin portal**: all remaining sites verified safe (split-state + orders list serializers return floats; DrawerChip parseFloat-coerces; HeldOrders multiplication-coerces; feedback/tax guards `typeof`). Only hardening needed: `PosOfflineQueueChip.money()` now accepts strings.
+- **Kiosk edge closed**: hash-navigation into `#kiosk` without a reload now also gets the zoom-locked viewport (AppShell kiosk effect patches the meta, not just the boot script).
+- **Pre-existing lint debt fixed**: KioskPage had 2 react-hooks/immutability errors since round 37 (state declared after the effect using it) — `bundles`/`bundleCategories` declarations moved above the load effect. All 3 portals now lint 0-error again.
+- Re-audit sweep (backend logs, admin portal money math, toFixed class, POS layout at 768×1024, kitchen KDS, unpaid/split drawers): no new gaps found. Backend unchanged since the 220-green E2E run.
+- Verification: 105/105 unit, tsc ×3, eslint 0 errors on changed files, alembic check clean, 8 pm2 services online, staff login + POS verified at tablet viewport in-browser (204 buttons, correct touch CSS applied).
+
+### Round 38 audit pass 2 (2026-08-15, evening)
+
+Fresh audit of the round-38 diff + uncovered surfaces. No false positives; one coverage gap closed:
+- **Status machine had ZERO E2E coverage** (the round-37 core behavior) — new `e2e-tests/test_staff_status_machine.py` (2 tests): full monotonic progression + terminal closure + same-status 200 no-op + invalid-status 400 + cancelled-via-PATCH 400; pending order can only advance to confirmed (no unpaid jump to kitchen). Both pass live.
+- **Self-review of the uncommitted diff** (merge recompute, auto-cancel money guard, modifier ownership, status no-op, touch CSS, kiosk swipe): all re-verified — Order money columns all NOT NULL (no None-merge crash), `to_decimal(None)` → 0, cart service already owned modifier validation since round 35 (new helper closes the POS/admin paths), admin status endpoint cancels correctly (captured-money block + reversal), `_sync` branches verified (partial capture → collectible `initiated`, flagged-only money → state untouched).
+- **Runtime forensics**: 0× 5xx / 0 tracebacks across all backend logs; store config residue from the merge E2E restored (service_charge back to 0); 0 stale pending+prepaid orders (sweeper healthy).
+- Fresh sweeps: staff/admin wallet + customer_ops arithmetic types clean; admin portal toFixed sites safe; pos-disp/staff/kiosk domains healthy.
+- Verification: 105/105 unit · full E2E **222 passed, 16 skipped, 0 failed** · tsc ×3 · alembic check clean · 8 pm2 services 0 restarts.
+
+### Round 38 audit pass 3 — live browser crawl, staff + PWA (2026-08-16)
+
+Page-by-page browser crawl of both portals (logged-in staff, guest PWA) checking console errors, raw i18n keys, broken images, empty bodies, horizontal overflow:
+- **Staff portal clean**: `/`, `/pos` (204 buttons), `/orders`, `/tables`, `/time-clock` (correct "Not Clocked In" state), `/wallet` — 0 console errors/warnings, 0 raw keys, 0 broken images, 0 overflow. Kitchen/inventory role-gates intentionally not crawled for cashier.
+- **PWA finding — country-flag CDN dependency (real, fixed)**: the phone-login country selector + country picker (PhoneInput.tsx + LoginModal.tsx) rendered `<img>` from `flagcdn.com` with NO fallback — the CDN 503'd and the login screen showed a broken image for the Malaysia flag (a store with restricted egress would always see this). New shared `CountryFlag` component (`customer-pwa/src/components/auth/CountryFlag.tsx`): renders the flagcdn img with `onError` fallback to the emoji flag (the `countryFlag()` helper already existed but was unused). Verified live: 0 broken images, 🇲🇾 emoji renders under the 503.
+- PWA crawl: `#home`, `#menu`, `#rewards` — 0 raw keys, 0 broken images, no overflow; protected pages correctly show the login wall.
+- **Known external noise (no action)**: Google Fonts 503 in this sandbox (font fallback chain renders fine — consider self-hosting fonts before a restricted-egress store); guest-boot console 401 `/me` + 422 `/auth/refresh` (handled session validation noise, documented since round 38).
+- Verification: tsc + eslint clean on changed files, customer-pwa rebuilt via rebuild-portal.sh, kiosk-v3 restarted; app/kiosk 200.
+
+### Round 38 audit pass 4 — country picker reliability fix (2026-08-16, user report)
+
+User report: "country selection on the login screen sometimes doesn't show up". Reproduced live: opening the picker mounted **248 flag `<img>`s, all hitting flagcdn.com** — under a 503 (this sandbox) or a slow/hanging CDN (production flake), the selector showed a broken image and the picker list rendered as blank/broken icons, spamming ~248 console errors per open.
+- **Fix**: `CountryFlag` now renders the unicode emoji flag directly — zero network dependency, instant, offline-safe. (On Windows desktop emoji flags render as the ISO code, e.g. "MY" — acceptable trade-off for the phone-first PWA; documented in the component.) `flagUrl`/`flagSvgUrl` remain in `lib/countries.ts` but are now unused by the auth flow.
+- Verified live: picker opens with all 248 countries as emoji flags (🇲🇾 🇸🇬 …), 0 `<img>` elements, 0 flagcdn requests, console errors 41 → 4 (guest-auth noise only); tapping Singapore updates the selector to 🇸🇬 +65 and closes the sheet. tsc/eslint clean; PWA rebuilt; kiosk-v3 restarted.
+
+### Round 38 audit pass 5 — deep browser crawl + two real bugs (2026-08-16, user escalation)
+
+User escalated: "check for any other broken thing — you seem to miss things". Full systematic crawl of ALL portals with live sessions (admin ×27 pages, staff ×18 with manager, PWA authed ×11 + guest) checking console errors, page errors, raw i18n keys, broken images, 4xx/5xx API calls, near-empty bodies, overflow. Two REAL bugs found (both had been broken since round 36 and missed because their only tests SKIP on dev):
+
+1. **`GET /api/wallet/me` 500'd for EVERY customer** — `admin/wallet.py:435` had `.limit(50)` nested INSIDE `.order_by(...)` (`CustomerReward.expires_at.asc().limit(50)` → AttributeError at query build). The wallet page (balance/top-up/vouchers/rewards) was broken for every logged-in customer since 978bdb20 (2026-08-12). Missed because the ONLY E2E hitting it (test_payments_webhook.py) SKIPS entirely when Stripe isn't configured, and post-r36 browser audits never opened the authed wallet page. Fixed + new always-runs E2E `test_customer_wallet_me.py` (register via OTP bypass → wallet/me 200 → vouchers/rewards arrays → no wallet dup). RULE: any endpoint whose only E2E coverage sits inside a Skippable suite needs a non-skippable test.
+2. **~170 stale E2E orders polluted the kitchen/queue** (confirmed+unpaid open-tab POS orders accumulated since the suite never cancels what it creates — dashboard showed "Kitchen 171"). New `backend/scripts/cleanup_unpaid_open_orders.py`: unpaid open orders → cancelled via the full staff-cancel path (reversal + status log); PAID test orders → completed as delivered (books intact). Wired into `pytest_sessionfinish` in e2e conftest (best-effort, never fails the run). Ran once: 2 cancelled, 106 completed, queue now 0.
+
+- Country picker emoji fix (pass 4) confirmed deployed: 0 flagcdn requests, 248 emoji flags instant.
+- Verified NOT bugs: `/promos/banners` 404 was my invented path (sidebar = `/promotions`); admin `#418` hydration errors were transient stale-session artifacts during scripted crawling (0 pageerrors on re-crawl of all 27 pages); per-page 401/me+422/refresh is the documented boot-token-rotation noise amplified by rapid scripted navigation (single reloads are clean); Google Fonts 503 renders with system-font fallbacks (consider self-hosting before restricted-egress stores); "small" staff pages are correct empty states (no shifts/tasks/reservations assigned).
+- PWA authed flows verified live: login wall → OTP → home (membership card, tier progress), wallet (balance RM 8.04, top-up denominations, ledger), orders (empty state), my-card (QR + LOKA-000139), menu, check-in, lucky draw — 0 API failures.
+- Verification: 105/105 unit · full E2E re-run gated below · tsc ×3 · alembic check clean · 8 pm2 services online.
+
+### Round 38 audit pass 6 — E2E verification + residue self-clean (2026-08-16)
+
+- Full E2E: **223 passed, 16 skipped, 0 failed** (new wallet/me test included; sessionfinish cleanup ran after — order residue 0).
+- `cleanup_unpaid_open_orders.py` is the single source of truth for test-order hygiene; conftest `pytest_sessionfinish` runs it after every suite.
+- Backend unit 105/105, alembic single head + check clean, all portals healthy.
+
+### Dev-DB cleanup (2026-08-16 evening, user-approved — dev server)
+
+Full transactional wipe of the dev database. Backup first: `v3/backups/pre_clear_20260816.dump` (pg_dump -Fc, 1.7MB).
+
+- `scripts/clear_transactional_data.sql` extended with: `token_blacklist` + `notification_preferences` truncate, `class_sessions.booked_pax = 0` reset, and a test-customer purge (phone-named profiles with no email — E2E/walk-in residue — keeping `+0000000000` system walk-in, `+60123456001` demo, `+60123456002` VIP).
+- Post-wipe: orders 0, payments 0, audit_log 0, customers 1,092 → 16, token_blacklist 0, inventory movements 0, reservations 0. Master data intact: 166 menu items, 10,618 translations, stores/config/vouchers/rewards/campaigns kept.
+- Re-seeded: demo/vip wallets (RM50/RM200 via ledger — note: `wallets` has no balance column, balance = latest ledger running_balance; `seed_customers.py` skips existing customers so wallets were restored with a one-off ledger insert), `seed_inventory.py` + `seed_ops_test_data.py` (18 stock records, 2 POs, 5 reservations, 8 shifts, 5 time events).
+- Menu availability is driven by `menu_items.is_available` (NOT inventory stock) — no menu impact from the wipe. Verified live: PWA menu renders all 166 items across categories; API /menu/stores/1 returns 166.
+- Post-clean verification: 105/105 unit · E2E smoke subset 8/8 (status machine, wallet/me, merge) · order residue 0 after cleanup script · all portals healthy.
+- **Soft-delete confirmation (user follow-up)**: after the wipe, verified ALL 26 tables with a `deleted_at` column — 0 soft-deleted rows remain. The 1 straggler found was NOT legacy: the post-cleanup E2E smoke run created + soft-deleted a POS walk-in customer ("E2E Merge") via the conftest's API-level cleanup, which only hard-deletes TRACKED (registry) customers. Fixed: `cleanup_unpaid_open_orders.py` now also hard-deletes soft-deleted phone-named customers + E2E-titled rows on `bundle_products`/`splash_screens` (the only E2E-titled content tables that HAVE deleted_at — verified via information_schema; promo_banners/information_cards/etc. don't). Runs after every suite via the sessionfinish hook. Final check: 0 soft-deleted rows across all 26 tables.
+
+### DB schema audit + hot-path indexes (2026-08-16, user: "any other db table to improve?")
+
+Full schema audit: 118 tables · 196 FK constraints · 113 serial columns.
+- **Verified clean**: 0 FK orphans (all 196 constraints), 0 sequence drift, 0 soft-deleted rows.
+- **Fixed — 29 hot-path indexes missing** (migration `a8b9c0d1e2f3`): wallet_ledger_entries(wallet_id), loyalty_points_ledger(customer_id, loyalty_account_id), customer_vouchers/customer_rewards/customer_consents/customer_devices(customer_id), order_line_items/cart_line_items(menu_item_id), payment_line_allocations(order_line_item_id), menu_modifier_groups(menu_item_id), menu_modifier_options(modifier_group_id), menu_variants(parent_item_id), table_status_snapshot(store_id), staff_profiles(store_id), staff_time_events(staff_id, store_id), inventory_movement_log(store_id), purchase_orders(store_id), audit_log(store_id), tip_allocations(order_id), referral_events(invitee_customer_id), event_rsvps(event_id, customer_id), event_invites(event_id), survey_responses(customer_id), suppliers(store_id) ← the last two were pre-existing model↔DB drift (models declared index=True, DB never had them).
+- **Fixed — redundant duplicate index**: dropped `ix_einvoice_documents_order_id` (the unique `uq_einvoice_order_type01` already leads with order_id).
+- **Fixed — model↔DB drift class**: several models declared `index=True` but the DB lacked the index (alembic check was dirty). All models now synced with the DB; `alembic check` clean; `09_schema_sync.sql` regenerated.
+- RULE: `alembic check` must stay clean — model metadata and migrations are the schema truth; when adding an index either edit the model (`index=True`) + migration together or don't edit at all.
+- Remaining un-indexed FK columns (~65) are deliberately left alone: low-traffic lookup columns on small config tables where an index adds write overhead with no read benefit. Revisit only if pg_stat_user_indexes shows demand.
+- 44 empty tables are all legitimately empty (transactional tables post-wipe, or feature tables awaiting use: event_invites, menu_item_recipes, store_special_hours, api_credentials).
+- Verification: 105/105 unit · alembic heads single `a8b9c0d1e2f3`, check clean · API 200 · schema dump regenerated.
+
+### Post-cleanup full re-check (2026-08-16 late evening)
+
+Full verification after all of today's changes (wallet fix, indexes, purges):
+- Full E2E: **222 passed, 17 skipped, 0 failed** (~2:42); tsc ×3 clean; eslint 0 errors; 105/105 unit; alembic single head + check clean.
+- All 8 pm2 services online, 0 restarts; app/staff/admin/kiosk/pos-disp all responding; payment-system + astro-prod logs clean; 8 cron jobs active; disk 79% (32G free).
+- Kiosk live-verified: zoom-locked viewport, light theme, welcome + promo carousel, clock correct.
+- DB: 27/27 new indexes present, redundant einvoice index gone, 0 soft-deleted rows, 166 menu items, master data intact.
+- **Purge hardened for the suite**: the E2E conftest soft-deletes its resources (menu items, staff profiles, suppliers, vouchers) and leaves phone-named walk-in customers LIVE. `purge_soft_deleted_residue` now: (1) deletes order/cart line items + bundle components referencing soft-deleted parents (FK RESTRICT blockers — discovered live), (2) deletes loyalty_points_ledger (RESTRICT) + customer_daily_checkins (NO ACTION) rows for test customers, (3) purges phone-named walk-in customers that hold no NON-TERMINAL orders (FK-safe; sweeper-cancelled orders stop blocking after 2h — converges), (4) hard-deletes ALL soft-deleted rows (dev server — retention has no audit value), porting sections 2–4 of clear_transactional_data.sql into the python script (asyncpg can't run multi-statement strings — split by `;`). Post-run state: 27 customers (16 baseline + 11 held by fresh sweepable orders), 0 soft-deleted, kitchen queue 0.
+
+### Round 38 audit pass 7 — skip-hunting loop (2026-08-16, ~midnight)
+
+User asked to keep checking until no more issues. This pass attacked the 17 skipped E2E tests — the largest remaining blind spot — and iterated until the whole suite ran green.
+
+**Why 17 tests were skipping:**
+- 7 Stripe webhook tests — skipped without a webhook secret (the ONLY dev coverage for the entire webhook pipeline — refunds, disputes, captures, wallet top-ups).
+- 6 customer browser-journey tests — playwright not installed in the e2e venv.
+- 4 legitimate conditionals (no recipes seeded, no notifications seeded, admin-can't-clock-in).
+
+**Fixes (all verified live):**
+1. **Playwright + Chromium installed** in the backend venv (`pip install playwright` + `playwright install chromium`) — the 8 browser tests now run (~68s).
+2. **Dev webhook secret configured**: `platform_config stripe.webhook_secret` = `whsec_devtest_...` (JSON-encoded — config_value is JSONB; a bare string insert 500s). The conftest reads the same row, so E2E signs validly. NOTE: real Stripe webhooks would now fail signature on dev — dev has no real Stripe anyway; document when rotating.
+3. **REAL BUG — webhook 500 on id-less events**: `payment.py:1167` read `event.id` on the Stripe event object — `construct_event` raises `AttributeError` on missing attrs (Stripe always sends `id` in prod, so it never surfaced). Now `getattr(event, "id", None)`.
+4. **REAL BUG — "None" dedup collision**: `extract_event_id` did `str(payload.get("id", ""))` — with the getattr fix passing `None`, every id-less event extracted the literal string `"None"` and collided on ONE Redis dedup key (`webhook:event:stripe:<sha256("None")>`): the first id-less event each day processed, all later ones were dropped as "duplicates" (payments stuck `pending_authorization`). Fixed: only real ids enter the dedup net; poisoned Redis keys cleared; unit regression `test_extract_event_id_never_returns_literal_none`.
+5. **Test rot (round-34 guard, not a bug)**: wallet-top-up completion test payload lacked `payment_status: "paid"` (round 34 requires it for `checkout.session.completed`) — test updated to the current contract.
+6. **Time-of-day flaky unit test**: `test_same_day_future_session_bookable` built "+1h" as a TIME only — late-evening runs crossed midnight and the session looked past. Date+time now move together.
+
+**Result:** full E2E **236 passed, 3 skipped, 0 failed** (~3:43, was 222/17 pre-pass); backend unit **106/106**; tsc ×3 clean; eslint clean; alembic single head + check clean; 8/8 services online; post-suite purge converged (0 soft-deleted, only fresh sweepable pending orders remain — auto-cancelled by the 2h sweeper).
+- RULE: skipped tests are debt — each skip hides a whole subsystem (the 7 webhook skips hid THREE live bugs). Revisit skip counts every round; a skip reason that isn't a legitimate conditional must be fixed or the test deleted.
+
+### Round 38 pass 8 — API keys DB-first + admin-editable (2026-08-17, user question)
+
+User asked: "all the api key including those stripe are in db already right? why on json? all api key suppose to be in db and then can set from admin portal". Clarified + closed the remaining gaps.
+
+- **Clarification**: the webhook secret IS in the DB — `platform_config` table (not a JSON file). "JSON-encoded" referred only to the JSONB column type of `config_value` (values must be inserted as JSON literals). Most keys were already DB-first with .env fallback: stripe (secret/publishable/webhook — services read `stripe.*` platform_config before settings), hitpay (`hitpay.api_key/salt/enabled`), twilio/resend/deepseek (`integration.*`), einvoice (`einvoice.*`), grabpay.webhook_secret.
+- **Gaps closed**:
+  1. `stripe.secret_key` / `stripe.publishable_key` ROWS didn't exist in the DB (only env fallback) — seeded into `seed_platform.py` (empty, sensitive flags) so they appear in Settings → Payments; boss pastes live keys at go-live, no redeploy.
+  2. `hitpay.api_key` / `hitpay.api_base_url` rows seeded the same way.
+  3. **VAPID was env-ONLY** — `web_push.py` now reads `vapid.private_key/public_key/subject` from platform_config (settings fallback kept); `send_web_push` + `get_vapid_public_key` became async with DB access (pywebpush network I/O moved inside `asyncio.to_thread` — the old callers threaded it, the new ones don't need to); `push.py` endpoints take `DBDependency`; `notifications.py` call site updated.
+  4. **Admin Settings page was hiding keys**: sections are a FIXED prefix list — added `hitpay.`, `grabpay.`, `vapid.` (Web Push), `integration.` (DeepSeek/Resend/Twilio) sections + 8 EN keys (`settings.section_*` + `_desc`) seeded to the admin-ui namespace + zh filled (8).
+- **Mask-guard re-verified** (probe looked alarming but was a false alarm): `PUT /admin/config` with the `********` mask on a sensitive key returns "unchanged" and the stored secret is intact (GET masks sensitive values by design — verify via DB, not via GET).
+- **Fixed 2 time-of-day flaky unit tests** (post-midnight run caught them): `test_same_day_future_session_bookable` + `test_same_day_started_session_rejected` combined a "today" date with a ±1h time that crossed midnight — date+time now move together.
+- Verified live: Settings page renders all 5 sections with correct masks; PUT round-trip on hitpay.api_base_url 200; vapid-public-key endpoint 200; webhook+wallet E2E 8/8; backend 106/106 unit.
+- RULE: platform_config is the source of truth for ALL provider/API keys (DB-first, admin-editable, masked). .env is the bootstrap fallback only. New secrets: seed the config row + add/extend a Settings SECTIONS prefix + seed EN translation keys. Infra secrets (DATABASE_URL, REDIS_URL, JWT_SECRET) intentionally stay env-only.
+
+### Round 38 pass 9 — post-pass-8 verification (2026-08-17)
+
+Re-audit after the API-keys work. All checks re-run and converged clean:
+- VAPID migration complete: all callers (push.py, notifications.py) async + DB-aware; `asyncio.to_thread` preserved inside `send_web_push` (pywebpush blocking I/O stays off the loop); public-key endpoint serves the env-fallback key on dev (200).
+- Secret inventory complete: stripe/hitpay/vapid/grabpay/integration/einvoice all DB-first + admin-editable. `maxmind_license_key` is declared-but-unused dead config (noted, harmless). GrabPay is simulator-only — no API key needed. Infra secrets (DB/Redis/JWT) stay env-only by design.
+- Full E2E **236 passed, 3 skipped, 0 failed** (4:06) · backend unit **106/106** · tsc ×3 clean · eslint clean on changed files · alembic single head + check clean · 8/8 services 0 restarts · all 5 domains responding · no new backend log errors.
+- Translation coherence: 14 settings sections × 2 keys = 28 EN + 28 zh rows; cache intact.
+- Post-suite state: 0 soft-deleted rows, 166 menu items, 12 provider-key config rows; the 44 open orders are the fresh sweepable pending class (2h sweeper auto-cancels; customer purge converges afterwards).
+
+### Round 38 pass 10 — GrabPay removal + manual delivery dispatch (2026-08-17, user request)
+
+Three-part user request: (1) remove GrabPay (never supported), (2) clarify delivery-API state, (3) build the manual delivery workflow — staff key delivery orders into external systems (Lalamove etc.) and mark them from the staff portal.
+
+**1. GrabPay fully removed** (simulator-only, never launched):
+- Backend: webhook route `/webhooks/grabpay` + `_verify_grabpay_signature` + `get_provider_secret` grabpay fallback deleted; provider maps (staff POS/orders, admin orders) lost their `qr`/`e_wallet` grabpay entries; `_simulate_grabpay_intent` renamed `_simulate_hosted_provider_intent` (gcash/alipay/wechat_pay placeholders remain); fee table rows dropped; `grabpay_webhook_secret`/`grabpay_simulator_session_url` settings removed; seed row + admin Settings section + translation keys removed; locale JSONs renamed `checkout_page.pay_online_card_fpx` (grabpay mention stripped ×5); PWA/e2e comments cleaned.
+- **PG enum rebuilt** (migration `b9c0d1e2f3a4`): both `payments.provider` AND `payment_methods.provider` use the shared PG enum `payment_provider` — recreated without grabpay (0 rows used it; had to drop `idx_payments_provider` first — indexes depend on the type). The redundant CHECK `ck_payment_methods_provider` dropped (enum is the constraint). Model CheckConstraints removed to match. RULE: PG enum swap = drop dependents (indexes/constraints) → ALTER COLUMN TYPE text → DROP/CREATE TYPE → ALTER back → recreate index.
+- 4 grabpay unit tests deleted; 100/100 unit.
+
+**2. Delivery API state (audit answer)**: there is NO delivery-provider integration in the codebase — `integration.delivery_provider` ("GrabExpress") is a cosmetic config string only. The data model is ready though: `order_fulfillment` (1:1 per order, created at order placement for delivery/pickup) already carries delivery_provider (enum incl. lalamove/grab_express/in_house/…), delivery_provider_order_id, tracking_url/number, driver fields, pickup_code, assigned_staff, status machine (pending_assignment→…→completed). When a delivery API lands, it fills these columns.
+
+**3. Manual delivery dispatch (new)**:
+- Migration adds `order_fulfillment.delivery_dispatched_at` + `delivery_dispatched_by` (FK staff SET NULL) + index on delivery_provider.
+- `POST /staff/orders/{order_id}/delivery-dispatch` {provider: Literal[lalamove, grab_express, in_house, uber_direct, doordash, deliveroo, foodpanda, postmates, third_party], external_ref}: delivery orders only (400 otherwise), not completed/cancelled (400), records provider+ref+who+when; advances confirmed/preparing/ready → out_for_delivery with an OrderStatusLog (idempotent re-key just updates the ref).
+- Staff order list + detail expose delivery_provider / delivery_provider_order_id / delivery_dispatched_at (list batch-fetches fulfillments).
+- Staff portal: OrderCard shows a blue "Key Delivery" button on delivery orders + a dispatch badge (`lalamove · LAL-123`); `DeliveryDispatchDialog` (provider select + booking ref) on the orders page; 13 staff-ui keys seeded EN+zh (+ `common.cancel`).
+- E2E `test_delivery_dispatch.py` (2 tests): full roundtrip (record → detail → re-key → invalid provider 422 → list) + paid-order status advance (admin cash capture → dispatch → out_for_delivery). Verified live in-browser: badge + Update Delivery button render.
+
+**Verification**: full E2E **238 passed, 3 skipped, 0 failed** (3:44) · backend unit **100/100** · tsc ×3 clean · eslint 0 errors · alembic single head `b9c0d1e2f3a4` + check clean · 09_schema_sync.sql regenerated · staff-portal rebuilt via rebuild-portal.sh + pos-disp restarted · 8/8 services online · post-suite residue 0.
+- RULE: any provider enum value lives in the PG enum; removing a value = full enum swap (see trap above), never a partial edit.
+- RULE: new staff-portal UI keys need the EN bundle in `src/lib/translations.ts` AND staff-ui DB rows (en+zh) — the DB layer serves zh, the bundle serves en/pre-hydration.
+
+### Round 38 pass 11 — post-GrabPay audit loop (2026-08-17, ~01:30)
+
+Loop audit after pass 10 (GrabPay removal + delivery dispatch). Findings fixed:
+
+1. **GrabPay residue in customer-facing copy** — `wallet.eWalletDesc` ("Touch n Go, GrabPay, Boost, ShopeePay") in all 5 locale JSONs + 2 pwa-ui DB rows + 2 zh help-article bodies still mentioned GrabPay. All cleaned (JSONs + DB; help articles re-seeded from the cleaned `v3/guide` files; README + fill_admin_ui_locales prompt term-list updated). Verified: 0 GrabPay rows in payments/payment_methods/translations; built PWA bundle contains 0 occurrences. NOTE: querying the enum column with a removed value (`WHERE provider='grabpay'`) now raises InvalidTextRepresentationError — the enum truly has no grabpay; use `provider::text` in verification queries, and enum_filter_or_400 already blocks it from reaching SQL on the API side.
+2. **Admin payment-gateway couldn't save method lists** — `PUT /admin/config` 404s on unknown keys and the rows `stripe.payment_method_types` / `hitpay.payment_methods` never existed → the method-list editors errored on save. Seeded (json arrays: ["card","fpx"] / ["duitnow","touch_n_go","boost","shopee_pay"]) into seed_platform.py + DB. Verified live: payment-gateway page renders methods, no required-fields banner, GrabPay section gone from Settings (HitPay/Web Push/Integrations sections intact, 0 raw keys).
+3. **Dispatch E2E residue gap** — the paid dispatch test leaves `out_for_delivery` orders; `cleanup_unpaid_open_orders.py` only closed confirmed/preparing/ready. Added `out_for_delivery` to CLEANUP_STATUSES (unpaid → cancel, paid → delivered). Post-run: only the fresh sweepable pendings remain (45 — auto-cancelled by the 2h sweeper).
+4. Rebuilt admin + customer-pwa (pass-10 edited their files but only staff was rebuilt); kiosk-v3 restarted. Locale JSONs validated ×5.
+
+**Verification**: full E2E **238 passed, 3 skipped, 0 failed** (4:13) · unit **100/100** · tsc ×3 clean · eslint 0 errors on all changed files · alembic single head + check clean · 09_schema_sync.sql regenerated · 8/8 services online · 0 grabpay traces in code/DB/bundles.

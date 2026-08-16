@@ -192,7 +192,7 @@ class OrderLineItem(Base):
         ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     menu_item_id: Mapped[int] = mapped_column(
-        ForeignKey("menu_items.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("menu_items.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     menu_variant_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_variants.id", ondelete="SET NULL"), nullable=True, index=True
@@ -326,8 +326,12 @@ class OrderFulfillment(Base, TimestampMixin):
     estimated_delivery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     actual_ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     actual_delivery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    delivery_provider: Mapped[str | None] = mapped_column(DeliveryProvider, nullable=True)
+    delivery_provider: Mapped[str | None] = mapped_column(DeliveryProvider, nullable=True, index=True)
     delivery_provider_order_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    delivery_dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_dispatched_by: Mapped[int | None] = mapped_column(
+        ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True
+    )
     tracking_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     tracking_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     driver_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -348,7 +352,12 @@ class OrderFulfillment(Base, TimestampMixin):
 
     order: Mapped["Order"] = relationship("Order", back_populates="fulfillment")
     customer_address: Mapped["CustomerAddress"] = relationship("CustomerAddress")
-    assigned_staff: Mapped["StaffProfile | None"] = relationship("StaffProfile")
+    assigned_staff: Mapped["StaffProfile | None"] = relationship(
+        "StaffProfile", foreign_keys="OrderFulfillment.assigned_staff_id"
+    )
+    dispatch_staff: Mapped["StaffProfile | None"] = relationship(
+        "StaffProfile", foreign_keys="OrderFulfillment.delivery_dispatched_by"
+    )
 
     __table_args__ = (
         CheckConstraint(

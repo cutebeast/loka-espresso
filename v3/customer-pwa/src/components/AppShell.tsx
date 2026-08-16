@@ -150,6 +150,13 @@ export default function AppShell() {
     const isTabletRoute = window.location.pathname.startsWith('/tablet') || window.location.pathname.startsWith('/mode/tablet');
     if (isKioskHost || isKioskRoute || isTabletRoute) {
       document.documentElement.dataset.theme = 'light';
+      // Zoom-lock for the kiosk (pinch/double-tap zoom breaks the fullscreen
+      // LCD layout). The boot script covers full loads; this covers in-app
+      // hash navigation into #kiosk without a reload.
+      const meta = document.querySelector('meta[name=viewport]');
+      if (meta) {
+        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+      }
     }
     if (isKioskHost) {
       const params: Record<string, unknown> = {};

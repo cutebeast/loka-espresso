@@ -87,7 +87,7 @@ Open **Workshops** (or tap the booking button on a paid event), tap **Book Now**
 Open **Wallet → Top Up**, pick an amount (or enter a custom amount), and pay online — you'll be redirected to a secure checkout page (Stripe, or HitPay where configured). The balance updates right after payment. You can also top up with cash at the counter: show your loyalty QR from **My Card** to the staff.
 
 ### How do I pay for an order?
-At checkout, choose: wallet balance, online payment (card / FPX / GrabPay via Stripe, or DuitNow / Touch 'n Go / Boost / ShopeePay via HitPay where enabled), **Pay at Counter** for pickup and dine-in, or **Cash on Delivery** for delivery orders.
+At checkout, choose: wallet balance, online payment (card / FPX via Stripe, or DuitNow / Touch 'n Go / Boost / ShopeePay via HitPay where enabled), **Pay at Counter** for pickup and dine-in, or **Cash on Delivery** for delivery orders.
 
 ### Can I order without creating an account?
 You can browse the menu, promotions, events, and workshops as a guest. Ordering, reservations, wallet, and rewards need an account — signing in only takes a phone number and one SMS code. In-store, staff can serve you as a walk-in without an account.

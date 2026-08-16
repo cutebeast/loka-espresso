@@ -336,6 +336,10 @@ async def test_stripe_webhook_credits_wallet_topup(
                 "id": checkout_session_id,
                 "amount_total": 2500,
                 "currency": "myr",
+                # Round-34 guard: completed events with payment_status != "paid"
+                # (fpx delayed notifications) are skipped — the top-up
+                # completes on async_payment_succeeded instead.
+                "payment_status": "paid",
                 "payment_intent": f"pi_test_{uuid.uuid4().hex}",
                 "metadata": {"wallet_topup_session_id": str(session_id)},
             }

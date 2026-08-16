@@ -33,7 +33,7 @@ function PaymentForm({ paymentId, orderId, onSuccess, onCancel, onError }: Omit<
       : undefined;
 
     try {
-      // Confirm on the client; Stripe handles card/FPX/GrabPay/DuitNow redirects.
+      // Confirm on the client; Stripe handles card/FPX/DuitNow redirects.
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {

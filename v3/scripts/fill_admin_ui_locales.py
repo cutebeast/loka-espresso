@@ -35,7 +35,7 @@ PROMPT = """You are translating admin-panel UI strings for Loka Espresso, a Mala
 
 Translate each numbered string naturally for an admin dashboard.
 
-TERMINOLOGY RULES — keep these in English, never translate them: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve), technical/URL terms (Slug, SKU, QR, QR Code, URL, API, ID, POS, KDS, PWA, OTP, CSV, PDF, RM, BYOT, SST, HitPay, Stripe, Twilio, DeepSeek, Resend, GrabPay), and standard dashboard terms where the English is clearer (e.g. Dashboard, Settings). "Slug" always means the URL slug — it is NOT an animal.
+TERMINOLOGY RULES — keep these in English, never translate them: brand/tier names (Loka, Loka Espresso, Bloom, Origin, Reserve), technical/URL terms (Slug, SKU, QR, QR Code, URL, API, ID, POS, KDS, PWA, OTP, CSV, PDF, RM, BYOT, SST, HitPay, Stripe, Twilio, DeepSeek, Resend), and standard dashboard terms where the English is clearer (e.g. Dashboard, Settings). "Slug" always means the URL slug — it is NOT an animal.
 
 Keep {{placeholders}} and punctuation. Keep translations concise (dashboard labels, not sentences).
 

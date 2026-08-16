@@ -132,7 +132,7 @@ class Supplier(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     supplier_name: Mapped[str] = mapped_column(String(100), nullable=False)
     contact_person: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -161,7 +161,7 @@ class InventoryMovementLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     inventory_item_id: Mapped[int] = mapped_column(
         ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False
@@ -254,7 +254,7 @@ class PurchaseOrder(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     supplier_id: Mapped[int] = mapped_column(
         ForeignKey("suppliers.id", ondelete="CASCADE"), nullable=False

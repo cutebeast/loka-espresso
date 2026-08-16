@@ -67,7 +67,7 @@ class AuditLog(Base):
     resource_type: Mapped[str] = mapped_column(String(50), nullable=False)
     resource_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     store_id: Mapped[int | None] = mapped_column(
-        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True, index=True
     )
     severity: Mapped[str] = mapped_column(AuditSeverity, nullable=False, default="info")
     before_state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -1,8 +1,6 @@
 """Payment endpoints."""
 
 import asyncio
-import hmac
-import hashlib
 import json
 import logging
 import uuid
@@ -46,7 +44,6 @@ from app.services.hitpay import verify_hitpay_signature, create_hitpay_payment_r
 from app.core.rate_limiter import limiter
 from app.services.webhook import (
     extract_event_id,
-    get_provider_secret,
     is_event_processed,
     mark_event_processed,
 )
@@ -1111,20 +1108,12 @@ async def list_payments(
     )
 
 
-def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str | None) -> bool:
-    if not secret:
-        return False
-    try:
-        expected = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(expected, sig_header)
-    except Exception:
-        logger.debug("Signature verification failed", exc_info=True)
-        return False
-
-
 # ---------------------------------------------------------------------------
 # Webhooks
 # ---------------------------------------------------------------------------
+# NOTE: GrabPay was removed 2026-08-17 (never launched — simulator-only). The
+# provider plumbing (provider enum value, simulator, webhook route) is gone;
+# no GrabPay webhook endpoint exists anymore.
 
 
 @webhook_router.post("/stripe", response_model=APIResponse[dict])
@@ -1163,8 +1152,10 @@ async def stripe_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
 
     # Include the event id — extract_event_id reads payload["id"], without it
-    # the Stripe dedup net (is_event_processed) never engages.
-    payload = {"id": event.id, "type": event.type, "data": {"object": event.data.object.to_dict()}}
+    # the Stripe dedup net (is_event_processed) never engages. Stripe always
+    # sends id, but tolerate its absence (construct_event raises AttributeError
+    # on missing attrs — getattr falls back to None instead of 500ing).
+    payload = {"id": getattr(event, "id", None), "type": event.type, "data": {"object": event.data.object.to_dict()}}
     event_id = extract_event_id("stripe", payload)
     if event_id and await is_event_processed("stripe", event_id):
         logger.info("Stripe webhook duplicate event ignored: %s", event_id)
@@ -1178,48 +1169,6 @@ async def stripe_webhook(
     if event_id:
         await mark_event_processed("stripe", event_id)
     logger.info("Stripe webhook processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
-    return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
-
-
-@webhook_router.post("/grabpay", response_model=APIResponse[dict])
-@limiter.limit("100/minute")
-async def grabpay_webhook(
-    request: Request,
-    db: DBDependency,
-):
-    """GrabPay webhook handler."""
-    sig_header = request.headers.get("X-GrabPay-Signature") or request.headers.get("Authorization")
-    if not sig_header:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing GrabPay signature header")
-
-    payload_bytes = await request.body()
-    secret = await get_provider_secret(db, "grabpay", "grabpay_webhook_secret", "grabpay.webhook_secret")
-    if not secret:
-        logger.error("GrabPay webhook rejected: signing secret not configured")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GrabPay webhook signing secret not configured")
-
-    if not _verify_grabpay_signature(payload_bytes, sig_header, secret):
-        logger.warning("GrabPay webhook rejected: invalid signature")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GrabPay signature")
-
-    try:
-        payload = json.loads(payload_bytes)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
-
-    event_id = extract_event_id("grabpay", payload)
-    if event_id and await is_event_processed("grabpay", event_id):
-        logger.info("GrabPay webhook duplicate event ignored: %s", event_id)
-        return APIResponse(data={"received": True, "duplicate": True, "payment_id": None})
-
-    try:
-        payment = await process_webhook_event(db, "grabpay", payload)
-    except PaymentError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-
-    if event_id:
-        await mark_event_processed("grabpay", event_id)
-    logger.info("GrabPay webhook processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
     return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
 
 

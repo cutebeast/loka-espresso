@@ -85,7 +85,7 @@ async def _get_myr_payment_method_types(db: AsyncSession) -> list[str]:
     value = await PlatformConfigService(db).get("stripe.payment_method_types", default=None)
     if isinstance(value, list):
         return [str(v).lower() for v in value]
-    return ["card", "fpx", "grabpay"]
+    return ["card", "fpx"]
 
 
 async def _get_stripe_automatic_tax_enabled(db: AsyncSession) -> bool:
@@ -504,12 +504,14 @@ def _simulate_stripe_intent(payment: Payment) -> dict:
     }
 
 
-def _simulate_grabpay_intent(payment: Payment, return_url: str | None) -> dict:
-    """Simulate a GrabPay session creation response."""
+def _simulate_hosted_provider_intent(payment: Payment, return_url: str | None) -> dict:
+    """Simulate a hosted-checkout provider session creation response
+    (gcash/alipay/wechat_pay placeholders — GrabPay itself was removed
+    2026-08-17, see AGENTS.md round 38 pass 10)."""
     session_id = uuid4().hex
     redirect = return_url or "https://example.com/payment/complete"
     settings = get_settings()
-    template = settings.grabpay_simulator_session_url or "https://partner-api.grab.com/payments/v1/session/{session_id}?return_url={return_url}"
+    template = "https://partner-api.grab.com/payments/v1/session/{session_id}?return_url={return_url}"
     return {
         "session_id": session_id,
         "redirect_url": template.format(session_id=session_id, return_url=redirect),
@@ -580,7 +582,7 @@ async def create_payment_intent(
                 else:
                     provider_response["id"] = existing_payment.provider_transaction_id or f"pi_{existing_payment.id}"
                     provider_response["client_secret"] = f"{existing_payment.provider_transaction_id}_secret" if existing_payment.provider_transaction_id else None
-            elif existing_payment.provider in ("grabpay", "gcash", "alipay", "wechat_pay"):
+            elif existing_payment.provider in ("gcash", "alipay", "wechat_pay"):
                 provider_response["session_id"] = existing_payment.provider_transaction_id or f"session_{existing_payment.id}"
                 provider_response["redirect_url"] = return_url or existing_payment.extra_metadata.get("return_url") if existing_payment.extra_metadata else return_url
             elif existing_payment.provider == "hitpay":
@@ -701,8 +703,8 @@ async def create_payment_intent(
             payment.status = "pending_authorization"
         else:
             raise PaymentError("HitPay is not enabled", 503)
-    elif provider in ("grabpay", "gcash", "alipay", "wechat_pay"):
-        provider_response = _simulate_grabpay_intent(payment, return_url)
+    elif provider in ("gcash", "alipay", "wechat_pay"):
+        provider_response = _simulate_hosted_provider_intent(payment, return_url)
         payment.provider_transaction_id = provider_response["session_id"]
         payment.status = "pending_authorization"
     else:
@@ -1264,8 +1266,7 @@ def _parse_hitpay_fee(data: dict) -> Decimal | None:
         "touch_n_go": (Decimal("1.9"), Decimal("0")),
         "boost": (Decimal("2.1"), Decimal("0")),
         "shopee_pay": (Decimal("2.2"), Decimal("0")),
-        "grabpay_direct": (Decimal("2.0"), Decimal("0")),
-        "grabpay": (Decimal("2.0"), Decimal("0")),
+
         "card": (Decimal("1.2"), Decimal("1.0")),
     }
     percent, fixed = fee_schedule.get(payment_type, (Decimal("2.0"), Decimal("0")))
@@ -2110,7 +2111,7 @@ async def process_webhook_event(
     """Process an incoming webhook event from a payment provider."""
     event_type = payload.get("type", payload.get("event_type", "unknown"))
 
-    # Stripe payloads nest the resource under data.object; GrabPay uses data directly.
+    # Stripe payloads nest the resource under data.object; HitPay uses data directly.
     data_wrapper = payload.get("data", {})
     data = data_wrapper.get("object", data_wrapper)
     transaction_id = data.get("id") or payload.get("transaction_id") or payload.get("session_id")
@@ -2121,7 +2122,7 @@ async def process_webhook_event(
         wallet_session_id = metadata.get("wallet_topup_session_id")
         if wallet_session_id:
             if event_type == "checkout.session.completed" and data.get("payment_status") != "paid":
-                # Delayed-notification methods (fpx, grabpay) complete with
+                # Delayed-notification methods (fpx) complete with
                 # payment_status="unpaid" — wait for async_payment_succeeded.
                 logger.info(
                     "Skipping checkout.session.completed with payment_status=%s for wallet top-up %s",
@@ -2337,7 +2338,7 @@ async def process_webhook_event(
             _cross_check_capture_amount(payment, data.get("currency"))
         elif event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
             if event_type == "checkout.session.completed" and data.get("payment_status") != "paid":
-                # Delayed-notification methods (fpx, grabpay) complete with
+                # Delayed-notification methods (fpx) complete with
                 # payment_status="unpaid" — wait for async_payment_succeeded.
                 logger.info(
                     "Skipping checkout.session.completed with payment_status=%s for payment %s",
@@ -2368,7 +2369,7 @@ async def process_webhook_event(
                     new_status = "refunded"
                 else:
                     new_status = "partially_refunded"
-    elif provider == "grabpay":
+    elif provider == "gcash":  # gcash placeholder (simulated hosted checkout)
         if event_type in ("payment.success", "session.completed"):
             new_status = "captured"
             payment.captured_amount = payment.amount

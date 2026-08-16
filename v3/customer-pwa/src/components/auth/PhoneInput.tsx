@@ -3,7 +3,8 @@
 import { useCallback, useState, useMemo } from 'react';
 import { Search, X, ChevronDown, Calendar } from 'lucide-react';
 import { normalizePhone, formatPhoneForDisplay } from '@/lib/phone';
-import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries, flagUrl } from '@/lib/countries';
+import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries } from '@/lib/countries';
+import CountryFlag from './CountryFlag';
 import type { Country } from '@/lib/countries';
 import api from '@/lib/api';
 import { BottomSheet } from '@/components/ui';
@@ -124,8 +125,6 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
     }
   }, []);
 
-  const flag = flagUrl(selectedCountry.code);
-
   return (
     <>
       <div className="auth-page">
@@ -137,20 +136,18 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
 
         <form onSubmit={handleSubmit} className="pi-form">
           <div className="phone-wrapper">
-            {/* Country selector — tappable, flag from flagcdn.com */}
+            {/* Country selector — tappable; flag falls back to emoji offline */}
             <button
               type="button"
               className="country-selector"
               onClick={() => setShowCountryPicker(true)}
               aria-label={t('auth.countrySelectorAriaLabel', { name: selectedCountry.name, dialCode: selectedCountry.dialCode })}
             >
-              <img
+              <CountryFlag
                 className="country-selector-flag"
-                src={flag}
-                alt={selectedCountry.name}
-                width="24"
-                height="16"
-                loading="eager"
+                code={selectedCountry.code}
+                width={24}
+                height={16}
               />
               <span className="country-selector-code">{selectedCountry.dialCode}</span>
               <ChevronDown color="var(--color-text-muted)" size={10} className="country-selector-chevron" />
@@ -255,13 +252,12 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                 className={`country-item${country.code === selectedCountry.code ? ' country-item-selected' : ''}`}
                 onClick={() => handleSelectCountry(country)}
               >
-                <img
+                <CountryFlag
                   className="country-item-flag"
-                  src={flagUrl(country.code, 'h20')}
-                  alt={country.name}
-                  width="26"
-                  height="20"
-                  loading="lazy"
+                  code={country.code}
+                  size="h20"
+                  width={26}
+                  height={20}
                 />
                 <span className="country-item-name">{country.name}</span>
                 <span className="country-item-code">{country.dialCode}</span>

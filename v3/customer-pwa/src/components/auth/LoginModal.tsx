@@ -8,7 +8,8 @@ import { BottomSheet } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { formatPhoneForDisplay } from '@/lib/phone';
-import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries, flagUrl } from '@/lib/countries';
+import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries } from '@/lib/countries';
+import CountryFlag from './CountryFlag';
 import type { Country } from '@/lib/countries';
 import { useTranslation } from '@/hooks/useTranslation';
 import { usePhoneAuth } from '@/hooks/usePhoneAuth';
@@ -175,7 +176,6 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
   const stepProgressClass = step === 'phone' ? 'p1' : step === 'otp' ? 'p2' : 'p3';
   const stepLabelText = step === 'phone' ? t('auth.step1Label') : step === 'otp' ? t('auth.step2Label') : t('auth.step3Label');
-  const flag = flagUrl(selectedCountry.code);
   const filteredCountries = useMemo(() => {
     if (!countrySearch.trim()) return ALL_COUNTRIES;
     return searchCountries(countrySearch);
@@ -209,7 +209,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
           <form onSubmit={(e) => { e.preventDefault(); handleSendOtpHandler(); }} className="flex flex-col gap-4">
             <div className="phone-wrapper">
               <button type="button" className="country-selector" onClick={() => setShowCountryPicker(true)}>
-                <img className="country-selector-flag" src={flag} alt={selectedCountry.name} width="24" height="16" />
+                <CountryFlag className="country-selector-flag" code={selectedCountry.code} width={24} height={16} />
                 <span className="country-selector-code">{selectedCountry.dialCode}</span>
                 <ChevronDown color="var(--color-text-muted)" size={10} className="country-selector-chevron" />
               </button>
@@ -313,7 +313,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 className={`country-item${country.code === selectedCountry.code ? ' country-item-selected' : ''}`}
                 onClick={() => selectCountry(country)}
                 aria-label={country.name}>
-                <img className="country-item-flag" src={flagUrl(country.code, 'h20')} alt={country.name} width="26" height="20" loading="lazy" />
+                <CountryFlag className="country-item-flag" code={country.code} size="h20" width={26} height={20} />
                 <span className="country-item-name">{country.name}</span>
                 <span className="country-item-code">{country.dialCode}</span>
                 {country.code === selectedCountry.code && (

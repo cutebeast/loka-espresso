@@ -21,8 +21,22 @@ TRUNCATE
   feedback_entries, survey_answers, survey_responses, event_rsvps,
   lucky_draw_spins, lucky_draw_tickets, campaign_analytics,
   notification_delivery_log, notification_messages, admin_notifications,
-  audit_log, reservations, system_health_metrics
+  audit_log, reservations, system_health_metrics,
+  token_blacklist, notification_preferences
 RESTART IDENTITY CASCADE;
+
+-- 1a. Workshop seat counters (class_sessions are kept; their bookings were
+--     wiped with order_line_items)
+UPDATE class_sessions SET booked_pax = 0, updated_at = now() WHERE booked_pax != 0;
+
+-- 1b. Test-registered customers: auto-created phone-named profiles (no email,
+--     name == phone) are E2E/walk-in residue on the dev server. Keep the
+--     system walk-in profile and the seeded demo/vip accounts.
+DELETE FROM customers
+WHERE deleted_at IS NULL
+  AND email_address IS NULL
+  AND display_name = phone_number
+  AND phone_number NOT IN ('+0000000000', '+60123456001', '+60123456002');
 
 -- 2. Dead references from kept tables into soft-deleted rows
 UPDATE reward_catalog SET menu_item_id=NULL WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NOT NULL);

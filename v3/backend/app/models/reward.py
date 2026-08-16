@@ -87,7 +87,7 @@ class CustomerReward(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     reward_catalog_id: Mapped[int] = mapped_column(
         ForeignKey("reward_catalog.id", ondelete="CASCADE"), nullable=False

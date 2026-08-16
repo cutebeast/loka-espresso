@@ -447,7 +447,7 @@ export default function CheckoutPage() {
           </div>}
           {stripeReady && <div className={`co-payment-card ${paymentMethod === 'gateway' ? 'selected' : ''}`} onClick={() => setPaymentMethod('gateway')}>
               <div className="co-payment-icon co-payment-icon-gateway"><Banknote size={14} color="#fff" /></div>
-              <div className="co-payment-info"><div className="co-payment-label">{t("checkout_page.pay_online_card_fpx_grabpay")}</div></div>
+              <div className="co-payment-info"><div className="co-payment-label">{t("checkout_page.pay_online_card_fpx")}</div></div>
               <div className="co-payment-check"><CheckCircle2 size={12} /></div>
             </div>}
           {hitpayEnabled && <div className={`co-payment-card ${paymentMethod === 'hitpay' ? 'selected' : ''}`} onClick={() => setPaymentMethod('hitpay')}>

@@ -31,7 +31,7 @@ class EinvoiceDocument(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
     )
     payment_id: Mapped[int | None] = mapped_column(
         ForeignKey("payments.id", ondelete="SET NULL"), nullable=True, index=True

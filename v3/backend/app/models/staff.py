@@ -36,7 +36,7 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
         ForeignKey("iam_principals.id", ondelete="RESTRICT"), nullable=False, unique=True
     )
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     employee_id: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -171,10 +171,10 @@ class StaffTimeEvent(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     staff_id: Mapped[int] = mapped_column(
-        ForeignKey("staff_profiles.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("staff_profiles.id", ondelete="CASCADE"), nullable=False, index=True
     )
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     event_type: Mapped[str] = mapped_column(ShiftEventType, nullable=False)
     event_timestamp: Mapped[datetime] = mapped_column(
@@ -210,7 +210,7 @@ class TipAllocation(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     staff_id: Mapped[int | None] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True

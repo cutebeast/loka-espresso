@@ -236,8 +236,8 @@
     "yourVouchers": "Kuponlarınız"
   },
   "checkout_page": {
-    "pay_online_card_fpx_grabpay": "Çevrimiçi Öde (Kart / FPX / GrabPay)",
-    "pay_online_duitnow_tng_boost_shopeepay": "Çevrimiçi Öde (DuitNow / TnG / Boost / ShopeePay)"
+    "pay_online_duitnow_tng_boost_shopeepay": "Çevrimiçi Öde (DuitNow / TnG / Boost / ShopeePay)",
+    "pay_online_card_fpx": "Çevrimiçi Öde (Kart / FPX)"
   },
   "common": {
     "add": "Ekle",
@@ -1183,7 +1183,7 @@
     "continueToPay": "Ödemeye Devam Et",
     "creditDebitCard": "Kredi / Banka Kartı",
     "eWallet": "E-Cüzdan",
-    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "eWalletDesc": "Touch n Go, Boost, ShopeePay",
     "findNearestStore": "En Yakın Mağazayı Bul",
     "fpxBanking": "FPX İnternet Bankacılığı",
     "fpxDesc": "Maybank, CIMB, RHB, HLB ve daha fazlası",

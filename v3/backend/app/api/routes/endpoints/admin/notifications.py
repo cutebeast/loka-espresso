@@ -467,10 +467,8 @@ async def _fan_out_channels(
                 if not cust_devices:
                     stats["push_notification"]["skipped"] += 1
                 for dev in cust_devices:
-                    # send_web_push is sync (pywebpush) — keep it off the event
-                    # loop so an all_users blast doesn't stall the worker.
                     endpoint = str((dev.web_push_subscription or {}).get("endpoint", ""))[:255]
-                    result = await asyncio.to_thread(send_web_push, dev.web_push_subscription, push_payload)
+                    result = await send_web_push(db, dev.web_push_subscription, push_payload)
                     ok = bool(result.get("success"))
                     if not ok and _GONE_PUSH_RE.search(str(result.get("error") or "")):
                         # 404/410 = subscription is gone for good — clear it so

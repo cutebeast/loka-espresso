@@ -456,6 +456,9 @@ export interface Order {
   payment_method?: string;
   order_notes?: string;
   store_name?: string;
+  delivery_provider?: string | null;
+  delivery_provider_order_id?: string | null;
+  delivery_dispatched_at?: string | null;
 }
 
 export interface OrderDetail extends Order {
@@ -663,6 +666,26 @@ export interface OrderEinvoice {
 
 export function getOrderEinvoice(id: string | number) {
   return api.get<OrderEinvoice | null>(`/staff/orders/${id}/einvoice`);
+}
+
+export interface DeliveryDispatchResult {
+  order_id: number;
+  provider: string;
+  external_ref: string;
+  dispatched_at: string | null;
+  status: string;
+  status_advanced: boolean;
+}
+
+export function dispatchDeliveryOrder(
+  id: string | number,
+  provider: string,
+  externalRef: string
+) {
+  return api.post<DeliveryDispatchResult>(`/staff/orders/${id}/delivery-dispatch`, {
+    provider,
+    external_ref: externalRef,
+  });
 }
 
 export function updateOrderStatus(id: string | number, status: OrderStatus, reason?: string) {

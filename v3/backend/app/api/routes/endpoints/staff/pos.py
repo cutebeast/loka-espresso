@@ -14,14 +14,14 @@ from sqlalchemy.exc import IntegrityError
 from app.api.routes.deps import CurrentStaff, DBDependency, RequireStaffRole
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
-from app.models.menu import MenuCategory, MenuItem, MenuModifierOption
+from app.models.menu import MenuCategory, MenuItem
 from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
 from app.models.staff import StaffProfile
 from app.models.store import DiningTable, Store, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse
 from app.schemas.staff import POSOrderCreateRequest
-from app.services.order import OrderError, auto_cancel_order, _compute_bundle_discount, _deduct_stock_for_order
+from app.services.order import OrderError, auto_cancel_order, _compute_bundle_discount, _deduct_stock_for_order, _priced_modifier_options
 from app.services.payment import PaymentError, _add_payment_event, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
@@ -230,13 +230,14 @@ async def staff_pos_create_order(
         unit_price = to_decimal(menu_item.base_price)
         modifier_total = Decimal(0)
 
+        # Ownership of every modifier option is enforced — foreign option ids
+        # would inflate the line price (mirrors the kiosk checkout guard).
         modifier_ids = li.modifier_ids or []
         if modifier_ids:
-            mod_r = await db.execute(
-                select(MenuModifierOption).where(MenuModifierOption.id.in_(modifier_ids))
-            )
-            for mod in mod_r.scalars().all():
-                modifier_total += to_decimal(mod.price_adjustment)
+            try:
+                modifier_total = await _priced_modifier_options(db, menu_item_id, modifier_ids)
+            except OrderError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
             unit_price += modifier_total
 
         total_price = money_round(unit_price * qty, precision, rounding_mode)
@@ -464,11 +465,9 @@ async def staff_pos_create_order(
             provider_map = {
                 "cash": "cash",
                 "card": "stripe",
-                "qr": "grabpay",
                 "stripe_qr": "stripe",
                 "credit_card": "stripe",
                 "debit_card": "stripe",
-                "e_wallet": "grabpay",
             }
             provider = provider_map.get(payment_data.method, "cash")
 

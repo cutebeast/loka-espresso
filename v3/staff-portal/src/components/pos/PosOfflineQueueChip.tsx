@@ -6,8 +6,9 @@ import Drawer from "@/components/Drawer";
 import { CloudOff, RotateCw } from "lucide-react";
 import type { QueuedOrder } from "@/lib/offlineQueue";
 
-function money(v: number): string {
-  return (Number.isFinite(v) ? v : 0).toFixed(2);
+function money(v: number | string): string {
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  return (Number.isFinite(n) ? n : 0).toFixed(2);
 }
 
 /** Offline queue chip for the POS header — shows queued-order count and

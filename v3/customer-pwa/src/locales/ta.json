@@ -236,8 +236,8 @@
     "yourVouchers": "உங்கள் வவுச்சர்கள்"
   },
   "checkout_page": {
-    "pay_online_card_fpx_grabpay": "ஆன்லைனில் செலுத்தவும் (கார்டு / FPX / GrabPay)",
-    "pay_online_duitnow_tng_boost_shopeepay": "ஆன்லைனில் செலுத்தவும் (DuitNow / TnG / Boost / ShopeePay)"
+    "pay_online_duitnow_tng_boost_shopeepay": "ஆன்லைனில் செலுத்தவும் (DuitNow / TnG / Boost / ShopeePay)",
+    "pay_online_card_fpx": "ஆன்லைனில் செலுத்தவும் (கார்டு / FPX)"
   },
   "common": {
     "add": "சேர்க்கவும்",

@@ -220,6 +220,7 @@ CREATE TABLE IF NOT EXISTS event_invites (
 );
 
 CREATE INDEX IF NOT EXISTS ix_event_invites_customer_id ON event_invites (customer_id);
+CREATE INDEX IF NOT EXISTS ix_event_invites_event_id ON event_invites (event_id);
 
 CREATE TABLE IF NOT EXISTS hygiene_reports (
 	id BIGSERIAL NOT NULL, 
@@ -559,9 +560,9 @@ CREATE TABLE IF NOT EXISTS einvoice_documents (
 	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS ix_einvoice_documents_order_id ON einvoice_documents (order_id);
 CREATE INDEX IF NOT EXISTS ix_einvoice_documents_payment_id ON einvoice_documents (payment_id);
 CREATE INDEX IF NOT EXISTS ix_einvoice_documents_store_id ON einvoice_documents (store_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_einvoice_order_type01 ON einvoice_documents (order_id) WHERE document_type = '01';
 
 CREATE TABLE IF NOT EXISTS lucky_draw_spins (
 	id BIGSERIAL NOT NULL, 
@@ -635,6 +636,7 @@ CREATE TABLE IF NOT EXISTS payment_line_allocations (
 	FOREIGN KEY(order_line_item_id) REFERENCES order_line_items (id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS ix_payment_line_allocations_order_line_item_id ON payment_line_allocations (order_line_item_id);
 CREATE INDEX IF NOT EXISTS ix_payment_line_allocations_payment_id ON payment_line_allocations (payment_id);
 
 -- ============================================================
@@ -694,6 +696,9 @@ ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_addon_deal_eligible BOOLEAN D
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS addon_discount_type VARCHAR(20);
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS addon_discount_value NUMERIC(10, 4);
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS eligible_bundle_ids JSONB;
+
+ALTER TABLE order_fulfillment ADD COLUMN IF NOT EXISTS delivery_dispatched_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE order_fulfillment ADD COLUMN IF NOT EXISTS delivery_dispatched_by BIGINT REFERENCES staff_profiles (id);
 
 ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS bundle_product_id INTEGER REFERENCES bundle_products (id);
 ALTER TABLE order_line_items ADD COLUMN IF NOT EXISTS bundle_component_id INTEGER REFERENCES bundle_product_components (id);
@@ -770,4 +775,4 @@ CREATE INDEX IF NOT EXISTS ix_voucher_definitions_minimum_tier_id ON voucher_def
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'v1w2x3y4z5a6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'b9c0d1e2f3a4' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

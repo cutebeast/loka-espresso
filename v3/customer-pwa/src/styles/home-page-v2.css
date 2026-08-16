@@ -274,6 +274,7 @@
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   flex-shrink: 0;
 }
 .homepage-carousel::-webkit-scrollbar { display: none; }

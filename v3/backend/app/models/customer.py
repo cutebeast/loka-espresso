@@ -138,7 +138,7 @@ class CustomerConsent(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     consent_type: Mapped[str] = mapped_column(ConsentType, nullable=False)
     status: Mapped[str] = mapped_column(ConsentStatus, nullable=False, default="pending")
@@ -211,7 +211,7 @@ class ReferralEvent(Base):
         ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
     )
     invitee_customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     referral_code: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
@@ -254,7 +254,7 @@ class CustomerDevice(Base, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     device_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     push_token: Mapped[str | None] = mapped_column(String(255), nullable=True)

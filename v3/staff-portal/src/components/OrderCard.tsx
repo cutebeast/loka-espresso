@@ -9,6 +9,7 @@ interface OrderCardProps {
   order: Order;
   onClick?: (order: Order) => void;
   onQuickAction?: (order: Order, nextStatus: OrderStatus) => void;
+  onDispatch?: (order: Order) => void;
   compact?: boolean;
 }
 function urgencyLevel(order: Order): "normal" | "warning" | "critical" | "overdue" {
@@ -104,6 +105,7 @@ export default function OrderCard({
   order,
   onClick,
   onQuickAction,
+  onDispatch,
   compact = false
 }: OrderCardProps) {
   const {
@@ -117,6 +119,8 @@ export default function OrderCard({
   const typeLabel = orderType === "dine_in" ? t("orders.type_dine_in") : orderType === "takeaway" ? t("orders.type_takeaway") : orderType === "delivery" ? t("orders.type_delivery") : order.order_type;
   const typeIcon = typeIcons[orderType as keyof typeof typeIcons] || null;
   const payInd = paymentIndicator(order, t);
+  const isDelivery = orderType === "delivery";
+  const dispatchable = isDelivery && !!onDispatch && !["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"].includes(order.status);
   const items = order.items || order.line_items || [];
   const visibleItems = items.slice(0, compact ? 2 : 4);
   const hiddenCount = items.length - visibleItems.length;
@@ -139,6 +143,15 @@ export default function OrderCard({
             {typeLabel}
           </span>
           {order.table_number && <span className="badge badge-sm badge-primary">{t("common.table")}{order.table_number}</span>}
+          {order.delivery_provider && <span className="badge badge-sm flex items-center gap-1" style={{
+            background: "#1E40AF15",
+            color: "#1E40AF",
+            borderColor: "#1E40AF40"
+          }}>
+              <Truck size={12} />
+              {order.delivery_provider}
+              {order.delivery_provider_order_id ? ` · ${order.delivery_provider_order_id}` : ""}
+            </span>}
           {payInd && <span className="badge badge-sm flex items-center gap-1" style={{
           background: payInd.color + "15",
           color: payInd.color,
@@ -182,6 +195,16 @@ export default function OrderCard({
         </div>
         <div className="flex items-center gap-3">
           <span className="font-semibold text-gray-700">{t("common.rm")}{typeof order.total_amount === "number" && !isNaN(order.total_amount) ? order.total_amount.toFixed(2) : "0.00"}</span>
+          {dispatchable && <button type="button" onClick={e => {
+          e.stopPropagation();
+          onDispatch?.(order);
+        }} className="btn btn-sm flex items-center gap-1" style={{
+          background: "#1E40AF",
+          color: "#fff"
+        }}>
+              <Truck size={14} />
+              {order.delivery_provider ? t("orders.dispatch_update") : t("orders.dispatch_delivery")}
+            </button>}
           {next && onQuickAction && <button type="button" onClick={e => {
           e.stopPropagation();
           onQuickAction(order, next);

@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import Field
@@ -13,8 +13,8 @@ from sqlalchemy import select, func, case
 from app.api.routes.deps import CurrentStaff, DBDependency, RequireStaffRole, enum_filter_or_400
 from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
-from app.models.order import Order, OrderAdjustment, OrderLineItem, OrderStatusLog
-from app.models.menu import MenuCategory, MenuItem, MenuModifierOption
+from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
+from app.models.menu import MenuCategory, MenuItem
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
@@ -33,6 +33,7 @@ from app.schemas.order import (
 from app.services.order import (
     OrderError,
     _deduct_stock_for_order,
+    _priced_modifier_options,
     _restore_stock_for_order,
     reverse_order_effects,
     validate_voucher_eligibility,
@@ -321,11 +322,9 @@ async def process_staff_order_payment(
     provider_map = {
         "cash": "cash",
         "card": "stripe",
-        "qr": "grabpay",
         "stripe_qr": "stripe",
         "credit_card": "stripe",
         "debit_card": "stripe",
-        "e_wallet": "grabpay",
     }
     provider = provider_map.get(payment_method, "cash")
     is_stripe_qr = payment_method == "stripe_qr"
@@ -576,6 +575,93 @@ async def get_staff_order_einvoice(
         "myinvois_uuid": doc.myinvois_uuid,
         "validation_link": doc.validation_link,
         "submitted_at": doc.submitted_at.isoformat() if doc.submitted_at else None,
+    })
+
+
+class DeliveryDispatchRequest(BaseSchema):
+    """Manual delivery dispatch — staff key the order into an external
+    delivery system (Lalamove/GrabExpress/…) and record the booking ref."""
+
+    provider: Literal[
+        "lalamove", "grab_express", "in_house", "uber_direct", "doordash",
+        "deliveroo", "foodpanda", "postmates", "third_party",
+    ]
+    external_ref: str = Field(..., min_length=1, max_length=100)
+
+
+@router.post("/{order_id}/delivery-dispatch", response_model=APIResponse[dict])
+async def staff_delivery_dispatch(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+    data: DeliveryDispatchRequest,
+):
+    """Record that the order was keyed into an external delivery system.
+
+    Until a delivery-provider API integration lands, delivery orders are
+    dispatched manually: staff create the booking in Lalamove etc. and mark
+    the order here with the provider + booking reference. Dispatching also
+    advances the order to out_for_delivery (idempotent re-key updates the
+    reference).
+    """
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.order_type != "delivery" and order.fulfillment_type not in (
+        "standard_delivery", "express_delivery", "third_party_delivery",
+    ):
+        raise HTTPException(status_code=400, detail="This is not a delivery order")
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot dispatch a completed/cancelled order")
+
+    now = datetime.now(timezone.utc)
+    fulfillment = (
+        await db.execute(
+            select(OrderFulfillment).where(OrderFulfillment.order_id == order.id).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if fulfillment is None:
+        fulfillment = OrderFulfillment(
+            order_id=order.id,
+            status="pending_assignment",
+            delivery_fee_snapshot=order.delivery_fee,
+        )
+        db.add(fulfillment)
+        await db.flush()
+
+    fulfillment.delivery_provider = data.provider
+    fulfillment.delivery_provider_order_id = data.external_ref.strip()
+    fulfillment.delivery_dispatched_at = now
+    fulfillment.delivery_dispatched_by = staff.id
+    fulfillment.updated_at = now
+
+    status_advanced = False
+    if order.status in ("confirmed", "preparing", "ready_for_pickup"):
+        db.add(OrderStatusLog(
+            order_id=order.id,
+            from_status=order.status,
+            to_status="out_for_delivery",
+            reason=f"Delivery keyed into {data.provider} ({data.external_ref.strip()})",
+            actor_type="staff",
+            actor_id=staff.id,
+        ))
+        order.status = "out_for_delivery"
+        order.updated_at = now
+        status_advanced = True
+
+    await db.commit()
+    return APIResponse(data={
+        "order_id": order.id,
+        "provider": fulfillment.delivery_provider,
+        "external_ref": fulfillment.delivery_provider_order_id,
+        "dispatched_at": fulfillment.delivery_dispatched_at.isoformat() if fulfillment.delivery_dispatched_at else None,
+        "status": order.status,
+        "status_advanced": status_advanced,
     })
 
 
@@ -1063,17 +1149,15 @@ async def add_staff_order_line_item(
     rounding_mode = await config_service.get_accounting_rounding()
 
     # Price from the menu item (never the client); modifier options add to the
-    # unit price, mirroring POS line construction (staff/pos.py).
+    # unit price, mirroring POS line construction (staff/pos.py). Ownership of
+    # every option is enforced (foreign options would inflate the price).
     price = to_decimal(menu_item.base_price)
-    modifier_total = Decimal(0)
     modifier_ids = data.modifier_ids or []
-    if modifier_ids:
-        mod_result = await db.execute(
-            select(MenuModifierOption).where(MenuModifierOption.id.in_(modifier_ids))
-        )
-        for mod in mod_result.scalars().all():
-            modifier_total += to_decimal(mod.price_adjustment)
-        price += modifier_total
+    try:
+        modifier_total = await _priced_modifier_options(db, menu_item.id, modifier_ids)
+    except OrderError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    price += modifier_total
     total = money_round(price * data.quantity, precision, rounding_mode)
 
     line_item = OrderLineItem(
@@ -1318,6 +1402,9 @@ async def merge_staff_order(
         raise HTTPException(status_code=400, detail="Source order has no line items to merge")
 
     # Additive totals — both orders are same-store, same tax/service config
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
     target.items_subtotal += source.items_subtotal
     target.modifier_subtotal += source.modifier_subtotal
     # Flat service charge: two orders on the SAME table are one table's
@@ -1329,8 +1416,25 @@ async def merge_staff_order(
     target.tax_amount += source.tax_amount
     target.discount_amount += source.discount_amount
     target.delivery_fee += source.delivery_fee
+    target.tip_amount += source.tip_amount
     target.item_count = (target.item_count or 0) + (source.item_count or 0)
-    target.total_amount += source.total_amount
+    # Recompute the total from the merged components — adding raw totals would
+    # double the shared flat service charge on same-table merges and silently
+    # drop the source's tip from the components (stored total would drift from
+    # items + delivery + service + tax + tip − discount).
+    target.total_amount = money_round(
+        max(
+            Decimal(0),
+            to_decimal(target.items_subtotal)
+            + to_decimal(target.delivery_fee)
+            + to_decimal(target.service_charge)
+            + to_decimal(target.tax_amount)
+            + to_decimal(target.tip_amount)
+            - to_decimal(target.discount_amount),
+        ),
+        precision,
+        rounding_mode,
+    )
     # Mixed flows: merging a prepaid-pending source into an open tab keeps the
     # target's flow — merge already blocks captured payments, so nothing is
     # prepaid-and-waived; the source has no money attached by construction.
@@ -1468,6 +1572,25 @@ async def staff_list_orders(
     result = await db.execute(stmt)
     rows = result.all()
 
+    # Batch-fetch delivery dispatch info (manual key-in to Lalamove etc.)
+    dispatch_map: dict[int, dict] = {}
+    row_ids = [o.id for o, _, _ in rows]
+    if row_ids:
+        f_result = await db.execute(
+            select(
+                OrderFulfillment.order_id,
+                OrderFulfillment.delivery_provider,
+                OrderFulfillment.delivery_provider_order_id,
+                OrderFulfillment.delivery_dispatched_at,
+            ).where(OrderFulfillment.order_id.in_(row_ids))
+        )
+        for f_order_id, provider, ref, dispatched_at in f_result.all():
+            dispatch_map[f_order_id] = {
+                "delivery_provider": provider,
+                "delivery_provider_order_id": ref,
+                "delivery_dispatched_at": dispatched_at.isoformat() if dispatched_at else None,
+            }
+
     station_items: dict[int, list[dict]] = {}
     if station:
         station_map = await PlatformConfigService(db).get("kds.station_map", default={})
@@ -1528,6 +1651,7 @@ async def staff_list_orders(
             "total_amount": float(o.total_amount) if o.total_amount else 0,
             "created_at": o.created_at.isoformat() if o.created_at else None,
             "updated_at": o.updated_at.isoformat() if o.updated_at else None,
+            **dispatch_map.get(o.id, {}),
             **({"items": station_items.get(o.id, [])} if station else {}),
         }
         for o, c, t in rows
@@ -1559,12 +1683,22 @@ async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
     )
     line_items = items_result.scalars().all()
 
+    # Delivery dispatch info (manual key-in to Lalamove etc.)
+    fulfillment = (
+        await db.execute(select(OrderFulfillment).where(OrderFulfillment.order_id == order_id))
+    ).scalar_one_or_none()
+
     return APIResponse(data={
         "id": order.id,
         "order_number": order.order_number,
         "status": order.status,
         "order_type": order.order_type,
         "payment_status": order.payment_status,
+        "delivery_provider": fulfillment.delivery_provider if fulfillment else None,
+        "delivery_provider_order_id": fulfillment.delivery_provider_order_id if fulfillment else None,
+        "delivery_dispatched_at": (
+            fulfillment.delivery_dispatched_at.isoformat() if fulfillment and fulfillment.delivery_dispatched_at else None
+        ),
         "customer_id": order.customer_id,
         "customer_name": customer.display_name if customer else None,
         "customer_phone": customer.phone_number if customer else None,
@@ -1595,7 +1729,6 @@ async def staff_get_order(staff: CurrentStaff, db: DBDependency, order_id: int):
             for li in line_items
         ],
     })
-
 
 @router.patch("/{order_id}/status")
 async def staff_update_order_status(
@@ -1639,6 +1772,11 @@ async def staff_update_order_status(
     # its stock/vouchers/points reversed; confirming it again undoes nothing).
     allowed = _STAFF_STATUS_TRANSITIONS.get(order.status, [])
     if status not in allowed:
+        # Idempotent no-op: a double-tap on the same KDS button or a retry
+        # after a timed-out request already landed — report success instead
+        # of a confusing 400.
+        if status == order.status:
+            return APIResponse(data={"id": order.id, "status": order.status, "unchanged": True})
         raise HTTPException(
             status_code=400,
             detail=f"Cannot move order from '{order.status}' to '{status}'",

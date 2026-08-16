@@ -51,7 +51,7 @@ class WalletLedgerEntry(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     wallet_id: Mapped[int] = mapped_column(
-        ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False, index=True
     )
     entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)

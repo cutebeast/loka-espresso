@@ -58,7 +58,7 @@ async def get_provider_secret(
     Order of precedence:
       1. platform_config (runtime, can be rotated without redeploy)
       2. environment variable (fallback)
-      3. generic webhook_signing_secret (legacy fallback for GrabPay)
+      3. generic webhook_signing_secret (legacy fallback)
     """
     config_service = PlatformConfigService(db)
     secret = await config_service.get_str(platform_config_key, default="")
@@ -70,8 +70,8 @@ async def get_provider_secret(
     if secret:
         return secret
 
-    # Legacy generic fallback (GrabPay only)
-    if provider == "grabpay":
+    # Legacy generic fallback (HitPay uses its own salt config; GrabPay removed)
+    if provider == "hitpay":
         return settings.webhook_signing_secret or None
 
     return None
@@ -80,7 +80,10 @@ async def get_provider_secret(
 def extract_event_id(provider: str, payload: dict) -> str | None:
     """Extract a stable event idempotency key from a webhook payload."""
     if provider == "stripe":
-        return str(payload.get("id", "")) or None
+        # Guard: str(None) would be "None" and collide EVERY id-less event on
+        # one Redis dedup key — only real ids may enter the dedup net.
+        v = payload.get("id")
+        return str(v) if v else None
     if provider == "hitpay":
         # HitPay payload wraps payment requests under data.object
         obj = payload.get("payment_request") or payload.get("object")
@@ -90,13 +93,6 @@ def extract_event_id(provider: str, payload: dict) -> str | None:
             obj = payload
         if isinstance(obj, dict):
             return str(obj.get("id", "")) or None
-        return None
-    if provider == "grabpay":
-        obj = payload.get("data") or payload
-        if isinstance(obj, dict):
-            txn = obj.get("transaction") or obj
-            if isinstance(txn, dict):
-                return str(txn.get("id", "")) or str(txn.get("transaction_id", "")) or None
         return None
     return None
 

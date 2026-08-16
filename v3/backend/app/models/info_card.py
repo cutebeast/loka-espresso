@@ -107,7 +107,7 @@ class EventInvite(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     event_id: Mapped[int] = mapped_column(
-        ForeignKey("event_cards.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("event_cards.id", ondelete="CASCADE"), nullable=False, index=True
     )
     customer_id: Mapped[int] = mapped_column(
         ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
@@ -124,10 +124,10 @@ class EventRsvp(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     event_id: Mapped[int] = mapped_column(
-        ForeignKey("event_cards.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("event_cards.id", ondelete="CASCADE"), nullable=False, index=True
     )
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

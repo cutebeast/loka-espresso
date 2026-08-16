@@ -80,7 +80,7 @@ The **Guest Pay** page is a standalone public payment screen for walk-in dine-in
 2. The PWA opens directly to the Guest Pay page with the order pre-loaded.
 3. The page shows the order summary — line items, subtotal, tax, service charge, and total.
 4. The customer chooses a payment method:
-   - **Stripe** — card, FPX, GrabPay, or QR payments.
+   - **Stripe** — card, FPX, or QR payments.
    - **HitPay** — payment links and QR payments.
 5. After payment, a success screen confirms the order. A receipt is shown on screen with a **Back to Menu** button if the customer wants to order more.
 6. No login or registration is required. The order is linked to the table for staff to manage.

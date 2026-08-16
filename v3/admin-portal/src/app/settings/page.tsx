@@ -45,6 +45,18 @@ const SECTIONS: {
   descriptionKey: "settings.section_payments_desc",
   prefix: "stripe."
 }, {
+  titleKey: "settings.section_hitpay",
+  descriptionKey: "settings.section_hitpay_desc",
+  prefix: "hitpay."
+}, {
+  titleKey: "settings.section_vapid",
+  descriptionKey: "settings.section_vapid_desc",
+  prefix: "vapid."
+}, {
+  titleKey: "settings.section_integrations",
+  descriptionKey: "settings.section_integrations_desc",
+  prefix: "integration."
+}, {
   titleKey: "settings.section_kds",
   descriptionKey: "settings.section_kds_desc",
   prefix: "kds."

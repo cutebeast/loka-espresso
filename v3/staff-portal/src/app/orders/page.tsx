@@ -3,10 +3,11 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getOrders, type Order } from "@/lib/api";
+import { getOrders, dispatchDeliveryOrder, type Order } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import OrderCard from "@/components/OrderCard";
+import DeliveryDispatchDialog from "@/components/orders/DeliveryDispatchDialog";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import EmptyState from "@/components/EmptyState";
@@ -27,6 +28,9 @@ export default function OrdersPage() {
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dispatchOrder, setDispatchOrder] = useState<Order | null>(null);
+  const [dispatchSaving, setDispatchSaving] = useState(false);
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
   // Separate state so the message can be translated at render time — calling
   // t() during the mount effect runs before i18n hydration (raw key frozen).
   const [storeMissing, setStoreMissing] = useState(false);
@@ -232,7 +236,24 @@ export default function OrdersPage() {
       gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
       gap: 12
     }}>
-          {filteredOrders.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/pos?checkout=${o.id}`)} />)}
+          {filteredOrders.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/pos?checkout=${o.id}`)} onDispatch={setDispatchOrder} />)}
         </div>)}
+
+      {dispatchOrder && <DeliveryDispatchDialog order={dispatchOrder} saving={dispatchSaving} error={dispatchError} onClose={() => {
+      setDispatchOrder(null);
+      setDispatchError(null);
+    }} onSubmit={async (provider, externalRef) => {
+      setDispatchSaving(true);
+      setDispatchError(null);
+      try {
+        await dispatchDeliveryOrder(dispatchOrder.id, provider, externalRef);
+        setDispatchOrder(null);
+        await fetchOrders();
+      } catch (err: unknown) {
+        setDispatchError(parseApiError(err, "Failed to record delivery dispatch"));
+      } finally {
+        setDispatchSaving(false);
+      }
+    }} />}
     </div>;
 }

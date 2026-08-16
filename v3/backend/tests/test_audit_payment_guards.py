@@ -344,6 +344,60 @@ async def test_capture_amount_mismatch_flagged_but_recorded(monkeypatch, fake_co
 
 
 # ---------------------------------------------------------------------------
+# M15 — capture after our expiry void (Stripe completed the session before our
+#       expiry took effect): real money, recorded, flagged for manual review.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_capture_after_void_recorded_and_flagged(monkeypatch, fake_config):
+    payment = _payment(status="voided")
+    order = SimpleNamespace(id=1, status="pending", total_amount=Decimal("10.00"))
+
+    db = _async_db()
+    db.execute.side_effect = [
+        _fake_result(payment),   # webhook payment resolution
+        _fake_result(order),     # safety-net order row
+        _scalars_result([]),     # no other captured payments
+    ]
+    monkeypatch.setattr("app.services.payment._sync_order_payment_status", AsyncMock())
+    monkeypatch.setattr("app.services.payment._accrue_loyalty_annual_spend", AsyncMock())
+    monkeypatch.setattr("app.services.payment._add_payment_event", AsyncMock())
+
+    result = await process_webhook_event(db, "stripe", _capture_payload())
+
+    assert result.status == "captured"
+    assert result.extra_metadata["capture_after_void"] is True
+
+
+@pytest.mark.asyncio
+async def test_sync_excludes_flagged_captures_from_order_state(fake_config):
+    """Flagged captures (capture_after_void / duplicate_capture / capture_on_dead_order)
+    must not move order payment state — only un-flagged money drives it."""
+    payment = _payment(
+        status="captured",
+        captured_amount=Decimal("10.00"),
+        extra_metadata={"capture_after_void": True},
+    )
+    db = _async_db()
+    order = SimpleNamespace(
+        id=1,
+        payment_status="initiated",
+        status="pending",
+        total_amount=Decimal("10.00"),
+        updated_at=None,
+    )
+    db.execute.side_effect = [
+        _fake_result(order),               # locked order row
+        _scalars_result([payment]),        # the flagged captured payment
+    ]
+
+    await _sync_order_payment_status(db, payment)
+
+    assert order.payment_status == "initiated"  # untouched — flagged money never flips state
+
+
+# ---------------------------------------------------------------------------
 # M14 — referral converts on first PAID order; order_count rolls back
 # ---------------------------------------------------------------------------
 

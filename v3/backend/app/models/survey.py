@@ -99,7 +99,7 @@ class SurveyResponse(Base):
         ForeignKey("survey_definitions.id", ondelete="CASCADE"), nullable=False
     )
     customer_id: Mapped[int | None] = mapped_column(
-        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True
     )
     respondent_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     nps_score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)

@@ -236,8 +236,8 @@
     "byotEco": "I brought my own tumbler (BYOT) — earn eco-campaign bonus points"
   },
   "checkout_page": {
-    "pay_online_card_fpx_grabpay": "Pay Online (Card / FPX / GrabPay)",
-    "pay_online_duitnow_tng_boost_shopeepay": "Pay Online (DuitNow / TnG / Boost / ShopeePay)"
+    "pay_online_duitnow_tng_boost_shopeepay": "Pay Online (DuitNow / TnG / Boost / ShopeePay)",
+    "pay_online_card_fpx": "Pay Online (Card / FPX)"
   },
   "common": {
     "add": "Add",
@@ -1238,7 +1238,7 @@
     "continueToPay": "Continue to Pay",
     "creditDebitCard": "Credit / Debit Card",
     "eWallet": "E-Wallet",
-    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "eWalletDesc": "Touch n Go, Boost, ShopeePay",
     "findNearestStore": "Find Nearest Store",
     "fpxBanking": "FPX Online Banking",
     "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",

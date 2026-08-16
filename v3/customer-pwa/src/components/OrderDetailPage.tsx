@@ -70,7 +70,7 @@ export default function OrderDetailPage() {
   const orderId = pageParams.orderId ?? currentOrder?.id ?? null;
   const hashStatus = pageParams.status as string | undefined;
   const returnPaymentId = pageParams.paymentId as string | undefined;
-  // Stripe redirect methods (FPX/GrabPay/3DS) append redirect_status to the
+  // Stripe redirect methods (FPX/3DS) append redirect_status to the
   // query string, while our hash fragment may hard-code status=success.
   const redirectStatus = getStripeRedirectStatus();
   const returnStatus = redirectStatus ?? hashStatus;

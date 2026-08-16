@@ -332,3 +332,59 @@ async def test_create_order_locks_valid_table_inside_transaction(fake_config):
     logs = [o for o in added if isinstance(o, OrderStatusLog)]
     assert len(logs) == 1
     assert logs[0].to_status == "confirmed" == order.status  # open tab, not "pending"
+
+
+# ---------------------------------------------------------------------------
+# C6 — modifier option ownership (POS create + staff/admin add-line-item)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_priced_modifier_options_sums_owned_options():
+    from app.services.order import _priced_modifier_options
+
+    owned_a = SimpleNamespace(id=1, price_adjustment=Decimal("2.00"))
+    owned_b = SimpleNamespace(id=2, price_adjustment=Decimal("0.50"))
+    db = _async_db()
+    db.execute = AsyncMock(
+        return_value=_FakeResult(all_rows=[(owned_a, 11), (owned_b, 11)])
+    )
+
+    total = await _priced_modifier_options(db, menu_item_id=11, modifier_ids=[1, 2])
+
+    assert total == Decimal("2.50")
+
+
+@pytest.mark.asyncio
+async def test_priced_modifier_options_rejects_foreign_option():
+    from app.services.order import _priced_modifier_options
+
+    owned = SimpleNamespace(id=1, price_adjustment=Decimal("2.00"))
+    foreign = SimpleNamespace(id=2, price_adjustment=Decimal("99.00"))
+    db = _async_db()
+    db.execute = AsyncMock(
+        return_value=_FakeResult(all_rows=[(owned, 11), (foreign, 999)])
+    )
+
+    with pytest.raises(OrderError) as exc_info:
+        await _priced_modifier_options(db, menu_item_id=11, modifier_ids=[1, 2])
+
+    assert exc_info.value.status_code == 400
+    assert "does not belong" in exc_info.value.message
+
+
+@pytest.mark.asyncio
+async def test_priced_modifier_options_rejects_unknown_option():
+    from app.services.order import _priced_modifier_options
+
+    owned = SimpleNamespace(id=1, price_adjustment=Decimal("2.00"))
+    db = _async_db()
+    db.execute = AsyncMock(
+        return_value=_FakeResult(all_rows=[(owned, 11)])
+    )
+
+    with pytest.raises(OrderError) as exc_info:
+        await _priced_modifier_options(db, menu_item_id=11, modifier_ids=[1, 77])
+
+    assert exc_info.value.status_code == 400
+    assert "not found" in exc_info.value.message

@@ -16,12 +16,14 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useSwipe } from '@/hooks/useSwipe';
 import api from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import {
   Utensils, ShoppingBag, Search, Plus, Minus, Trash2,
   ShoppingCart, ArrowLeft, ArrowRight, CheckCircle, Loader2,
-  CreditCard, Smartphone, Phone, Sparkles, Wallet, ArrowLeftRight
+  CreditCard, Smartphone, Phone, Sparkles, Wallet, ArrowLeftRight,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import KioskItemPage from './kiosk/KioskItemPage';
 import KioskBundlePage, { type KioskBundle, type KioskBundleComponent } from './kiosk/KioskBundlePage';
@@ -130,6 +132,8 @@ export default function KioskPage() {
   const [showCallStaff, setShowCallStaff] = useState(false);
   const [promos, setPromos] = useState<any[]>([]);
   const [promoIdx, setPromoIdx] = useState(0);
+  const [bundles, setBundles] = useState<KioskBundle[]>([]);
+  const [bundleCategories, setBundleCategories] = useState<{ id: number; name: string; display_order: number }[]>([]);
   const _orderId = useRef<number | null>(null);
   // Stable idempotency key per cart-checkout attempt: a double-tap / retry of
   // the same cart replays the existing order instead of duplicating it.
@@ -339,14 +343,42 @@ export default function KioskPage() {
     return () => clearInterval(t);
   }, [promos.length]);
 
+  // ── Touch gestures ──
+  // Promo carousel: swipe left/right (also works as mouse drag on the LCD
+  // when a touch controller is absent). Chevrons mirror the gesture.
+  const promoNext = useCallback(() => {
+    setPromoIdx(i => (promos.length > 1 ? (i + 1) % promos.length : i));
+  }, [promos.length]);
+  const promoPrev = useCallback(() => {
+    setPromoIdx(i => (promos.length > 1 ? (i - 1 + promos.length) % promos.length : i));
+  }, [promos.length]);
+  const promoSwipe = useSwipe(promoNext, promoPrev);
+
   // ── Cart helpers ──
   const [modifierDrawerItem, setModifierDrawerItem] = useState<KioskMenuItem | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number[]>>({});
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
   const [itemQty, setItemQty] = useState(1);
-  const [bundles, setBundles] = useState<KioskBundle[]>([]);
-  const [bundleCategories, setBundleCategories] = useState<{ id: number; name: string; display_order: number }[]>([]);
   const [activeBundle, setActiveBundle] = useState<KioskBundle | null>(null);
+
+  // Menu grid: swipe left/right moves between categories (portrait tabs and
+  // landscape sidebar stay in sync — same activeCategory state).
+  const allCatIds = useMemo(() => {
+    const ids: number[] = categories.map(c => c.id);
+    bundleCategories.forEach(bc => ids.push(BUNDLE_CAT_OFFSET + bc.id));
+    return ids;
+  }, [categories, bundleCategories]);
+  const catNext = useCallback(() => {
+    if (allCatIds.length < 2) return;
+    const idx = allCatIds.indexOf(activeCategory ?? allCatIds[0] ?? -1);
+    setActiveCategory(allCatIds[(idx + 1) % allCatIds.length] ?? null);
+  }, [allCatIds, activeCategory]);
+  const catPrev = useCallback(() => {
+    if (allCatIds.length < 2) return;
+    const idx = allCatIds.indexOf(activeCategory ?? allCatIds[0] ?? -1);
+    setActiveCategory(allCatIds[(idx - 1 + allCatIds.length) % allCatIds.length] ?? null);
+  }, [allCatIds, activeCategory]);
+  const catSwipe = useSwipe(catNext, catPrev);
 
   // Bundle confirm — each picked component becomes a cart line carrying the
   // bundle linkage; the backend bundle engine validates the set and applies
@@ -591,11 +623,12 @@ export default function KioskPage() {
     <div
       className="kiosk-container"
       onPointerDown={resetInactivity}
+      onContextMenu={e => e.preventDefault()}
       style={{
         width: '100vw', height: '100vh', overflow: 'hidden',
         background: 'var(--bg-page, #FAFAF8)', color: 'var(--text-primary, #1a1a1a)',
         fontFamily: 'var(--font-sans, system-ui, sans-serif)',
-        userSelect: 'none', touchAction: 'manipulation',
+        userSelect: 'none', touchAction: 'manipulation', WebkitTouchCallout: 'none',
       }}
     >
       <AnimatePresence mode="wait">
@@ -668,14 +701,17 @@ export default function KioskPage() {
             </div>
             {/* Promo banner carousel */}
             {promos.length > 0 && promos[promoIdx] && (
-              <div style={{
-                maxWidth: fs(600, 480), width: '90%', marginBottom: fs(32, 24),
-                borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                position: 'relative',
-              }}>
+              <div
+                {...promoSwipe}
+                style={{
+                  maxWidth: fs(600, 480), width: '90%', marginBottom: fs(32, 24),
+                  borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  position: 'relative',
+                }}>
                 {promos[promoIdx].image_url ? (
                   <img src={promos[promoIdx].image_url.startsWith('http') ? promos[promoIdx].image_url : resolveAssetUrl(promos[promoIdx].image_url) || ''}
                     alt={promos[promoIdx].title || ''}
+                    draggable={false}
                     style={{ width: '100%', height: fs(280, 220), objectFit: 'cover' }} />
                 ) : (
                   <div style={{ width: '100%', height: fs(280, 220), background: 'var(--loka-cream, #f5f2ea)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -693,6 +729,27 @@ export default function KioskPage() {
                     <div style={{ fontSize: fs(12, 11), opacity: 0.85 }}>{promos[promoIdx].short_description}</div>
                   )}
                 </div>
+                {/* Prev/next chevrons (mouse + touch fallback) */}
+                {promos.length > 1 && (
+                  <>
+                    <button onClick={promoPrev} aria-label="Previous promo" style={{
+                      position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
+                      width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.35)', color: '#fff', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <ChevronLeft size={fs(26, 22)} />
+                    </button>
+                    <button onClick={promoNext} aria-label="Next promo" style={{
+                      position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                      width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.35)', color: '#fff', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <ChevronRight size={fs(26, 22)} />
+                    </button>
+                  </>
+                )}
                 {/* Dot indicators */}
                 {promos.length > 1 && (
                   <div style={{ position: 'absolute', top: 8, right: 12, display: 'flex', gap: 6 }}>
@@ -938,8 +995,8 @@ export default function KioskPage() {
                 </div>
               )}
 
-              {/* Menu items grid */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: fs(28, 24) }}>
+              {/* Menu items grid — swipe left/right to move between categories */}
+              <div {...catSwipe} style={{ flex: 1, overflowY: 'auto', padding: fs(28, 24), touchAction: 'pan-y' }}>
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: 48 }}><Loader2 size={48} className="animate-spin" style={{ color: LOKA.primary }} /></div>
                 ) : (

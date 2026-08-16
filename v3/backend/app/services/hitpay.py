@@ -36,7 +36,6 @@ DEFAULT_MY_PAYMENT_METHODS = [
     "touch_n_go",
     "boost",
     "shopee_pay",
-    "grabpay_direct",
     "fpx",
     "card",
 ]

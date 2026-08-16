@@ -67,10 +67,8 @@ class Payment(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay','hitpay')",
-            name="ck_payments_provider",
-        ),
+        # provider values are constrained by the shared PG enum payment_provider
+        # (grabpay removed 2026-08-17, migration b9c0d1e2f3a4).
         Index("idx_payments_provider", "provider"),
         Index("idx_payments_status_created", "status", "created_at"),
         CheckConstraint(
@@ -143,10 +141,8 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
             "method_type IN ('credit_card','debit_card','e_wallet','bank_transfer','cash','crypto','buy_now_pay_later','qr_pay')",
             name="ck_payment_methods_method_type",
         ),
-        CheckConstraint(
-            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay','hitpay')",
-            name="ck_payment_methods_provider",
-        ),
+        # provider is constrained by the PG enum payment_provider itself
+        # (grabpay removed 2026-08-17, migration b9c0d1e2f3a4).
         CheckConstraint("card_last_four ~ '^[0-9]{4}$'", name="ck_payment_methods_card_last_four"),
         CheckConstraint("card_expiry_month BETWEEN 1 AND 12", name="ck_payment_methods_card_expiry_month"),
         CheckConstraint("card_expiry_year BETWEEN extract(year from now()) AND 2100", name="ck_payment_methods_card_expiry_year"),
@@ -206,7 +202,7 @@ class PaymentLineAllocation(Base):
         ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
     )
     order_line_item_id: Mapped[int] = mapped_column(
-        ForeignKey("order_line_items.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("order_line_items.id", ondelete="CASCADE"), nullable=False, index=True
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

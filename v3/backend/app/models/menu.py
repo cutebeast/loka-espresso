@@ -193,7 +193,7 @@ class MenuModifierGroup(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     menu_item_id: Mapped[int] = mapped_column(
-        ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True
     )
     group_name: Mapped[str] = mapped_column(String(100), nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -234,7 +234,7 @@ class MenuModifierOption(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     modifier_group_id: Mapped[int] = mapped_column(
-        ForeignKey("menu_modifier_groups.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("menu_modifier_groups.id", ondelete="CASCADE"), nullable=False, index=True
     )
     option_name: Mapped[str] = mapped_column(String(100), nullable=False)
     price_adjustment: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
@@ -257,7 +257,7 @@ class MenuVariant(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     parent_item_id: Mapped[int] = mapped_column(
-        ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True
     )
     variant_name: Mapped[str] = mapped_column(String(100), nullable=False)
     variant_sku: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)

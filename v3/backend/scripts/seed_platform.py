@@ -68,10 +68,27 @@ CONFIGS = [
     ("integration.twilio_verify_test_auth_token", '""', "string", "all", True, True),
     ("stripe.enabled", "false", "boolean", "all", False, True),
     ("stripe.automatic_tax_enabled", "false", "boolean", "all", False, True),
+    # Payment method lists are JSON arrays (payment-gateway page edits them;
+    # the PUT endpoint 404s on unknown keys, so the rows must exist).
+    ("stripe.payment_method_types", '["card", "fpx"]', "json", "all", False, True),
+    ("hitpay.payment_methods", '["duitnow", "touch_n_go", "boost", "shopee_pay"]', "json", "all", False, True),
+    # Stripe API keys — DB-first (services read platform_config before .env);
+    # seeded empty so they appear in Admin → Settings → Payments. The boss
+    # pastes live keys there at go-live (no .env edit, no redeploy).
+    ("stripe.secret_key", '""', "string", "all", True, True),
+    ("stripe.publishable_key", '""', "string", "all", False, True),
     ("stripe.webhook_secret", '""', "string", "all", True, True),
     ("hitpay.enabled", "false", "boolean", "all", False, True),
+    ("hitpay.api_key", '""', "string", "all", True, True),
     ("hitpay.salt", '""', "string", "all", True, True),
-    ("grabpay.webhook_secret", '""', "string", "all", True, True),
+    ("hitpay.api_base_url", '"https://api.hitpay.com.my"', "string", "all", False, True),
+    # GrabPay removed 2026-08-17 (never launched — simulator-only).
+    # Web Push (VAPID) — DB-first since round 38 pass 8; seeded empty so they
+    # appear in Admin → Settings → Web Push. Env vars remain the bootstrap
+    # fallback (services fall back to .env when the DB row is empty).
+    ("vapid.public_key", '""', "string", "all", False, True),
+    ("vapid.private_key", '""', "string", "all", True, True),
+    ("vapid.subject", '"mailto:support@lokaespresso.my"', "string", "all", False, True),
     # LHDN MyInvois e-invoicing — disabled by default; while `einvoice.enabled`
     # is false submissions are SIMULATED (see app/services/einvoice.py), the
     # same config-gated pattern as stripe/hitpay.

@@ -57,8 +57,30 @@ def _bootstrap_admin_if_needed(base_url: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+ # Helpers
 # ---------------------------------------------------------------------------
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Close open orders the suite left behind (unpaid → cancelled with full
+    reversal; paid → delivered). Best-effort — never fails the suite; the
+    backend cleanup script is the single source of truth."""
+    try:
+        import subprocess
+        backend = os.path.join(os.path.dirname(__file__), "..", "backend")
+        subprocess.run(
+            [
+                sys.executable, "scripts/cleanup_unpaid_open_orders.py",
+                "--yes", "--force-prod",
+            ],
+            cwd=backend,
+            capture_output=True,
+            timeout=600,
+            env={**os.environ, "PATH": os.environ.get("PATH", "")},
+            check=False,
+        )
+    except Exception as e:  # pragma: no cover — cleanup must never break a run
+        logger.warning("E2E residue cleanup failed: %s", e)
+
 
 def _login_and_get_token(base_url: str, email: str, password: str, timeout: float = 30.0) -> str | None:
     """Login via /admin/auth/login and return access_token or None."""

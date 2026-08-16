@@ -97,7 +97,7 @@ class CustomerVoucher(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     voucher_definition_id: Mapped[int] = mapped_column(
         ForeignKey("voucher_definitions.id", ondelete="CASCADE"), nullable=False

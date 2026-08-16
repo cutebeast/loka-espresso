@@ -432,7 +432,7 @@ async def get_my_wallet(
             CustomerReward.customer_id == customer.id,
             CustomerReward.status == "active",
         )
-        .order_by(CustomerReward.expires_at.asc().limit(50))
+        .order_by(CustomerReward.expires_at.asc()).limit(50)
     )
     rewards = []
     for cr, rc in r_result.all():
