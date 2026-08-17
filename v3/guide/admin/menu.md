@@ -134,6 +134,9 @@ Event cards are the event listings shown in the PWA — again, separate from tab
 - For Pick & Choose, the component list is the pool customers pick from.
 - For multi-course, create groups first, then assign each component to a group.
 
+### Inventory on bundle sales
+Selling a bundle deducts stock **through its components** — every component menu item is tied to inventory (its recipe, or the auto-created 1:1 link), so a bundle order reduces each component's stock automatically and a cancelled bundle restores it. Bundles themselves are not separate inventory items.
+
 ## Allergens (`/menu/allergens`)
 
 1. Click **New Allergen**.

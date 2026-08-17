@@ -1983,3 +1983,9 @@ Audited every portal's zh coverage against the keys ACTUALLY USED (code t() call
 - Verified served API: staff-ui 857 zh keys, admin-ui 3,066, pwa-ui 1,202 (home.stats.wallet=钱包, guestPay.sendCode=发送验证码). Live zh render verified: dashboard shows 积分/钱包/自取 with zero raw EN labels.
 - Final coverage: **staff 0 gaps · admin 0 gaps · pwa 0 gaps** (static+DB union). Full E2E + unit green.
 - RULE: zh-coverage audits must cross-check USED keys (t() extraction + EN bundles) against the served zh union (namespace-wide DB rows + static JSONs) — registered-key counts hide gaps.
+
+### Round 39 — help & guide refresh #2 + full portal audit loop (2026-08-18, ~02:30)
+
+- Guide updates: `admin/menu.md` gained "Inventory on bundle sales" (bundles deduct through COMPONENTS — no separate bundle inventory item; cancel restores); `admin/inventory.md` gained the all-items-tied summary + bundle component deduction note. Help articles re-seeded (47).
+- Audit loop re-run on all portals after the docs: PWA **0 problems** · admin+staff 0 real issues (same 2 prose false-positives + 12 legitimate empty states) · kiosk + pos-display **0 errors, 0 raw keys** (display auto-refresh channels already documented in pos-customer-display.md — BroadcastChannel instant + Redis ≤2s).
+- Gates: E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic single head + check clean · 8/8 services.

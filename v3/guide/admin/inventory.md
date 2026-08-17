@@ -45,7 +45,10 @@ Track ingredients and retail stock across stores, record stock movements, manage
 3. Save.
 
 ### Link to menu items
-Some inventory items can be linked to menu item recipes so that preparing an order deducts stock automatically. Menu items saved without a recipe are **auto-linked** — a `LNK-<item-code>` inventory item is created for them automatically (see Menu).
+Some inventory items can be linked to menu item recipes so that preparing an order deducts stock automatically. Menu items saved without a recipe are **auto-linked** — a `LNK-<item-code>` inventory item is created for them automatically (see Menu). Every menu item is tied to inventory: items with real recipes deduct their ingredients, and everything else deducts 1 unit of its auto-linked item per sale.
+
+### Bundles
+Bundle products deduct through their **components** (each component is a menu item with its own inventory tie) — there is no separate inventory item for the bundle itself.
 
 ## Stock Levels
 
