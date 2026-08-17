@@ -467,30 +467,39 @@
       "topUp": "充值",
       "vouchers": "优惠券"
     },
-    "home.stats.points": "积分",
-    "home.stats.wallet": "钱包",
-    "home.stats.tier": "等级",
-    "home.tiles.pickup": "自取",
-    "home.tiles.pickupSub": "约 15 分钟可取",
-    "home.tiles.delivery": "外卖配送",
-    "home.tiles.deliverySub": "送到你家",
-    "home.tier.spendMore": "再获得 {amount} 终身积分即可升级",
-    "home.quick.checkin": "签到",
-    "home.quick.wallet": "钱包",
-    "home.quick.referrals": "邀请好友",
-    "home.quick.help": "帮助",
-    "home.hub.title": "精彩进行中",
-    "home.hub.events": "活动",
-    "home.hub.eventsSub": "工作坊 · 课程 · 倒计时",
-    "home.hub.promotions": "优惠",
-    "home.hub.promotionsSub": "优惠 · 精选 · 好礼",
-    "home.hub.lucky": "幸运抽奖",
-    "home.hub.luckySub": "每周奖池",
-    "home.hub.info": "资讯",
-    "home.hub.infoSub": "冲煮指南 · 门店动态",
-    "home.hub.new": "最新",
-    "home.featured": "精选",
-    "home.welcome": "欢迎"
+    "stats": {
+      "points": "积分",
+      "wallet": "钱包",
+      "tier": "等级"
+    },
+    "tiles": {
+      "pickup": "自取",
+      "pickupSub": "约 15 分钟可取",
+      "delivery": "外卖配送",
+      "deliverySub": "送到你家"
+    },
+    "tier": {
+      "spendMore": "再获得 {amount} 终身积分即可升级"
+    },
+    "quick": {
+      "checkin": "签到",
+      "wallet": "钱包",
+      "referrals": "邀请好友",
+      "help": "帮助"
+    },
+    "hub": {
+      "title": "精彩进行中",
+      "events": "活动",
+      "eventsSub": "工作坊 · 课程 · 倒计时",
+      "promotions": "优惠",
+      "promotionsSub": "优惠 · 精选 · 好礼",
+      "lucky": "幸运抽奖",
+      "luckySub": "每周奖池",
+      "info": "资讯",
+      "infoSub": "冲煮指南 · 门店动态",
+      "new": "最新"
+    },
+    "featured": "精选"
   },
   "information": {
     "checkBackSoon": "敬请期待最新资讯。",
@@ -1247,23 +1256,23 @@
     "title": "工作坊与课程"
   },
   "vip": {
-    "vip.title": "会员等级",
-    "vip.multiplier": "倍积分",
-    "vip.lifetimePoints": "终身积分",
-    "vip.pointsToNext": "再获得 {count} 积分即可升级至 {tier}",
-    "vip.topTier": "已是最高等级",
-    "vip.milestones": "等级里程碑",
-    "vip.benefits": "等级权益",
-    "vip.benefit_free_delivery": "免配送费",
-    "vip.benefit_priority_seating": "优先入座",
-    "vip.benefit_vip_event": "VIP 活动优先权",
-    "vip.benefit_monthly_free_item": "每月免费单品",
-    "vip.benefit_exclusive_menu": "专属菜单",
-    "vip.benefit_upgrades": "免费升杯",
-    "vip.benefit_birthday": "生日礼遇",
-    "vip.benefit_order_discount": "订单立减",
-    "vip.benefit_order_discount_pct": "订单折扣 %",
-    "vip.benefit_welcome_points": "入会赠送积分",
-    "vip.earnMore": "赚取更多积分"
+    "title": "会员等级",
+    "multiplier": "倍积分",
+    "lifetimePoints": "终身积分",
+    "pointsToNext": "再获得 {count} 积分即可升级至 {tier}",
+    "topTier": "已是最高等级",
+    "milestones": "等级里程碑",
+    "benefits": "等级权益",
+    "benefit_free_delivery": "免配送费",
+    "benefit_priority_seating": "优先入座",
+    "benefit_vip_event": "VIP 活动优先权",
+    "benefit_monthly_free_item": "每月免费单品",
+    "benefit_exclusive_menu": "专属菜单",
+    "benefit_upgrades": "免费升杯",
+    "benefit_birthday": "生日礼遇",
+    "benefit_order_discount": "订单立减",
+    "benefit_order_discount_pct": "订单折扣 %",
+    "benefit_welcome_points": "入会赠送积分",
+    "earnMore": "赚取更多积分"
   }
 }

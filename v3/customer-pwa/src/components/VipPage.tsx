@@ -166,7 +166,7 @@ export default function VipPage() {
                     {tier.name}
                   </div>
                   <div style={{ fontSize: 10, color: "var(--color-text-muted, #8A8078)", marginTop: 2 }}>
-                    {tier.min_points.toLocaleString()} {t("common.points")}
+                    {tier.min_points.toLocaleString()} {t("common.pointsAbbr")}
                   </div>
                 </div>
               );

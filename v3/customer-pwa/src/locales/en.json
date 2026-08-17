@@ -462,30 +462,39 @@
       "topUp": "Top Up",
       "vouchers": "Vouchers"
     },
-    "home.stats.points": "Points",
-    "home.stats.wallet": "Wallet",
-    "home.stats.tier": "Tier",
-    "home.tiles.pickup": "Pickup",
-    "home.tiles.pickupSub": "Ready in ~15 min",
-    "home.tiles.delivery": "Delivery",
-    "home.tiles.deliverySub": "To your door",
-    "home.tier.spendMore": "Earn {amount} more lifetime points to level up",
-    "home.quick.checkin": "Check-in",
-    "home.quick.wallet": "Wallet",
-    "home.quick.referrals": "Referrals",
-    "home.quick.help": "Help",
-    "home.hub.title": "What's on",
-    "home.hub.events": "Events",
-    "home.hub.eventsSub": "Workshops · Classes · Countdowns",
-    "home.hub.promotions": "Promotions",
-    "home.hub.promotionsSub": "Deals · Spotlight · Gifts",
-    "home.hub.lucky": "Lucky Draw",
-    "home.hub.luckySub": "Weekly prize pool",
-    "home.hub.info": "Info",
-    "home.hub.infoSub": "Brew guide · Store news",
-    "home.hub.new": "NEW",
-    "home.featured": "Featured",
-    "home.welcome": "Welcome"
+    "stats": {
+      "points": "Points",
+      "wallet": "Wallet",
+      "tier": "Tier"
+    },
+    "tiles": {
+      "pickup": "Pickup",
+      "pickupSub": "Ready in ~15 min",
+      "delivery": "Delivery",
+      "deliverySub": "To your door"
+    },
+    "tier": {
+      "spendMore": "Earn {amount} more lifetime points to level up"
+    },
+    "quick": {
+      "checkin": "Check-in",
+      "wallet": "Wallet",
+      "referrals": "Referrals",
+      "help": "Help"
+    },
+    "hub": {
+      "title": "What's on",
+      "events": "Events",
+      "eventsSub": "Workshops · Classes · Countdowns",
+      "promotions": "Promotions",
+      "promotionsSub": "Deals · Spotlight · Gifts",
+      "lucky": "Lucky Draw",
+      "luckySub": "Weekly prize pool",
+      "info": "Info",
+      "infoSub": "Brew guide · Store news",
+      "new": "NEW"
+    },
+    "featured": "Featured"
   },
   "information": {
     "checkBackSoon": "Check back soon for updates",
@@ -1355,23 +1364,23 @@
     "tuesdayToday": "Today!"
   },
   "vip": {
-    "vip.title": "Membership Tiers",
-    "vip.multiplier": "points",
-    "vip.lifetimePoints": "Lifetime points",
-    "vip.pointsToNext": "{count} more points to {tier}",
-    "vip.topTier": "Top tier reached",
-    "vip.milestones": "Tier milestones",
-    "vip.benefits": "Tier benefits",
-    "vip.benefit_free_delivery": "Free delivery",
-    "vip.benefit_priority_seating": "Priority seating",
-    "vip.benefit_vip_event": "VIP event access",
-    "vip.benefit_monthly_free_item": "Monthly free item",
-    "vip.benefit_exclusive_menu": "Exclusive menu access",
-    "vip.benefit_upgrades": "Complimentary upgrades",
-    "vip.benefit_birthday": "Birthday reward",
-    "vip.benefit_order_discount": "Order discount",
-    "vip.benefit_order_discount_pct": "Order discount %",
-    "vip.benefit_welcome_points": "Welcome bonus points",
-    "vip.earnMore": "Earn more points"
+    "title": "Membership Tiers",
+    "multiplier": "points",
+    "lifetimePoints": "Lifetime points",
+    "pointsToNext": "{count} more points to {tier}",
+    "topTier": "Top tier reached",
+    "milestones": "Tier milestones",
+    "benefits": "Tier benefits",
+    "benefit_free_delivery": "Free delivery",
+    "benefit_priority_seating": "Priority seating",
+    "benefit_vip_event": "VIP event access",
+    "benefit_monthly_free_item": "Monthly free item",
+    "benefit_exclusive_menu": "Exclusive menu access",
+    "benefit_upgrades": "Complimentary upgrades",
+    "benefit_birthday": "Birthday reward",
+    "benefit_order_discount": "Order discount",
+    "benefit_order_discount_pct": "Order discount %",
+    "benefit_welcome_points": "Welcome bonus points",
+    "earnMore": "Earn more points"
   }
 }

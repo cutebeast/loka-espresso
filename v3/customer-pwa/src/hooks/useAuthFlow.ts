@@ -153,6 +153,13 @@ export function useAuthFlow() {
         }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
+        // 401/403/422 during boot validation simply mean "no session yet"
+        // (guest or expired refresh) — the login wall handles it. Logging
+        // them as errors spams the console on every guest visit.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 401 || status === 403 || status === 422) {
+          return;
+        }
         console.error('[AuthFlow] Session validation failed:', err);
       } finally {
         if (!cancelled) setIsLoading(false);

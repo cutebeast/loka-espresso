@@ -332,6 +332,8 @@ export default function AppShell() {
         return <LazyRenderer pageKey="checkin" onBack={onBackHome} />;
       case 'lucky-draw':
         return <LazyRenderer pageKey="lucky-draw" />;
+      case 'vip':
+        return <LazyRenderer pageKey="vip" onBack={onBackProfile} />;
       case 'kiosk':
         return <LazyRenderer pageKey="kiosk" />;
       default:

@@ -112,7 +112,9 @@ export function SplashScreen({
         markSplashShown(frequency);
       }
     }).catch(err => {
-      if (err?.name !== 'AbortError') {
+      // AbortError (native) / CanceledError (axios) = the component
+      // unmounted mid-fetch during navigation — expected, not an error.
+      if (err?.name !== 'AbortError' && err?.name !== 'CanceledError') {
         console.error('[Splash] Content fetch failed:', err);
         showToast(t('toast.failedToLoad'), 'error');
       }
