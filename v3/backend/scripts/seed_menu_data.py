@@ -711,6 +711,12 @@ INGREDIENTS = [
     ("ING-DILL", "Fresh Dill", "g"),
     ("ING-OLIVE-OIL", "Extra Virgin Olive Oil", "g"),
     ("ING-LEMON", "Lemon", "nos"),
+    ("BEANS-ESP-1KG", "Espresso Blend Beans 1kg", "kg"),
+    ("MILK-FC-1L", "Full Cream Milk 1L", "L"),
+    ("SYRUP-VAN-750", "Vanilla Syrup 750ml", "ml"),
+    ("ING-VANILLA-ICE-CREAM", "Vanilla Ice Cream", "g"),
+    ("ING-COCOA-POWDER", "Cocoa Powder", "g"),
+    ("ING-MATCHA-POWDER", "Matcha Powder", "g"),
     ("ING-YELLOW-MUSTARD", "Yellow Mustard", "g"),
     ("ING-BEEF-SLICES", "Beef Slices", "g"),
     ("ING-ROASTED-MUSHROOM", "Roasted Mushroom", "g"),
@@ -755,6 +761,24 @@ STARTER_STOCK = 1000.0
 
 # item_code → [(ingredient_code, quantity_required)]
 RECIPES = {
+    # ── Coffee bar drinks (2026-08-17: owner expects stock deduction on drink
+    #    sales — espresso/milk drinks now deduct beans + milk) ──
+    "CSC-ESPRESSO": [("BEANS-ESP-1KG", 0.02)],
+    "CSC-RISTRETTO": [("BEANS-ESP-1KG", 0.018)],
+    "CSC-AMERICANO": [("BEANS-ESP-1KG", 0.02)],
+    "CSC-PICCOLO": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.10)],
+    "CSC-CAFE-LATTE": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.18)],
+    "CSC-CAPPUCCINO": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.12)],
+    "CSC-DIRTY-LATTE": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.18)],
+    "CSC-SPANISH-LATTE": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.18)],
+    "CSC-CARAMEL-MACCHIATO": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.18), ("SYRUP-VAN-750", 15)],
+    "CSC-DARK-COCOA-MOCHA": [("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.18), ("ING-COCOA-POWDER", 15)],
+    "CSC-AFFOGATO": [("BEANS-ESP-1KG", 0.02), ("ING-VANILLA-ICE-CREAM", 65)],
+    "CSC-KAHVE-I-TURK": [("BEANS-ESP-1KG", 0.015)],
+    "BC-MATCHA-LATTE": [("ING-MATCHA-POWDER", 3), ("MILK-FC-1L", 0.18)],
+    "BC-DIRTY-MATCHA": [("ING-MATCHA-POWDER", 3), ("BEANS-ESP-1KG", 0.02), ("MILK-FC-1L", 0.18)],
+    "BC-CHOCOLATE": [("ING-COCOA-POWDER", 20), ("MILK-FC-1L", 0.18)],
+    "BC-DOUBLE-RICH-CHOCOLATE": [("ING-COCOA-POWDER", 25), ("MILK-FC-1L", 0.20)],
     "GS-PULLED-CHICKEN-PESTO": [
         ("ING-CROISSANT", 1), ("ING-MAYONNAISE", 15), ("ING-MESCLUN", 15),
         ("ING-PULLED-CHICKEN", 60), ("ING-PESTO", 20),

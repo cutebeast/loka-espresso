@@ -66,7 +66,7 @@ async def seed():
                     INSERT INTO inventory_items
                         (category_id, item_code, item_name, unit_of_measure, unit_cost, item_type)
                     VALUES (:category_id, :item_code, :item_name, :unit_of_measure, :unit_cost, :item_type)
-                    ON CONFLICT (item_code) DO UPDATE SET
+                    ON CONFLICT (item_code) WHERE deleted_at IS NULL DO UPDATE SET
                         item_name = EXCLUDED.item_name,
                         category_id = EXCLUDED.category_id
                     RETURNING id

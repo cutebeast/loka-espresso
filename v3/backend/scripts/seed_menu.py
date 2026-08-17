@@ -60,7 +60,7 @@ async def _upsert_allergens(db):
             text("""
                 INSERT INTO allergens (allergen_key, display_name, description, severity, is_active)
                 VALUES (:key, :name, :desc, 'high', true)
-                ON CONFLICT (allergen_key) DO UPDATE SET
+                ON CONFLICT (allergen_key) WHERE deleted_at IS NULL DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     description = EXCLUDED.description,
                     is_active = true,
@@ -149,7 +149,7 @@ async def _upsert_item(db, item, cat_id, tax_id, image_url):
                 :img, true, :featured, :featured, :order,
                 :prep, :tax_id
             )
-            ON CONFLICT (item_code) DO UPDATE SET
+            ON CONFLICT (item_code) WHERE deleted_at IS NULL DO UPDATE SET
                 category_id = EXCLUDED.category_id,
                 item_name = EXCLUDED.item_name,
                 description = EXCLUDED.description,
@@ -302,7 +302,7 @@ async def _seed_ingredients(db):
             text("""
                 INSERT INTO inventory_items (item_code, item_name, unit_of_measure, unit_cost, item_type, is_active)
                 VALUES (:code, :name, :uom, 0, 'fnb', true)
-                ON CONFLICT (item_code) DO UPDATE SET
+                ON CONFLICT (item_code) WHERE deleted_at IS NULL DO UPDATE SET
                     item_name = EXCLUDED.item_name,
                     unit_of_measure = EXCLUDED.unit_of_measure,
                     is_active = true,
@@ -347,6 +347,7 @@ async def _seed_recipes(db, item_ids, ing_ids):
                 text("""
                     INSERT INTO menu_item_recipes (menu_item_id, menu_variant_id, inventory_item_id, quantity_required, unit_of_measure)
                     VALUES (:item, NULL, :inv, :qty, :uom)
+                    ON CONFLICT (menu_item_id, menu_variant_id, inventory_item_id) DO NOTHING
                 """),
                 {"item": item_id, "inv": inv_id, "qty": qty, "uom": uom_by_code[ing_code]},
             )

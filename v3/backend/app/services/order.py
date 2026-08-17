@@ -448,32 +448,50 @@ async def _restore_stock_for_order(
 
     Mirrors `_deduct_stock_for_order` with an inbound movement.
     """
-    recipe_needs = await _compute_recipe_needs(db, line_items)
-    if not recipe_needs:
+    # Only reverse what was ACTUALLY deducted for this order. Orders created
+    # before recipes existed (or items whose recipes changed mid-flight) never
+    # wrote 'out' movements — restoring recipe-needs unconditionally would
+    # mint phantom stock (proven live 2026-08-17: pre-recipe cancellations
+    # inflated stock above the seeded baseline).
+    net_result = await db.execute(
+        select(
+            InventoryMovementLog.inventory_item_id,
+            func.sum(InventoryMovementLog.quantity_delta).label("net_delta"),
+        )
+        .where(
+            InventoryMovementLog.reference_type == "order",
+            InventoryMovementLog.reference_id == order.id,
+        )
+        .group_by(InventoryMovementLog.inventory_item_id)
+    )
+    net_deducted = {
+        inv_id: -Decimal(str(net_delta))
+        for inv_id, net_delta in net_result.all()
+    }
+    net_deducted = {inv_id: qty for inv_id, qty in net_deducted.items() if qty > 0}
+    if not net_deducted:
         return
 
     inv_item_result = await db.execute(
-        select(InventoryItem).where(InventoryItem.id.in_(list(recipe_needs.keys())))
+        select(InventoryItem).where(InventoryItem.id.in_(list(net_deducted.keys())))
     )
     inv_items = {inv.id: inv for inv in inv_item_result.scalars().all()}
 
-    recipe_needs = {inv_id: qty for inv_id, qty in recipe_needs.items() if inv_id in inv_items}
-    if not recipe_needs:
-        return
-
     stock_result = await db.execute(
         select(InventoryStock).where(
-            InventoryStock.inventory_item_id.in_(list(recipe_needs.keys())),
+            InventoryStock.inventory_item_id.in_(list(net_deducted.keys())),
             InventoryStock.store_id == order.store_id,
         ).with_for_update()
     )
     stock_map = {s.inventory_item_id: s for s in stock_result.scalars().all()}
 
-    for inv_id, qty_restored in recipe_needs.items():
+    for inv_id, qty_restored in net_deducted.items():
         stock = stock_map.get(inv_id)
         if stock is None:
             continue
-        inv = inv_items[inv_id]
+        inv = inv_items.get(inv_id)
+        if inv is None:
+            continue
         new_stock = Decimal(str(stock.current_stock)) + qty_restored
         stock.current_stock = new_stock
         db.add(InventoryMovementLog(

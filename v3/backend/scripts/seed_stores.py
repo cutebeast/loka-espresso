@@ -115,7 +115,7 @@ async def seed():
                         :pickup_lead_minutes, :delivery_radius_km,
                         true, true, :display_key
                     )
-                    ON CONFLICT (store_code) DO UPDATE SET
+                    ON CONFLICT (store_code) WHERE deleted_at IS NULL DO UPDATE SET
                         store_name = EXCLUDED.store_name,
                         is_active = true,
                         is_accepting_orders = true

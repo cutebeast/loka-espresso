@@ -243,6 +243,27 @@ async def purge_soft_deleted_residue() -> None:
                 print(f"hard-deleted {n} soft-deleted E2E rows from {table}")
         for stmt in [s.strip() for s in HARD_DELETE_SOFT_DELETED.split(";") if s.strip()]:
             await db.execute(text(stmt))
+        # Test-residue menu items (EX-/E2E-/Freq-Test codes) — line items hold
+        # RESTRICT FKs into menu_items, so clear them first; the recipe FK
+        # cascades and the auto-link inventory items orphan below.
+        await db.execute(text(
+            "DELETE FROM order_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND (item_code LIKE 'EX-%' OR item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%'))"
+        ))
+        await db.execute(text(
+            "DELETE FROM cart_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND (item_code LIKE 'EX-%' OR item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%'))"
+        ))
+        await db.execute(text(
+            "DELETE FROM menu_items WHERE deleted_at IS NULL AND ("
+            "item_code LIKE 'EX-%' OR item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%')"
+        ))
+        # Orphaned auto-link inventory items: menu items deleted above (or by
+        # the e2e conftest) cascade-delete their recipes, leaving LNK-* items.
+        # Children (stock/movements) cascade via FK — safe to delete directly.
+        # (Auto-link on admin save since 2026-08-17 — round 39.)
+        await db.execute(text(
+            "DELETE FROM inventory_items WHERE item_code LIKE 'LNK-%' "
+            "AND NOT EXISTS (SELECT 1 FROM menu_item_recipes r WHERE r.inventory_item_id = inventory_items.id)"
+        ))
         await db.commit()
 
 

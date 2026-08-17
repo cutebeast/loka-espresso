@@ -119,7 +119,7 @@ async def seed():
                      minimum_order_value, minimum_tier_id, is_active, image_url)
                 VALUES (:key, :name, :desc, 'free_item', :points_cost,
                         0, :min_tier_id, true, :image_url)
-                ON CONFLICT (reward_key) DO UPDATE SET
+                ON CONFLICT (reward_key) WHERE deleted_at IS NULL DO UPDATE SET
                     reward_name = EXCLUDED.reward_name,
                     description = EXCLUDED.description,
                     reward_type = EXCLUDED.reward_type,
