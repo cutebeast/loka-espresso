@@ -390,15 +390,61 @@ async def _deduct_stock_for_order(
     return warnings
 
 
+class _ComponentLine:
+    """Lightweight stand-in for a bundle component during recipe-need math."""
+
+    __slots__ = ("menu_item_id", "menu_variant_id", "quantity")
+
+    def __init__(self, menu_item_id: int, menu_variant_id: int | None, quantity: float):
+        self.menu_item_id = menu_item_id
+        self.menu_variant_id = menu_variant_id
+        self.quantity = quantity
+
+
 async def _compute_recipe_needs(db: AsyncSession, line_items: list) -> dict[int, Decimal]:
     """Aggregate required inventory quantities from menu item recipes.
 
     `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and
     `quantity` attributes. Shared by stock deduction and restoration.
+
+    Bundle lines (menu_item_id NULL + bundle_product_id set) are expanded into
+    their components first — selling a bundle deducts each component menu
+    item's inventory link (LNK- 1:1 or its real recipe), symmetric for
+    cancellation restores.
     """
-    # Batch recipe lookup by (menu_item_id, menu_variant_id) to avoid N+1.
-    recipe_keys = set()
+    # 1. Expand bundle lines into their component menu items.
+
+    effective_lines: list = []
+    bundle_ids = {
+        getattr(li, "bundle_product_id")
+        for li in line_items
+        if getattr(li, "menu_item_id", None) is None and getattr(li, "bundle_product_id", None)
+    }
+    bundle_components: dict[int, list] = {}
+    if bundle_ids:
+        comp_result = await db.execute(
+            select(BundleProductComponent).where(
+                BundleProductComponent.bundle_product_id.in_(bundle_ids)
+            )
+        )
+        for comp in comp_result.scalars().all():
+            bundle_components.setdefault(comp.bundle_product_id, []).append(comp)
     for li in line_items:
+        if getattr(li, "menu_item_id", None) is None and getattr(li, "bundle_product_id", None):
+            for comp in bundle_components.get(li.bundle_product_id, []):
+                effective_lines.append(
+                    _ComponentLine(
+                        menu_item_id=comp.menu_item_id,
+                        menu_variant_id=None,
+                        quantity=(getattr(li, "quantity", 0) or 0) * (comp.default_quantity or 0),
+                    )
+                )
+        else:
+            effective_lines.append(li)
+
+    # 2. Batch recipe lookup by (menu_item_id, menu_variant_id) to avoid N+1.
+    recipe_keys = set()
+    for li in effective_lines:
         mv_id = getattr(li, "menu_variant_id", None)
         recipe_keys.add((li.menu_item_id, mv_id))
 
@@ -423,7 +469,7 @@ async def _compute_recipe_needs(db: AsyncSession, line_items: list) -> dict[int,
     for rc in recipes:
         recipe_map.setdefault((rc.menu_item_id, rc.menu_variant_id), []).append(rc)
 
-    for li in line_items:
+    for li in effective_lines:
         mv_id = getattr(li, "menu_variant_id", None)
         # Prefer exact variant match; fallback to generic recipe if no variant-specific recipe exists.
         key = (li.menu_item_id, mv_id)

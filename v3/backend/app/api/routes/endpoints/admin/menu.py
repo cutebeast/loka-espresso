@@ -26,6 +26,7 @@ from app.models.menu import (
     MenuVariant,
     TaxCategory,
 )
+from app.services.inventory_link import ensure_auto_inventory_link
 from app.schemas.base import APIResponse, BaseSchema, PaginatedResponse, TimestampedSchema
 from app.schemas.menu import (
     AllergenOut,
@@ -492,76 +493,6 @@ async def list_items(
     )
 
 
-async def _ensure_auto_inventory_link(db, menu_item) -> int | None:
-    """Auto-create + link inventory when the saved item has none.
-
-    Owner request (2026-08-17): every menu item must tie to inventory so
-    sales deduct stock. When a save leaves the item with no recipe rows, a
-    1:1 inventory item (code LNK-<item_code>, unit "nos", cost 0) is created
-    and linked as the sole recipe ingredient, plus 0-stock rows for all
-    active stores so it shows in Inventory > Stock immediately.
-    """
-    existing = await db.execute(
-        select(MenuItemRecipe.id)
-        .where(MenuItemRecipe.menu_item_id == menu_item.id)
-        .limit(1)
-    )
-    if existing.scalar_one_or_none() is not None:
-        return None
-
-    import hashlib
-    code = f"LNK-{menu_item.item_code}"
-    if len(code) > 50:
-        suffix = hashlib.sha1(menu_item.item_code.encode()).hexdigest()[:8].upper()
-        code = f"LNK-{menu_item.item_code[:38]}-{suffix}"
-
-    inv_result = await db.execute(
-        text(
-            """
-            INSERT INTO inventory_items (item_code, item_name, unit_of_measure, unit_cost, item_type, is_active)
-            VALUES (:code, :name, 'nos', 0, 'fnb', true)
-            ON CONFLICT (item_code) WHERE deleted_at IS NULL DO UPDATE SET
-                item_name = EXCLUDED.item_name,
-                unit_of_measure = EXCLUDED.unit_of_measure,
-                is_active = true,
-                deleted_at = NULL
-            RETURNING id
-            """
-        ),
-        {"code": code, "name": menu_item.item_name},
-    )
-    inv_id = inv_result.scalar_one()
-
-    db.add(MenuItemRecipe(
-        menu_item_id=menu_item.id,
-        menu_variant_id=None,
-        inventory_item_id=inv_id,
-        quantity_required=Decimal("1"),
-        unit_of_measure="nos",
-        is_primary_component=True,
-        waste_factor=Decimal("0"),
-    ))
-
-    store_ids = (
-        await db.execute(
-            text("SELECT id FROM stores WHERE deleted_at IS NULL AND is_active = true")
-        )
-    ).scalars().all()
-    for store_id in store_ids:
-        await db.execute(
-            text(
-                """
-                INSERT INTO inventory_stock (inventory_item_id, store_id, current_stock, reserved_stock, reorder_level)
-                VALUES (:inv, :store, 0, 0, 0)
-                ON CONFLICT (inventory_item_id, store_id) DO NOTHING
-                """
-            ),
-            {"inv": inv_id, "store": store_id},
-        )
-    await db.flush()
-    return inv_id
-
-
 @router.post(
     "/items",
     response_model=APIResponse[MenuItemOut],
@@ -670,7 +601,7 @@ async def create_item(
     else:
         # Auto-tie to inventory (owner request 2026-08-17): items without an
         # explicit recipe get a 1:1 inventory link so sales deduct stock.
-        await _ensure_auto_inventory_link(db, item)
+        await ensure_auto_inventory_link(db, item)
 
     await db.commit()
     await db.refresh(item)
@@ -900,7 +831,7 @@ async def update_item(
     # Auto-tie to inventory (owner request 2026-08-17): when the save leaves
     # the item with no recipe rows (never linked, or recipes explicitly
     # cleared), create a 1:1 inventory link so sales deduct stock.
-    await _ensure_auto_inventory_link(db, item)
+    await ensure_auto_inventory_link(db, item)
 
     await db.commit()
     await db.refresh(item)

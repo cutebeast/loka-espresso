@@ -384,6 +384,17 @@ async def seed(with_recipes: bool = False):
 
             recipe_count = await _seed_recipes(db, item_ids, ing_ids)
             print(f"  Seeded {recipe_count} recipe lines across {len(RECIPES)} items")
+
+            # Owner decision (2026-08-17): EVERY menu item ties to inventory.
+            # Items without a real recipe get a 1:1 auto-link (LNK-<code>).
+            from app.services.inventory_link import ensure_auto_inventory_link
+            from app.models.menu import MenuItem
+            from sqlalchemy import select as sa_select
+            auto_linked = 0
+            for mi in (await db.execute(sa_select(MenuItem).where(MenuItem.deleted_at.is_(None)))).scalars().all():
+                if await ensure_auto_inventory_link(db, mi) is not None:
+                    auto_linked += 1
+            print(f"  Auto-linked {auto_linked} items without recipes (1:1 inventory)")
         else:
             print("  Skipped ingredients/stock/recipes (use --with-recipes to include)")
 

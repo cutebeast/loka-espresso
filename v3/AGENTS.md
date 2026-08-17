@@ -1946,3 +1946,11 @@ Second loop iteration went deeper than page-rendering — functional testing of 
 - **Purge hardening**: wastage reports hold RESTRICT FKs into menu_items — a probe waste blocked the item purge (gkpj). The purge now pre-deletes wastage reports of test items before the menu-item purge. RULE: any new FK into menu_items from a report-like table needs the same pre-delete in cleanup_unpaid_open_orders.py.
 - Page crawl re-run (admin 90 routes + staff 17): identical to the previous pass — 0 real issues (2 prose false-positives, 10 legitimate empty/role-gated states).
 - Gates: unit **100/100** · alembic check clean · 8/8 services · DB clean (0 probe items, 0 negative stock, 0 soft-deleted rows).
+
+### Round 39 — full menu-item inventory backfill + bundle coverage (2026-08-18, ~00:15)
+
+Owner: "update those current menu items on inventory" + "bundle item is also linked properly right?"
+
+- **Backfill**: 135 of 166 live menu items had no inventory tie. Auto-link logic extracted to `app/services/inventory_link.py` (`ensure_auto_inventory_link`) — shared by admin save endpoints, new `scripts/backfill_inventory_links.py`, and `seed_menu.py --with-recipes` (fresh reseeds stay consistent). Backfill ran: **0 untied menu items** remain; 135 LNK- inventory items + 270 stock rows (2 stores × 135). Live-proven: frappe sale ×3 → LNK stock 0→−3, cancel → 0.
+- **Bundles**: already deduct correctly — bundle ORDER lines carry `menu_item_id` = the picked COMPONENT (plus bundle_product_id/bundle_component_id), so the component's real recipe or LNK link deducts per line. Live-proven: Breakfast Duo sale → Café Latté component deducted beans −0.021 (recipe) and Turkish Mixed Bread component deducted LNK −1; cancel restored both exactly. Also hardened `_compute_recipe_needs` to expand menu_item_id-NULL bundle lines into their components (defensive; current flows always set menu_item_id).
+- Cleanup + gates: 0 untied items, 0 negative stock, unit 100/100, E2E subset 9 passed, alembic clean.
