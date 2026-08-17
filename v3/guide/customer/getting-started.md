@@ -43,11 +43,20 @@ If the brand has multiple stores:
 
 ## Home screen
 
-The home page shows:
-- Featured promotions and banners.
-- Quick category filters.
-- Recommended items.
-- Loyalty tier and points summary.
+The dashboard is a clean summary (everything else lives on its own page):
+
+- **Stat strip** — points, wallet balance, and your loyalty tier at a glance.
+- **Pickup / Delivery tiles** — jump straight into ordering.
+- **Tier progress card** — lifetime points toward the next tier (tap to open the **Membership Tiers** page with the full benefits table and milestone rail).
+- **Quick actions** — Check-in (with streak badge), Wallet, Referrals, Help.
+- **Featured banner** — the store's current home banner or top promotion.
+- **What's on** — four tiles linking to the dedicated pages: **Events**, **Promotions**, **Lucky Draw**, and **Info**. Badges show how many items are live.
+
+Events, workshops, promotions and store info are NOT stacked on the dashboard — each has its own page so the feed stays short and scannable.
+
+### Dark / light theme
+
+Open **Profile → Settings** and use the **Dark Mode** toggle. Your choice is saved on the device; the app defaults to dark.
 
 ## Navigation
 

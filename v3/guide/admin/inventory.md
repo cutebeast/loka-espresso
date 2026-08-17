@@ -45,11 +45,16 @@ Track ingredients and retail stock across stores, record stock movements, manage
 3. Save.
 
 ### Link to menu items
-Some inventory items can be linked to menu item recipes so that preparing an order deducts stock automatically.
+Some inventory items can be linked to menu item recipes so that preparing an order deducts stock automatically. Menu items saved without a recipe are **auto-linked** — a `LNK-<item-code>` inventory item is created for them automatically (see Menu).
 
 ## Stock Levels
 
-**Note**: Sales never block on stock. Items can go negative — stock warnings appear in API responses when levels drop below zero. (`/inventory/stocks`)
+**Note**: Sales never block on stock. Items can go negative by design (sales and wastage keep deducting even without keyed opening stock).
+
+### Find negative-stock issues
+
+- **Stock Levels** — toggle **Negative only** to list every item currently below zero.
+- **Movements** — tick **Negative impact** to see the exact movement (sale/waste/adjustment) that pushed an item below zero, combined with the type/date/store filters to trace the cause.
 
 ### Set stock
 1. Select the store.

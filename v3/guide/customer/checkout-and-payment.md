@@ -45,9 +45,9 @@ Discounts are applied before tax and service charge according to store settings.
 
 The available methods depend on store configuration.
 
-### Stripe (card / FPX / e-wallet)
+### Stripe (card / FPX)
 1. Select **Pay with Stripe**.
-2. Enter card details or select FPX/e-wallet.
+2. Enter card details or select FPX.
 3. Complete authentication if required.
 4. Payment is processed and order is confirmed.
 

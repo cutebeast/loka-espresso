@@ -55,6 +55,16 @@ Build and maintain the customer-facing menu. Changes are reflected in the Custom
    - **Availability** — unavailable items cannot be ordered in the PWA or POS.
 3. Save.
 
+### Auto inventory link (default)
+
+When you save an item and it has **no recipe**, the system automatically:
+
+1. Creates a matching inventory item (`LNK-<item-code>`, unit "nos", cost 0).
+2. Links it as the item's recipe (1 unit per item sold).
+3. Creates 0-stock rows for every store.
+
+From that moment, every sale deducts 1 unit and wastage deducts too. To use real ingredients instead, add the item to a recipe manually — explicit recipes always win, and the auto-link never duplicates (saving again is a no-op).
+
 ### Variants and modifiers
 - **Variants** are named versions of the item with a price adjustment.
 - **Modifier groups** attach add-on choices with min/max selection rules — e.g. an "Extra Shot" group for espresso add-ons, or a milk-choice group:

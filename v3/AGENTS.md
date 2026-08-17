@@ -1916,3 +1916,17 @@ Full crawl of BOTH portals with URL-precise error capture (httpx token + Playwri
   3. Staff "near-empty" pages = correct states: role-gated Access Denied (cashier on equipment), small forms (garbage, profile), wallet scan page.
 - **0 real issues found** — console clean (excluding known fonts/boot-token-rotation noise), 0 broken images, 0 raw i18n keys, 0 page errors, no h-overflow.
 - Final gate: E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic single head + check clean · 8/8 services · post-suite residue 0.
+
+### Round 39 — help & guide refresh (2026-08-17, ~23:30)
+
+Portal audit re-run (admin 90 routes + staff 17): still 0 real issues (only the documented prose false-positives + role-gated empty states).
+
+Guide docs updated for everything shipped this round, then re-seeded into the help-articles DB (47 articles):
+- `guide/staff/orders-and-tables.md` — new "Delivery orders — key into the delivery system" section (Key Delivery → provider + booking ref → auto out_for_delivery → badge → Update Delivery).
+- `guide/admin/inventory.md` — negative-stock tracing: "Negative only" filter on Stock Levels + "Negative impact" on Movements; auto-linked LNK- items note.
+- `guide/admin/menu.md` — "Auto inventory link (default)" section (LNK-<code> creation, explicit recipes win, idempotent).
+- `guide/admin/settings.md` — new sections in the Typical keys table: Payments (method-type lists), HitPay, Web Push (VAPID), Integrations (DeepSeek/Resend/Twilio).
+- `guide/customer/checkout-and-payment.md` — Stripe methods now "card / FPX" (e-wallet/GrabPay removed).
+- `guide/customer/getting-started.md` — clean dashboard rewrite (stat strip, order tiles, tier card → Membership Tiers page, quick actions, featured banner, What's on hub) + Dark/Light theme toggle instructions.
+- Verified in DB: all new markers present (What's on ×2, Membership Tiers ×2, LNK- ×2, vapid.private_key, hitpay.payment_methods), 0 GrabPay mentions.
+- Gates: E2E **241 passed, 3 skipped, 0 failed** · unit **100/100**.

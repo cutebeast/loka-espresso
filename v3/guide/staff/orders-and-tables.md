@@ -107,3 +107,15 @@ Every order carries a `payment_flow` discriminator:
 | **pay_after_meal** | Open tab — pay AFTER eating (Malaysia table service) | PWA/QR dine-in, POS two-stage | Never |
 
 The Unpaid tab splits by this: amber "pay after meal" = open tabs (normal — customer still eating), red "do not hand over" = prepaid problem orders. Paid orders always advance `pending → confirmed` automatically so they reach the kitchen.
+
+## Delivery orders — key into the delivery system
+
+Delivery orders are dispatched **manually** until a delivery-provider API is integrated:
+
+1. Create the booking in your delivery system (Lalamove, GrabExpress, etc.).
+2. On the Orders page, find the delivery order and tap **Key Delivery**.
+3. Pick the provider and enter the **booking reference** (e.g. `LAL-1234567`), then **Mark dispatched**.
+4. The order advances to **out for delivery** automatically and shows a badge like `lalamove · LAL-1234567`.
+5. Rebooked? Tap **Update Delivery** to change the provider/reference.
+
+Cancelled or delivered orders cannot be dispatched.
