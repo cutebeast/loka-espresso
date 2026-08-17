@@ -466,7 +466,31 @@
       "tierMember": "{tier} 会员",
       "topUp": "充值",
       "vouchers": "优惠券"
-    }
+    },
+    "home.stats.points": "积分",
+    "home.stats.wallet": "钱包",
+    "home.stats.tier": "等级",
+    "home.tiles.pickup": "自取",
+    "home.tiles.pickupSub": "约 15 分钟可取",
+    "home.tiles.delivery": "外卖配送",
+    "home.tiles.deliverySub": "送到你家",
+    "home.tier.spendMore": "再获得 {amount} 终身积分即可升级",
+    "home.quick.checkin": "签到",
+    "home.quick.wallet": "钱包",
+    "home.quick.referrals": "邀请好友",
+    "home.quick.help": "帮助",
+    "home.hub.title": "精彩进行中",
+    "home.hub.events": "活动",
+    "home.hub.eventsSub": "工作坊 · 课程 · 倒计时",
+    "home.hub.promotions": "优惠",
+    "home.hub.promotionsSub": "优惠 · 精选 · 好礼",
+    "home.hub.lucky": "幸运抽奖",
+    "home.hub.luckySub": "每周奖池",
+    "home.hub.info": "资讯",
+    "home.hub.infoSub": "冲煮指南 · 门店动态",
+    "home.hub.new": "最新",
+    "home.featured": "精选",
+    "home.welcome": "欢迎"
   },
   "information": {
     "checkBackSoon": "敬请期待最新资讯。",
@@ -1221,5 +1245,25 @@
     "noWorkshops": "暂无可参加的工作坊",
     "seatsLeft": "剩余{count}个名额",
     "title": "工作坊与课程"
+  },
+  "vip": {
+    "vip.title": "会员等级",
+    "vip.multiplier": "倍积分",
+    "vip.lifetimePoints": "终身积分",
+    "vip.pointsToNext": "再获得 {count} 积分即可升级至 {tier}",
+    "vip.topTier": "已是最高等级",
+    "vip.milestones": "等级里程碑",
+    "vip.benefits": "等级权益",
+    "vip.benefit_free_delivery": "免配送费",
+    "vip.benefit_priority_seating": "优先入座",
+    "vip.benefit_vip_event": "VIP 活动优先权",
+    "vip.benefit_monthly_free_item": "每月免费单品",
+    "vip.benefit_exclusive_menu": "专属菜单",
+    "vip.benefit_upgrades": "免费升杯",
+    "vip.benefit_birthday": "生日礼遇",
+    "vip.benefit_order_discount": "订单立减",
+    "vip.benefit_order_discount_pct": "订单折扣 %",
+    "vip.benefit_welcome_points": "入会赠送积分",
+    "vip.earnMore": "赚取更多积分"
   }
 }

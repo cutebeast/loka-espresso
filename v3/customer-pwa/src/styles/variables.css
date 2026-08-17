@@ -46,6 +46,10 @@
   --color-border: #D5CCBE;
   --color-border-light: #E0D8CB;
   --color-border-subtle: #EBE5DA;
+  /* Clean-redesign hairlines (2026-08: white surfaces, hairline separators) */
+  --color-hair: #E8E6E0;
+  --color-hair-2: #EFEEE9;
+  --color-surface: #FFFFFF;
 
   /* Semantic — Warm Tints */
   --color-success: #7AAA7A;
@@ -147,6 +151,9 @@
   /* Borders — dark bronze, gold for accents */
   --color-border: #3A322A;
   --color-border-light: #453B2E;
+  --color-hair: #332B21;
+  --color-hair-2: #2A241B;
+  --color-surface: #211B14;
   --color-border-subtle: #2C251D;
 
   /* Brown re-lifted for dark surfaces */

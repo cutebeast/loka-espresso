@@ -1,12 +1,8 @@
 import { create } from 'zustand';
 import api from '@/lib/api';
+import type { TierInfo } from '@/lib/api';
 
-export interface TierInfo {
-  id?: number;
-  name: string;
-  min_points: number;
-  color?: string;
-}
+export type { TierInfo };
 
 export interface AppConfig {
   delivery_fee: number;
@@ -100,10 +96,12 @@ export const useConfigStore = create<ConfigState>((set) => ({
           order_polling_interval_seconds: DEFAULT_CONFIG.order_polling_interval_seconds,
         },
         tiers: (raw.loyalty_tiers as Array<Record<string, unknown>> | undefined)?.map((t) => ({
-          id: typeof t.id === 'number' ? t.id : undefined,
+          id: typeof t.id === 'number' ? t.id : 0,
           name: String(t.name || ''),
           min_points: parseNumber(t.min_points, 0),
-          color: typeof t.color === 'string' ? t.color : undefined,
+          points_multiplier: typeof t.points_multiplier === 'number' ? t.points_multiplier : 1,
+          benefits: (t.benefits && typeof t.benefits === 'object' ? t.benefits : null) as Record<string, unknown> | null,
+          sort_order: typeof t.sort_order === 'number' ? t.sort_order : 0,
         })) ?? [],
         isLoaded: true,
       });

@@ -1,0 +1,145 @@
+/* ============================================
+   Clean Dashboard (2026-08 redesign)
+   White surfaces, hairline separators, one olive accent.
+   All tokens come from variables.css (light + dark).
+   ============================================ */
+
+.home-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ── Tri-stat strip ── */
+.clean-stats {
+  display: flex;
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-hair, #E8E6E0);
+  flex-shrink: 0;
+}
+.clean-stat {
+  flex: 1;
+  text-align: center;
+  padding: 13px 4px 11px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+}
+.clean-stat + .clean-stat { border-left: 1px solid var(--color-hair-2, #EFEEE9); }
+.clean-stat:active { background: var(--color-primary-50, #F5F7F0); }
+.clean-stat-val { font-size: 17px; font-weight: 800; display: block; letter-spacing: -0.01em; }
+.clean-stat-gold { color: var(--color-gold-text, #8A6D1F); }
+.clean-stat-lbl {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--color-text-muted, #8A8078);
+}
+
+/* ── Scroll body ── */
+.clean-scroll {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none; padding-bottom: 90px;
+}
+.clean-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Pickup / Delivery tiles ── */
+.clean-duo { display: flex; gap: 10px; padding: 14px 16px 0; }
+.clean-tile {
+  flex: 1; background: var(--color-surface, #fff); border: 1px solid var(--color-hair, #E8E6E0);
+  border-radius: 10px; padding: 13px 12px; display: flex; align-items: center; gap: 10px;
+  color: inherit; font-family: inherit; text-align: left; cursor: pointer;
+}
+.clean-tile:active { border-color: var(--color-primary, #3B4A1A); }
+.clean-tile strong { font-size: 13px; font-weight: 700; display: block; }
+.clean-tile-sub { font-size: 10.5px; color: var(--color-text-muted, #8A8078); display: block; margin-top: 1px; }
+
+/* ── Tier progress card ── */
+.clean-tier-card {
+  display: block; width: calc(100% - 32px); margin: 14px 16px 0;
+  background: var(--color-surface, #fff); border: 1px solid var(--color-hair, #E8E6E0);
+  border-radius: 10px; padding: 14px; color: inherit; font-family: inherit;
+  text-align: left; cursor: pointer;
+}
+.clean-tier-card:active { border-color: var(--color-primary, #3B4A1A); }
+.clean-tier-card-head { display: flex; justify-content: space-between; align-items: center; }
+.clean-tier-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.clean-tier-pct {
+  font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+  background: var(--color-gold-soft, #F7F1DF); color: var(--color-gold-text, #8A6D1F);
+}
+.clean-tier-sub { font-size: 11.5px; color: var(--color-text-muted, #8A8078); margin: 4px 0 10px; }
+.clean-bar { height: 6px; background: var(--color-hair-2, #EFEEE9); border-radius: 3px; overflow: hidden; }
+.clean-bar span { display: block; height: 6px; background: var(--color-primary, #3B4A1A); border-radius: 3px; }
+.clean-tier-targets {
+  display: flex; justify-content: space-between; font-size: 10px;
+  color: var(--color-text-muted, #8A8078); margin-top: 6px; font-weight: 600;
+}
+
+/* ── Quick actions ── */
+.clean-quick { display: flex; justify-content: space-between; padding: 0 16px; margin-top: 16px; }
+.clean-quick-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer; color: var(--color-text-secondary, #4A4038);
+  font-size: 10.5px; font-weight: 500; font-family: inherit; width: 72px; text-align: center;
+}
+.clean-qicon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--color-surface, #fff); border: 1px solid var(--color-hair, #E8E6E0);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-primary, #3B4A1A);
+}
+.clean-quick-item:active .clean-qicon { border-color: var(--color-primary, #3B4A1A); }
+
+/* ── Featured banner / promo slide ── */
+.clean-featured { margin: 14px 16px 0; }
+.clean-slide {
+  min-height: 108px; border-radius: 10px; padding: 15px 16px;
+  background: var(--color-surface, #fff); border: 1px solid var(--color-hair, #E8E6E0);
+  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  justify-content: center; color: inherit; font-family: inherit; text-align: left;
+  cursor: pointer; width: 100%;
+}
+.clean-slide.dark {
+  background: var(--color-primary, #3B4A1A); border-color: var(--color-primary, #3B4A1A); color: #fff;
+}
+.clean-slide:active { opacity: 0.92; }
+.clean-kicker {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--color-gold, #C9A84C);
+}
+.clean-slide h3 { font-size: 16px; margin: 4px 0 7px; max-width: 210px; line-height: 1.25; }
+.clean-code-chip {
+  border: 1px dashed currentColor; padding: 3px 8px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; width: fit-content; opacity: 0.9;
+}
+.clean-slide-art {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 38px; display: flex; align-items: center;
+}
+
+/* ── What's on hub ── */
+.clean-hub-head { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 16px 10px; }
+.clean-hub-head h2 { font-size: 16px; font-weight: 700; }
+.clean-hub { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px; }
+.clean-hub-tile {
+  border: 1px solid var(--color-hair, #E8E6E0); border-radius: 10px;
+  background: var(--color-surface, #fff); padding: 11px 12px; text-align: left;
+  color: inherit; font-family: inherit; cursor: pointer;
+}
+.clean-hub-tile:active { border-color: var(--color-primary, #3B4A1A); }
+.clean-hub-tile b {
+  font-size: 12.5px; display: flex; align-items: center; gap: 6px;
+}
+.clean-hub-tile b svg { color: var(--color-primary, #3B4A1A); flex-shrink: 0; }
+.clean-hub-sub { font-size: 10.5px; color: var(--color-text-muted, #8A8078); margin-top: 3px; display: block; line-height: 1.35; }
+.clean-badge {
+  margin-left: auto; display: inline-block; padding: 2px 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 700;
+}
+.clean-badge.badge-red { background: var(--color-danger-light, #FBF1F1); color: var(--color-danger, #C75050); }
+.clean-badge.badge-olive { background: var(--color-primary-50, #F5F7F0); color: var(--color-primary, #3B4A1A); }
+.clean-badge.badge-gold { background: var(--color-gold-soft, #F7F1DF); color: var(--color-gold-text, #8A6D1F); }
+
+/* Dark-mode specific: featured olive slide flips to keep brand pop */
+[data-theme="dark"] .clean-slide.dark { background: #3B4A1A; border-color: #3B4A1A; }

@@ -2,79 +2,44 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { ShoppingBag, Bike, Calendar, Megaphone, Ticket, BookOpen, Wallet, Gift, HelpCircle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
+import { useConfigStore } from '@/stores/configStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
-import type { MenuItem, PromoBanner, InformationCard } from '@/lib/api';
+import type { PromoBanner } from '@/lib/api';
 
-import { HomeCarousel, WalletCard, PromotionsSection } from './home';
-import MembershipHero from './home/MembershipHero';
 import HomeBanner from './home/HomeBanner';
-import EventCountdown from './home/EventCountdown';
-import BrewSpotlight from './home/BrewSpotlight';
-import LuckyDrawPanel from './home/LuckyDrawPanel';
-import BirthdayPrompt from './home/BirthdayPrompt';
 import WelcomeGiftCard from './home/WelcomeGiftCard';
-import ReferralCard from './home/ReferralCard';
-import TuesdayCard from './home/TuesdayCard';
+import BirthdayPrompt from './home/BirthdayPrompt';
 
+const TIER_COLORS: Record<string, string> = {
+  bloom: '#4CAF50',
+  origin: '#FF9800',
+  reserve: '#9C27B0',
+};
+
+/**
+ * Clean dashboard — the home feed was de-crammed (round 38 redesign, 2026-08):
+ * 13 stacked content blocks moved to their dedicated pages (events,
+ * promotions, lucky draw, referral, info). The dashboard is now a summary:
+ * header + tri-stat strip + order tiles + tier progress + quick actions +
+ * featured banner + "What's on" hub.
+ */
 export default function HomePage() {
   const { t } = useTranslation();
-  const { setPage, isGuest, triggerSignIn, selectedStore, showToast } = useUIStore();
+  const { setPage, triggerSignIn } = useUIStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const addItem = useCartStore((s) => s.addItem);
-  const { balance, points, tier, lifetimePoints } = useWalletStore();
+  const { balance, points, lifetimePoints, tier } = useWalletStore();
+  const tiers = useConfigStore(s => s.tiers);
 
-  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
-  const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [banners, setBanners] = useState<PromoBanner[]>([]);
-  const [loadingBanners, setLoadingBanners] = useState(true);
-  const [infoCards, setInfoCards] = useState<InformationCard[]>([]);
-  const [productCards, setProductCards] = useState<InformationCard[]>([]);
-  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [eventCount, setEventCount] = useState(0);
   const [luckyDrawLive, setLuckyDrawLive] = useState(false);
-  const isLoading = loadingFeatured || loadingBanners || loadingInfo;
-
-  const loadFeatured = useCallback(async (signal?: AbortSignal) => {
-    setLoadingFeatured(true);
-    try {
-      const res = await api.get(`/menu/items`, {
-        params: { is_featured: true, is_available: true, limit: 10 },
-        signal,
-      });
-      // v3 returns { items: [...], categories: [...] } from /menu/stores/{store_id}
-      let list: MenuItem[] = [];
-      if (res.data && typeof res.data === 'object' && res.data.items) {
-        list = Array.isArray(res.data.items) ? res.data.items : [];
-      } else if (Array.isArray(res.data)) {
-        list = res.data;
-      }
-      if (list.length === 0) {
-        const all = await api.get(`/menu/items`, {
-          params: { is_available: true, limit: 8 },
-          signal,
-        });
-        if (all.data && typeof all.data === 'object' && all.data.items) {
-          list = Array.isArray(all.data.items) ? all.data.items : [];
-        } else if (Array.isArray(all.data)) {
-          list = all.data;
-        }
-      }
-      setFeaturedItems(list.slice(0, 10));
-    } catch {
-      console.error('Failed to load featured items');
-      showToast(t('toast.failedToLoad'), 'error');
-      setFeaturedItems([]);
-    } finally {
-      setLoadingFeatured(false);
-    }
-  }, []);
 
   const loadBanners = useCallback(async (signal?: AbortSignal) => {
-    setLoadingBanners(true);
     try {
       const res = await api.get('/promos/banners', { signal });
       const data = Array.isArray(res.data) ? res.data : [];
@@ -85,193 +50,205 @@ export default function HomePage() {
       });
       setBanners(active);
     } catch {
-      console.error('Failed to load banners');
-      showToast(t('toast.failedToLoad'), 'error');
       setBanners([]);
-    } finally {
-      setLoadingBanners(false);
     }
   }, []);
 
-  const loadInfoCards = useCallback(async (signal?: AbortSignal) => {
-    setLoadingInfo(true);
+  const loadCounts = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await api.get('/content/events?limit=30', { signal });
+      const list = Array.isArray(res.data) ? res.data : [];
+      setEventCount(list.length);
+    } catch {
+      setEventCount(0);
+    }
     try {
       const [infoRes, prodRes] = await Promise.all([
-        api.get('/content/information?limit=3&content_type=information', { signal }),
-        api.get('/content/products?limit=3', { signal }),
+        api.get('/content/information?limit=1&content_type=information', { signal }),
+        api.get('/content/products?limit=1', { signal }),
       ]);
-      setInfoCards(Array.isArray(infoRes.data) ? infoRes.data : []);
-      setProductCards(Array.isArray(prodRes.data) ? prodRes.data : []);
+      void infoRes;
+      void prodRes;
     } catch {
-      console.error('Failed to load info cards');
-      showToast(t('toast.failedToLoad'), 'error');
-      try {
-        const res = await api.get('/promos/banners', { signal });
-        const data = Array.isArray(res.data) ? res.data : [];
-        const now = new Date();
-        const detailBanners = data
-          .filter((b: PromoBanner) => {
-            const inRange =
-              !b.start_date ||
-              !b.end_date ||
-              (new Date(b.start_date) <= now && new Date(b.end_date) >= now);
-            return inRange && b.action_type === 'detail';
-          })
-          .map((b: PromoBanner) => ({
-            id: b.id,
-            title: b.title,
-            short_description: b.short_description,
-            action_type: b.action_type,
-            image_url: b.image_url,
-          }));
-        setInfoCards(detailBanners);
-      } catch {
-        console.error('Failed to load info fallback from banners');
-        showToast(t('toast.failedToLoad'), 'error');
-        setInfoCards([]);
-      }
-    } finally {
-      setLoadingInfo(false);
+      /* info count not surfaced on the hub — load only for future badge use */
     }
   }, []);
 
   useEffect(() => {
     const ac = new AbortController();
-    loadFeatured(ac.signal);
     loadBanners(ac.signal);
-    loadInfoCards(ac.signal);
-    // Lucky draw banner visibility — 404 simply means no live campaign
+    loadCounts(ac.signal);
     api.get('/lucky-draw/active', { signal: ac.signal })
       .then(() => setLuckyDrawLive(true))
       .catch(() => setLuckyDrawLive(false));
     return () => ac.abort();
-  }, [loadFeatured, loadBanners, loadInfoCards]);
+  }, [loadBanners, loadCounts]);
 
-  const handleAddToCart = (item: MenuItem) => {
-    addItem({ menu_item_id: item.id, name: item.item_name, price: item.base_price, base_price: item.base_price, quantity: 1, image_url: item.image_url ?? undefined, customizations: {}, store_id: selectedStore?.id, customization_count: item.modifier_groups?.length ?? 0 });
-  };
+  // Tier progress toward next milestone
+  const sortedTiers = [...tiers].sort((a, b) => a.min_points - b.min_points);
+  const currentIdx = Math.max(0, sortedTiers.findIndex(x => x.name.toLowerCase() === (tier || 'bloom').toLowerCase()));
+  const current = sortedTiers[currentIdx] ?? null;
+  const next = sortedTiers[currentIdx + 1] ?? null;
+  const tierProgress = current && next
+    ? Math.min(100, Math.max(0, Math.round(((lifetimePoints - current.min_points) / Math.max(1, next.min_points - current.min_points)) * 100)))
+    : 100;
+  const tierColor = current ? (TIER_COLORS[current.name.toLowerCase()] || '#4CAF50') : '#4CAF50';
 
   const pageVariants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { duration: 0.3 } },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
-  };
+  const hubTiles = [
+    {
+      key: 'events',
+      label: t('home.hub.events'),
+      sub: t('home.hub.eventsSub'),
+      badge: eventCount > 0 ? String(eventCount) : null,
+      badgeClass: 'badge-red',
+      page: 'events' as const,
+    },
+    {
+      key: 'promotions',
+      label: t('home.hub.promotions'),
+      sub: t('home.hub.promotionsSub'),
+      badge: banners.length > 0 ? String(banners.length) : null,
+      badgeClass: 'badge-olive',
+      page: 'promotions' as const,
+    },
+    {
+      key: 'lucky',
+      label: t('home.hub.lucky'),
+      sub: t('home.hub.luckySub'),
+      badge: luckyDrawLive ? t('home.hub.new') : null,
+      badgeClass: 'badge-gold',
+      page: 'lucky-draw' as const,
+    },
+    {
+      key: 'info',
+      label: t('home.hub.info'),
+      sub: t('home.hub.infoSub'),
+      badge: null,
+      badgeClass: 'badge-olive',
+      page: 'information' as const,
+    },
+  ];
 
   return (
     <>
-      <motion.div
-        className="home-main"
-        variants={pageVariants}
-        initial="hidden"
-        animate="show"
-      >
-        {/* Membership hero (membership card + scan + tier preview) for
-            authenticated users; guest wallet card prompts sign-in */}
-        {isAuthenticated && (
-          <motion.div variants={itemVariants}>
-            <MembershipHero
-              points={points}
-              lifetimePoints={lifetimePoints}
-              tier={tier}
-              onScan={() => setPage('my-card')}
-              onRewards={() => setPage('my-rewards', { initialTab: 'rewards' })}
-              onVouchers={() => setPage('my-rewards', { initialTab: 'vouchers' })}
-              onCheckin={() => setPage('checkin')}
-            />
-          </motion.div>
-        )}
-        {!isAuthenticated && (
-          <motion.div variants={itemVariants}>
-            <WalletCard
-              isGuest={isGuest}
-              isAuthenticated={isAuthenticated}
-              balance={balance}
-              points={points}
-              tier={tier}
-              onTopUp={() => setPage('wallet')}
-              onRewards={() => setPage('my-rewards', { initialTab: 'rewards' })}
-              onVouchers={() => setPage('my-rewards', { initialTab: 'vouchers' })}
-              onCheckin={() => setPage('checkin')}
-              onSignIn={triggerSignIn}
-            />
-          </motion.div>
-        )}
+      <motion.div className="home-main" variants={pageVariants} initial="hidden" animate="show">
+        {/* Tri-stat strip */}
+        <div className="clean-stats">
+          <button type="button" className="clean-stat" onClick={() => (isAuthenticated ? setPage('my-rewards') : triggerSignIn())}>
+            <span className="clean-stat-val">{isAuthenticated ? points.toLocaleString() : '—'}</span>
+            <span className="clean-stat-lbl">{t('home.stats.points')}</span>
+          </button>
+          <button type="button" className="clean-stat" onClick={() => (isAuthenticated ? setPage('wallet') : triggerSignIn())}>
+            <span className="clean-stat-val clean-stat-gold">{isAuthenticated ? `RM ${Number(balance).toFixed(2)}` : '—'}</span>
+            <span className="clean-stat-lbl">{t('home.stats.wallet')}</span>
+          </button>
+          <button type="button" className="clean-stat" onClick={() => (isAuthenticated ? setPage('vip') : triggerSignIn())}>
+            <span className="clean-stat-val" style={{ color: tierColor }}>{isAuthenticated ? (current?.name || tier) : '—'}</span>
+            <span className="clean-stat-lbl">{t('home.stats.tier')}</span>
+          </button>
+        </div>
 
-        {/* Admin-managed home banner (post-login splash, screen_name=home_banner) */}
-        {isAuthenticated && (
-          <motion.div variants={itemVariants}>
-            <HomeBanner />
-          </motion.div>
-        )}
+        <div className="clean-scroll">
+          {/* Order tiles */}
+          <div className="clean-duo">
+            <button type="button" className="clean-tile" onClick={() => setPage('menu')}>
+              <ShoppingBag size={20} color="var(--color-primary, #3B4A1A)" />
+              <span>
+                <strong>{t('home.tiles.pickup')}</strong>
+                <span className="clean-tile-sub">{t('home.tiles.pickupSub')}</span>
+              </span>
+            </button>
+            <button type="button" className="clean-tile" onClick={() => setPage('menu')}>
+              <Bike size={20} color="var(--color-primary, #3B4A1A)" />
+              <span>
+                <strong>{t('home.tiles.delivery')}</strong>
+                <span className="clean-tile-sub">{t('home.tiles.deliverySub')}</span>
+              </span>
+            </button>
+          </div>
 
-        {/* Day-one welcome gift card (new members with an unused welcome voucher) */}
-        {isAuthenticated && (
-          <motion.div variants={itemVariants}>
-            <WelcomeGiftCard />
-          </motion.div>
-        )}
+          {/* Tier progress card (authenticated only) */}
+          {isAuthenticated && current && (
+            <button type="button" className="clean-tier-card" onClick={() => setPage('vip')}>
+              <div className="clean-tier-card-head">
+                <span className="clean-tier-name">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: tierColor, display: 'inline-block' }} />
+                  {current.name}
+                </span>
+                <span className="clean-tier-pct">{tierProgress}% {next ? `→ ${next.name}` : ''}</span>
+              </div>
+              <div className="clean-tier-sub">
+                {next
+                  ? t('home.tier.spendMore', { amount: Math.max(0, next.min_points - lifetimePoints).toLocaleString() })
+                  : t('vip.topTier')}
+              </div>
+              <div className="clean-bar"><span style={{ width: `${tierProgress}%` }} /></div>
+              <div className="clean-tier-targets">
+                {sortedTiers.map(x => (
+                  <span key={x.id} style={{ color: x.name === current.name ? tierColor : undefined }}>{x.name}</span>
+                ))}
+              </div>
+            </button>
+          )}
 
-        {/* Live extras: birthday enrichment (authed, no DOB) + next-session countdown */}
-        {isAuthenticated && (
-          <motion.div variants={itemVariants}>
-            <BirthdayPrompt />
-          </motion.div>
-        )}
-        <motion.div variants={itemVariants}>
-          <EventCountdown />
-        </motion.div>
+          {/* Quick actions */}
+          <div className="clean-quick">
+            {[
+              { icon: <Calendar size={18} />, label: t('home.quick.checkin'), page: 'checkin' as const, auth: true },
+              { icon: <Wallet size={18} />, label: t('home.quick.wallet'), page: 'wallet' as const, auth: true },
+              { icon: <Gift size={18} />, label: t('home.quick.referrals'), page: 'referral' as const, auth: true },
+              { icon: <HelpCircle size={18} />, label: t('home.quick.help'), page: 'help-support' as const, auth: false },
+            ].map(a => (
+              <button type="button" key={a.page} className="clean-quick-item" onClick={() => (a.auth && !isAuthenticated ? triggerSignIn() : setPage(a.page))}>
+                <span className="clean-qicon">{a.icon}</span>
+                {a.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Lucky Draw panel — live campaign with entries/spins balance */}
-        {luckyDrawLive && (
-          <motion.div variants={itemVariants}>
-            <LuckyDrawPanel />
-          </motion.div>
-        )}
+          {/* Featured banner (admin home_banner; falls back to first active promo) */}
+          <div className="clean-featured">
+            {isAuthenticated && <HomeBanner />}
+            {!isAuthenticated && (() => {
+              const featured = banners[0];
+              if (!featured) return null;
+              return (
+                <button type="button" className="clean-slide dark" onClick={() => setPage('promotions', { selectedPromoId: featured.id })}>
+                  <span className="clean-kicker">{t('home.featured')}</span>
+                  <h3>{featured.title}</h3>
+                  <span className="clean-slide-art">{featured.image_url ? <img src={featured.image_url} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover' }} /> : '☕'}</span>
+                </button>
+              );
+            })()}
+          </div>
 
-        {/* Referral entry (share your code, both sides earn) */}
-        {isAuthenticated && (
-          <motion.div variants={itemVariants}>
-            <ReferralCard />
-          </motion.div>
-        )}
+          {/* One-time prompts — compact, dismiss themselves once claimed */}
+          {isAuthenticated && <WelcomeGiftCard />}
+          {isAuthenticated && <BirthdayPrompt />}
 
-        {/* LOKA Tuesday — standing weekly promo with countdown */}
-        <motion.div variants={itemVariants}>
-          <TuesdayCard />
-        </motion.div>
-
-        {/* Banners & Info Carousels */}
-        <HomeCarousel
-          banners={banners}
-          loading={isLoading}
-          infoCards={infoCards}
-          productCards={productCards}
-          onPromoClick={(id) => setPage('promotions', { selectedPromoId: id })}
-          onInfoClick={(id, contentType) => setPage('information', { selectedInfoId: id, selectedInfoContentType: contentType })}
-          onViewAllPromos={() => setPage('promotions')}
-          onViewAllDiscover={() => setPage('information')}
-        />
-
-        {/* Daily Brew Spotlight — origin-story product card */}
-        <motion.div variants={itemVariants}>
-          <BrewSpotlight />
-        </motion.div>
-
-        {/* Today's Picks */}
-        <motion.div variants={itemVariants}>
-          <PromotionsSection
-            featuredItems={featuredItems}
-            loading={isLoading}
-            onAddToCart={handleAddToCart}
-            onSeeAll={() => setPage('menu')}
-          />
-        </motion.div>
+          {/* What's on hub */}
+          <div className="clean-hub-head">
+            <h2>{t('home.hub.title')}</h2>
+          </div>
+          <div className="clean-hub">
+            {hubTiles.map(h => (
+              <button type="button" key={h.key} className="clean-hub-tile" onClick={() => setPage(h.page)}>
+                <b>
+                  {h.key === 'events' ? <Calendar size={14} /> : h.key === 'promotions' ? <Megaphone size={14} /> : h.key === 'lucky' ? <Ticket size={14} /> : <BookOpen size={14} />}
+                  {h.label}
+                  {h.badge && <span className={`clean-badge ${h.badgeClass}`}>{h.badge}</span>}
+                </b>
+                <span className="clean-hub-sub">{h.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </motion.div>
-
     </>
   );
 }

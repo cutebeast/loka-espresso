@@ -64,6 +64,7 @@ const pageImporters: Record<string, () => Promise<{
   workshops: () => import('./WorkshopsPage'),
   checkin: () => import('./CheckinPage'),
   'lucky-draw': () => import('./LuckyDrawPage'),
+  vip: () => import('./VipPage'),
   kiosk: () => import('./KioskPage')
 };
 

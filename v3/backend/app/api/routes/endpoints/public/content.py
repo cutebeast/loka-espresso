@@ -587,7 +587,15 @@ async def get_config_bootstrap(
 
     # Prepare translatable structures
     tier_dicts = [
-        {"id": t.id, "display_name": t.display_name, "min_points": t.min_lifetime_points, "color": t.color_hex or "#A0783A"}
+        {
+            "id": t.id,
+            "display_name": t.display_name,
+            "min_points": t.min_lifetime_points,
+            "color": t.color_hex or "#A0783A",
+            "points_multiplier": float(t.points_multiplier),
+            "benefits_config": t.benefits_config or {},
+            "sort_order": t.sort_order,
+        }
         for t in tiers
     ]
     store_dicts = [
@@ -609,7 +617,15 @@ async def get_config_bootstrap(
         "referral_reward_points": referral_reward_points,
         "payment_gateway_provider": payment_gateway_provider,
         "loyalty_tiers": [
-            {"name": t["display_name"], "min_points": t["min_points"], "color": t["color"]}
+            {
+                "id": t["id"],
+                "name": t["display_name"],
+                "min_points": t["min_points"],
+                "color": t["color"],
+                "points_multiplier": t["points_multiplier"],
+                "benefits": t["benefits_config"],
+                "sort_order": t["sort_order"],
+            }
             for t in tier_dicts
         ],
         "stores": [

@@ -461,7 +461,31 @@
       "tierMember": "{tier} Member",
       "topUp": "Top Up",
       "vouchers": "Vouchers"
-    }
+    },
+    "home.stats.points": "Points",
+    "home.stats.wallet": "Wallet",
+    "home.stats.tier": "Tier",
+    "home.tiles.pickup": "Pickup",
+    "home.tiles.pickupSub": "Ready in ~15 min",
+    "home.tiles.delivery": "Delivery",
+    "home.tiles.deliverySub": "To your door",
+    "home.tier.spendMore": "Earn {amount} more lifetime points to level up",
+    "home.quick.checkin": "Check-in",
+    "home.quick.wallet": "Wallet",
+    "home.quick.referrals": "Referrals",
+    "home.quick.help": "Help",
+    "home.hub.title": "What's on",
+    "home.hub.events": "Events",
+    "home.hub.eventsSub": "Workshops · Classes · Countdowns",
+    "home.hub.promotions": "Promotions",
+    "home.hub.promotionsSub": "Deals · Spotlight · Gifts",
+    "home.hub.lucky": "Lucky Draw",
+    "home.hub.luckySub": "Weekly prize pool",
+    "home.hub.info": "Info",
+    "home.hub.infoSub": "Brew guide · Store news",
+    "home.hub.new": "NEW",
+    "home.featured": "Featured",
+    "home.welcome": "Welcome"
   },
   "information": {
     "checkBackSoon": "Check back soon for updates",
@@ -1329,5 +1353,25 @@
     "tuesdayHint": "One use per week, app only",
     "tuesdayTitle": "LOKA Tuesday",
     "tuesdayToday": "Today!"
+  },
+  "vip": {
+    "vip.title": "Membership Tiers",
+    "vip.multiplier": "points",
+    "vip.lifetimePoints": "Lifetime points",
+    "vip.pointsToNext": "{count} more points to {tier}",
+    "vip.topTier": "Top tier reached",
+    "vip.milestones": "Tier milestones",
+    "vip.benefits": "Tier benefits",
+    "vip.benefit_free_delivery": "Free delivery",
+    "vip.benefit_priority_seating": "Priority seating",
+    "vip.benefit_vip_event": "VIP event access",
+    "vip.benefit_monthly_free_item": "Monthly free item",
+    "vip.benefit_exclusive_menu": "Exclusive menu access",
+    "vip.benefit_upgrades": "Complimentary upgrades",
+    "vip.benefit_birthday": "Birthday reward",
+    "vip.benefit_order_discount": "Order discount",
+    "vip.benefit_order_discount_pct": "Order discount %",
+    "vip.benefit_welcome_points": "Welcome bonus points",
+    "vip.earnMore": "Earn more points"
   }
 }
