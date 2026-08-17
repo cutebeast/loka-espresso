@@ -1965,3 +1965,10 @@ PWA audit loop (guest + authed, 24 routes, URL-precise error capture, case-insen
 4. **Console noise silenced (real errors still logged)**: `useAuthFlow` boot validation now silences 401/403/422 (guest/expired-session states — the login wall handles them); Splash content fetch silences `CanceledError` (axios abort on unmount mid-navigation).
 - False positives verified & excluded: payment-methods/saved-addresses "near-empty" = legitimate ~110-char empty states (threshold lowered to 60); transient "Failed to load" toast during rapid scripted navigation (0 4xx on isolated loads); guest-pass login walls = correct.
 - Final: audit **0 problems** · full E2E **241 passed, 3 skipped, 0 failed** (the one full-run inventory failure was a flake — passes isolated + suite re-run green) · tsc/eslint clean · PWA rebuilt + kiosk restarted.
+
+### Round 39 — kiosk + POS display audit (2026-08-18, ~01:20)
+
+Headless chromium audit of both customer-facing screens:
+- **Kiosk** (kiosk.loyaltysystem.uk): zoom-locked viewport ✓, forced light theme ✓, welcome CTA + clock ✓, promo carousel renders + swipe-rotates ✓, full ordering flow (order type → phone skip → menu categories → item sheet → add to cart) with **0 console errors, 0 raw keys, 0 broken images**. One probe-banner residue cleaned ("Probe Banner aa87" from the save/edit probe — it occupied the carousel's first slide).
+- **POS display** (pos-disp.loyaltysystem.uk/pos/display?store=1): store name + promo content render ✓, 0 console errors, 0 raw keys, 0 broken images.
+- No code changes — data cleanup only. Both screens verified healthy after the dashboard/locale rebuilds.
