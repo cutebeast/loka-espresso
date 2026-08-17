@@ -1904,3 +1904,15 @@ Owner request: stock may go below zero on sales/wastage (by design — sales nev
 - **BUG in my purge (caught by the suite)**: the test-residue menu-item purge used `item_code LIKE 'EX-%'` — but REAL workshop items are `EX-TURKISH-*` (EX = Experience)! It deleted all 3 experience items and broke the workshops tests. Purge pattern fixed to `E2E-%` / `FREQ-%` / `EX-AUTOLNK-%` only, with a "bare EX-% is FORBIDDEN" comment. RULE: item-code prefixes collide — EX- is a REAL product prefix, never a test prefix.
 - Workshop items re-seeded (seed_menu --with-recipes, idempotent) + their zh translations backfilled via the nightly cron (gloss style: "Turkish Sand Brew Workshop（土耳其沙煮咖啡工作坊）").
 - Verification: full E2E **241 passed, 3 skipped, 0 failed** (two consecutive green runs) · unit **100/100** · tsc/eslint clean · alembic single head + check clean · admin-portal rebuilt · 8/8 services online · DB: 166 menu items (incl. 3 experiences), 163 recipe lines, 0 negative stock, 0 soft-deleted rows.
+
+### Round 39 — admin + staff portal audit loop (2026-08-17, ~23:00)
+
+Full crawl of BOTH portals with URL-precise error capture (httpx token + Playwright cookie injection — NOTE: httpx's `r.cookies` jar does NOT reliably send the token; parse `tokens.access_token` and set the cookie manually).
+
+- **Admin**: all 90 real sidebar routes (extracted from Sidebar.tsx source — never guess paths) crawled. **Staff**: 17 routes.
+- **All flags resolved as false positives** (verified with exact-match context probes, per the no-false-positive rule):
+  1. `/menu/bundles`, `/workshops`, `/payments`, `/marketing/surveys` 404s — my guessed URLs; real routes are `/menu/bundle-products`, `/events/workshops`, `/surveys`, and payments live inside orders/refunds (no standalone /payments route).
+  2. `raw-keys ['admin']` on payment-gateway = the webhook URL text "admin.loyaltysystem.uk/api/webhooks/stripe" (prose, not a key). Same class for version-control ("staff.loyaltysystem.uk...").
+  3. Staff "near-empty" pages = correct states: role-gated Access Denied (cashier on equipment), small forms (garbage, profile), wallet scan page.
+- **0 real issues found** — console clean (excluding known fonts/boot-token-rotation noise), 0 broken images, 0 raw i18n keys, 0 page errors, no h-overflow.
+- Final gate: E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic single head + check clean · 8/8 services · post-suite residue 0.
