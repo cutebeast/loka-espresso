@@ -1972,3 +1972,14 @@ Headless chromium audit of both customer-facing screens:
 - **Kiosk** (kiosk.loyaltysystem.uk): zoom-locked viewport ✓, forced light theme ✓, welcome CTA + clock ✓, promo carousel renders + swipe-rotates ✓, full ordering flow (order type → phone skip → menu categories → item sheet → add to cart) with **0 console errors, 0 raw keys, 0 broken images**. One probe-banner residue cleaned ("Probe Banner aa87" from the save/edit probe — it occupied the carousel's first slide).
 - **POS display** (pos-disp.loyaltysystem.uk/pos/display?store=1): store name + promo content render ✓, 0 console errors, 0 raw keys, 0 broken images.
 - No code changes — data cleanup only. Both screens verified healthy after the dashboard/locale rebuilds.
+
+### Round 39 — full zh translation coverage audit (2026-08-18, ~01:50)
+
+Owner: "make sure all UIUX and label is properly having CN translation on all the portal".
+Audited every portal's zh coverage against the keys ACTUALLY USED (code t() calls + EN bundles), not just DB-registered rows (the fill script reports "complete" for registered keys only):
+- **Staff**: 804 bundle keys → 9 missing zh (login.password_label, pos.customers, pos.display_*, pos.tab_*, pos.tools) — seeded en+zh.
+- **Admin**: 1,794 t() keys → 12 missing zh (movements prev/next/transfer_*, menu_experiences.*, orders.disputed/drive_thru/partially_refunded, staff_attendance.overtime_start, admin.form.name) — seeded.
+- **PWA**: en.json 1,202 keys → 107 had NEITHER static zh.json NOR pwa-ui DB zh (guestPay.*, experience.*, home.hero.* etc.). Fixed: registered the 107 en rows in pwa-ui DB (source = en.json values) → DeepSeek translated 107 zh → `sync_translations_to_json.py` regenerated zh.json + auto-rebuilt the PWA.
+- Verified served API: staff-ui 857 zh keys, admin-ui 3,066, pwa-ui 1,202 (home.stats.wallet=钱包, guestPay.sendCode=发送验证码). Live zh render verified: dashboard shows 积分/钱包/自取 with zero raw EN labels.
+- Final coverage: **staff 0 gaps · admin 0 gaps · pwa 0 gaps** (static+DB union). Full E2E + unit green.
+- RULE: zh-coverage audits must cross-check USED keys (t() extraction + EN bundles) against the served zh union (namespace-wide DB rows + static JSONs) — registered-key counts hide gaps.

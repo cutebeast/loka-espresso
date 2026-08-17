@@ -236,8 +236,8 @@
     "yourVouchers": "您的优惠券"
   },
   "checkout_page": {
-    "pay_online_duitnow_tng_boost_shopeepay": "在线支付（DuitNow / TnG / Boost / ShopeePay）",
-    "pay_online_card_fpx": "在线支付（卡 / FPX）"
+    "pay_online_card_fpx": "在线支付（卡 / FPX）",
+    "pay_online_duitnow_tng_boost_shopeepay": "在线支付（DuitNow / TnG / Boost / ShopeePay）"
   },
   "common": {
     "add": "添加",
@@ -346,26 +346,39 @@
     "title": "活动",
     "upcoming": "即将到来"
   },
+  "experience": {
+    "about": "关于体验",
+    "priorityBooking": "请尽早预订，座位有限。",
+    "reserve": "预订座位"
+  },
   "guestPay": {
     "alreadyPaid": "订单已支付",
     "browseMenu": "浏览我们的菜单",
     "cancelMsg": "您的支付已取消。未产生任何费用。",
+    "codeSent": "验证码已发送",
     "error": "错误",
     "invalidLink": "此支付链接无效或已过期。请向服务员索取新的二维码。",
     "loadFailed": "无法加载您的订单,请重试。",
     "noProvider": "在线支付不可用。请到柜台付款。",
     "noRedirect": "无法启动支付。请重试。",
+    "otpPlaceholder": "输入6位验证码",
     "payFailed": "支付失败。请重试。",
     "payForOrder": "支付订单",
     "payWithCard": "银行卡支付",
     "payWithHitPay": "HitPay 支付",
+    "payWithWallet": "使用钱包支付",
     "paymentCancelled": "支付已取消",
     "paymentSuccessful": "支付成功",
     "phoneHint": "输入您的号码以获取积分和收据。无需密码。",
     "phoneOptional": "手机号码（可选）",
     "processing": "处理中...",
+    "recommended": "推荐",
+    "resendCode": "重新发送验证码",
+    "sendCode": "发送验证码",
+    "sendCodeFailed": "验证码发送失败，请重试。",
     "thankYou": "感谢您光临本店！",
-    "tryAgain": "重试"
+    "tryAgain": "重试",
+    "walletOtpHint": "使用钱包支付，请通过一次性验证码验证您的手机。"
   },
   "helpSupport": {
     "backToHome": "返回首页",
@@ -433,14 +446,43 @@
     "badgeExperience": "体验",
     "badgeProduct": "产品",
     "discoverTitle": "发现",
+    "featured": "精选",
     "goToSlide": "转到第 {n} 张幻灯片",
     "greetingAfternoon": "下午好",
     "greetingEvening": "晚上好",
     "greetingMorning": "早上好",
     "guestName": "访客",
+    "hero": {
+      "currentPoints": "当前积分",
+      "locked": "已锁定",
+      "nextPerks": "{tier} 礼遇：",
+      "perkDelivery": "免费配送",
+      "perkGeneric": "专属{tier}权益",
+      "perkMultiplier": "{mult}倍积分，每笔订单均可赚取",
+      "perkSupport": "优先服务",
+      "pointsToNext": "距离 {tier} 还差 {count} 积分",
+      "previewTitle": "等级状态预览",
+      "scan": "在柜台扫码",
+      "scanAria": "在柜台出示我的会员二维码以供扫描",
+      "tierStatus": "等级状态",
+      "topTier": "您已处于最高等级。",
+      "unlocked": "Unlocked（解锁特调）"
+    },
     "home_carousel": {
       "featured_banner": "特色横幅",
       "featured_card": "特色卡片"
+    },
+    "hub": {
+      "events": "活动",
+      "eventsSub": "工作坊 · 课程 · 倒计时",
+      "info": "资讯",
+      "infoSub": "冲煮指南 · 门店动态",
+      "lucky": "幸运抽奖",
+      "luckySub": "每周奖池",
+      "new": "最新",
+      "promotions": "优惠",
+      "promotionsSub": "优惠 · 精选 · 好礼",
+      "title": "精彩进行中"
     },
     "learnMore": "了解更多",
     "noItemsAvailable": "暂无可用项目",
@@ -449,9 +491,29 @@
     "promotions_section": {
       "promotion": "促销"
     },
+    "quick": {
+      "checkin": "签到",
+      "help": "帮助",
+      "referrals": "邀请好友",
+      "wallet": "钱包"
+    },
     "scanQR": "扫描 QR",
     "seeAll": "查看全部",
+    "stats": {
+      "points": "积分",
+      "tier": "等级",
+      "wallet": "钱包"
+    },
     "takeSurvey": "参与调查",
+    "tier": {
+      "spendMore": "再获得 {amount} 终身积分即可升级"
+    },
+    "tiles": {
+      "delivery": "外卖配送",
+      "deliverySub": "送到你家",
+      "pickup": "自取",
+      "pickupSub": "约 15 分钟可取"
+    },
     "todaysPicks": "今日精选",
     "view": "查看",
     "viewAll": "查看全部",
@@ -466,40 +528,33 @@
       "tierMember": "{tier} 会员",
       "topUp": "充值",
       "vouchers": "优惠券"
-    },
-    "stats": {
-      "points": "积分",
-      "wallet": "钱包",
-      "tier": "等级"
-    },
-    "tiles": {
-      "pickup": "自取",
-      "pickupSub": "约 15 分钟可取",
-      "delivery": "外卖配送",
-      "deliverySub": "送到你家"
-    },
-    "tier": {
-      "spendMore": "再获得 {amount} 终身积分即可升级"
-    },
-    "quick": {
-      "checkin": "签到",
-      "wallet": "钱包",
-      "referrals": "邀请好友",
-      "help": "帮助"
-    },
-    "hub": {
-      "title": "精彩进行中",
-      "events": "活动",
-      "eventsSub": "工作坊 · 课程 · 倒计时",
-      "promotions": "优惠",
-      "promotionsSub": "优惠 · 精选 · 好礼",
-      "lucky": "幸运抽奖",
-      "luckySub": "每周奖池",
-      "info": "资讯",
-      "infoSub": "冲煮指南 · 门店动态",
-      "new": "最新"
-    },
-    "featured": "精选"
+    }
+  },
+  "homeExtras": {
+    "birthdayPrompt": "告诉我们您的生日，即可解锁年度庆祝好礼。",
+    "brewSpotlight": "The Daily Brew Spotlight（每日精选咖啡）",
+    "completeProfile": "Complete Profile（完整风味）",
+    "everyCup": "每一杯都是一张抽奖券——买得越多，机会越多！",
+    "luckyDraw": "季节性幸运抽奖",
+    "nextGathering": "Next Coffee Gathering（下一场咖啡聚会）",
+    "orderNow": "立即下单",
+    "profileEnrichment": "风味提升",
+    "referralBody": "分享你的优惠码 — 朋友首次下单，你即可获得50积分。",
+    "referralCta": "Share your code（分享你的代码）",
+    "referralTitle": "邀请好友，赚取积分",
+    "rsvpSoon": "提前预订，确保座位",
+    "spin": "Spin（旋动特调）",
+    "spins": "特调",
+    "ticket": "小票",
+    "tickets": "小票",
+    "tuesdayBody": "会员每周二可享15%折扣 — 每周在My Rewards中发放一张新优惠券。",
+    "tuesdayHint": "每周限用一次，仅限App",
+    "tuesdayTitle": "LOKA星期二",
+    "tuesdayToday": "今日精选",
+    "welcomeGiftBody": "您的欢迎礼已送达 — 下一笔订单立减{value}，已在My Rewards中等待您查收。",
+    "welcomeGiftCta": "查看我的礼品",
+    "welcomeGiftTitle": "欢迎光临 LOKA Espresso",
+    "yourEntries": "您的条目：{count} {label}"
   },
   "information": {
     "checkBackSoon": "敬请期待最新资讯。",
@@ -525,8 +580,17 @@
   },
   "kiosk": {
     "add_to_cart": "加入购物车",
+    "addon_deals_skip": "不用了，谢谢",
+    "addon_deals_subtitle": "加购以下商品享特价",
+    "addon_deals_title": "搭配套餐，更省钱！",
     "back": "返回",
     "back_to_menu": "返回菜单",
+    "bundle_fixed_hint": "包含以下所有单品",
+    "bundle_multi_hint": "每道菜各选一款",
+    "bundle_pick_hint": "任选{n}款",
+    "bundle_pricing_note": "套餐价格于结账时适用",
+    "bundles": "套餐",
+    "call_staff": "呼叫服务员",
     "cart": "购物车",
     "cart_count": "购物车 ({n})",
     "cart_empty": "购物车暂无商品",
@@ -534,27 +598,53 @@
     "choose_one": "选一项",
     "choose_up_to": "最多选 {n} 项",
     "choose_variant": "选择规格：",
+    "close": "关闭",
     "confirm_title": "确认您的订单",
+    "continue": "继续",
+    "continue_skip": "跳过并继续",
+    "continue_skipping": "跳过并继续",
+    "continue_with_phone": "继续",
     "counter_note": "请前往柜台完成付款，或扫描下方二维码从您的手机支付。",
     "dine_in": "堂食",
     "dine_in_desc": "在店内用餐",
+    "inactivity_warning": "会话即将结束",
     "items_count": "{n} 件商品",
+    "keep_ordering": "继续点餐",
     "load_failed": "菜单加载失败",
+    "menu": "菜单",
+    "need_help": "需要帮助？",
     "no_items": "没有找到商品",
     "order_failed": "订单失败，请重试。",
     "order_placed": "订单已提交！",
     "order_type_title": "您想怎么用餐？",
     "pay_now": "立即付款",
+    "pay_with_card": "刷卡支付",
+    "pay_with_wallet": "使用钱包支付",
+    "payment_failed": "付款无法处理",
+    "payment_method": "选择支付方式",
+    "phone_desc": "输入您的手机号码以接收订单状态更新。如不需要，可跳过。",
+    "phone_label": "电话",
+    "phone_loyalty_note": "输入您的手机号码以赚取本次订单积分",
+    "phone_title": "订单更新",
+    "processing": "处理中...",
     "returning_in": "{n} 秒后返回主页...",
     "scan_to_pay": "扫码付款",
     "search_menu": "搜索菜单...",
     "select_required": "请选择必填项",
+    "skip": "Skip（跳过）",
+    "staff_assistance": "请呼叫工作人员寻求帮助。",
     "start_new_order": "开始新订单",
     "subtitle": "自助点餐机",
     "table_label": "桌号：",
     "table_number": "桌号",
+    "table_number_desc": "请找到您桌上的号码并在下方输入",
+    "table_number_placeholder": "例如 T5",
+    "table_number_title": "桌号",
+    "table_required": "请在付款前输入您的桌号",
+    "tablet_idle": "点击在桌上下单",
     "takeaway": "外带",
     "takeaway_desc": "打包带走",
+    "tap_to_continue": "点击任意位置继续",
     "tap_to_order": "点击点餐",
     "total": "总计",
     "your_order": "您的订单"
@@ -598,6 +688,7 @@
   "menu": {
     "addPrice": "添加价格",
     "addQuantity": "添加数量",
+    "addedToCart": "已加入购物车",
     "addedToCartToast": "已加入购物车！",
     "addonAdded": "{name} 已添加",
     "addonBadge": "附加品",
@@ -613,6 +704,7 @@
       "decrease_quantity": "减少数量",
       "increase_quantity": "增加数量"
     },
+    "bundles": "套餐",
     "cartItemCount": "{count} 件商品",
     "clearSearch": "清除搜索",
     "comboBadge": "套餐",
@@ -663,7 +755,14 @@
   },
   "menu_page": {
     "kcal": "千卡",
-    "members": "会员"
+    "members": "会员",
+    "per_person": "每位",
+    "removeUsualAria": "从常点中移除",
+    "saveUsualAria": "存为常点饮品",
+    "usuals": "Your Usuals（日常之选）",
+    "vault_sub": "会员限定神秘特调",
+    "vault_title": "The Vault — Secret Menu（隐藏菜单）",
+    "vault_unlock": "达到{tier}解锁"
   },
   "myCard": {
     "brand": "LOKA Espresso",
@@ -679,6 +778,7 @@
     "totalPoints": "总积分"
   },
   "myRewards": {
+    "active": "Active（活力）",
     "amountOff": "立减{amount}",
     "claimDesc": "领取优惠并完成调查以赚取代金券。",
     "expires": "有效期至{date}",
@@ -695,7 +795,10 @@
     "percentOff": "立减{value}%",
     "promoVoucher": "促销代金券",
     "redeemDesc": "用积分兑换奖励，从今天开始收集吧。",
+    "redeemQrAlt": "兑换QR码",
+    "redeemQrAria": "在柜台出示此QR码以兑换",
     "redemptionInfo": "您唯一的兑换码将由我们的店员在柜台扫描。无需记忆或分享任何代码。",
+    "scanAtPos": "一键兑换 — 店员在POS机扫描此码",
     "showToCashier": "结账时向收银员出示此码",
     "tabRewards": "我的奖励",
     "tabVouchers": "我的代金券",
@@ -755,11 +858,16 @@
     "deliveryFee": "外送费",
     "deliveryInfo": "外送资讯",
     "discount": "折扣",
+    "einvoiceAlreadyIssued": "此订单已开具电子发票",
+    "einvoiceFailed": "请求电子发票失败，请重试。",
+    "einvoiceReady": "E-invoice 已就绪",
+    "einvoiceRequested": "电子发票请求成功",
     "enjoyOrder": "祝您用餐愉快！",
     "estimatedDelivery": "预计送达时间",
     "estimatedReady": "预计完成时间",
     "fromStore": "来自 {{store}}",
     "lokaWallet": "Loka 钱包",
+    "openEinvoice": "打开电子发票",
     "orderCancelled": "此订单已取消",
     "orderItems": "订单商品",
     "orderNumber": "订单编号 #{{number}}",
@@ -773,6 +881,7 @@
     "preparingDineIn": "厨房正在准备中",
     "preparingPickup": "正在准备您的自取订单",
     "reorderAll": "重新订购所有商品",
+    "requestEinvoice": "索取电子发票",
     "share": "分享",
     "shareDate": "日期：{{date}}",
     "shareDelivery": "外送费：{{amount}}",
@@ -783,7 +892,8 @@
     "shareTitle": "LOKA Espresso - 订单 #{{number}}",
     "shareTotal": "总计：{{amount}}",
     "storeId": "门店 #{{id}}",
-    "title": "订单详情"
+    "title": "订单详情",
+    "viewEinvoice": "查看电子发票"
   },
   "orders": {
     "activeOrders": "进行中的订单",
@@ -1051,7 +1161,9 @@
   "settings": {
     "about": "关于我们",
     "aboutFallback": "Loka Espresso源于对正宗土耳其咖啡文化的热爱，将流传数百年的咖啡传统与温暖融入每一杯咖啡。我们精选优质产区的咖啡豆，小批量烘焙以匠心传承咖啡文化。",
+    "appearance": "卖相",
     "attribution": "由 LOKA Espresso 精心打造",
+    "darkMode": "Dark Mode（暗夜特调）",
     "enable_notifications": "开启通知",
     "language": "语言",
     "languages": {
@@ -1061,6 +1173,7 @@
       "tr": "Türkçe",
       "zh": "中文"
     },
+    "lightMode": "浅色模式",
     "notifications": "通知",
     "privacyLegal": "隐私与法律",
     "privacyPolicy": "隐私政策",
@@ -1211,6 +1324,26 @@
       "switch_store": "切换门店"
     }
   },
+  "vip": {
+    "benefit_birthday": "生日礼遇",
+    "benefit_exclusive_menu": "专属菜单",
+    "benefit_free_delivery": "免配送费",
+    "benefit_monthly_free_item": "每月免费单品",
+    "benefit_order_discount": "订单立减",
+    "benefit_order_discount_pct": "订单折扣 %",
+    "benefit_priority_seating": "优先入座",
+    "benefit_upgrades": "免费升杯",
+    "benefit_vip_event": "VIP 活动优先权",
+    "benefit_welcome_points": "入会赠送积分",
+    "benefits": "等级权益",
+    "earnMore": "赚取更多积分",
+    "lifetimePoints": "终身积分",
+    "milestones": "等级里程碑",
+    "multiplier": "倍积分",
+    "pointsToNext": "再获得 {count} 积分即可升级至 {tier}",
+    "title": "会员等级",
+    "topTier": "已是最高等级"
+  },
   "voucher": {
     "showToBarista": "向咖啡师出示此兑换码"
   },
@@ -1254,25 +1387,5 @@
     "noWorkshops": "暂无可参加的工作坊",
     "seatsLeft": "剩余{count}个名额",
     "title": "工作坊与课程"
-  },
-  "vip": {
-    "title": "会员等级",
-    "multiplier": "倍积分",
-    "lifetimePoints": "终身积分",
-    "pointsToNext": "再获得 {count} 积分即可升级至 {tier}",
-    "topTier": "已是最高等级",
-    "milestones": "等级里程碑",
-    "benefits": "等级权益",
-    "benefit_free_delivery": "免配送费",
-    "benefit_priority_seating": "优先入座",
-    "benefit_vip_event": "VIP 活动优先权",
-    "benefit_monthly_free_item": "每月免费单品",
-    "benefit_exclusive_menu": "专属菜单",
-    "benefit_upgrades": "免费升杯",
-    "benefit_birthday": "生日礼遇",
-    "benefit_order_discount": "订单立减",
-    "benefit_order_discount_pct": "订单折扣 %",
-    "benefit_welcome_points": "入会赠送积分",
-    "earnMore": "赚取更多积分"
   }
 }
