@@ -1930,3 +1930,11 @@ Guide docs updated for everything shipped this round, then re-seeded into the he
 - `guide/customer/getting-started.md` — clean dashboard rewrite (stat strip, order tiles, tier card → Membership Tiers page, quick actions, featured banner, What's on hub) + Dark/Light theme toggle instructions.
 - Verified in DB: all new markers present (What's on ×2, Membership Tiers ×2, LNK- ×2, vapid.private_key, hitpay.payment_methods), 0 GrabPay mentions.
 - Gates: E2E **241 passed, 3 skipped, 0 failed** · unit **100/100**.
+
+### Round 39 — customer wallet help & guide (2026-08-17, ~23:50)
+
+User asked for proper wallet info in help & guide. Rewrote the wallet docs with verified facts:
+- `guide/customer/wallet-and-loyalty.md` — online top-up (Stripe card/FPX, min-amount + custom), NEW counter top-up section (staff scan QR → top up cash/card), pay-with-wallet **OTP verification** (phone-ownership proof), refunds-return-to-wallet, transaction table, saved-cards note. Tier table corrected: **lifetime POINTS** (0/500/1500) not RM spend; NEW Membership Tiers (VIP) page described (milestone rail + benefits comparison).
+- `guide/customer/checkout-and-payment.md` — Wallet section expanded (OTP step, insufficient-balance fallback, refund-to-wallet).
+- `guide/staff/wallet.md` — counter top-up clarified (roles: cashier/server/shift_supervisor/store_manager; QR or phone lookup; no app needed on the customer side).
+- Re-seeded (47 articles) + DB-verified markers: counter top-up ×2, one-time OTP ×1, lifetime points ×3, Membership Tiers ×3, Refunds go back ×2.

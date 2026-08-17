@@ -52,9 +52,11 @@ The available methods depend on store configuration.
 4. Payment is processed and order is confirmed.
 
 ### Wallet
-1. Select **Pay with Wallet** if balance is sufficient.
-2. Confirm.
-3. Balance is deducted immediately.
+1. Select **Pay with Wallet** if your balance covers the total.
+2. Enter the one-time **OTP** sent to your phone — wallet payments must prove phone ownership.
+3. Confirm — the balance is deducted immediately.
+
+If the balance is too low, top up first (see [Wallet & Loyalty](wallet-and-loyalty.md)) or pick another method. Refunds for wallet payments are credited back to the wallet.
 
 ### Cash
 1. Select **Cash** if available.

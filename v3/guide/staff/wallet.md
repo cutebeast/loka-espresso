@@ -12,15 +12,17 @@ Check customer wallet balances and process wallet top-ups.
 2. Search by customer phone number or scan their QR code.
 3. View current balance and recent transactions.
 
-## Top up a wallet
+## Top up a wallet (counter top-up)
 
-1. Open **Customers**.
-2. Search for the customer.
+1. Open **Customers** (Wallet page).
+2. Search by phone number or scan the customer's loyalty QR code.
 3. Tap **Top Up**.
-4. Enter amount.
-5. Select payment method (cash or card/gateway).
+4. Enter the amount (must be above zero).
+5. Select the payment method (cash or card/gateway).
 6. Complete payment.
-7. Balance updates immediately.
+7. The customer's balance updates immediately — no app needed on their side.
+
+> Counter top-ups are how customers who don't use online payment add money. Cashier, server, shift supervisor and store manager roles can all process them.
 
 ## Customers transactions
 
