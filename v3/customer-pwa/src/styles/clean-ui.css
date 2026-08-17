@@ -1,0 +1,96 @@
+/* ============================================
+   CLEAN LAYER (2026-08-17 redesign — P0/P4)
+   Loaded LAST so it normalizes every page:
+   flat surfaces, hairline separators, one olive
+   accent, Inter-only headings, tighter radii.
+   All values token-driven (light + dark).
+   ============================================ */
+
+/* 1. Elevation → hairlines for card-like surfaces (sheets/modals keep depth) */
+.card,
+.card-elevated,
+[class*="-card"]:not([class*="sheet"]):not([class*="modal"]):not([class*="mycard"]):not([class*="popup"]) {
+  box-shadow: none;
+  border: 1px solid var(--color-hair, #E8E6E0);
+}
+
+/* 2. Wallet hero — flat olive (clean variant), no gradient, no shadow */
+.topup-balance-card {
+  background: var(--color-primary, #3B4A1A);
+  border-radius: 12px;
+  box-shadow: none;
+  border: none;
+}
+[data-theme="dark"] .topup-balance-card { background: #3B4A1A; }
+
+/* 3. Serif headings → Inter (clean variant drops the display serif) */
+.topup-title,
+.rd-modal-title,
+.notif-title {
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+}
+.topup-title { font-size: 17px; color: var(--loka-text-primary); }
+
+/* 4. Customize sheet — option pills: hairline, olive tick, +price */
+.ics-option-btn {
+  border: 1px solid var(--color-hair, #E8E6E0);
+  background: var(--loka-bg-card, #fff);
+  border-radius: 8px;
+  font-weight: 500;
+}
+.ics-option-btn.selected {
+  border-color: var(--loka-primary);
+  background: var(--color-primary-50, #F5F7F0);
+  color: var(--loka-primary);
+  font-weight: 600;
+}
+.ics-option-btn.selected .ics-option-price { color: var(--loka-primary); font-weight: 500; }
+.ics-option-btn.selected .ics-option-price::before { content: "+"; }
+
+/* 5. Uniform subpage back/close buttons — 40px square, radius 10, hairline */
+.sub-back-btn,
+.topup-back-btn,
+.order-detail-back,
+.notif-close-btn,
+.loka-back-btn {
+  width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-hair, #E8E6E0);
+  background: var(--loka-bg-card, #fff);
+  color: var(--loka-text-primary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.sub-back-btn:active,
+.topup-back-btn:active,
+.order-detail-back:active,
+.notif-close-btn:active,
+.loka-back-btn:active {
+  border-color: var(--loka-primary);
+  color: var(--loka-primary);
+}
+
+/* 6. Subpage headers — consistent white + hairline (already mostly applied) */
+.notif-header,
+.topup-header,
+.order-detail-header,
+.mr-header,
+.settings-page-header,
+.ad-header {
+  background: var(--loka-bg-card, #fff);
+  border-bottom: 1px solid var(--color-hair, #E8E6E0);
+}
+
+/* 7. Chips — tighter radius, hairline default */
+.chip, .badge, .tag { border-radius: 8px; }
+
+/* 8. Buttons — rectangle-ish (8px) instead of full pills */
+.btn, .btn-primary, .btn-secondary, .btn-ghost { border-radius: 8px; }
+.btn-pill { border-radius: 999px; }
+
+/* 9. Inputs — white + hairline */
+.input, .textarea {
+  border: 1px solid var(--color-hair, #E8E6E0);
+  border-radius: 8px;
+  background: var(--loka-bg-card, #fff);
+}

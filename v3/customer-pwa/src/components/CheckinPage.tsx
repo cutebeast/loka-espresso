@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { CalendarCheck, Flame, Gift, Clock } from 'lucide-react';
+import { CalendarCheck, Flame, Gift, Clock, ArrowLeft } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/stores/uiStore';
 import { LOKA } from '@/lib/tokens';
 import api from '@/lib/api';
 interface CheckinData {
@@ -29,6 +30,7 @@ export default function CheckinPage() {
     t
   } = useTranslation();
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const { setPage } = useUIStore();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [data, setData] = useState<CheckinData | null>(null);
@@ -87,9 +89,32 @@ export default function CheckinPage() {
     length: cfg?.max_streak_days || 7
   }, (_, i) => i + 1);
   return <div style={{
-    padding: '16px 16px 120px'
+    padding: 0,
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column'
   }}>
-      {/* Header */}
+      {/* Clean subpage header with back button */}
+      <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '14px 16px',
+      background: 'var(--loka-bg-card, #fff)',
+      borderBottom: '1px solid var(--color-hair, #E8E6E0)',
+      flexShrink: 0
+    }}>
+        <button onClick={() => setPage('profile')} aria-label={t('common.back')} className="sub-back-btn"><ArrowLeft size={20} /></button>
+        <h1 style={{
+      fontSize: 16,
+      fontWeight: 700,
+      margin: 0
+    }}>{t('checkin.title')}</h1>
+      </div>
+      <div style={{
+      padding: '16px 16px 120px'
+    }}>
+      {/* Hero */}
       <div style={{
       textAlign: 'center',
       marginBottom: 24,
@@ -319,5 +344,6 @@ export default function CheckinPage() {
             {submitting ? t('common.loading') : t('checkin.checkInNow')}
           </button>
         </>}
+      </div>
     </div>;
 }

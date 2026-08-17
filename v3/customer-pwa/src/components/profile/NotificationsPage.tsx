@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Package, Gift, Wallet, Star, Info, Calendar, X } from 'lucide-react';
+import { Bell, Package, Gift, Wallet, Star, Info, Calendar, ArrowLeft } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
@@ -142,8 +142,8 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="notif-header">
         <h1 className="notif-title">{t('notifications.title')}</h1>
-        <button className="notif-close-btn" onClick={() => setPage('profile')} aria-label={t('common.close')}>
-          <X size={18} />
+        <button className="notif-close-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
+          <ArrowLeft size={20} />
         </button>
       </div>
 
