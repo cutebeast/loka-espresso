@@ -351,27 +351,29 @@ async def list_stocks(
     admin: CurrentAdmin,
     store_id: int = Query(...),
     inventory_item_id: int | None = Query(None),
+    negative_only: bool = Query(False),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
 ):
-    """List per-store stock levels, filterable by store and item."""
+    """List per-store stock levels, filterable by store and item.
+
+    `negative_only` surfaces stock that has gone below zero (sales/wastage
+    without keyed opening stock) so the admin can trace the issue.
+    """
     base_stmt = select(InventoryStock).where(
+        InventoryStock.store_id == store_id,
+    )
+    count_stmt = select(func.count(InventoryStock.id)).where(
         InventoryStock.store_id == store_id,
     )
     if inventory_item_id is not None:
         base_stmt = base_stmt.where(InventoryStock.inventory_item_id == inventory_item_id)
+        count_stmt = count_stmt.where(InventoryStock.inventory_item_id == inventory_item_id)
+    if negative_only:
+        base_stmt = base_stmt.where(InventoryStock.current_stock < 0)
+        count_stmt = count_stmt.where(InventoryStock.current_stock < 0)
 
-    total_result = await db.execute(
-        select(func.count(InventoryStock.id)).where(
-            InventoryStock.store_id == store_id,
-        ).where(
-            InventoryStock.inventory_item_id == inventory_item_id
-        ) if inventory_item_id is not None else
-        select(func.count(InventoryStock.id)).where(
-            InventoryStock.store_id == store_id,
-        )
-    )
-    total = total_result.scalar() or 0
+    total = (await db.execute(count_stmt)).scalar() or 0
 
     result = await db.execute(
         base_stmt.offset((page - 1) * per_page).limit(per_page)

@@ -1894,3 +1894,13 @@ User report: POS sale of Affogato didn't reduce admin stock; wastage didn't move
 6. **Purge extended**: EX-/E2E-/FREQ-% test menu items hard-deleted (with line-item pre-delete for RESTRICT FKs) + orphaned `LNK-%` inventory items (stock/movements cascade). Post-run state: 163 menu items, 163 recipe lines, 0 test residue.
 
 Verification: full E2E **242 passed, 2 skipped, 0 failed** · unit 100/100 · alembic check clean · 8/8 services online.
+
+### Round 39 — negative-stock reporting filters (2026-08-17 late evening)
+
+Owner request: stock may go below zero on sales/wastage (by design — sales never blocked), but the admin must be able to FILTER OUT and TRACE negative-stock issues in reporting.
+
+- **Backend**: `GET /admin/inventory/stocks` gained `negative_only` (current_stock < 0); `GET /admin/inventory/movements` gained `negative_only` (stock_after < 0 — surfaces the exact movement that pushed an item below zero, the trace path). Both additive, default off.
+- **Admin portal**: Inventory > Stock Levels — "Negative only" toggle (persisted, red outline when active) + negative rows render red/bold. Inventory > Movements — "Negative impact" checkbox in the filter row. 2 admin-ui keys seeded (en/zh). Verified live: both endpoints 200 with correct 0-count on the clean DB.
+- **BUG in my purge (caught by the suite)**: the test-residue menu-item purge used `item_code LIKE 'EX-%'` — but REAL workshop items are `EX-TURKISH-*` (EX = Experience)! It deleted all 3 experience items and broke the workshops tests. Purge pattern fixed to `E2E-%` / `FREQ-%` / `EX-AUTOLNK-%` only, with a "bare EX-% is FORBIDDEN" comment. RULE: item-code prefixes collide — EX- is a REAL product prefix, never a test prefix.
+- Workshop items re-seeded (seed_menu --with-recipes, idempotent) + their zh translations backfilled via the nightly cron (gloss style: "Turkish Sand Brew Workshop（土耳其沙煮咖啡工作坊）").
+- Verification: full E2E **241 passed, 3 skipped, 0 failed** (two consecutive green runs) · unit **100/100** · tsc/eslint clean · alembic single head + check clean · admin-portal rebuilt · 8/8 services online · DB: 166 menu items (incl. 3 experiences), 163 recipe lines, 0 negative stock, 0 soft-deleted rows.

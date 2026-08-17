@@ -67,6 +67,7 @@ async def list_movements(
     movement_type: str | None = Query(None),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
+    negative_only: bool = Query(False),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
 ):
@@ -93,6 +94,11 @@ async def list_movements(
         dt_to = day_end_utc(date_to)
         base_stmt = base_stmt.where(InventoryMovementLog.created_at <= dt_to)
         count_stmt = count_stmt.where(InventoryMovementLog.created_at <= dt_to)
+    if negative_only:
+        # The movement that pushed (or kept) the item below zero — the
+        # admin's trace path for negative-stock issues.
+        base_stmt = base_stmt.where(InventoryMovementLog.stock_after < 0)
+        count_stmt = count_stmt.where(InventoryMovementLog.stock_after < 0)
 
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0

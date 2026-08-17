@@ -21,6 +21,7 @@ export default function InventoryMovementsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState("");
   const [movementType, setMovementType] = useState("");
+  const [negativeOnly, setNegativeOnly] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
@@ -38,6 +39,7 @@ export default function InventoryMovementsPage() {
     try {
       const params = new URLSearchParams();
       if (movementType) params.set("movement_type", movementType);
+      if (negativeOnly) params.set("negative_only", "true");
       if (fromDate) params.set("date_from", fromDate);
       if (toDate) params.set("date_to", toDate);
       if (storeId) params.set("store_id", storeId);
@@ -52,7 +54,7 @@ export default function InventoryMovementsPage() {
     } finally {
       setLoading(false);
     }
-  }, [movementType, fromDate, toDate, storeId, page]);
+  }, [movementType, fromDate, toDate, storeId, page, negativeOnly]);
   useEffect(() => {
     (async () => {
       await fetchStores();
@@ -115,6 +117,26 @@ export default function InventoryMovementsPage() {
           borderRadius: "var(--radius-sm)",
           border: "1px solid var(--color-border-light)"
         }}><option value="">{t("inventory_movements.all_2")}</option><option value="in">{t("inventory_movements.in")}</option><option value="out">{t("inventory_movements.out")}</option><option value="adjustment">{t("inventory_movements.adjustment")}</option><option value="waste">{t("inventory_movements.waste")}</option><option value="return">{t("inventory_movements.return", "Return")}</option><option value="transfer_in">{t("inventory_movements.transfer_in", "Transfer In")}</option><option value="transfer_out">{t("inventory_movements.transfer_out", "Transfer Out")}</option></select></div>
+        <label style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 13,
+        cursor: "pointer",
+        padding: "6px 12px",
+        borderRadius: "var(--radius-sm)",
+        border: `1px solid ${negativeOnly ? "var(--color-error)" : "var(--color-border-light)"}`,
+        background: negativeOnly ? "var(--color-error-soft, #FBF1F1)" : "transparent",
+        color: negativeOnly ? "var(--color-error)" : "var(--color-text)",
+        alignSelf: "flex-end",
+        marginBottom: 2
+      }}>
+          <input type="checkbox" checked={negativeOnly} onChange={e => {
+          setNegativeOnly(e.target.checked);
+          setPage(1);
+        }} />
+          {t("inventory_movements.negative_impact_only", "Negative impact")}
+        </label>
         <div><label style={{
           fontSize: 11,
           color: "var(--color-text-muted)",

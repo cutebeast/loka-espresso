@@ -45,6 +45,7 @@ export default function InventoryStocksPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [storeId, setStoreId] = usePersistedState("list:stocks.storeId", "");
   const [catFilter, setCatFilter] = usePersistedState("list:stocks.catFilter", "");
+  const [negativeOnly, setNegativeOnly] = usePersistedState("list:stocks.negativeOnly", "");
   const [stocks, setStocks] = useState<StockRecord[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,11 +70,11 @@ export default function InventoryStocksPage() {
   const fetchStocks = useCallback(() => {
     if (!storeId) return;
     setLoading(true);
-    api.getRaw<any>(`/admin/inventory/stocks?store_id=${storeId}&per_page=200`).then(d => {
+    api.getRaw<any>(`/admin/inventory/stocks?store_id=${storeId}&per_page=200${negativeOnly === "1" ? "&negative_only=true" : ""}`).then(d => {
       const raw = d.items || (Array.isArray(d) ? d : []);
       setStocks(raw);
     }).catch(e => setError(e.message)).finally(() => setLoading(false));
-  }, [storeId]);
+  }, [storeId, negativeOnly]);
   useEffect(() => {
     fetchStocks();
   }, [fetchStocks]);
@@ -132,6 +133,21 @@ export default function InventoryStocksPage() {
           <option value="">{t("inventory_stocks.all_categories")}</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
         </select>
+        <label style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 13,
+        cursor: "pointer",
+        padding: "6px 12px",
+        borderRadius: "var(--radius-sm)",
+        border: `1px solid ${negativeOnly === "1" ? "var(--color-error)" : "var(--color-border-light)"}`,
+        background: negativeOnly === "1" ? "var(--color-error-soft, #FBF1F1)" : "transparent",
+        color: negativeOnly === "1" ? "var(--color-error)" : "var(--color-text)"
+      }}>
+          <input type="checkbox" checked={negativeOnly === "1"} onChange={e => setNegativeOnly(e.target.checked ? "1" : "")} />
+          {t("inventory_stocks.negative_only")}
+        </label>
       </div>
 
       {!storeId ? <div style={{
@@ -194,7 +210,7 @@ export default function InventoryStocksPage() {
                 <td style={{
                 textAlign: "center",
                 fontWeight: 600,
-                color: s.current_stock <= (s.reorder_level || 0) ? "var(--color-error)" : "var(--color-text)"
+                color: s.current_stock < 0 ? "var(--color-error)" : s.current_stock <= (s.reorder_level || 0) ? "var(--color-error)" : "var(--color-text)"
               }}>{s.current_stock}</td>
                 <td style={{
                 textAlign: "center"

@@ -243,18 +243,20 @@ async def purge_soft_deleted_residue() -> None:
                 print(f"hard-deleted {n} soft-deleted E2E rows from {table}")
         for stmt in [s.strip() for s in HARD_DELETE_SOFT_DELETED.split(";") if s.strip()]:
             await db.execute(text(stmt))
-        # Test-residue menu items (EX-/E2E-/Freq-Test codes) — line items hold
-        # RESTRICT FKs into menu_items, so clear them first; the recipe FK
-        # cascades and the auto-link inventory items orphan below.
+        # Test-residue menu items (E2E-/Freq-Test/auto-link-probe codes). NOTE:
+        # bare 'EX-%' is FORBIDDEN — real workshop items are EX-TURKISH-*
+        # (EX = Experience). Line items hold RESTRICT FKs into menu_items, so
+        # clear them first; the recipe FK cascades and the auto-link inventory
+        # items orphan below.
+        test_item_pred = ("item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%' OR item_code LIKE 'EX-AUTOLNK-%'")
         await db.execute(text(
-            "DELETE FROM order_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND (item_code LIKE 'EX-%' OR item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%'))"
+            f"DELETE FROM order_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND ({test_item_pred}))"
         ))
         await db.execute(text(
-            "DELETE FROM cart_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND (item_code LIKE 'EX-%' OR item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%'))"
+            f"DELETE FROM cart_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND ({test_item_pred}))"
         ))
         await db.execute(text(
-            "DELETE FROM menu_items WHERE deleted_at IS NULL AND ("
-            "item_code LIKE 'EX-%' OR item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%')"
+            f"DELETE FROM menu_items WHERE deleted_at IS NULL AND ({test_item_pred})"
         ))
         # Orphaned auto-link inventory items: menu items deleted above (or by
         # the e2e conftest) cascade-delete their recipes, leaving LNK-* items.
