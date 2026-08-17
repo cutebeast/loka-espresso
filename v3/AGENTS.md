@@ -1938,3 +1938,11 @@ User asked for proper wallet info in help & guide. Rewrote the wallet docs with 
 - `guide/customer/checkout-and-payment.md` — Wallet section expanded (OTP step, insufficient-balance fallback, refund-to-wallet).
 - `guide/staff/wallet.md` — counter top-up clarified (roles: cashier/server/shift_supervisor/store_manager; QR or phone lookup; no app needed on the customer side).
 - Re-seeded (47 articles) + DB-verified markers: counter top-up ×2, one-time OTP ×1, lifetime points ×3, Membership Tiers ×3, Refunds go back ×2.
+
+### Round 39 — admin/staff audit loop #2 (2026-08-17, ~23:55)
+
+Second loop iteration went deeper than page-rendering — functional testing of the newest features:
+- **Negative-stock filters verified end-to-end**: API `negative_only` returns only the below-zero rows; the Stock Levels UI toggle passes the param; the Movements **Negative impact** checkbox surfaces the exact waste movement that pushed an item negative (probe: auto-linked item wasted 5 → −5 → movement visible under the filter). Probe residue fully cleaned.
+- **Purge hardening**: wastage reports hold RESTRICT FKs into menu_items — a probe waste blocked the item purge (gkpj). The purge now pre-deletes wastage reports of test items before the menu-item purge. RULE: any new FK into menu_items from a report-like table needs the same pre-delete in cleanup_unpaid_open_orders.py.
+- Page crawl re-run (admin 90 routes + staff 17): identical to the previous pass — 0 real issues (2 prose false-positives, 10 legitimate empty/role-gated states).
+- Gates: unit **100/100** · alembic check clean · 8/8 services · DB clean (0 probe items, 0 negative stock, 0 soft-deleted rows).

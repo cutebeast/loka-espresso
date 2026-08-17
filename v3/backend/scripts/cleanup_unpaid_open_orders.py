@@ -249,6 +249,11 @@ async def purge_soft_deleted_residue() -> None:
         # clear them first; the recipe FK cascades and the auto-link inventory
         # items orphan below.
         test_item_pred = ("item_code LIKE 'E2E-%' OR item_code LIKE 'FREQ-%' OR item_code LIKE 'EX-AUTOLNK-%'")
+        # Wastage reports hold RESTRICT FKs into menu_items too — clear them
+        # before the item purge (proven live: probe waste blocked the delete).
+        await db.execute(text(
+            f"DELETE FROM wastage_reports WHERE menu_item_id IN (SELECT id FROM menu_items WHERE ({test_item_pred}))"
+        ))
         await db.execute(text(
             f"DELETE FROM order_line_items WHERE menu_item_id IN (SELECT id FROM menu_items WHERE deleted_at IS NULL AND ({test_item_pred}))"
         ))
