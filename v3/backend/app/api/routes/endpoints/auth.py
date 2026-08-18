@@ -107,6 +107,44 @@ async def customer_register(request: Request, response: Response, db: DBDependen
         if not verified:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired OTP")
 
+    # Existing account? Complete the profile instead of 409-ing — the PWA's
+    # profile-setup step (LoginModal name entry) runs for phone-only accounts
+    # whose display_name is still the phone number, and must succeed on an
+    # existing customer (round-39 bug: 409 blocked every returning user).
+    # Email-only registration has no phone to match against — skip the
+    # completion branch entirely (and guard against NULL-phone rows that
+    # would make the equality match multiple rows).
+    existing_result = await db.execute(
+        select(Customer)
+        .where(
+            Customer.phone_number == data.phone_number,
+            Customer.deleted_at.is_(None),
+        )
+        .limit(1)
+    ) if data.phone_number else None
+    customer = existing_result.scalar_one_or_none() if existing_result is not None else None
+    if customer is not None:
+        if not customer.is_active:
+            raise HTTPException(status_code=403, detail="Account is inactive")
+        if data.display_name and (
+            not customer.display_name or customer.display_name == customer.phone_number
+        ):
+            customer.display_name = data.display_name
+        if data.email_address and not customer.email_address:
+            customer.email_address = data.email_address
+        customer.phone_verified_at = datetime.now(timezone.utc)
+        await db.commit()
+        tokens = await create_customer_tokens(customer)
+        set_customer_auth_cookies(response, tokens.access_token, tokens.refresh_token)
+        response.status_code = status.HTTP_200_OK
+        return AuthResponse(
+            user_type="customer",
+            user_id=customer.id,
+            tokens=tokens,
+            profile=CustomerProfileOut.model_validate(customer).model_dump(),
+            is_new_user=False,
+        )
+
     try:
         customer = await register_customer(db, data)
     except AuthError as exc:

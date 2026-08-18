@@ -383,8 +383,11 @@ export default function AppShell() {
           {/* Toast */}
           {toast && <Toast toast={toast} onDismiss={() => useUIStore.getState().hideToast()} />}
 
-          {/* A2HS Centered Modal */}
-          {a2hs.canInstall && <>
+          {/* A2HS Centered Modal — dismissed must stick (round-39 bug: the
+              modal re-appeared on EVERY page for non-installed guests
+              because dismiss() only set the dismissed flag, never gated the
+              render) */}
+          {a2hs.canInstall && !a2hs.dismissed && <>
               {/* Backdrop */}
               <motion.div initial={{
           opacity: 0

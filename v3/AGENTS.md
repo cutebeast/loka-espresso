@@ -1989,3 +1989,13 @@ Audited every portal's zh coverage against the keys ACTUALLY USED (code t() call
 - Guide updates: `admin/menu.md` gained "Inventory on bundle sales" (bundles deduct through COMPONENTS — no separate bundle inventory item; cancel restores); `admin/inventory.md` gained the all-items-tied summary + bundle component deduction note. Help articles re-seeded (47).
 - Audit loop re-run on all portals after the docs: PWA **0 problems** · admin+staff 0 real issues (same 2 prose false-positives + 12 legitimate empty states) · kiosk + pos-display **0 errors, 0 raw keys** (display auto-refresh channels already documented in pos-customer-display.md — BroadcastChannel instant + Redis ≤2s).
 - Gates: E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic single head + check clean · 8/8 services.
+
+### Round 39 — PWA user-reported bugs (2026-08-18, ~16:30)
+
+Owner reported three PWA issues. All root-caused, fixed, verified:
+
+1. **"Bottom sheet popping on all pages for guest"** = the A2HS install modal: it re-appeared on every page for non-installed guests on Chrome (the render was gated on `canInstall` only). Fixed: render gate now also requires `!dismissed`; verified live (guest-browse → synthetic beforeinstallprompt → modal appears once → dismiss → stays dismissed across page navigations).
+2. **"Login with existing phone asks for profile name and the save fails"** — the account existed as a phone-only stub (display_name = phone), so the name step was CORRECT, but `/auth/register` 409'd on the existing phone and the name save failed. Fixed: register now COMPLETES existing phone-only profiles (sets display_name/email when empty-or-phone-default, returns 200 + tokens + is_new_user=false). Follow-up fix: the existing-customer query guarded against email-only registration + NULL-phone rows (scalar_one_or_none → MultipleResultsFound when phone omitted).
+3. **"Test modal on the dashboard"** = two `splash_screens` rows literally titled "test" (the admin home-banner feature) — deleted.
+- Verification: PWA audit ×3 **0 problems** · full E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic check clean · 8/8 services.
+- RULES: (a) any existing-account lookup by phone must guard `data.phone_number` (None == NULL matches ALL null-phone rows); (b) E2E mass-failure cascades are usually one 500 + the OTP rate limiter — fix the root 500 first, then re-run the full suite.
