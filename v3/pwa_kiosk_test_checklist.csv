@@ -1,0 +1,86 @@
+ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail/Blocked/Skip),Notes / Bug Details
+001,0. Test Setup,Environment,—,P1,PWA environment,Open https://app.loyaltysystem.uk in Chrome incognito on a phone-size window (390x844),App loads without certificate/mixed-content warnings,,Dev environment — data here is seed/test data
+002,0. Test Setup,Environment,—,P1,Kiosk environment,Open https://kiosk.loyaltysystem.uk on a desktop window (1280x800),"Kiosk loads in light theme, no zoom (double-tap does nothing)",,Kiosk also reachable at app.loyaltysystem.uk/#kiosk
+003,0. Test Setup,Environment,—,P2,Customer display,Open https://pos-disp.loyaltysystem.uk/pos/display?store=1&key=<display_key>,Idle screen shows store name + promo carousel,,Display key from Admin → Stores → Store Settings
+004,0. Test Setup,Accounts,—,P1,Customer login (PWA),"Login with phone +60123456001, OTP 000000",Login succeeds; dashboard shows POINTS / WALLET / TIER,,Dev OTP bypass — any 6-digit code works
+005,0. Test Setup,Accounts,—,P1,Second customer (VIP),"Login with phone +60123456002, OTP 000000",Login succeeds; profile-name step appears (account has no name yet),,Use to test the first-login profile flow
+006,0. Test Setup,Accounts,—,P2,Guest browsing,Tap Browse as Guest,Browse menu without login; gated actions open the sign-in sheet,,
+007,0. Test Setup,Convention,—,P1,How to fill this sheet,Run each row; write Pass/Fail/Blocked/Skip in Result; details + screenshot in Notes,Every row has a Result by end of testing,,"Report any 500 error, blank page, raw text like 'home.xxx', or console error immediately as a bug"
+008,0. Test Setup,Convention,—,P2,Language testing,Switch app to 中文 (Profile → Settings → Language) and re-check the P1 pages,All labels render in Chinese; no English leftovers,,"New pages this round: VIP (会员等级), Feedback (意见反馈)"
+009,1. Login & Registration,Login,—,P1,OTP login works,Login with +60123456001 + 000000,Login succeeds; no errors,,
+010,1. Login & Registration,Login,—,P1,Wrong OTP rejected,Login with +60123456001 + 111111,Clear error; stays on OTP screen,,
+011,1. Login & Registration,Login,—,P1,Existing account name step (round-39 fix),Login with +60123456002 (name is still the phone); enter a name on the profile step,Profile save SUCCEEDS (no 'already exists' error); dashboard shows the new name,,Previously 409-blocked
+012,1. Login & Registration,Login,—,P2,Resend OTP,Wait for resend timer; tap Resend,New OTP sent; timer resets to 60s,,
+013,1. Login & Registration,Guest,—,P1,Guest login wall,"As guest, tap Add-to-Cart on any item",Sign-in sheet appears; Browse as Guest resumes browsing,,
+014,1. Login & Registration,Session,—,P1,Session persists after refresh,Login then press F5 on any page,Still logged in; no login wall,,
+015,2. Home Dashboard,Dashboard,#home,P1,Clean dashboard renders,Open home after login,Header greeting + stat strip (Points / Wallet / Tier) + Pickup/Delivery tiles + tier progress card + quick actions,,
+016,2. Home Dashboard,Dashboard,#home,P1,What's on hub,Scroll to What's on,"Four tiles: Events, Promotions, Lucky Draw, Info — each links to its page",,Badges show live counts
+017,2. Home Dashboard,Dashboard,#home,P1,No FAQ on dashboard,Check quick actions,Feedback button present; Help/FAQ NOT on the dashboard,,FAQ still exists under Profile → Help & Support
+018,2. Home Dashboard,Splash banner,#home,P1,Post-login splash is a large modal,Login; if a home banner is active it appears,"Image fills ~85% of the screen, text overlays the image, dark backdrop + shadow, X to dismiss",,Set a banner in Admin → Splash Screens (screen_name home_banner)
+019,2. Home Dashboard,Splash banner,#home,P2,Splash dismiss,Tap X or backdrop,Banner closes and stays closed this session,,
+020,2. Home Dashboard,Install prompt,#home,P2,Add-to-Home-Screen prompt,"On Chrome Android (not installed), trigger install prompt; tap Cancel/backdrop",Prompt dismisses and does NOT reappear on other pages (round-39 fix),,
+021,2. Home Dashboard,Tier card,#home,P1,Tier card opens VIP page,Tap the tier progress card,Membership Tiers page opens,,
+022,3. Menu & Customize,Menu,#menu,P1,Categories browse,Open Menu; tap category chips,Items filter per category; text-only labels (no icons),,
+023,3. Menu & Customize,Menu,#menu,P2,Search,Type a partial name in search,Matching items only; clear returns full list,,
+024,3. Menu & Customize,Customize sheet,#menu,P1,EVERY item opens the sheet,Tap a food item WITHOUT add-ons (e.g. a pastry),Customize sheet opens with image + qty + Add (round-39 — used to skip straight to cart),,
+025,3. Menu & Customize,Customize sheet,#menu,P1,Sheet height consistent,"Open a no-option item, then a drink with options",BOTH sheets are the same height (~85% of screen),,
+026,3. Menu & Customize,Customize sheet,#menu,P1,Option pills with price,Open an item with modifiers,Options show +RM price; selected = olive border + tick,,
+027,3. Menu & Customize,Customize sheet,#menu,P2,Quantity + Add,"Change qty, select options, tap Add",Cart updates with the right total,,
+028,4. Bundles & Combos,Combos (PWA),#menu,P1,Combo opens sheet,Tap Combos → Breakfast Duo,Multi-course sheet opens at 85% height,,
+029,4. Bundles & Combos,Combos (PWA),#menu,P1,Food/drink steps same height,Walk food step then drink step,SAME sheet height on both steps (round-39 fix),,
+030,4. Bundles & Combos,Combos (PWA),#menu,P1,Complete a combo,Pick required food + drinks; tap Add,Combo added; cart shows each component,,
+031,4. Bundles & Combos,Cart bundle tag,#cart,P1,Bundle name in cart,Open Cart with a combo added,Each line shows the bundle name tag (e.g. Breakfast Duo) + component image,,
+032,4. Bundles & Combos,Cart images,#cart,P1,Cart thumbnails,Add an item + a combo,Every cart line shows its thumbnail image,,
+033,5. Cart & Checkout,Cart,#cart,P1,Qty stepper,Adjust qty on a line,Total updates; − removes at 0,,
+034,5. Cart & Checkout,Cart,#cart,P2,Discounts,Apply an available voucher code,Discount reflected in the breakdown,,
+035,5. Cart & Checkout,Checkout,#checkout,P1,Pickup checkout,Checkout with Pickup,Breakdown (subtotal/service/tax/total) correct,,
+036,5. Cart & Checkout,Checkout,#checkout,P2,Delivery checkout,Switch to Delivery + add an address,Delivery fee appears,,
+037,5. Cart & Checkout,Wallet pay,#checkout,P1,Pay with Wallet (OTP),Pay with Wallet,App asks for an OTP before the wallet can be spent,,
+038,5. Cart & Checkout,Wallet pay,#checkout,P2,Insufficient balance,Try wallet pay with a low balance,Clear message; other methods still available,,
+039,6. Orders & History,Orders,#orders,P1,Active order,Place a pickup order; open Orders,Order appears with status progress,,
+040,6. Orders & History,Orders,#orders,P1,Past order thumbnail,Open Orders with a past order,Past-order card shows the item thumbnail image (round-39 fix),,
+041,6. Orders & History,Order detail,#order-detail,P1,Detail + images,Open an order,"Line items show images, totals, status timeline",,
+042,6. Orders & History,History,#history,P2,Points history,Open History (Profile),Points/wallet entries listed with dates,,
+043,7. Wallet & Payments,Wallet,#wallet,P1,Balance + top-up options,Open Wallet,Flat olive balance card + preset amounts + custom amount (min enforced),,
+044,7. Wallet & Payments,Wallet,#wallet,P2,Online top-up,Top up RM 20 (test card/FPX simulation),Balance updates after the provider confirms,,
+045,7. Wallet & Payments,Wallet,#wallet,P1,Transactions,Scroll the ledger,credit/debit/refund entries with running balance,,
+046,7. Wallet & Payments,Counter top-up,—,P2,Staff counter top-up,Ask staff to top up your account (cash) at the counter,Balance updates immediately in the app,,Staff portal → Wallet
+047,7. Wallet & Payments,Refund,—,P2,Wallet refund,Staff refunds a wallet-paid order,Refund credits back to the wallet,,
+048,8. Rewards & Loyalty,My Rewards,#my-rewards,P1,Rewards catalog,Open Rewards,Rewards + vouchers listed with point costs,,
+049,8. Rewards & Loyalty,Check-in,#checkin,P1,Daily check-in,Open Check-in; tap check in,Streak increments; points awarded once per day,,
+050,8. Rewards & Loyalty,VIP page,#vip,P1,Tier page,Open Membership Tiers,Current tier + progress bar + milestone rail (Bloom/Origin/Reserve),,
+051,8. Rewards & Loyalty,VIP page,#vip,P1,Benefits table,Scroll the benefits table,Side-by-side ✓/— comparison across tiers,,
+052,8. Rewards & Loyalty,My Card,#my-card,P1,QR card,Open My Card,Tier + points + QR code render,,
+053,8. Rewards & Loyalty,Lucky Draw,#lucky-draw,P2,Lucky draw,Open Lucky Draw,Active campaign shows entry status,,
+054,9. Content,Promotions,#promotions,P1,Promotions list,Open Promotions,Active banners render; survey-linked banner opens the survey inline,,
+055,9. Content,Events,#events,P1,Events list,Open Events,Event cards render with dates,,
+056,9. Content,Workshops,#workshops,P1,Workshops,Open Workshops,Workshop cards with seats/price render,,
+057,9. Content,Information,#information,P1,Info tabs,Open Information,Information / Products / Event cards tabs render,,
+058,10. Feedback & Help,Feedback,#feedback,P1,Feedback page,From the dashboard tap Feedback,Rating stars + suggestion box render,,
+059,10. Feedback & Help,Feedback,#feedback,P1,Submit feedback,Rate 5 + write a message + Send,'Thank you' success state,,Admin → Feedback inbox should show it
+060,10. Feedback & Help,Feedback,#feedback,P2,Validation,Tap Send with no rating,Blocked with a clear message,,
+061,10. Feedback & Help,Help,#help-support,P2,Help still reachable,Profile → Help & Support,FAQ + contact form still work,,Guide content is staff training material
+062,11. Profile & Settings,Theme,#settings,P1,Dark/light toggle,Profile → Settings → Dark Mode toggle,Theme switches instantly and persists across pages,,Default is dark
+063,11. Profile & Settings,Addresses,#saved-addresses,P1,Address CRUD,Add / edit / delete an address,All three operations work,,
+064,11. Profile & Settings,Account details,#account-details,P1,Profile edit,Change name + birthday,Saves; birthday prompt on dashboard disappears,,
+065,11. Profile & Settings,Payment methods,#payment-methods,P2,Saved cards page,Open Payment Methods,Wallet balance + saved cards section render (empty state ok),,
+066,11. Profile & Settings,Notifications,#notifications,P1,Notifications page,Open Notifications from the bell,List renders; back arrow returns to Profile,,
+067,12. Guest & Guest-Pay,Guest pay link,#guest-pay,P1,Invalid link state,Open app.loyaltysystem.uk/#guest-pay with no params,Clean 'link invalid or expired' message,,
+068,12. Guest & Guest-Pay,Guest pay,#guest-pay,P2,Valid guest-pay link,Ask staff to create a dine-in QR payment; scan it,Guest can pay without an account,,
+069,13. Kiosk,Welcome,kiosk.loyaltysystem.uk,P1,Welcome screen,Open the kiosk,Clock + promo carousel + Tap to Order; light theme,,
+070,13. Kiosk,Welcome,kiosk.loyaltysystem.uk,P1,Zoom locked,Pinch / double-tap the screen,Viewport does NOT zoom (user-scalable=no),,
+071,13. Kiosk,Order flow,kiosk.loyaltysystem.uk,P1,Order type + phone,Tap to Order → Takeaway → Skip phone,Menu opens,,
+072,13. Kiosk,Menu,kiosk.loyaltysystem.uk,P1,Categories + items,Browse categories; tap an item,Item page opens with image + qty,,
+073,13. Kiosk,Menu,kiosk.loyaltysystem.uk,P1,Swipe categories,Swipe left/right on the menu grid,Category changes (round-38 gesture),,
+074,13. Kiosk,Bundles,kiosk.loyaltysystem.uk,P1,Bundle selection,Combos → Breakfast Duo; select bread + 2 drinks,Add to Cart enables at RM 39.00; adds and returns to menu,,
+075,13. Kiosk,Bundles,kiosk.loyaltysystem.uk,P1,Full group disables +,Fill a group (e.g. the 1-item bread group),Its + button is DISABLED and dimmed (round-39 fix),,
+076,13. Kiosk,Cart,kiosk.loyaltysystem.uk,P1,Cart,Open Cart,Items + totals correct; remove works,,
+077,13. Kiosk,Payment,kiosk.loyaltysystem.uk,P2,QR payment,Checkout with Stripe QR,QR shows for the customer to scan,,
+078,13. Kiosk,Idle,kiosk.loyaltysystem.uk,P2,Idle reset,Leave the kiosk idle,Returns to the welcome screen (reset),,
+079,14. Language (中文),中文 PWA,—,P1,Dashboard in Chinese,Switch to 中文; open Home,积分 / 钱包 / 等级 / 自取 / 外卖配送 render in Chinese,,
+080,14. Language (中文),中文 PWA,—,P1,New pages in Chinese,Open VIP (会员等级) and Feedback (意见与建议),Chinese labels; no English leftovers,,
+081,14. Language (中文),中文 Kiosk,kiosk.loyaltysystem.uk,P2,Kiosk language toggle,Use the kiosk language toggle,Kiosk labels switch language,,
+082,15. Cross-cutting,Console,—,P1,No console errors,Walk every P1 page once,No red console errors (fonts/network noise excluded),,
+083,15. Cross-cutting,Console,—,P1,No raw keys,Check pages in EN and 中文,No visible text like 'home.stats.wallet' or 'feedback.title',,
+084,15. Cross-cutting,Empty states,—,P2,Empty states,Open Orders/Wallet/Notifications with no data,"Friendly empty states, not blank screens",,
+085,15. Cross-cutting,Dark theme pass,—,P2,Dark theme walk,Walk Home/Menu/Cart/VIP/Feedback in dark mode,All readable; no invisible text,,
