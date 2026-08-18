@@ -2034,3 +2034,8 @@ Audited every image surface:
 Owner: "Breakfast Duo / Main & Treat — the food bottom sheet is shorter than drink".
 Root cause: the BUNDLE sheets (`.bps-sheet`, shared by BundlePickerSheet + MultiCourseBundleSheet) were content-driven (`max-height: 85vh`) — the food group step rendered a short sheet and the drink group step a tall one. Fixed to `height: 85vh`, matching the item customize sheet. Verified live: Breakfast Duo step1 717 == step2 717; Main & Treat step1 717 == step2 717 on a 844px viewport. PWA audit 0 problems · bundle E2E 19 passed.
 - RULE: EVERY bottom sheet in the PWA must use a FIXED height (85vh) — max-height alone produces step/content-dependent heights. Audit new sheets against this rule.
+
+### Round 39 — kiosk bundle selection fix (2026-08-18, ~23:30)
+
+Owner: "kiosk bundle item selection has issues". Root cause: with `allow_duplicates` bundles (Breakfast Duo etc.), a component card whose GROUP was full kept an ENABLED "+" button that was a no-op (`disabled={capped && qty === 0}` — for duplicates the cap only mattered at qty 0). Users tapped the live-looking button and nothing happened. Fixed: `disabled={capped}` + dimmed opacity — group-full cards can't be incremented further. Verified live end-to-end: Breakfast Duo → bread + 2 drinks → "Add to Cart · RM 39.00" enables → adds and returns to the menu with the cart updated. PWA audit 0 problems · kiosk/pos-disp 0 errors · bundle E2E 19 passed · unit 100/100.
+- RULE: a control that cannot change state MUST be disabled (and visually dimmed) — an enabled no-op button is indistinguishable from a broken one. Audit every `disabled=` predicate for the `&& qty === 0` pattern.

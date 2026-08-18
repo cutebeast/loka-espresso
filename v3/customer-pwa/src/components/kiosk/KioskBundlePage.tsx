@@ -159,7 +159,7 @@ export default function KioskBundlePage({ bundle, onBack, onConfirm, fs, isPortr
             </button>
           )}
           {qty > 0 && <span style={{ fontSize: fs(24, 20), fontWeight: 800, minWidth: 28, textAlign: "center" }}>{qty}</span>}
-          <button onClick={() => inc(gid, comp.id, cap)} disabled={capped && qty === 0} style={{ ...qtyBtn(fs), background: LOKA.primary, color: "white", border: "none" }} aria-label="add">
+          <button onClick={() => inc(gid, comp.id, cap)} disabled={capped} style={{ ...qtyBtn(fs), background: LOKA.primary, color: "white", border: "none", opacity: capped ? 0.35 : 1 }} aria-label="add">
             <Plus size={fs(20, 18)} />
           </button>
         </div>
