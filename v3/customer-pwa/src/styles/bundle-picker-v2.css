@@ -15,7 +15,10 @@
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   width: 100%;
   max-width: 480px;
-  max-height: 85vh;
+  /* Fixed height keeps the bundle sheet consistent between steps — the
+     food group used to render a short sheet and the drink group a tall one
+     (round-39 owner feedback). Matches the item customize sheet (85vh). */
+  height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

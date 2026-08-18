@@ -2028,3 +2028,9 @@ Audited every image surface:
 - **Order detail** — already populated image_url from item_snapshot (customer/order.py:372).
 - **Orders page (past orders) — WAS BROKEN**: the list endpoint shipped `line_items=[]` (OrderOut default), so `firstItem?.image_url` never existed and thumbnails always fell back to the coffee icon. Fixed: the list now batch-fetches line items and enriches name + image_url from item_snapshot. Verified live: placed order → list returns 1 line with `/uploads/images/menu/cafe-specialty-coffee/espresso.jpg`.
 - Gates: unit 100/100 · alembic clean · full E2E **241 passed, 3 skipped, 0 failed** (first run had 1 flake — clean re-run green).
+
+### Round 39 — bundle sheet height consistency (2026-08-18, ~18:20)
+
+Owner: "Breakfast Duo / Main & Treat — the food bottom sheet is shorter than drink".
+Root cause: the BUNDLE sheets (`.bps-sheet`, shared by BundlePickerSheet + MultiCourseBundleSheet) were content-driven (`max-height: 85vh`) — the food group step rendered a short sheet and the drink group step a tall one. Fixed to `height: 85vh`, matching the item customize sheet. Verified live: Breakfast Duo step1 717 == step2 717; Main & Treat step1 717 == step2 717 on a 844px viewport. PWA audit 0 problems · bundle E2E 19 passed.
+- RULE: EVERY bottom sheet in the PWA must use a FIXED height (85vh) — max-height alone produces step/content-dependent heights. Audit new sheets against this rule.
