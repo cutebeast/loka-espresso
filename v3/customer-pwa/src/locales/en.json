@@ -480,7 +480,8 @@
       "checkin": "Check-in",
       "wallet": "Wallet",
       "referrals": "Referrals",
-      "help": "Help"
+      "help": "Help",
+      "feedback": "Feedback"
     },
     "hub": {
       "title": "What's on",
@@ -1382,5 +1383,15 @@
     "benefit_order_discount_pct": "Order discount %",
     "benefit_welcome_points": "Welcome bonus points",
     "earnMore": "Earn more points"
+  },
+  "feedback": {
+    "title": "Feedback & Suggestions",
+    "rate": "How was your experience?",
+    "suggestions": "Tell us what we can do better",
+    "placeholder": "Your suggestions, requests or issues…",
+    "submit": "Send Feedback",
+    "thanks": "Thank you!",
+    "thanksSub": "Your feedback reached the store team. We read every message.",
+    "another": "Send another"
   }
 }

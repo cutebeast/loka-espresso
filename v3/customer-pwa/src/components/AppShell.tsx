@@ -65,6 +65,7 @@ const pageImporters: Record<string, () => Promise<{
   checkin: () => import('./CheckinPage'),
   'lucky-draw': () => import('./LuckyDrawPage'),
   vip: () => import('./VipPage'),
+  feedback: () => import('./FeedbackPage'),
   kiosk: () => import('./KioskPage')
 };
 
@@ -334,6 +335,8 @@ export default function AppShell() {
         return <LazyRenderer pageKey="lucky-draw" />;
       case 'vip':
         return <LazyRenderer pageKey="vip" onBack={onBackProfile} />;
+      case 'feedback':
+        return <LazyRenderer pageKey="feedback" />;
       case 'kiosk':
         return <LazyRenderer pageKey="kiosk" />;
       default:

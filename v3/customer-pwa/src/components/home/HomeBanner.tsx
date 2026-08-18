@@ -54,42 +54,60 @@ export default function HomeBanner() {
   const isHashLink = !!banner.cta_url?.startsWith('#');
 
   return (
-    <div className="home-banner-card">
-      {dismissible && (
-        <button
-          type="button"
-          className="home-welcome-dismiss"
-          onClick={() => setDismissed(true)}
-          aria-label={t('common.close')}
-        >
-          <X size={14} />
-        </button>
-      )}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={banner.title || ''}
-          className="home-banner-img"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      )}
-      {(banner.title || banner.subtitle) && (
-        <div className="home-banner-overlay">
-          {banner.title && <div className="home-banner-title">{banner.title}</div>}
-          {banner.subtitle && <div className="home-banner-sub">{banner.subtitle}</div>}
-        </div>
-      )}
-      {hasCta && (
-        <a
-          className="home-banner-cta"
-          href={banner.cta_url}
-          {...(!isHashLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        >
-          {banner.cta_text}
-        </a>
-      )}
+    <div className="home-banner-modal">
+      <div className="home-banner-backdrop" onClick={dismissible ? () => setDismissed(true) : undefined} />
+      <div className="home-banner-card">
+        {dismissible && (
+          <button
+            type="button"
+            className="home-banner-dismiss"
+            onClick={() => setDismissed(true)}
+            aria-label={t('common.close')}
+          >
+            <X size={18} />
+          </button>
+        )}
+        {imageUrl ? (
+          <div className="home-banner-hero">
+            <img
+              src={imageUrl}
+              alt={banner.title || ''}
+              className="home-banner-img"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <div className="home-banner-shade" />
+            <div className="home-banner-overlay">
+              {banner.title && <div className="home-banner-title">{banner.title}</div>}
+              {banner.subtitle && <div className="home-banner-sub">{banner.subtitle}</div>}
+              {hasCta && (
+                <a
+                  className="home-banner-cta"
+                  href={banner.cta_url}
+                  {...(!isHashLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                >
+                  {banner.cta_text}
+                </a>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="home-banner-overlay home-banner-overlay-plain">
+            {banner.title && <div className="home-banner-title">{banner.title}</div>}
+            {banner.subtitle && <div className="home-banner-sub">{banner.subtitle}</div>}
+            {hasCta && (
+              <a
+                className="home-banner-cta"
+                href={banner.cta_url}
+                {...(!isHashLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
+                {banner.cta_text}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

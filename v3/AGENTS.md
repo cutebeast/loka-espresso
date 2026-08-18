@@ -1999,3 +1999,11 @@ Owner reported three PWA issues. All root-caused, fixed, verified:
 3. **"Test modal on the dashboard"** = two `splash_screens` rows literally titled "test" (the admin home-banner feature) — deleted.
 - Verification: PWA audit ×3 **0 problems** · full E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic check clean · 8/8 services.
 - RULES: (a) any existing-account lookup by phone must guard `data.phone_number` (None == NULL matches ALL null-phone rows); (b) E2E mass-failure cascades are usually one 500 + the OTP rate limiter — fix the root 500 first, then re-run the full suite.
+
+### Round 39 — dashboard splash + customer feedback page (2026-08-18, ~17:00)
+
+Owner feedback on the dashboard:
+1. **Splash (home banner) too small/plain** — redesigned to the intended spec: image with text OVERLAID on it, exactly **85% × 85% of the viewport** (modal-style: dark blurred backdrop, 20px radius, deep shadow, pop animation, circular dismiss button, bottom gradient shade for text contrast). The earlier "test" splash was small because the old CSS capped the image at 180px with the title BELOW it. Verified live: 332×717 on a 390×844 viewport = 85.0%×85.0%. Backdrop tap dismisses.
+2. **FAQ on the dashboard is staff material** — the dashboard quick action no longer links to Help/FAQ. New dedicated **Feedback & Suggestions page** (`#feedback`): 5-star rating + suggestion box → POST /api/feedback (admin Feedback inbox). Success state + "send another". Wired: PageId/uiStore/usePageRouter/AppShell (lazy `FeedbackPage`) + 9 pwa-ui keys (en/zh). Help/FAQ stays accessible from Profile → Help & Support (staff reference, not customer-critical). Verified: full flow (rate 5 + message → Thank you) + dashboard quick action lands on the feedback page.
+- RULE (hit again): locale edits must nest keys properly — `feedback.title` lives at `{"feedback": {"title": ...}}`; a flat-string key inside the namespace object renders raw. Always verify with getNestedValue semantics before building.
+- Probe data cleaned (test banner + probe feedback). PWA audit **0 problems** · E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic clean · 8/8 services.

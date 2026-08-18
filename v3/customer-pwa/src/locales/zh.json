@@ -495,7 +495,8 @@
       "checkin": "签到",
       "help": "帮助",
       "referrals": "邀请好友",
-      "wallet": "钱包"
+      "wallet": "钱包",
+      "feedback": "意见反馈"
     },
     "scanQR": "扫描 QR",
     "seeAll": "查看全部",
@@ -1387,5 +1388,15 @@
     "noWorkshops": "暂无可参加的工作坊",
     "seatsLeft": "剩余{count}个名额",
     "title": "工作坊与课程"
+  },
+  "feedback": {
+    "title": "意见与建议",
+    "rate": "您的体验如何？",
+    "suggestions": "告诉我们哪里可以做得更好",
+    "placeholder": "您的建议、需求或问题…",
+    "submit": "提交反馈",
+    "thanks": "谢谢您！",
+    "thanksSub": "您的反馈已送达门店团队，我们会认真阅读每一条。",
+    "another": "再提交一条"
   }
 }

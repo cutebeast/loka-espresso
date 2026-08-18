@@ -8,13 +8,13 @@ import type { PageId } from '@/lib/api';
 const VALID_PAGES: PageId[] = [
   'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
   'wallet', 'history', 'promotions', 'information', 'my-rewards',
-  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'guest-pay', 'referral', 'reservations', 'events', 'workshops', 'checkin', 'lucky-draw', 'vip', 'kiosk',
+  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'guest-pay', 'referral', 'reservations', 'events', 'workshops', 'checkin', 'lucky-draw', 'vip', 'feedback', 'kiosk',
 ];
 
 export const SUB_PAGES: PageId[] = [
   'cart', 'checkout', 'order-detail', 'guest-pay', 'wallet', 'history',
   'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'workshops', 'referral', 'checkin', 'lucky-draw', 'vip',
+  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'workshops', 'referral', 'checkin', 'lucky-draw', 'vip', 'feedback',
 ];
 
 // 'checkin' requires auth upfront (nav triggers the sign-in modal);

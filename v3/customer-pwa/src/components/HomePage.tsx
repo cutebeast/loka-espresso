@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Bike, Calendar, Megaphone, Ticket, BookOpen, Wallet, Gift, HelpCircle } from 'lucide-react';
+import { ShoppingBag, Bike, Calendar, Megaphone, Ticket, BookOpen, Wallet, Gift, MessageSquareHeart } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -202,7 +202,7 @@ export default function HomePage() {
               { icon: <Calendar size={18} />, label: t('home.quick.checkin'), page: 'checkin' as const, auth: true },
               { icon: <Wallet size={18} />, label: t('home.quick.wallet'), page: 'wallet' as const, auth: true },
               { icon: <Gift size={18} />, label: t('home.quick.referrals'), page: 'referral' as const, auth: true },
-              { icon: <HelpCircle size={18} />, label: t('home.quick.help'), page: 'help-support' as const, auth: false },
+              { icon: <MessageSquareHeart size={18} />, label: t('home.quick.feedback'), page: 'feedback' as const, auth: false },
             ].map(a => (
               <button type="button" key={a.page} className="clean-quick-item" onClick={() => (a.auth && !isAuthenticated ? triggerSignIn() : setPage(a.page))}>
                 <span className="clean-qicon">{a.icon}</span>

@@ -748,7 +748,7 @@ export interface DeliveryAddress {
   lng?: number;
 }
 
-export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'guest-pay' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'events' | 'workshops' | 'checkin' | 'lucky-draw' | 'vip' | 'kiosk';
+export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'guest-pay' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'events' | 'workshops' | 'checkin' | 'lucky-draw' | 'vip' | 'feedback' | 'kiosk';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
 export function cacheBust(url: string, ts?: number): string {
