@@ -313,12 +313,29 @@ async def list_orders(
             if pid not in payment_map:
                 payment_map[pid] = pmt
     
+    # Batch-fetch line items so the orders page can show item previews +
+    # thumbnail images (round-39: list used to ship line_items=[] and the
+    # past-order thumbnails always fell back to the coffee icon).
+    line_map: dict[int, list[OrderLineItemOut]] = {}
+    if order_ids:
+        li_result = await db.execute(
+            select(OrderLineItem)
+            .where(OrderLineItem.order_id.in_(order_ids))
+            .order_by(OrderLineItem.id)
+        )
+        for li in li_result.scalars().all():
+            li_out = OrderLineItemOut.model_validate(li)
+            li_out.name = li.item_snapshot.get("item_name") if li.item_snapshot else None
+            li_out.image_url = li.item_snapshot.get("image_url") if li.item_snapshot else None
+            line_map.setdefault(li.order_id, []).append(li_out)
+
     items = []
     for order in orders:
         order_out = _build_order_out(order)
         order_out.store_name = order.store.store_name if order.store else None
         order_out.store_address = order.store.address_line_1 if order.store else None
         order_out.payment_method = payment_map.get(order.id)
+        order_out.line_items = line_map.get(order.id, [])
         items.append(order_out)
     
     return APIResponse(

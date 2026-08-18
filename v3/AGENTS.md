@@ -2018,3 +2018,13 @@ Owner reported menu/cart inconsistencies. All fixed + verified:
 - Also cleaned: 2 leftover test bundle products ("Test Combo"/"Test Value" — live residue from old E2E bundle tests).
 - Gates: PWA audit **0 problems** · bundle E2E 19 passed · full E2E **241 passed, 3 skipped, 0 failed** · unit **100/100**.
 - RULE: scripted UI probes must match the REAL selector/text (multi-course bundles open MultiCourseBundleSheet, not the bps picker; `.bps-add-btn` only exists for pick-choose) — verify against the component source before trusting probe failures.
+
+### Round 39 — order/checkout thumbnail coverage (2026-08-18, ~18:10)
+
+Owner: "order/checkout/history pages have proper thumbnail images right?"
+Audited every image surface:
+- **Cart** — fixed earlier this round (all add flows now pass image_url). Verified: Espresso line renders its loaded image.
+- **Checkout** — renders `item.image_url` from the same cart lines (now populated); server-cart rehydration also returns image_url (cart.py lines 31/77).
+- **Order detail** — already populated image_url from item_snapshot (customer/order.py:372).
+- **Orders page (past orders) — WAS BROKEN**: the list endpoint shipped `line_items=[]` (OrderOut default), so `firstItem?.image_url` never existed and thumbnails always fell back to the coffee icon. Fixed: the list now batch-fetches line items and enriches name + image_url from item_snapshot. Verified live: placed order → list returns 1 line with `/uploads/images/menu/cafe-specialty-coffee/espresso.jpg`.
+- Gates: unit 100/100 · alembic clean · full E2E **241 passed, 3 skipped, 0 failed** (first run had 1 flake — clean re-run green).
