@@ -92,6 +92,7 @@ export default function MultiCourseBundleSheet({
           store_id: selectedStore?.id,
           customization_count: 0,
           bundle_product_id: bundle.id,
+                bundle_name: bundle.title,
           bundle_component_id: comp.id
         });
       }
@@ -107,6 +108,7 @@ export default function MultiCourseBundleSheet({
           store_id: selectedStore?.id,
           customization_count: 0,
           bundle_product_id: bundle.id,
+                bundle_name: bundle.title,
           bundle_component_id: comp.id
         });
       }

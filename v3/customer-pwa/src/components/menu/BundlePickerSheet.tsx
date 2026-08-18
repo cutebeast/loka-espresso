@@ -95,6 +95,7 @@ export default function BundlePickerSheet({
           store_id: selectedStore?.id,
           customization_count: 0,
           bundle_product_id: bundle.id,
+                bundle_name: bundle.title,
           bundle_component_id: item.componentId
         });
       }
@@ -112,6 +113,7 @@ export default function BundlePickerSheet({
           store_id: selectedStore?.id,
           customization_count: 0,
           bundle_product_id: bundle.id,
+                bundle_name: bundle.title,
           bundle_component_id: item.componentId
         });
       }

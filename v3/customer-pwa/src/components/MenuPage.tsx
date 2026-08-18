@@ -76,6 +76,7 @@ export default function MenuPage() {
       variant_name: fav.variant_name ?? undefined,
       customizations: { options: fav.options.map(o => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) },
       customization_option_ids: fav.options.map(o => o.id),
+      image_url: item.image_url ?? undefined,
       customization_count: fav.options.length,
       store_id: selectedStore?.id,
     });
@@ -231,21 +232,11 @@ export default function MenuPage() {
     };
   }, [categories, menuItems, bundleSections]);
   const openItem = useCallback((item: MenuItem) => {
-    if ((item.modifier_groups?.length ?? 0) > 0 || (item.variants?.length ?? 0) > 0) {
-      setCustomizeItem(item);
-      return;
-    }
-    addItem({
-      menu_item_id: item.id,
-      name: item.item_name,
-      price: item.base_price,
-      base_price: item.base_price,
-      quantity: 1,
-      customizations: {},
-      store_id: selectedStore?.id,
-      customization_count: item.modifier_groups?.length ?? 0
-    });
-  }, [addItem, selectedStore?.id]);
+    // EVERY item opens the customize sheet (consistent height + image + qty
+    // + Add) — items without options used to skip it entirely (round-39
+    // owner feedback: inconsistent bottom-sheet behavior).
+    setCustomizeItem(item);
+  }, []);
   const handleCustomizeAdd = useCallback((item: MenuItem, quantity: number, selectedOptions: {
     id: number;
     name: string;
@@ -280,7 +271,8 @@ export default function MenuPage() {
       },
       store_id: selectedStore?.id,
       customization_option_ids: selectedOptions.map(o => o.id),
-      customization_count: selectedOptions.length
+      customization_count: selectedOptions.length,
+      image_url: item.image_url ?? undefined
     });
     setCustomizeItem(null);
   }, [addItem, selectedStore?.id]);
@@ -321,7 +313,9 @@ export default function MenuPage() {
         store_id: selectedStore?.id,
         customization_count: 0,
         bundle_product_id: bp.id,
-        bundle_component_id: comp.id
+        bundle_component_id: comp.id,
+        image_url: mi.image_url ?? undefined,
+        bundle_name: bp.title
       });
     }
     showToast(`${bp.title} ${t('menu.addedToCartToast')}`, 'success');

@@ -252,6 +252,9 @@ export default function CartPage() {
                 <div className="cart-item-details">
                   <div className="cart-item-header">
                     <div className="cart-item-title-group">
+                      {item.bundle_name && (
+                        <span className="cart-item-bundle-tag">{item.bundle_name}</span>
+                      )}
                       <h4 className="cart-item-name">{item.name}</h4>
                     </div>
                     <div className="cart-item-price-group">

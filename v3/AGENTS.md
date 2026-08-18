@@ -2007,3 +2007,14 @@ Owner feedback on the dashboard:
 2. **FAQ on the dashboard is staff material** — the dashboard quick action no longer links to Help/FAQ. New dedicated **Feedback & Suggestions page** (`#feedback`): 5-star rating + suggestion box → POST /api/feedback (admin Feedback inbox). Success state + "send another". Wired: PageId/uiStore/usePageRouter/AppShell (lazy `FeedbackPage`) + 9 pwa-ui keys (en/zh). Help/FAQ stays accessible from Profile → Help & Support (staff reference, not customer-critical). Verified: full flow (rate 5 + message → Thank you) + dashboard quick action lands on the feedback page.
 - RULE (hit again): locale edits must nest keys properly — `feedback.title` lives at `{"feedback": {"title": ...}}`; a flat-string key inside the namespace object renders raw. Always verify with getNestedValue semantics before building.
 - Probe data cleaned (test banner + probe feedback). PWA audit **0 problems** · E2E **241 passed, 3 skipped, 0 failed** · unit **100/100** · alembic clean · 8/8 services.
+
+### Round 39 — PWA menu/cart consistency fixes (2026-08-18, ~17:30)
+
+Owner reported menu/cart inconsistencies. All fixed + verified:
+
+1. **Bottom sheet height inconsistent (food short vs drink long)** — `.ics-sheet` was content-driven (`max-height: 85vh`); now FIXED `height: 85vh` with internal scroll. Verified live: food item sheet 717px == drink sheet 717px on 844px viewport.
+2. **Items without add-ons skipped the sheet entirely** — `openItem` gated on modifier_groups/variants and added directly. Now EVERY item opens the customize sheet (image + qty + Add) at the same fixed height. Verified live: a no-modifier item opens the 717px sheet with qty + Add.
+3. **Cart images missing + bundle names missing** — the add flows never passed `image_url` (and `bundle_name` didn't exist). Fixed: `CartItem` gained `bundle_name`; ALL addItem flows now pass `image_url` (customize sheet, favorites quick-add, bundle picker, multi-course sheet, addon deals) and bundle flows pass `bundle_name: bundle.title`; CartPage renders a small olive bundle tag above the component line name. Verified live: Espresso cart line shows its loaded image.
+- Also cleaned: 2 leftover test bundle products ("Test Combo"/"Test Value" — live residue from old E2E bundle tests).
+- Gates: PWA audit **0 problems** · bundle E2E 19 passed · full E2E **241 passed, 3 skipped, 0 failed** · unit **100/100**.
+- RULE: scripted UI probes must match the REAL selector/text (multi-course bundles open MultiCourseBundleSheet, not the bps picker; `.bps-add-btn` only exists for pick-choose) — verify against the component source before trusting probe failures.

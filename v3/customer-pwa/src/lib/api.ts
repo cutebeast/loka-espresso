@@ -280,6 +280,7 @@ export interface CartItem {
   customizations?: Record<string, unknown>;
   customization_option_ids?: number[];
   customization_count?: number;
+  bundle_name?: string;
   image_url?: string;
 }
 
