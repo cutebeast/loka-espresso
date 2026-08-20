@@ -36,6 +36,15 @@ export default function WalletPage() {
   const [loadingTx, setLoadingTx] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Checkout top-up flow: insufficient balance sends the user here with
+  // returnTo=checkout (+ a prefilled shortage amount). After a successful
+  // top-up — or on back — they return to where they came from, not #home.
+  const returnTo = pageParams?.returnTo as string | undefined;
+  useEffect(() => {
+    const amt = pageParams?.topupAmount as string | undefined;
+    if (amt && !customAmount && !selectedAmount) setCustomAmount(amt);
+  }, [pageParams?.topupAmount]);
+
   const fetchBalance = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
     try {
@@ -83,6 +92,11 @@ export default function WalletPage() {
         await fetchBalance();
         await fetchTransactions();
         showToast(t('toast.topUpSuccessReturn'), 'success');
+        // Checkout top-up flow: take the user back to finish their order
+        if (returnTo) {
+          setPage(returnTo as Parameters<typeof setPage>[0]);
+          return;
+        }
       } else if (status === 'cancel' || status === 'canceled' || status === 'failed') {
         showToast(t('toast.topUpFailed'), 'error');
       }
@@ -131,7 +145,9 @@ export default function WalletPage() {
         // Backend defaults to Stripe; pass the configured gateway so HitPay-only
         // deployments get a HitPay checkout session.
         provider: config.payment_gateway_provider ?? undefined,
-        return_url: typeof window !== 'undefined' ? `${window.location.origin}/#wallet` : undefined,
+        return_url: typeof window !== 'undefined'
+          ? `${window.location.origin}/#wallet${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`
+          : undefined,
       });
       if (res.data?.checkout_url) {
         window.location.href = res.data.checkout_url;
@@ -149,7 +165,7 @@ export default function WalletPage() {
     <div className="topup-screen">
       {/* Header */}
       <div className="topup-header">
-        <button className="topup-back-btn" onClick={() => setPage('home')} aria-label={t('common.back')}>
+        <button className="topup-back-btn" onClick={() => setPage((returnTo as Parameters<typeof setPage>[0]) || 'home')} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
         <h1 className="topup-title">{t('wallet.topUpTitle')}</h1>

@@ -529,8 +529,10 @@ async def create_wallet_topup_checkout(
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
     base_return = (data.return_url or f"{app_public_url}/#wallet").rstrip("/")
-    success_url = f"{base_return}?topup_session={session.id}&status=success"
-    cancel_url = f"{base_return}?topup_session={session.id}&status=cancel"
+    # The return_url may already carry query params (e.g. ?returnTo=checkout)
+    sep = "&" if "?" in base_return else "?"
+    success_url = f"{base_return}{sep}topup_session={session.id}&status=success"
+    cancel_url = f"{base_return}{sep}topup_session={session.id}&status=cancel"
 
     if provider == "hitpay":
         try:

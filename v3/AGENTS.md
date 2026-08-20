@@ -2206,3 +2206,7 @@ Gates: unit **108/108** · webhook E2E 7/7 · admin portal rebuilt + select veri
 - **Data repairs**: survey 3's rating question had `{"choices": []}` (now `rating_scale` 1-5); promo banner 38's long_description had a raw Python-list Terms blob (now bullets); `.rd-desc` uses `white-space: pre-line` so \n bullets break correctly.
 - **Back buttons**: events + workshops were wired `onBackProfile` though their entry is the dashboard hub → now `onBackHome`; check-in hardcoded `setPage('profile')` (dashboard quick action) → now home. Full back-target audit: menu→home, cart→menu, rewards→home, promotions/information/lucky-draw/feedback→home, profile subpages→profile, order-detail→orders.
 - Committed `64f0ea0e`; PWA journey E2E 5/5.
+
+### Round 40 nav audit — every PWA back button verified live (2026-08-21)
+
+Full live trace of all 24 back-button pages. Correct: menu→home, cart→menu, rewards→home, promotions/information/events/workshops/lucky-draw/feedback/checkin→home, profile→home, my-rewards/history/my-card/account-details/payment-methods/saved-addresses/notifications/settings/referral/reservations/help-support/legal→profile, order-detail→orders, checkout→cart, legal→pageParams.backTo. Fixed this pass: wallet→home, vip→home (neither is on the profile menu — dashboard entries only), check-in + vip guest walls were missing their headers entirely (no back button at all). Verified live post-fix.

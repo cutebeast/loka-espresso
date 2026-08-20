@@ -519,7 +519,7 @@ export default function CheckoutPage() {
               count: itemCount
             })}</div>
         </div>
-        {requiresWallet && !walletSufficient ? <button className="co-topup-btn" onClick={() => setPage('wallet')}><Wallet size={18} /> {t('checkout.topUpToContinue', {
+        {requiresWallet && !walletSufficient ? <button className="co-topup-btn" onClick={() => setPage('wallet', { returnTo: 'checkout', topupAmount: (total - balance).toFixed(2) })}><Wallet size={18} /> {t('checkout.topUpToContinue', {
             amount: formatPrice(total - balance)
           })}</button> : <button className="co-place-order-btn" onClick={handlePlaceOrder} disabled={placing}>{placing ? <Loader2 size={18} className="spinning" /> : <UtensilsCrossed size={18} />}{placing ? t('checkout.placingOrder') : t('checkout.placeOrderPrice', {
             price: formatPrice(total)
