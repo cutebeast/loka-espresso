@@ -263,6 +263,12 @@ async def purge_soft_deleted_residue() -> None:
         await db.execute(text(
             f"DELETE FROM menu_items WHERE deleted_at IS NULL AND ({test_item_pred})"
         ))
+        # E2E class sessions leak onto the customer workshops page when a test
+        # creates sessions on REAL workshop items without deleting them (found
+        # 2026-08-20: 22 "E2E merge" rows). Only unbooked rows are removed.
+        await db.execute(text(
+            "DELETE FROM class_sessions WHERE booked_pax = 0 AND (location LIKE 'E2E%' OR notes LIKE 'E2E%')"
+        ))
         # Orphaned auto-link inventory items: menu items deleted above (or by
         # the e2e conftest) cascade-delete their recipes, leaving LNK-* items.
         # Children (stock/movements) cascade via FK — safe to delete directly.

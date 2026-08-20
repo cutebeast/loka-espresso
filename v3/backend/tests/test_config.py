@@ -8,9 +8,11 @@ from app.core.config import Settings
 
 
 def test_stripe_simulator_url_defaults():
+    # None = built-in local simulator page (services/payment.py builds it with
+    # the session's real return URLs). The old checkout.stripe.com/test-session
+    # placeholder was a dead URL that broke dev top-ups.
     s = Settings()
-    assert s.stripe_simulator_checkout_url is not None
-    assert "{session_id}" in s.stripe_simulator_checkout_url
+    assert s.stripe_simulator_checkout_url is None
 
 
 def test_stripe_simulator_url_is_configurable():

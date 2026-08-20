@@ -199,6 +199,9 @@ async def test_merge_preserves_workshop_seats(client: httpx.AsyncClient, base_ur
         r = await client.get(f"{base_url}/admin/menu/items/{workshop['id']}/sessions", headers=admin_headers)
         assert _booked(r.json()["data"]) == 0
     finally:
+        # Delete the test session — leaving it pollutes the customer-facing
+        # workshops page with "E2E merge" session rows (round-40 guest audit).
+        await client.delete(f"{base_url}/admin/class-sessions/{session_id}", headers=admin_headers)
         await client.delete(f"{base_url}/admin/customers/{customer_id}", headers=admin_headers)
 
 
