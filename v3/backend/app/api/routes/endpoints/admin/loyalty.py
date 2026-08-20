@@ -1,7 +1,7 @@
 """Admin and public loyalty endpoints."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
@@ -422,7 +422,29 @@ async def get_my_loyalty_account(
         from app.services.commerce import _evaluate_tier_renewal
         await _evaluate_tier_renewal(db, account)
         await db.commit()
-    return APIResponse(data=_serialize_account(account))
+    out = _serialize_account(account)
+    # Points-expiry visibility (PWA rewards header): earn batches expiring
+    # within 30 days. Spend allocation across batches is not tracked, so this
+    # is an upper bound — capped at the current balance for display.
+    now = datetime.now(timezone.utc)
+    exp_row = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(LoyaltyPointsLedger.points_delta), 0),
+                func.min(LoyaltyPointsLedger.expires_at),
+            ).where(
+                LoyaltyPointsLedger.loyalty_account_id == account.id,
+                LoyaltyPointsLedger.points_delta > 0,
+                LoyaltyPointsLedger.expires_at.is_not(None),
+                LoyaltyPointsLedger.expires_at > now,
+                LoyaltyPointsLedger.expires_at <= now + timedelta(days=30),
+            )
+        )
+    ).one()
+    expiring = min(int(exp_row[0] or 0), max(0, account.points_balance))
+    out.points_expiring_soon = expiring
+    out.next_points_expiry_at = exp_row[1] if expiring > 0 else None
+    return APIResponse(data=out)
 
 
 @public_loyalty_router.get(

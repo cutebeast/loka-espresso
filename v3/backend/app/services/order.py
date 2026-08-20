@@ -281,15 +281,12 @@ def generate_order_number() -> str:
     return f"ORD-{now.strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
 
 
-async def compute_estimated_ready_at(db: AsyncSession, order: Order, line_items: list) -> datetime:
-    """Honest pickup estimate for the ETA card: longest item prep time plus a
-    queue buffer derived from the store's current in-progress orders (capped).
-    A customer-scheduled pickup_time always wins. Not persisted — the queue
-    moves, so the estimate is computed at read time.
-    """
-    if order.pickup_time:
-        return order.pickup_time
-    menu_ids = [li.menu_item_id for li in line_items]
+async def compute_pickup_estimate(db: AsyncSession, store_id: int, menu_ids: list[int]) -> datetime:
+    """Longest item prep time plus a queue buffer derived from the store's
+    current in-progress orders (capped), floored at the store's advertised
+    pickup_lead_minutes (the store picker promises "Ready in ~N min" — the
+    estimate must never undercut that promise). Shared by the order ETA card
+    and the pre-order checkout pickup estimate."""
     max_prep = 10
     if menu_ids:
         prep_result = await db.execute(
@@ -299,13 +296,30 @@ async def compute_estimated_ready_at(db: AsyncSession, order: Order, line_items:
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     queue_result = await db.execute(
         select(func.count(Order.id)).where(
-            Order.store_id == order.store_id,
+            Order.store_id == store_id,
             Order.status.in_(("confirmed", "preparing")),
             Order.created_at >= today_start,
         )
     )
     queue_count = queue_result.scalar() or 0
-    return datetime.now(timezone.utc) + timedelta(minutes=max_prep + min(queue_count * 2, 30))
+    lead_result = await db.execute(
+        select(Store.pickup_lead_minutes).where(Store.id == store_id)
+    )
+    lead = lead_result.scalar() or 15
+    minutes = max(lead, max_prep + min(queue_count * 2, 30))
+    return datetime.now(timezone.utc) + timedelta(minutes=minutes)
+
+
+async def compute_estimated_ready_at(db: AsyncSession, order: Order, line_items: list) -> datetime:
+    """Honest pickup estimate for the ETA card: longest item prep time plus a
+    queue buffer derived from the store's current in-progress orders (capped).
+    A customer-scheduled pickup_time always wins. Not persisted — the queue
+    moves, so the estimate is computed at read time.
+    """
+    if order.pickup_time:
+        return order.pickup_time
+    menu_ids = [li.menu_item_id for li in line_items]
+    return await compute_pickup_estimate(db, order.store_id, menu_ids)
 
 
 async def _deduct_stock_for_order(

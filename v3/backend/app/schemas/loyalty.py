@@ -39,6 +39,11 @@ class LoyaltyAccountOut(BaseSchema):
     lifetime_points: int
     points_to_next_tier: int | None
     tier_multiplier: Money
+    # Populated only on the customer-facing /loyalty/me read (30-day window):
+    # earn-batch points expiring soon (capped at the current balance) and the
+    # nearest expiry date. None on admin serializers.
+    points_expiring_soon: int | None = None
+    next_points_expiry_at: datetime | None = None
     last_activity_at: datetime | None
     last_tier_change_at: datetime | None
     created_at: datetime

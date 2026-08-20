@@ -1,5 +1,7 @@
 """Customer cart endpoints."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -77,6 +79,32 @@ async def list_cart_items(customer: ActiveCustomer, db: DBDependency, store_id: 
         li_out.image_url = i.menu_item.image_url if i.menu_item else None
         items.append(li_out)
     return APIResponse(data=items)
+
+
+@router.get("/pickup-estimate", response_model=APIResponse[dict])
+async def get_pickup_estimate(customer: ActiveCustomer, db: DBDependency, store_id: int = Query(1, ge=1)):
+    """Pre-order pickup ETA for the checkout screen — same prep-time + queue
+    math as the post-order ETA card (services/order.compute_pickup_estimate).
+    Falls back to the store default when the server cart is empty (the PWA
+    syncs its local cart before calling this)."""
+    from app.services.order import compute_pickup_estimate
+
+    cart_result = await db.execute(
+        select(CustomerCart).where(
+            CustomerCart.customer_id == customer.id,
+            CustomerCart.store_id == store_id,
+        )
+    )
+    cart = cart_result.scalar_one_or_none()
+    menu_ids: list[int] = []
+    if cart is not None:
+        li_result = await db.execute(
+            select(CartLineItem.menu_item_id).where(CartLineItem.cart_id == cart.id)
+        )
+        menu_ids = [mid for (mid,) in li_result.all()]
+    eta = await compute_pickup_estimate(db, store_id, menu_ids)
+    minutes = max(1, round((eta - datetime.now(timezone.utc)).total_seconds() / 60))
+    return APIResponse(data={"estimated_ready_at": eta.isoformat(), "estimated_minutes": minutes})
 
 
 @router.post("/items", response_model=APIResponse[CustomerCartOut])
