@@ -2039,3 +2039,163 @@ Root cause: the BUNDLE sheets (`.bps-sheet`, shared by BundlePickerSheet + Multi
 
 Owner: "kiosk bundle item selection has issues". Root cause: with `allow_duplicates` bundles (Breakfast Duo etc.), a component card whose GROUP was full kept an ENABLED "+" button that was a no-op (`disabled={capped && qty === 0}` — for duplicates the cap only mattered at qty 0). Users tapped the live-looking button and nothing happened. Fixed: `disabled={capped}` + dimmed opacity — group-full cards can't be incremented further. Verified live end-to-end: Breakfast Duo → bread + 2 drinks → "Add to Cart · RM 39.00" enables → adds and returns to the menu with the cart updated. PWA audit 0 problems · kiosk/pos-disp 0 errors · bundle E2E 19 passed · unit 100/100.
 - RULE: a control that cannot change state MUST be disabled (and visually dimmed) — an enabled no-op button is indistinguishable from a broken one. Audit every `disabled=` predicate for the `&& qty === 0` pattern.
+
+## Round 40 — PWA re-audit vs clean prototypes + design studies (2026-08-19)
+
+Fresh PWA audit against `customer-pwa/uiux-prototypes/clean` + the 94-image competitor study (`/root/PWA-uiux_design`: Chagee/ZUS/Starbucks/Kenangan/Marrybrown). Every finding verified in code end-to-end; the 3 bugs also traced through the full data path. Baseline before changes: 100/100 unit (106 after this round's tests), tsc ×3 clean, alembic single head no drift.
+
+### Verified bugs fixed
+1. **Per-item "Special instructions" silently dropped** — ItemCustomizeSheet collected `notes` but never passed them to `onAdd`; MenuPage/CartPage handlers had no notes param. The downstream pipeline already supported it (`CartLineItemCreate.special_instructions`, cartSync forwards `customizations.note`, cart tags display it) — only the first hop was broken. Fixed: sheet passes trimmed note (maxlength 255 + counter), both handlers store `customizations.note`, cart merge key now includes the note (two lines differing only by note no longer merge — a merge would drop one note).
+2. **Cart edit dropped the variant → displayed price ≠ charged price** — `CartPage.openCustomize` rebuilt a variant-less stub (variant picker hidden, price math excluded the variant delta) and `handleCustomizeConfirm` ignored the variant param, leaving a stale `variant_id` on the line while the displayed price lost the delta. Fixed: edit sheet gets the FULL menu item (variants render), new `initialVariantId`/`initialNote` props preselect the line's current variant + note, and confirm writes `name`/`variant_id`/`variant_name`/price/options/note together.
+3. **Rewards page tier progress used spendable points** — `RewardsPage` computed progress from `points` (regresses after every redemption) while tiers are lifetime-based (round-32 rule; ProfilePage/HomePage/VipPage all use `lifetimePoints`). Fixed + top-tier state handled (was pointing "next tier" at Reserve itself).
+
+### Design-plan gaps closed (clean prototypes)
+- **P3 menu left rail shipped**: sticky text-only category rail (84px, left-border active, scroll-spy unchanged) + 2-col vertical product grid (photo top, name 2-line clamp, price + Add; tags/allergens/calories stay on the sheet). Replaces the horizontal chip scroll. Bundle sections share the grid; vault/experience lists unchanged. RULE: `menu-cat-bar`/`menu-cat-tab` are gone — rail classes are `menu-cat-rail`/`menu-rail-tab`.
+- **Product sheet**: "↺ Reset Recipe" link + 255-char notes counter (matches backend max).
+- **Cart**: Edit button on EVERY line (was only lines with existing customizations); "You'll earn ~X Points" banner (mirrors backend math: floor(items subtotal × points_per_currency[1]) × tier multiplier; birthday/BYOT can only add).
+- **Home**: the featured-promo panel now renders for authed users too (was guest-only; `HomeBanner` modal unchanged).
+
+### Study-inspired additions (competitor apps)
+- **Points-expiry visibility** (Chagee "Point Expiry Details", clean rewards prototype): `/loyalty/me` now returns `points_expiring_soon` (earn batches expiring ≤30d, capped at current balance) + `next_points_expiry_at` (`LoyaltyAccountOut` optional fields, null on admin serializers). PWA: walletStore exposes them; rewards page shows a red "N points expiring on D" hint. Live-proven with a probe ledger row (250 pts → surfaced, probe cleaned).
+- **Pickup ready-time at checkout** (ZUS "Will be ready at…"): new `GET /cart/pickup-estimate?store_id=` (customer auth) reusing the order-ETA math — extracted shared `compute_pickup_estimate(db, store_id, menu_ids)` (max prep + min(queue×2, 30) buffer); `compute_estimated_ready_at` delegates. Checkout shows "ASAP pickup — ready in ~N min (around HH:MM)" when no scheduled time is chosen. Advisory only — fetch failure renders nothing.
+
+### Live-verify follow-on findings (caught by the browser pass, both fixed)
+4. **Modifier groups collapsed into one "multiple" section** — `deriveCustomizationOptions` set `option_type = mg.selection_type`, so every multi-select group merged into a single section titled "multiple" (proven live: Affogato showed Extra Shot + Single Origin Bean + Oat Milk + Soy Milk under one "multiple" header), pick-1 groups could stack conflicting choices (Oat + Soy, charged both), and the cup-size UI/required tag (keyed on the type containing "size") never triggered. Fixed: `option_type` = the admin group NAME; `selection_type`/`min_selections`/`max_selections` flow through; single groups replace-within-group (deselect only when optional), multi groups enforce max (full group ignores the tap), Required tag from `min_selections > 0` (or size), "Optional · Max N" tag otherwise. Cart-line preselections are enriched with their group on edit so the replace logic groups them. NOTE: backend does NOT validate min/max selection counts on cart add — the sheet is the only enforcement (pre-existing; backend hardening candidate for a later round).
+6. **Selected option pills rendered "++RM 4.00"** — the round-39 clean layer added a CSS `::before { content: "+" }` on selected `.ics-option-price` while the template already renders `+{price}`. Removed the CSS prefix.
+
+5. **Customize-sheet CTA never showed the price** — en.json values were literally `"addPrice": "Add Price"` / `"addQuantity": "Add Quantity"` (no placeholders; zh the same), so the sheet's `t('menu.addPrice', { price })` rendered "Add Price". Fixed to "Add to Cart · {price}" / "Add {quantity} · {price}" (+ zh). RULE: when a t() call passes params, the locale value must contain the placeholder — grep values for `{` when auditing keys with params.
+
+### i18n
+6 keys touched in en.json + zh.json (nested): NEW `menu.resetRecipe`, `menu.optionalMax`, `cart.earnBanner`, `checkout.pickupEta`, `rewards.pointsExpiring`; FIXED `menu.addPrice` / `menu.addQuantity` (placeholders).
+- **Placeholder audit** (script: every `t('key', { … })` call vs its en.json value): 7 more values were static title-case text silently dropping their params — all fixed en+zh: `toast.tableScanned` (lost table/store), `menu.noSearchResults` (lost query), `accountDetails.memberSince`, `referral.shareText` (the shared message lost the referral CODE — functional), `referral.partnerSince` (zh had a literal "(date)"), `referral.bonusPoints`, `referral.invitedUsers`. `hello_name`/`item_count` flags were i18n.ts doc comments (false positives).
+
+### Verification
+- 106/106 backend unit (6 new: expiry exposed/capped/none, estimate prep+queue/default/cap) · live probes: `/loyalty/me` fields (0/None baseline, 250/date with probe), `/cart/pickup-estimate` 200 (~10 min empty-cart default) · tsc clean · eslint 0 errors on all changed files · PWA rebuilt via rebuild-portal.sh (kiosk-v3 + pos-disp-v3 restarted).
+- Full E2E: 240 passed, 3 skipped, **1 failed = `test_inventory_item_relationship_fields`** — the SAME documented round-39 full-run flake (untouched admin-inventory surface; passes isolated 1/1 and full-file 3/3). Now twice-recurrent under suite load — next round should fix its cross-test state dependency instead of re-documenting it.
+- Live browser checks: rail scroll-spy + 2-col grid (both themes), notes counter 17/255 → reset 0/255, group title "Customisations" + "Optional · Max 4", CTA live price, selected pill "+RM 4.00" (no ++), clean dashboard hub badges in light theme.
+- Still open from earlier rounds unchanged: P4 remainder (wallet top-up bonus accordions need a backend bonus system; VIP retention pill needs the tier-renewal job), gift cards / order-level ratings / referral leaderboard (new features, owner decision).
+
+### Round 40 hotfix — OTP screen infinite-loading loop (2026-08-19, user report)
+
+User: "OTP screen keeps loading non-stop". **Proven live before fixing**: pasting a wrong 6-digit code produced **193 `/auth/login` requests in 8 seconds**, a permanent button spinner, and no error ever displayed.
+
+Root cause (two stacked bugs):
+1. `usePhoneAuth.handleVerifyOtp` swallowed login failures (`catch → return false`), so callers couldn't distinguish failure from the new-user path (also `false`).
+2. `OTPInput`'s auto-submit effect fires on every render when all 6 boxes are filled and not loading; the failure path never cleared the boxes, so each failed attempt immediately retriggered the next — an infinite retry loop hammering `/auth/login` (~24 req/s), hitting rate limits/lockouts and pinning the UI in "loading".
+
+Fix:
+- `handleVerifyOtp` now **rethrows** on invalid OTP (false is reserved for the new-user path).
+- `AuthFlow.handleOTPSubmit` rethrows after its toast so `OTPInput`'s catch clears the boxes + shows the inline error; also reads `useAuthStore.getState().isNewUser` fresh (the hook closure value was stale after the await — new users would have been misrouted to the error path).
+- `OTPInput` gained a `lastAttemptRef` guard: the auto-submit never refires for an unchanged code; the guard resets on any edit/paste/resend.
+- `LoginModal` (the other login surface) shared the same loop class via the hook and is fixed by the same change (its catch now runs, clears boxes, shows the backend detail).
+
+Verified live: wrong code → exactly 1 login request, inline error shown, spinner stops; correct code → success → authed dashboard. tsc + eslint clean; PWA rebuilt (kiosk/pos-disp restarted); PWA journey E2E 5/5.
+RULE: an auto-submit effect keyed on "all fields filled" must have a terminal failure path that CHANGES the guard condition (clear the fields or mark the attempt) — a no-op catch turns it into an infinite retry loop.
+
+### Round 40 audit loop 2 — PWA + kiosk + POS display (2026-08-20)
+
+Fresh crawl of all 29 PWA routes (guest + authed, URL-precise capture), deep functional probes of the round-40 features, and a full kiosk/POS-display pass.
+
+- **REAL FIX — guest failure toasts on protected pages**: 7 pages (orders, wallet, account-details, payment-methods, saved-addresses, notifications, my-card) fired their authed fetches for GUESTS behind the login wall — each logged a console error AND showed a failure toast ("Failed to load transactions" etc., proven live). All 7 fetches now skip when `!isAuthenticated`. Re-crawl: 0 errors, 0 toasts on all 7.
+- **REAL FIX — ETA inconsistency**: store picker promised "Ready in ~15 min" (`pickup_lead_minutes`) while the new checkout ETA computed prep+queue (~10 min) — two adjacent screens disagreed. `compute_pickup_estimate` is now floored at the store's lead minutes (both the checkout hint AND the post-order ETA card inherit it). Unit tests updated + 1 new (floor case); live: picker 15 = checkout 15.
+- **Verified working (deep probes, authed)**: earn banner "You'll earn ~26 Points" tracks the cart total incl. options; note tag renders on the cart line; edit sheet pre-fills the note AND keeps the option selection, no-change edit keeps the price; rewards progress is lifetime-based (0/500 for demo); checkout ETA hint renders after store selection.
+- **Kiosk (1080×1920)**: welcome → order type → skip phone → menu (chips + cards) → item sheet (group name "Customisations · Choose up to 4", live-price CTA) → cart (steppers/remove) → confirm → Pay Now. 0 raw keys, 0 broken images, 0 console/API errors. Cart math correct.
+- **POS display**: idle screen clean (branding, clock, promo carousel); wrong display_key serves no order state (guard holds).
+- Authed crawl of all 29 routes: fully CLEAN.
+- Gates: unit **107/107** · full E2E **241 passed, 3 skipped, 0 failed** (the inventory flake did NOT recur this run) · tsc + eslint clean on changed files · PWA rebuilt (kiosk/pos-disp restarted).
+
+### Round 40 audit loop 3 — guest mode & persistence (2026-08-20, user report)
+
+User: "login bottom sheet keeps popping up, entry not working properly — check guest login". Live probe results: 0 spontaneous popups across navigation, modal opens only on protected actions, closes and stays closed (no re-pop). The REAL defects found (all proven live, then fixed):
+
+1. **Guest choice forgotten every reload** — `isGuest` was excluded from the uiStore `partialize`, so every reload/revisit forced the full sign-in screen + "Browse as Guest" tap (this is the "always pops up" experience). Now persisted.
+2. **IDB persistence silently broken for cart + ui state** — `idbStorage.getItem` reads an in-memory cache populated by the async `idbStorageReady` load, but zustand rehydrates synchronously at `create()` when the cache is still empty; worse, cartStore's `_hydrated` setState then persisted the EMPTY state over the good IDB record. Proven live: valid IDB record with the Affogato line before reload, `items: []` after — guests lost their cart on every refresh. Fixed: `skipHydration: true` on cartStore + uiStore; AppShell explicitly `persist.rehydrate()`s both once `idbStorageReady` resolves (no create-time read, no empty-state clobber). Verified: cart (RM 22.00 line) AND guest flag survive repeated reloads; kiosk standalone render unaffected.
+3. Guest failure-toast guards (loop 2) keep protected pages silent for guests.
+
+Gates: tsc + eslint clean · PWA rebuilt (kiosk/pos-disp restarted) · full E2E **241 passed, 3 skipped, 0 failed**.
+RULE: zustand persist over an async-backed storage MUST use skipHydration + an explicit post-ready rehydrate — the sync create-time rehydrate reads an empty cache and the next set() destroys the stored record.
+
+### Round 40 audit loop 4 — guest UX on content pages (2026-08-20, user report)
+
+User-reported guest issues on feedback/info/promotions/events, each reproduced live before fixing:
+
+1. **Feedback page popped the login sheet for guests** — `PUBLIC_PAGES` (useAuthFlow) was missing `feedback` (its POST is public since round 32) and `checkin` (view guest-allowed per README contract); any guest navigating to a non-public page gets the sheet via the useAuthFlow guard. Both added. Also **feedback back button went to #profile** though the only entry is the dashboard quick action → now #home.
+2. **Products tab always blank** — 0 product-type information cards exist; the tab showed a dead "No products available" state. InformationPage now probes both content types and hides empty tabs (single-type view renders without a tab bar; auto-switches if the active type is empty).
+3. **Promo detail washed out (dark theme)** — VoucherSection used `promo-screen-white` (forced white bg) with theme-following text tokens → light-on-white title/meta. Switched to theme-aware `promo-screen`. Also fixed the **stray "–" meta line** when a promo has no date window (now "Ongoing offer", new i18n key en+zh).
+4. **Promo banner carousel looked fixed** — cards were `flex: 0 0 100%` (no next-card peek, no dots) so guests never realized it swipes. Cards now 86% → next card peeks.
+5. **Events purchase path verified + data repaired**: Book Now → `#workshops` (valid flow; guests browse, login at checkout — as the user expects). But the workshops page showed ONLY test pollution: 22 class_sessions rows with `location='E2E merge'` from `test_merge_preserves_workshop_seats` (never deleted them). Deleted the rows, taught the test to DELETE its session in `finally` (DELETE /admin/class-sessions/{id}), added an unbooked-`E2E%` class_sessions purge to cleanup_unpaid_open_orders.py, and created 3 real upcoming sessions per workshop via the admin API (Omakase/Roastery/Turkish Sand Brew — Loka Espresso (PKL), 8–10 seats).
+- "Many underline / or was it table?" — no markdown-table content exists in any of these pages (DB-checked base text + translations); the washed-out promo detail and stray dash were the actual render defects on those pages. List rows use hairline-bordered cards by design (clean system). Flagged to user for a screenshot if they meant something else.
+
+Gates: tsc + eslint clean · PWA rebuilt (kiosk/pos-disp restarted) · live re-verify: no sheet on feedback, back→#home, products tab hidden, promo detail readable, carousel peeks, workshops bookable with 0 test residue · full E2E **241 passed, 3 skipped, 0 failed** (merge test now self-cleans its session).
+
+### Round 40 audit loop 5 — full guest-mode page sweep (2026-08-20, user request)
+
+Complete guest crawl of all 29 PWA routes (popup tracing with modal dismissal between pages, back-target checks, full screenshot review of every page).
+
+**Verified correct**: bottom-nav/tab flows, public pages render clean (no popups/errors/raw keys/broken images/overflow), protected pages prompt the sheet exactly once, feedback menu→home, promo carousel peeks, workshops bookable, lucky-draw "Sign in to spin", guest-pay invalid-link error, checkin/reservations/profile/wallet walls.
+
+**Fixed**:
+1. **Guest fetch/toast class round 2** — HistoryPage (`/loyalty/ledger/me` 401 → toast) and MyRewardsPage (`refreshWallet` → /wallet/me + /loyalty/me 401s) now skip authed fetches for guests. (The "Failed to load" toasts seen on other pages were leftovers riding hash navigation from these two sources.)
+2. **Misleading guest content → sign-in walls** — account-details (editable empty form), payment-methods (RM 0.00 wallet + Add Card), saved-addresses (No Addresses + Add), notifications ("You're all caught up!"), my-card (fake 0-point member card), referral ("Something went wrong" error state), vip ("Loading…" forever — tiers only load via the authed app-data path) all wrapped in `GuestGate`. VipPage's no-tiers early return now renders the wall too.
+3. **My-card action icons invisible on dark theme** — inline `LOKA.brown` icons on the dark cream surface looked like broken images; theme-aware `color: var(--loka-primary)` in CSS (overrides the SVG attr).
+- NOTE (pre-existing, not changed): `loadConfig` (bootstrap config incl. tiers) only runs on the authed path — guests always use default config values.
+
+Gates: tsc + eslint clean · PWA rebuilt (kiosk/pos-disp restarted) · all 9 walled pages re-verified WALL-OK · full E2E **241 passed, 3 skipped, 0 failed**.
+
+### Round 40 audit loop 6 — guest re-verification (2026-08-20)
+
+Full guest re-crawl after the loop-5 fixes: all 28 routes OK (no unexpected popups, no console/page/API errors, no broken images, no raw keys, no overflow, no failure toasts, walls on every protected page). Authed regression on all 10 touched pages: real content renders, no walls leaked into the authed experience, 0 console errors. Two residual items fixed:
+- **Orders tab guest state** — the last non-walled account tab (showed "No orders yet" to guests); now the same sign-in wall.
+- **My-card action icons STILL invisible** — the loop-5 CSS fix couldn't win: lucide's inline `color` prop is a presentation attribute on the SVG itself, which beats inherited parent color. Removed the 3 inline `color={LOKA.brown}` props; icons now render in dark-mode gold. RULE: to theme a lucide icon's color, drop the inline `color` prop and style via CSS — a parent CSS color never overrides the element's own presentation attribute.
+- Verification note: authed orders page shows the ETA feature live ("Estimated ready in ~20 min" per order).
+
+Gates: tsc + eslint clean · rebuilds deployed · full E2E **240 passed, 3 skipped, 1 playwright error** — the error is a chromium-under-load flake on test_pwa_store_menu_renders (passes isolated; same documented flake class), zero product failures.
+
+### Round 40 fix — combo/bundle cart lines had no thumbnails (2026-08-20, user report)
+
+User: "combos no image in cart". Proven live: Loka Pair Set lines (Pulled Chicken Pesto Shack, Americano) rendered no image. Root cause: every bundle add-to-cart path omitted `image_url` from the CartItem — BundlePickerSheet (×2), MultiCourseBundleSheet (×2), AddonDealSheet, AddonDealShelf — while the fixed-bundle path (MenuPage.handleAddBundle) had it. The reorder mapping (OrdersPage.handleReorder) dropped it too even though `/cart/items` serves `image_url`. All 7 sites now pass it through. Verified live: both combo lines render their photos in the cart; bundle E2E 19/19.
+RULE: new add-to-cart call sites must carry `image_url` — the cart thumbnail silently degrades to the placeholder otherwise.
+
+### Round 40 fix — home dashboard couldn't scroll (2026-08-20, user report)
+
+User: "PWA homescreen can't scroll up/down". Proven live (authed home): `.home-main` used `min-height: 100%` inside the overflow-hidden `<main>`, so the wrapper GREW past the viewport (908px in an 844px area) instead of clipping, and `.clean-scroll` stretched to its content (flex child, `min-height: auto`) — bottom content ("What's on" hub rows) was unreachable. Fixed: `.home-main { height: 100%; overflow: hidden }` + `.clean-scroll { min-height: 0 }`. Verified: container bounded (783 > 583), programmatic/wheel/touch scroll all reach the bottom.
+RULE: a page-level wrapper inside an overflow-hidden viewport must use `height: 100%; overflow: hidden` (never `min-height`), and every flex scroll child needs `min-height: 0` — otherwise the layout stretches instead of scrolling.
+- All other pages checked for the same class (guest crawl ×27 routes + authed orders/profile/wallet + cart CSS pattern): all scroll correctly — home was the only broken page.
+
+### Round 40 UX — bundle group box on the cart page (2026-08-20, user request)
+
+Owner: show what a bundle IS on the cart (thumbnail + name). CartPage now groups component lines by `bundle_product_id` into a `cart-bundle-box`: header = bundle thumbnail (fetched from `/menu/bundle-products`, fallback Package icon + the line's `bundle_name`), title, and a "{count} items" chip (`cart.bundleItems` en+zh); component lines nest inside with hairline separators (per-line edit/remove/steppers unchanged — groups keep original item indices). Standalone items render as before; mixed carts verified live (Loka Pair Set box + Affogato card). tsc + eslint clean · rebuilt · bundle+PWA E2E 24/24.
+
+### Round 40 fix — wallet top-up Stripe return URL malformed (2026-08-20, user request: "check top-up properly")
+
+Full audit of the customer wallet top-up flow (UI → `/wallets/topup/checkout` → Stripe/HitPay → return → webhook credit).
+
+- **REAL BUG — malformed Stripe return URL**: `create_wallet_topup_checkout_session` appended its own `?session_id={CHECKOUT_SESSION_ID}&status=…` onto the endpoint's success/cancel URLs, which already carried `?topup_session=…&status=…` — a double query string. On the real-Stripe return the PWA parsed `status` as `success?session_id=cs_xxx`, never matched `=== 'success'` → **no success toast, no balance refresh, hash not cleaned** (customer pays and the app looks broken). The service now uses provided URLs verbatim; defaults unchanged. Unit regression `test_wallet_topup_return_url.py` (asserts verbatim + single `?`).
+- **Verified healthy**: schema guards (`amount > 0`, provider enum); webhook crediting idempotent + row-locked (`_complete_wallet_topup`), async failed/expired/refund/dispute reversals (`_reverse_wallet_topup`); HitPay path passes return URLs cleanly; wallet/me 200; E2E `test_stripe_webhook_credits_wallet_topup` green; browser return `#wallet?topup_session=N&status=success` → toast + refresh + hash cleaned.
+- Not changed (owner calls): no max top-up cap (Stripe's own ceiling applies); dev Stripe is simulated, so the dev checkout URL is a placeholder by design.
+
+Gates: unit **108/108** · payments/wallet E2E 11/11 · live endpoint probe (session created, pending) · backend restarted.
+
+### Round 40 fix — dev wallet top-up led to a dead Stripe URL (2026-08-20, user report w/ screenshots)
+
+User flow: checkout insufficient balance → "Top up RM 16 to continue" → wallet top-up RM 50 → Confirm → landed on `checkout.stripe.com/test-session/...` showing an S3 AccessDenied XML. Root cause: `stripe.enabled=false` on dev (simulator mode) and the simulator checkout URL was a hardcoded placeholder that doesn't exist.
+
+Fix:
+- New dev-only simulator: `GET /wallet/topup/simulator` (clean simulated-checkout page with amount + Pay/Cancel) and `POST /wallet/topup/simulator/complete` (Pay → `_complete_wallet_topup` through the real idempotent row-locked path → 303 to the session's success URL; Cancel → marks the session cancelled → 303 to the cancel URL). Both return **404 when real Stripe keys are configured** — zero production impact.
+- `create_wallet_topup_checkout_session` simulator branch now builds the simulator URL from `get_app_public_url()` with the session's real success/cancel URLs encoded; `stripe_simulator_checkout_url` settings default changed to None (env override still honored); stale config test updated.
+- Verified live end-to-end: session create → simulator page (MYR 50.00) → Pay → 303 to `#wallet?topup_session=N&status=success` → ledger credit "Online top-up via Stripe (simulated)" → session completed; Cancel → session cancelled, no credit; double-pay safe (idempotent); balance correct after two top-ups (16→116). Full browser flow driven through the PWA proxy.
+- Still simulated-dead (pre-existing, next round): ORDER Stripe checkout on dev (`create_stripe_checkout_session`) uses the same placeholder class — order card payments on dev still can't complete without webhook simulation.
+
+Gates: unit **108/108** · live probes above · backend restarted.
+
+### Round 40 feature — Stripe checkout simulator with admin toggle (2026-08-20, user request)
+
+Owner: "can we have a setting on the admin portal for simulation page for the PG — if selected, instead of Stripe it opens our own simulation page".
+
+- **Config**: new `stripe.checkout_mode` platform_config row (`"stripe"` default | `"simulator"`), seeded in seed_platform.py + live DB. `_use_simulator(db)` in services/payment.py = mode=='simulator' OR no real keys (auto-fallback unchanged).
+- **Admin UI**: Settings → Payment Gateway → "Checkout Mode" select (Stripe live / Simulator) with an explanatory note when Simulator is selected; saves via the standard PUT /admin/config flow.
+- **Simulator coverage**: wallet top-up checkout AND order pay-links (`create_stripe_checkout_session` — POS QR / guest-pay) both route to `/api/wallet/topup/simulator` when active. The order "Pay now" drives `process_webhook_event` with a synthetic `checkout.session.completed` (metadata payment_id/order_id) — the FULL real capture pipeline (capture, order sync, loyalty, e-invoice hook). Wallet completion uses `_complete_wallet_topup` (same as webhook). Both endpoints 404 when the simulator is inactive.
+- **Toggle proven live both directions**: fake keys + mode=stripe → real Stripe attempted (402 invalid key); mode=simulator WITH keys present → our page. Order probe: pay-link → simulator → 303 → payment captured 22.00 + order synced (an earlier "not captured" reading was probe-side SQLAlchemy session staleness, confirmed via direct webhook call).
+- Config restore: stripe.enabled=false, empty secret, mode=stripe on dev (auto-simulator active).
+
+Gates: unit **108/108** · webhook E2E 7/7 · admin portal rebuilt + select verified live (renders, note, persists).

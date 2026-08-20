@@ -1,6 +1,6 @@
 # FNB Super App v3 — Project Documentation
 
-*Last updated: 2026-08-12 (round 36)*
+*Last updated: 2026-08-19 (round 40)*
 
 ## Overview
 
@@ -402,3 +402,13 @@ Focused audit of the ordering and payment lifecycles (27 findings, all fixed). D
 - **Payments**: customer re-payment nets prior payments; webhook Stripe dedup engages; flagged captures (dead-order/duplicate/after-void) never move order state; dispute won/lost handled; top-up money-back clawed; e-invoice auto-issue on every capture path + refund notes on delayed completions; drawer open/close races locked.
 
 Verification: 99/99 unit, full E2E green, live probes pass, alembic clean (head y4z5a6b7c8d9).
+
+## PWA re-audit vs clean prototypes + design studies (2026-08-19, round 40)
+
+Full details in `AGENTS.md` "Round 40". Audit of the customer PWA against `uiux-prototypes/clean` and the 94-image competitor study; every finding verified in code or live before fixing.
+
+- **Bugs**: per-item "Special instructions" were silently dropped at the sheet→cart hop (backend fully supported them); cart edit dropped the line's variant (displayed price ≠ charged price); rewards page tier progress used spendable instead of lifetime points; modifier groups collapsed into one "multiple" section with broken pick-1 semantics; customize-sheet CTA and 7 other i18n values were static text dropping their params (incl. referral share text losing the code).
+- **Design plan**: P3 menu shipped — sticky text-only category rail + 2-col vertical product grid; Reset Recipe + notes counter; Edit on every cart line; "You'll earn ~X Points" cart banner; featured promo panel for authed users too.
+- **New backend**: `/loyalty/me` exposes `points_expiring_soon` + `next_points_expiry_at` (30-day earn-batch window, capped at balance) with a rewards-page warning; `GET /cart/pickup-estimate` (shared `compute_pickup_estimate`) powers the checkout "ready in ~N min" hint.
+
+Verification: 106/106 backend unit (6 new), full E2E 240 passed / 3 skipped / 1 failed — the failure is the documented round-39 inventory-test flake (untouched by this round; passes isolated and full-file), tsc ×3 + eslint clean, live browser checks (rail scroll-spy, notes counter, light/dark themes, dashboard hub), live API probes for both new endpoints.
