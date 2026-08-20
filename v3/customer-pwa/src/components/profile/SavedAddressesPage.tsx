@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Home, Building2, HelpCircle, Trash2, Pencil, Plus, Clock } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { PageHeader } from '@/components/shared';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -46,6 +48,7 @@ export default function SavedAddressesPage() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   const fetchAddresses = () => {
+    if (!useAuthStore.getState().isAuthenticated) { setLoading(false); return; } // guests see the login wall
     setLoading(true);
     api.get('/me/addresses')
       .then((res) => {
@@ -156,6 +159,7 @@ export default function SavedAddressesPage() {
   return (
     <div className="sav2-page">
       <PageHeader title={t('savedAddresses.title')} onBack={() => setPage('profile')} />
+      <GuestGate message={t('profile.guestMessage')}>
       <div className="sav2-content">
         {loading ? (
           <div className="sav2-skeleton-list">
@@ -201,6 +205,7 @@ export default function SavedAddressesPage() {
           <Plus size={18} /> {t('savedAddresses.addNewAddress')}
         </motion.button>
       </div>
+      </GuestGate>
 
       <BottomSheet isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? t('savedAddresses.editAddress') : t('savedAddresses.addNewAddress')}>
         <div className="sheet-body">

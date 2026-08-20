@@ -49,6 +49,9 @@ export default function InformationPage({
   const [cards, setCards] = useState<InformationCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(contentType || 'information');
+  // Which content types actually have cards — tabs with zero content are
+  // hidden instead of showing a dead "No products available" state.
+  const [nonEmptyTypes, setNonEmptyTypes] = useState<string[] | null>(null);
   const [selectedCard, setSelectedCard] = useState<InformationCard | null>(null);
   const preselectedConsumed = useRef(false);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
@@ -81,6 +84,22 @@ export default function InformationPage({
     };
     init();
   }, [loadCards, preselectedId, contentType]);
+  // Probe both content types once — hide tabs that have no cards at all.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const counts: string[] = [];
+      for (const tab of CONTENT_TYPES) {
+        try {
+          const res = await api.get(`/content/information?limit=20&content_type=${tab.id}`);
+          const list = Array.isArray(res.data) ? res.data : [];
+          if (list.length > 0) counts.push(tab.id);
+        } catch { /* leave the tab hidden on error */ }
+      }
+      if (!cancelled) setNonEmptyTypes(counts);
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const fetchBySlug = useCallback(async (slug: string, type: string) => {
     if (preselectedConsumed.current) return;
     setLoading(true);
@@ -104,6 +123,13 @@ export default function InformationPage({
     setActiveTab(type);
     await loadCards(type);
   };
+  // If the current tab's type turned out empty, move to a non-empty one
+  useEffect(() => {
+    const first = nonEmptyTypes?.[0];
+    if (first && !nonEmptyTypes?.includes(activeTab)) {
+      handleTabChange(first);
+    }
+  }, [nonEmptyTypes]);
 
   /* ── Detail view ── */
   if (selectedCard) {
@@ -185,12 +211,19 @@ export default function InformationPage({
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="info-tab-bar">
-        {CONTENT_TYPES.map(tab => <button key={tab.id} className={`info-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => handleTabChange(tab.id)}>
-            {t(tab.labelKey)}
-          </button>)}
-      </div>
+      {/* Tab bar — tabs whose content type has no cards are hidden */}
+      {(() => {
+        const visibleTabs = nonEmptyTypes === null || nonEmptyTypes.length === 0
+          ? CONTENT_TYPES
+          : CONTENT_TYPES.filter(ct => nonEmptyTypes.includes(ct.id));
+        return visibleTabs.length > 1 ? (
+          <div className="info-tab-bar">
+            {visibleTabs.map(tab => <button key={tab.id} className={`info-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => handleTabChange(tab.id)}>
+                {t(tab.labelKey)}
+              </button>)}
+          </div>
+        ) : null;
+      })()}
 
       {/* Card list */}
       <div className="info-card-list">

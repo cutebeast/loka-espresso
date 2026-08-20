@@ -96,7 +96,8 @@ export default function BundlePickerSheet({
           customization_count: 0,
           bundle_product_id: bundle.id,
                 bundle_name: bundle.title,
-          bundle_component_id: item.componentId
+          bundle_component_id: item.componentId,
+          image_url: item.image_url ?? undefined
         });
       }
     } else {
@@ -114,7 +115,8 @@ export default function BundlePickerSheet({
           customization_count: 0,
           bundle_product_id: bundle.id,
                 bundle_name: bundle.title,
-          bundle_component_id: item.componentId
+          bundle_component_id: item.componentId,
+          image_url: item.image_url ?? undefined
         });
       }
     }

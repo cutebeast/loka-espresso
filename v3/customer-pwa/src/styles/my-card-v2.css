@@ -269,4 +269,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* theme-aware icon color — the inline LOKA.brown was invisible on the dark
+     theme's cream surface (looked like broken images in the guest crawl) */
+  color: var(--loka-primary);
 }

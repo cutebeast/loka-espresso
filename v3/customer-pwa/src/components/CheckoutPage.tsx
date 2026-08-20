@@ -105,6 +105,24 @@ export default function CheckoutPage() {
   const [retryingGatewayIntent, setRetryingGatewayIntent] = useState(false);
   const isSubmittingRef = useRef(false);
   const walletRefreshed = useRef(false);
+  // Pre-order pickup ETA (backend /cart/pickup-estimate — prep time + queue)
+  const [pickupEta, setPickupEta] = useState<{ minutes: number; readyAt: string } | null>(null);
+  useEffect(() => {
+    if (orderMode !== 'pickup' || !selectedStore?.id) {
+      setPickupEta(null);
+      return;
+    }
+    const ac = new AbortController();
+    api.get('/cart/pickup-estimate', { params: { store_id: selectedStore.id }, signal: ac.signal })
+      .then(res => {
+        const d = res.data as { estimated_minutes?: number; estimated_ready_at?: string } | undefined;
+        if (d?.estimated_minutes && d.estimated_ready_at) {
+          setPickupEta({ minutes: d.estimated_minutes, readyAt: d.estimated_ready_at });
+        }
+      })
+      .catch(() => setPickupEta(null)); // estimate is advisory — never block checkout
+    return () => ac.abort();
+  }, [orderMode, selectedStore?.id]);
   useEffect(() => {
     if (!walletRefreshed.current) {
       refreshWallet();
@@ -411,6 +429,14 @@ export default function CheckoutPage() {
             setPickupTime(t);
             saveDraft();
           }} value={pickupTime} mode={orderMode === 'delivery' ? 'delivery' : 'pickup'} leadMinutes={selectedStore?.pickup_lead_minutes ?? config.pickup_lead_minutes} />
+            {orderMode === 'pickup' && !pickupTime && pickupEta && (
+              <div className="co-pickup-eta">
+                {t('checkout.pickupEta', {
+                  minutes: pickupEta.minutes,
+                  time: new Date(pickupEta.readyAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
+                })}
+              </div>
+            )}
           </div>}
         <div className="checkout-section">
           <div className="co-section-title">{t('checkout.voucherRewards')}</div>

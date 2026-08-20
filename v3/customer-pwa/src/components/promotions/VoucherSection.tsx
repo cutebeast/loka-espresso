@@ -120,7 +120,10 @@ export default function VoucherSection({
       }
     } catch {/* user cancelled or not supported */}
   };
-  return <div className="promo-screen-white">
+  // Theme-aware surface — the old promo-screen-white forced a white bg while
+  // text tokens follow the active theme, producing light-on-white text in the
+  // dark theme (unreadable title/meta, caught in the round-40 guest pass).
+  return <div className="promo-screen">
       <div className="rd-hero">
         {img ? <img src={img} alt={t("promotions.voucher_section.voucher_promotion")} loading="lazy" className="rd-hero-img promo-hero-img-fill" /> : <div className="rd-hero-img promo-hero-img-fallback" />}
         <div className="rd-hero-overlay" />
@@ -141,7 +144,9 @@ export default function VoucherSection({
             {isSurvey ? <Clock size={16} /> : <Calendar size={16} />}
             {isSurvey ? t('promotions.surveyDuration', {
             minutes: 2
-          }) : `${formatDate(selectedPromo.start_date)} – ${formatDate(selectedPromo.end_date)}`}
+          }) : (selectedPromo.start_date || selectedPromo.end_date
+              ? `${formatDate(selectedPromo.start_date)}${selectedPromo.start_date && selectedPromo.end_date ? ' – ' : ''}${formatDate(selectedPromo.end_date)}`
+              : t('promotions.ongoingOffer'))}
           </span>
           <span className={`rd-meta-pill ${isSurvey ? 'rd-pill-green' : 'rd-pill-brown'}`}>
             {isSurvey ? t('promotions.surveyReward', {

@@ -46,9 +46,16 @@ export const useCartStore = create<CartState>()(
             }
             return stableStringify(c.customizations ?? null);
           };
-          const itemKey = `${item.menu_item_id}:${item.variant_id ?? ''}:${item.class_session_id ?? ''}:${optIds(item)}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}`;
+          // The per-item note is part of line identity: two otherwise-identical
+          // lines with different barista notes must not merge (a merge would
+          // silently drop one note).
+          const noteOf = (c: CartItem) => {
+            const n = (c.customizations as { note?: unknown } | undefined)?.note;
+            return typeof n === 'string' ? n : '';
+          };
+          const itemKey = `${item.menu_item_id}:${item.variant_id ?? ''}:${item.class_session_id ?? ''}:${optIds(item)}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}:${noteOf(item)}`;
           const existingIdx = state.items.findIndex(
-            (c) => `${c.menu_item_id}:${c.variant_id ?? ''}:${c.class_session_id ?? ''}:${optIds(c)}:${c.bundle_product_id ?? ''}:${c.bundle_component_id ?? ''}` === itemKey
+            (c) => `${c.menu_item_id}:${c.variant_id ?? ''}:${c.class_session_id ?? ''}:${optIds(c)}:${c.bundle_product_id ?? ''}:${c.bundle_component_id ?? ''}:${noteOf(c)}` === itemKey
           );
           if (existingIdx >= 0) {
             return {
@@ -80,6 +87,11 @@ export const useCartStore = create<CartState>()(
     {
       name: 'loka-cart',
       storage: createJSONStorage(() => idbStorage),
+      // The IDB cache loads asynchronously — a create()-time rehydrate would
+      // read an empty cache and the first set() would clobber the stored
+      // record with empty state. AppShell rehydrates explicitly once
+      // idbStorageReady resolves.
+      skipHydration: true,
       onRehydrateStorage: () => {
         return (_state, error) => {
           if (!error) {

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Bell, Package, Gift, Wallet, Star, Info, Calendar, ArrowLeft } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
 import api from '@/lib/api';
@@ -87,6 +89,7 @@ export default function NotificationsPage() {
   }, []);
 
   const fetchNotifications = useCallback(() => {
+    if (!useAuthStore.getState().isAuthenticated) { setLoading(false); return; } // guests see the login wall
     api.get('/notifications/me')
       .then((res) => {
         const data = res.data as { items?: Array<{ id: number; title: string; body?: string; message_type?: string; is_read: boolean; created_at?: string }> } | Array<{ id: number; title: string; body?: string; message_type?: string; is_read: boolean; created_at?: string }> | undefined;
@@ -148,6 +151,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Mark all as read */}
+      <GuestGate message={t('profile.guestMessage')}>
       {unreadCount > 0 && (
         <button className="notif-mark-read" onClick={handleMarkAllRead} disabled={markingAll}>
           {markingAll ? t('notifications.markingAll') : t('notifications.markAllAsRead')}
@@ -227,6 +231,7 @@ export default function NotificationsPage() {
           )}
         </div>
       )}
+      </GuestGate>
     </div>
   );
 }

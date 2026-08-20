@@ -236,7 +236,12 @@ export interface MenuItem {
 export interface CustomizationOption {
   id: number;
   name: string;
+  /** Modifier group name (e.g. "Milk", "Size") — used as the group key */
   option_type: string;
+  /** 'single' (pick 1) or 'multiple' (pick up to max_selections) */
+  selection_type?: string;
+  min_selections?: number;
+  max_selections?: number;
   price_adjustment: number;
   is_active: boolean;
   is_popular: boolean;
@@ -395,6 +400,9 @@ export interface LoyaltySummary {
   tier_id?: number;
   points_to_next_tier?: number;
   lifetime_points?: number;
+  /** 30-day expiry window, populated on /loyalty/me (null when none) */
+  points_expiring_soon?: number | null;
+  next_points_expiry_at?: string | null;
 }
 
 export interface LoyaltyLedgerEntry {

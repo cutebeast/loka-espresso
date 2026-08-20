@@ -37,6 +37,7 @@ export default function AddonDealSheet({ bundle, menuItems, onClose }: AddonDeal
       customizations: {},
       store_id: selectedStore?.id,
       customization_count: item.modifier_groups?.length ?? 0,
+      image_url: item.image_url ?? undefined,
     });
     setAddedIds((prev) => new Set(prev).add(item.id));
     showToast(t('menu.addonAdded', { name: item.item_name }), 'success');

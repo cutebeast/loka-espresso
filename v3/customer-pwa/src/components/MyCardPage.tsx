@@ -5,6 +5,7 @@ import { ArrowLeft, Share2, QrCode, Clock, Settings } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useConfigStore } from '@/stores/configStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
@@ -24,6 +25,7 @@ export default function MyCardPage() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!useAuthStore.getState().isAuthenticated) return; // guests see the login wall
     api.get('/me')
       .then((res) => {
         const created = res.data?.created_at;
@@ -73,6 +75,7 @@ export default function MyCardPage() {
       </div>
 
       <div className="mycard-content">
+        <GuestGate message={t('profile.guestMessage')}>
         {/* Physical card */}
         <div className="mycard-physical" ref={cardRef}>
           <div className="mycard-top">
@@ -124,23 +127,24 @@ export default function MyCardPage() {
         <div className="mycard-actions">
           <button className="mycard-action-btn" onClick={() => setPage('home')}>
             <div className="mycard-action-icon">
-              <QrCode size={16} color={LOKA.brown} />
+              <QrCode size={16} />
             </div>
             {t('nav.home')}
           </button>
           <button className="mycard-action-btn" onClick={() => setPage('history')}>
             <div className="mycard-action-icon">
-              <Clock size={16} color={LOKA.brown} />
+              <Clock size={16} />
             </div>
             {t('history.title')}
           </button>
           <button className="mycard-action-btn" onClick={() => setPage('settings')}>
             <div className="mycard-action-icon">
-              <Settings size={16} color={LOKA.brown} />
+              <Settings size={16} />
             </div>
             {t('settings.title')}
           </button>
         </div>
+        </GuestGate>
       </div>
     </div>
   );

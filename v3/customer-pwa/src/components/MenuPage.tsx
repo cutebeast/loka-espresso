@@ -250,7 +250,7 @@ export default function MenuPage() {
     session_date: string;
     start_time: string;
     location: string | null;
-  } | null) => {
+  } | null, notes?: string) => {
     const sessionLabel = session ? `${new Date(`${session.session_date}T${session.start_time}`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${session.start_time}` : undefined;
     addItem({
       menu_item_id: item.id,
@@ -267,7 +267,10 @@ export default function MenuPage() {
           id: o.id,
           name: o.name,
           price_adjustment: o.price_adjustment
-        }))
+        })),
+        // Per-item "note to barista" — forwarded as special_instructions on
+        // cart sync (cartSync.ts) and rendered as a tag on the cart line.
+        ...(notes ? { note: notes } : {})
       },
       store_id: selectedStore?.id,
       customization_option_ids: selectedOptions.map(o => o.id),
@@ -482,15 +485,14 @@ export default function MenuPage() {
       </div>;
   };
 
-  // Auto-scroll active tab into view in the horizontal category bar
+  // Auto-scroll active tab into view in the category rail
   useEffect(() => {
     if (!navRef.current || activeCategoryId === null) return;
-    const activeTab = navRef.current.querySelector('.menu-cat-tab.active');
+    const activeTab = navRef.current.querySelector('.menu-rail-tab.active');
     if (activeTab) {
       activeTab.scrollIntoView({
         behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center'
+        block: 'nearest'
       });
     }
   }, [activeCategoryId]);
@@ -542,19 +544,21 @@ export default function MenuPage() {
           </div>
         </div>}
 
-      {/* Category Tabs */}
-      {!showSearch && categories.length > 0 && <div className="menu-cat-bar" ref={navRef}>
-          {allCats.map(cat => <button key={cat.id ?? 'all'} className={`menu-cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`} onClick={() => scrollToCategory(cat.id)} aria-pressed={activeCategoryId === cat.id}>
-              {cat.name}
-            </button>)}
-        </div>}
-
       {/* Dietary Filter Chips */}
       {!showSearch && availableDietaryTags.length > 0 && <div className="menu-dietary-bar">
           {availableDietaryTags.map(tag => <button key={tag} className={`menu-dietary-chip ${selectedDietaryTag === tag ? 'active' : ''}`} onClick={() => setSelectedDietaryTag(selectedDietaryTag === tag ? null : tag)}>
               {tag}
             </button>)}
         </div>}
+
+      {/* Body: sticky text-only category rail + scrolling product grid
+          (clean-redesign P3 — replaces the horizontal chip scroll) */}
+      <div className="menu-body">
+        {!showSearch && categories.length > 0 && <div className="menu-cat-rail" ref={navRef}>
+            {allCats.map(cat => <button key={cat.id ?? 'all'} className={`menu-rail-tab ${activeCategoryId === cat.id ? 'active' : ''}`} onClick={() => scrollToCategory(cat.id)} aria-pressed={activeCategoryId === cat.id}>
+                {cat.name}
+              </button>)}
+          </div>}
 
       {/* Product List */}
       <div className="menu-product-list scroll-container">
@@ -744,6 +748,7 @@ export default function MenuPage() {
               </>}
             </div>;
         })}
+      </div>
       </div>
 
       {customizeItem && <ItemCustomizeSheet item={customizeItem} isOpen={customizeItem !== null} onClose={() => setCustomizeItem(null)} onAdd={handleCustomizeAdd} customizations={deriveCustomizationOptions(customizeItem)} />}

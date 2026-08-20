@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Plus, CreditCard, Loader2, Check, X } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
+import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -34,6 +36,7 @@ export default function PaymentMethodsPage() {
   const handleCardStatusChange = useCallback((complete: boolean) => setCanConfirm(complete), []);
 
   useEffect(() => {
+    if (!useAuthStore.getState().isAuthenticated) { setLoading(false); return; } // guests see the login wall
     api.get('/payments/methods')
       .then((res) => {
         const raw = Array.isArray(res.data) ? res.data : [];
@@ -162,6 +165,7 @@ export default function PaymentMethodsPage() {
       </div>
 
       <div className="page-content">
+        <GuestGate message={t('profile.guestMessage')}>
         {/* Wallet Balance */}
         <div className="payment-wallet-card">
           <div className="payment-wallet-label">{t('paymentMethods.walletBalance')}</div>
@@ -302,6 +306,7 @@ export default function PaymentMethodsPage() {
             </div>
           </div>
         )}
+        </GuestGate>
       </div>
     </div>
   );

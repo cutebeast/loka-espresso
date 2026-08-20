@@ -8,7 +8,13 @@ export function deriveCustomizationOptions(item: MenuItem | undefined | null): C
     (mg.options || []).map((opt) => ({
       id: opt.id,
       name: opt.option_name,
-      option_type: mg.selection_type,
+      // Group identity is the admin-set group NAME (e.g. "Milk", "Size") —
+      // using selection_type here collapsed every multi-select group into one
+      // "multiple" section and broke pick-1 semantics (round 40 fix).
+      option_type: mg.group_name || mg.selection_type,
+      selection_type: mg.selection_type,
+      min_selections: mg.min_selections ?? 0,
+      max_selections: mg.max_selections ?? 0,
       price_adjustment: opt.price_adjustment ?? 0,
       is_active: opt.is_available ?? true,
       is_popular: opt.is_default ?? false,

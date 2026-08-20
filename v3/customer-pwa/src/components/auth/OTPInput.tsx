@@ -21,6 +21,9 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(initialRetryAfterSeconds);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // Last code submitted — the auto-submit effect must never refire for an
+  // unchanged code (a failed verify that left the boxes full would loop).
+  const lastAttemptRef = useRef('');
 
   useEffect(() => { inputRefs.current[0]?.focus(); }, []);
 
@@ -39,6 +42,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
+    lastAttemptRef.current = ''; // user is editing — allow the next auto-submit
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
@@ -57,6 +61,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
+    lastAttemptRef.current = ''; // paste = a fresh attempt
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (!/^\d+$/.test(pastedData)) return;
     const newOtp = [...otp];
@@ -69,6 +74,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
   const handleVerify = async () => {
     const code = otp.join('');
     if (code.length !== 6) { setError(t('auth.otpIncomplete')); return; }
+    lastAttemptRef.current = code;
     setIsLoading(true);
     setError('');
     try {
@@ -88,15 +94,18 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       await onResend();
       setResendTimer(60);
       setOtp(['', '', '', '', '', '']);
+      lastAttemptRef.current = '';
       inputRefs.current[0]?.focus();
     } catch {
       setError(t('auth.resendFailed'));
     }
   };
 
-  // Auto-submit when 6 digits are entered
+  // Auto-submit when 6 digits are entered — but never resubmit an unchanged
+  // code (a failed attempt must wait for the user to edit the digits).
   useEffect(() => {
-    if (otp.every((d) => d) && !isLoading) {
+    const code = otp.join('');
+    if (otp.every((d) => d) && !isLoading && code !== lastAttemptRef.current) {
       handleVerify();
     }
   }, [otp.join(''), handleVerify, isLoading]);

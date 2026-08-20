@@ -46,6 +46,7 @@ export default function WalletPage() {
   }, []);
 
   const fetchTransactions = useCallback(async () => {
+    if (!useAuthStore.getState().isAuthenticated) return; // guests see the login wall — don't fetch/toast
     setLoadingTx(true);
     try {
       const res = await api.get('/wallet/ledger/me', { params: { per_page: 20 } });

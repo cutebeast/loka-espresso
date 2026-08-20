@@ -93,7 +93,8 @@ export default function MultiCourseBundleSheet({
           customization_count: 0,
           bundle_product_id: bundle.id,
                 bundle_name: bundle.title,
-          bundle_component_id: comp.id
+          bundle_component_id: comp.id,
+          image_url: comp.menu_item_image_url ?? undefined
         });
       }
       for (const comp of extras) {
@@ -109,7 +110,8 @@ export default function MultiCourseBundleSheet({
           customization_count: 0,
           bundle_product_id: bundle.id,
                 bundle_name: bundle.title,
-          bundle_component_id: comp.id
+          bundle_component_id: comp.id,
+          image_url: comp.menu_item_image_url ?? undefined
         });
       }
     }

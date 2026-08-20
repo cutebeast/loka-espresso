@@ -14,6 +14,9 @@ import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/ap
 
 const PUBLIC_PAGES: PageId[] = [
   'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'workshops', 'guest-pay', 'lucky-draw',
+  // feedback POST is public (round 32) and check-in viewing is guest-allowed
+  // (only the action needs login) — guests must not get the login sheet here.
+  'feedback', 'checkin',
 ];
 
 function isPublicPage(page: PageId): boolean {

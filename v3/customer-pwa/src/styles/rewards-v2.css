@@ -598,6 +598,7 @@
 .progress-bar-track { height: 8px; background: var(--loka-border-light); border-radius: 4px; overflow: hidden; }
 .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--loka-accent-copper), var(--loka-primary)); border-radius: 4px; transition: width 0.3s; }
 .progress-hint { font-size: 11px; color: var(--loka-text-muted); margin-top: 6px; }
+.rewards-expiry-hint { color: var(--loka-danger, #C75050); font-weight: 600; }
 
 .reward-card-improved { display: flex; align-items: center; background: var(--loka-bg-card); border-radius: 14px; padding: 14px; margin-bottom: 12px; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .rewards-card-thumb { width: 60px; height: 60px; border-radius: 10px; background: var(--loka-cream); flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }

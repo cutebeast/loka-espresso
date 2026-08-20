@@ -17,6 +17,9 @@ interface WalletState {
   points: number;
   /** Lifetime points earned — never decreases on redemption; used for tier progress */
   lifetimePoints: number;
+  /** Earn-batch points expiring within 30 days (0 when none) + nearest expiry date */
+  pointsExpiringSoon: number;
+  nextPointsExpiryAt: string | null;
   tier: string;
   tierId: number;
   rewards: UserReward[];
@@ -40,6 +43,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   balance: 0,
   points: 0,
   lifetimePoints: 0,
+  pointsExpiringSoon: 0,
+  nextPointsExpiryAt: null,
   tier: 'Bloom',
   tierId: 0,
   rewards: [],
@@ -79,6 +84,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
           set({
             points: normalizeNumber(d.current_points ?? get().points, get().points),
             lifetimePoints: normalizeNumber(d.lifetime_points ?? get().lifetimePoints, get().lifetimePoints),
+            pointsExpiringSoon: normalizeNumber(d.points_expiring_soon ?? 0, 0),
+            nextPointsExpiryAt: d.next_points_expiry_at ?? null,
             tier: d.tier_name ?? get().tier,
             tierId: normalizeNumber(d.tier_id ?? get().tierId, get().tierId),
           });
@@ -95,6 +102,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     balance: 0,
     points: 0,
     lifetimePoints: 0,
+    pointsExpiringSoon: 0,
+    nextPointsExpiryAt: null,
     tier: 'Bloom',
     tierId: 0,
     rewards: [],

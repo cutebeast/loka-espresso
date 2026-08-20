@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Gift, Ticket, Clock, Copy, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 import { useWalletStore } from '@/stores/walletStore';
+import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import type { UserReward, UserVoucher } from '@/lib/api';
 import { LOKA, formatPrice } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -32,6 +34,11 @@ export default function MyRewardsPage({
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
+    // Guests get the sign-in prompt — don't fire authed wallet/loyalty fetches
+    if (!useAuthStore.getState().isAuthenticated) {
+      setLoading(false);
+      return () => { mountedRef.current = false; };
+    }
     setLoading(true);
     refreshWallet().finally(() => {
       if (mountedRef.current) setLoading(false);
@@ -41,6 +48,7 @@ export default function MyRewardsPage({
     };
   }, []);
   useEffect(() => {
+    if (!useAuthStore.getState().isAuthenticated) return;
     refreshWallet();
   }, [refreshWallet]);
   const formatDate = (dateStr: string | null | undefined) => {
@@ -78,6 +86,7 @@ export default function MyRewardsPage({
       </div>
 
       {/* Progress indicator */}
+      <GuestGate message={t('profile.guestMessage')}>
       {totalOwned > 0 && <div className="myrv-progress-section">
           <div className="myrv-progress-header">
             <span className="myrv-progress-label">{t('myRewards.usedThisMonth')}</span>
@@ -169,6 +178,7 @@ export default function MyRewardsPage({
 
       {/* Voucher detail sheet */}
       {selectedVoucher && <VoucherDetailSheet voucher={selectedVoucher} onClose={() => setSelectedVoucher(null)} t={t} formatDate={formatDate} />}
+      </GuestGate>
     </div>;
 }
 

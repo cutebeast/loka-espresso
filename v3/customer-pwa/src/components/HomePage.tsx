@@ -211,10 +211,12 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Featured banner (admin home_banner; falls back to first active promo) */}
+          {/* Featured promo panel — one relevant active promo for everyone.
+              Authed users additionally get the admin home_banner as a modal
+              (HomeBanner renders null when none is configured). */}
           <div className="clean-featured">
             {isAuthenticated && <HomeBanner />}
-            {!isAuthenticated && (() => {
+            {(() => {
               const featured = banners[0];
               if (!featured) return null;
               return (

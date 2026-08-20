@@ -12,7 +12,7 @@
 .promotions-carousel-wrap { padding: 10px 16px; }
 .promotions-carousel { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; flex-shrink: 0; }
 .promotions-carousel::-webkit-scrollbar { display: none; }
-.promotions-promo-card { flex: 0 0 100%; scroll-snap-align: start; height: 180px; border-radius: 24px; background-color: var(--loka-primary-dark); position: relative; overflow: hidden; }
+.promotions-promo-card { flex: 0 0 86%; scroll-snap-align: start; height: 180px; border-radius: 24px; background-color: var(--loka-primary-dark); position: relative; overflow: hidden; }
 .promotions-promo-card .promotions-card-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
 .promotions-promo-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.65)); z-index: 1; }
 .promotions-promo-content { position: relative; z-index: 2; padding: 20px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; color: white; }

@@ -316,6 +316,28 @@
 .ics-textarea::placeholder { color: var(--loka-text-muted); }
 .ics-textarea:focus { border-color: var(--loka-primary); }
 
+.ics-notes-box { position: relative; }
+.ics-notes-box .ics-textarea { padding-bottom: 24px; }
+.ics-notes-counter {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: var(--loka-text-muted);
+  pointer-events: none;
+}
+.ics-reset-link {
+  background: none;
+  border: none;
+  color: var(--loka-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  margin-top: 10px;
+  padding: 0;
+}
+
 /* ── Footer ── */
 .ics-footer {
   padding: 12px 20px 20px;

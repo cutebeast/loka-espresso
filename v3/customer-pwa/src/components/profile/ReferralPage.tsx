@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Share2, Copy, Check, Lock, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useConfigStore } from '@/stores/configStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
@@ -56,6 +57,8 @@ export default function ReferralPage() {
   }, [config.referral_reward_points]);
 
   useEffect(() => {
+    // Guests get the sign-in wall — skip the authed fetches (else 401 → error state)
+    if (!useAuthStore.getState().isAuthenticated) { setLoading(false); return; }
     (async () => {
       try {
         const [meRes, refsRes] = await Promise.all([
@@ -129,6 +132,7 @@ export default function ReferralPage() {
       </div>
 
       <div className="referral-scroll">
+        <GuestGate message={t('profile.guestMessage')}>
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: LOKA.textMuted }}>{t('common.loading')}</div>
         ) : stats ? (
@@ -236,6 +240,7 @@ export default function ReferralPage() {
             <p>{t('common.error')}</p>
           </div>
         )}
+        </GuestGate>
       </div>
     </div>
   );

@@ -15,7 +15,7 @@ type Tab = 'rewards' | 'vouchers';
 
 export default function RewardsPage() {
   const { t } = useTranslation();
-  const { points, tier } = useWalletStore();
+  const { points, lifetimePoints, tier, pointsExpiringSoon, nextPointsExpiryAt } = useWalletStore();
   const { setPage, showToast } = useUIStore();
   const tiers = useConfigStore((s) => s.tiers);
   const [activeTab, setActiveTab] = useState<Tab>('rewards');
@@ -51,10 +51,17 @@ export default function RewardsPage() {
     finally { setRedeeming(null); }
   };
 
-  const currentTierIdx = tiers.findIndex(t => t.name === (tier || tiers[0]?.name));
-  const nextTier = tiers[currentTierIdx + 1] || tiers[tiers.length - 1];
-  const nextThreshold = nextTier?.min_points ?? 5000;
-  const progress = nextThreshold > 0 ? Math.min((points / nextThreshold) * 100, 100) : 100;
+  // Tier progress is based on LIFETIME points (never decreases on redemption) —
+  // the same rule as ProfilePage/HomePage/VipPage. Sorting matches those pages.
+  const sortedTiers = [...tiers].sort((a, b) => a.min_points - b.min_points);
+  const currentTierIdx = Math.max(0, sortedTiers.findIndex(t => t.name.toLowerCase() === (tier || sortedTiers[0]?.name || '').toLowerCase()));
+  const isTopTier = currentTierIdx >= sortedTiers.length - 1;
+  const nextTier = isTopTier ? null : sortedTiers[currentTierIdx + 1];
+  const currentTierMin = sortedTiers[currentTierIdx]?.min_points ?? 0;
+  const nextThreshold = nextTier?.min_points ?? 0;
+  const progress = isTopTier || !nextTier
+    ? 100
+    : Math.min(100, Math.max(0, Math.round(((lifetimePoints - currentTierMin) / Math.max(1, nextThreshold - currentTierMin)) * 100)));
 
   /* ── Redemption code modal ── */
   if (redemptionCode) {
@@ -142,17 +149,31 @@ export default function RewardsPage() {
       </div>
 
       {/* Progress to next tier */}
-      {tiers.length > 0 && nextTier && (
+      {sortedTiers.length > 0 && nextTier && (
       <div className="progress-section">
         <div className="progress-header">
           <span className="progress-title">{t('rewards.progressToTier', { tier: nextTier.name })}</span>
-          <span className="progress-value">{points.toLocaleString()} / {nextThreshold.toLocaleString()} {t('common.pointsAbbr')}</span>
+          <span className="progress-value">{lifetimePoints.toLocaleString()} / {nextThreshold.toLocaleString()} {t('common.pointsAbbr')}</span>
         </div>
         <div className="progress-bar-track">
           <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
         </div>
-        <div className="progress-hint">{nextThreshold - points > 0 ? t('rewards.pointsToUnlock', { points: (nextThreshold - points).toLocaleString(), tier: nextTier.name }) : t('rewards.reachedTier', { tier: nextTier.name })}</div>
+        <div className="progress-hint">{nextThreshold - lifetimePoints > 0 ? t('rewards.pointsToUnlock', { points: (nextThreshold - lifetimePoints).toLocaleString(), tier: nextTier.name }) : t('rewards.reachedTier', { tier: nextTier.name })}</div>
       </div>
+      )}
+      {isTopTier && sortedTiers.length > 0 && (
+        <div className="progress-section">
+          <div className="progress-hint">{t('rewards.reachedTier', { tier: sortedTiers[currentTierIdx]?.name || tier })}</div>
+        </div>
+      )}
+      {/* Points-expiry warning (30-day window, from /loyalty/me) */}
+      {pointsExpiringSoon > 0 && nextPointsExpiryAt && (
+        <div className="progress-hint rewards-expiry-hint">
+          {t('rewards.pointsExpiring', {
+            points: pointsExpiringSoon.toLocaleString(),
+            date: new Date(nextPointsExpiryAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+          })}
+        </div>
       )}
       </div>
 

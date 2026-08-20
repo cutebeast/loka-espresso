@@ -7,7 +7,11 @@
 .home-main {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  /* Bound to the parent height (NOT min-height): the parent must clip so the
+     inner .clean-scroll actually scrolls — with min-height the wrapper grew
+     past the viewport and bottom content was unreachable (round-40 report). */
+  height: 100%;
+  overflow: hidden;
 }
 
 /* ── Tri-stat strip ── */
@@ -39,6 +43,9 @@
 /* ── Scroll body ── */
 .clean-scroll {
   flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  /* flex children default to min-height:auto (grow past the parent instead of
+     scrolling) — must be 0 for the scroll container to stay bounded */
+  min-height: 0;
   scrollbar-width: none; padding-bottom: 90px;
 }
 .clean-scroll::-webkit-scrollbar { display: none; }

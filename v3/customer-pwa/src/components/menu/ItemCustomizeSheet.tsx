@@ -23,10 +23,15 @@ interface ItemCustomizeSheetProps {
   item: MenuItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number, variant?: SelectedVariant | null, session?: ClassSession | null) => void;
+  onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number, variant?: SelectedVariant | null, session?: ClassSession | null, notes?: string) => void;
   loadingOptions?: boolean;
   customizations?: CustomizationOption[];
   initialSelections?: SelectedOption[];
+  /** Cart-edit mode: preselect the variant the cart line already carries
+   * instead of defaulting to the first available one. */
+  initialVariantId?: number | null;
+  /** Cart-edit mode: pre-fill the per-item note the cart line already carries. */
+  initialNote?: string;
 }
 
 /** Cup sizes with proportional visual dimensions */
@@ -69,7 +74,9 @@ export default function ItemCustomizeSheet({
   onAdd,
   loadingOptions,
   customizations = [],
-  initialSelections
+  initialSelections,
+  initialVariantId,
+  initialNote
 }: ItemCustomizeSheetProps) {
   const {
     t
@@ -92,13 +99,19 @@ export default function ItemCustomizeSheet({
   useEffect(() => {
     if (item && isOpen) {
       setQuantity(1);
-      setSelectedOptions(initialSelections || []);
-      // Default to the item's default variant (or first available)
+      // Enrich cart-line preselections with their group (option_type) so
+      // single-select replace logic groups them correctly on edit.
+      setSelectedOptions((initialSelections || []).map(sel => {
+        const full = customizations.find(c => c.id === sel.id);
+        return full && !sel.option_type ? { ...sel, option_type: full.option_type } : sel;
+      }));
+      // Default to the cart line's variant (edit mode), else the first available
       const avail = (item.variants ?? []).filter(v => v.is_available);
-      const first = avail[0];
+      const pre = initialVariantId != null ? avail.find(v => v.id === initialVariantId) : undefined;
+      const first = pre ?? avail[0];
       setSelectedVariant(first ? { id: first.id, variant_name: first.variant_name, price_adjustment: first.price_adjustment } : null);
       setSelectedSession(null);
-      setNotes('');
+      setNotes(initialNote || '');
       if ((item.item_code ?? '').startsWith('EX-')) {
         api.get(`/menu/items/${item.id}/sessions`)
           .then(res => setSessions(Array.isArray(res.data) ? res.data : []))
@@ -110,6 +123,9 @@ export default function ItemCustomizeSheet({
     setSelectedOptions(prev => {
       const exists = prev.find(o => o.id === opt.id);
       if (exists) return prev.filter(o => o.id !== opt.id);
+      // Multi-select groups honour the admin-set max — a full group ignores the tap
+      const max = opt.max_selections ?? 0;
+      if (max > 0 && prev.filter(o => o.option_type === opt.option_type).length >= max) return prev;
       return [...prev, {
         id: opt.id,
         name: opt.name,
@@ -118,11 +134,14 @@ export default function ItemCustomizeSheet({
       }];
     });
   }, []);
-  const toggleCupSize = useCallback((opt: CustomizationOption) => {
+  // Single-select (pick-1) groups: selecting replaces the group's current
+  // choice; deselect only when the group is optional (min_selections = 0).
+  const toggleSingle = useCallback((opt: CustomizationOption) => {
     setSelectedOptions(prev => {
       const existing = prev.filter(o => o.option_type !== opt.option_type);
-      // If already selected this cup, deselect
-      if (prev.some(o => o.id === opt.id)) return existing;
+      if (prev.some(o => o.id === opt.id)) {
+        return (opt.min_selections ?? 0) > 0 ? prev : existing;
+      }
       return [...existing, {
         id: opt.id,
         name: opt.name,
@@ -154,8 +173,18 @@ export default function ItemCustomizeSheet({
   const handleAdd = () => {
     if (!item) return;
     if (isExperience && !selectedSession) return; // session required for classes
-    onAdd(item, quantity, selectedOptions, totalPrice, selectedVariant, selectedSession);
+    const trimmedNote = notes.trim();
+    onAdd(item, quantity, selectedOptions, totalPrice, selectedVariant, selectedSession, trimmedNote || undefined);
     onClose();
+  };
+  // "Reset recipe" — back to defaults (first variant, no options, no note)
+  const handleReset = () => {
+    setQuantity(1);
+    setSelectedOptions([]);
+    const avail = (item?.variants ?? []).filter(v => v.is_available);
+    const first = avail[0];
+    setSelectedVariant(first ? { id: first.id, variant_name: first.variant_name, price_adjustment: first.price_adjustment } : null);
+    setNotes('');
   };
   // "Your Usuals" — save the current item + variant + option selection
   const { toggleFavorite, isFavorite } = useFavoritesStore();
@@ -287,6 +316,11 @@ export default function ItemCustomizeSheet({
             const isSize = type.toLowerCase().includes('size');
             const isMilk = type.toLowerCase().includes('milk');
             const hasPopular = opts.some(o => o.is_popular);
+            // Selection semantics come from the modifier group itself
+            const isSingle = (opts[0]?.selection_type ?? 'multiple') === 'single';
+            const minSel = opts[0]?.min_selections ?? 0;
+            const maxSel = opts[0]?.max_selections ?? 0;
+            const isRequired = minSel > 0 || isSize;
             return <div key={type} className="ics-group">
                     <div className="ics-group-header">
                       <span className="ics-group-title">
@@ -297,7 +331,7 @@ export default function ItemCustomizeSheet({
                           </span>}
                       </span>
                       <span className="ics-group-req">
-                        {isSize ? t('menu.required') : t('common.optional')}
+                        {isRequired ? t('menu.required') : maxSel > 0 && !isSingle ? t('menu.optionalMax', { count: maxSel }) : t('common.optional')}
                       </span>
                     </div>
 
@@ -309,7 +343,7 @@ export default function ItemCustomizeSheet({
                   if (!cup) return null;
                   const cupLabelKey = key in CUP_SIZES ? key : 'regular';
                   const sel = isSelected(opt.id);
-                  return <div key={opt.id} className={`ics-cup-option ${sel ? 'selected' : ''}`} onClick={() => toggleCupSize(opt)}>
+                  return <div key={opt.id} className={`ics-cup-option ${sel ? 'selected' : ''}`} onClick={() => toggleSingle({ ...opt, min_selections: Math.max(1, opt.min_selections ?? 0) })}>
                               <div className="ics-cup-visual" style={{
                       width: cup.w + 32,
                       height: cup.h + 24
@@ -328,7 +362,7 @@ export default function ItemCustomizeSheet({
                         {opts.map(opt => {
                   const sel = isSelected(opt.id);
                   const milkColor = isMilk ? MILK_COLORS[opt.name.toLowerCase()] || 'var(--color-warning-light)' : null;
-                  return <button key={opt.id} onClick={() => toggleOption(opt)} className={`ics-option-btn ${sel ? 'selected' : ''}`}>
+                  return <button key={opt.id} onClick={() => isSingle ? toggleSingle(opt) : toggleOption(opt)} className={`ics-option-btn ${sel ? 'selected' : ''}`}>
                               {milkColor && <span className="ics-milk-dot" style={{
                       background: milkColor
                     }} />}
@@ -345,7 +379,11 @@ export default function ItemCustomizeSheet({
               {/* Special instructions */}
               <div className="ics-notes-section">
                 <div className="ics-notes-title">{t('menu.specialInstructions')}</div>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('menu.specialInstructionsPlaceholder')} className="ics-textarea" />
+                <div className="ics-notes-box">
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('menu.specialInstructionsPlaceholder')} className="ics-textarea" maxLength={255} />
+                  <span className="ics-notes-counter">{notes.length}/255</span>
+                </div>
+                <button type="button" className="ics-reset-link" onClick={handleReset}>↺ {t('menu.resetRecipe')}</button>
               </div>
             </div>
 

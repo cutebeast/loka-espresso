@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Star, Wallet, Gift, ShoppingBag, Users, Ticket, Circle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useWalletStore } from '@/stores/walletStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
@@ -58,6 +60,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(false);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
+    if (!useAuthStore.getState().isAuthenticated) return; // guests get the sign-in prompt — don't fetch/toast
     setLoading(true);
     try {
       if (activeTab === 'loyalty') {
@@ -129,6 +132,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Monthly Summary */}
+      <GuestGate message={t('profile.guestMessage')}>
       <div className="history-summary">
         <div className="history-summary-label">{t('history.monthSummary', { month: nowMonth })}</div>
         <div className="history-summary-row">
@@ -221,6 +225,7 @@ export default function HistoryPage() {
           })
         )}
       </div>
+      </GuestGate>
     </div>
   );
 }

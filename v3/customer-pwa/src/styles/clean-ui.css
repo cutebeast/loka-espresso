@@ -45,7 +45,8 @@
   font-weight: 600;
 }
 .ics-option-btn.selected .ics-option-price { color: var(--loka-primary); font-weight: 500; }
-.ics-option-btn.selected .ics-option-price::before { content: "+"; }
+/* (no ::before "+" here — the template already renders "+RM x.xx"; the prefix
+   produced "++RM" on selected pills, caught in the round-40 browser pass) */
 
 /* 5. Uniform subpage back/close buttons — 40px square, radius 10, hairline */
 .sub-back-btn,

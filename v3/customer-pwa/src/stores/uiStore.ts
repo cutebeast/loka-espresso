@@ -178,12 +178,18 @@ export const useUIStore = create<UIState>()(
       name: 'ui-store-v2',
       version: 1,
       storage: createJSONStorage(() => idbStorage),
+      // See cartStore — the IDB cache loads after create(); AppShell
+      // rehydrates explicitly once idbStorageReady resolves.
+      skipHydration: true,
       partialize: (state) => ({
         checkoutDraft: state.checkoutDraft,
         previousPage: state.previousPage,
         selectedStore: state.selectedStore,
         orderMode: state.orderMode,
         dineInSession: state.dineInSession,
+        // Remember "Browse as Guest" across reloads — otherwise every revisit
+        // lands on the sign-in screen again (round-40 guest-UX fix).
+        isGuest: state.isGuest,
       }),
     }
   )

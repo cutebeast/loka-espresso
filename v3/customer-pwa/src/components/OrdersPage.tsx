@@ -5,6 +5,7 @@ import { RefreshCw, ShoppingBag, Receipt, Clock, RotateCcw, Coffee } from 'lucid
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Order, CartItem } from '@/lib/api';
@@ -97,6 +98,7 @@ export default function OrdersPage() {
           customization_option_ids: item.modifier_option_ids || item.customization_option_ids || [],
           customizations: item.selected_modifiers || item.customizations || {},
           customization_count: (item.modifier_option_ids || item.customization_option_ids || []).length,
+          image_url: item.image_url ?? undefined,
         };
         useCartStore.getState().addItem(cartItem);
       }
@@ -112,6 +114,7 @@ export default function OrdersPage() {
   const pastOrdersDisplay = allPastOrders.slice(0, 5);
 
   const loadPastOrders = useCallback(async (reset = false) => {
+    if (!useAuthStore.getState().isAuthenticated) return; // guests see the login wall — don't fetch/toast
     setLoadingPast(true);
     try {
       if (reset) {
@@ -138,6 +141,16 @@ export default function OrdersPage() {
   useEffect(() => { loadPastOrders(true); }, [loadPastOrders]);
 
   if (!isLoading && orders.length === 0) {
+    // Guests: sign-in wall (consistent with the other account tabs) instead of
+    // a misleading "no orders yet" empty state.
+    if (!useAuthStore.getState().isAuthenticated) {
+      return (
+        <div className="orders-screen">
+          <div className="orders-header"><h1 className="orders-title">{t('orders.title')}</h1></div>
+          <GuestGate message={t('profile.guestMessage')}><div /></GuestGate>
+        </div>
+      );
+    }
     return (
       <div className="orders-screen">
         <div className="orders-header"><h1 className="orders-title">{t('orders.title')}</h1></div>

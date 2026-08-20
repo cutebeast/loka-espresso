@@ -36,7 +36,7 @@ interface AuthFlowProps {
 
 export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   const { t } = useTranslation();
-  const { isAuthenticated, isNewUser } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { showToast } = useUIStore();
   const reducedMotion = useReducedMotion();
   const {
@@ -67,17 +67,23 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       if (success) {
         onAuthDone();
         setAuthStep('done');
-      } else if (isNewUser) {
+      } else if (useAuthStore.getState().isNewUser) {
+        // Read the store fresh — the hook closure's isNewUser is stale here
+        // (handleVerifyOtp set it during this very await).
         setAuthStep('profile');
         return;
       }
     } catch (err: unknown) {
       const message = getApiErrorMessage(err, t('toast.verificationFailed'));
       showToast(message, 'error', t('toast.verificationFailedTitle'));
+      // Rethrow so OTPInput clears the boxes — otherwise its auto-submit
+      // effect re-fires on the still-complete code and loops the failed
+      // login forever.
+      throw err;
     } finally {
       setLoadingAuth(false);
     }
-  }, [handleVerifyOtp, onAuthDone, isNewUser, getApiErrorMessage, showToast, t]);
+  }, [handleVerifyOtp, onAuthDone, getApiErrorMessage, showToast, t]);
 
   const handleResendOTP = useCallback(async () => {
     try {

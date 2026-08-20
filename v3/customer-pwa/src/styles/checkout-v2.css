@@ -251,6 +251,12 @@
   background: #FDEAEA; color: #C75050;
   border-radius: 8px; font-size: 13px; line-height: 1.4;
 }
+.co-pickup-eta {
+  margin-top: 10px; padding: 9px 12px;
+  background: var(--color-primary-50, #F0F2EA); color: var(--loka-text-secondary);
+  border: 1px solid var(--loka-border-light);
+  border-radius: 8px; font-size: 12.5px; font-weight: 600; line-height: 1.4;
+}
 
 /* ── Voucher / Reward card (grey bg, opens sheet) ── */
 .co-reward-card {

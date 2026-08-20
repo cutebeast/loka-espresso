@@ -5,6 +5,7 @@ import { ArrowLeft, Gift, TrendingUp, ChevronRight } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUIStore } from "@/stores/uiStore";
 import { useWalletStore } from "@/stores/walletStore";
+import { GuestGate } from "@/components/auth/GuestGate";
 import { useConfigStore } from "@/stores/configStore";
 import { TierInfo } from "@/lib/api";
 
@@ -79,7 +80,13 @@ export default function VipPage() {
   }, [sortedTiers]);
 
   if (!current) {
-    return <div style={{ padding: 40, textAlign: "center" }}>{t("common.loading")}</div>;
+    // Tiers come from the authed app-data load — guests never receive them, so
+    // without this gate the page sat on "Loading…" forever (round-40 crawl).
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <GuestGate message={t("profile.guestMessage")}><div /></GuestGate>
+      </div>
+    );
   }
 
   const color = TIER_COLORS[current.name.toLowerCase()] || "#4CAF50";
@@ -105,6 +112,7 @@ export default function VipPage() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 24px" }}>
+        <GuestGate message={t("profile.guestMessage")}>
         {/* Current tier hero */}
         <div style={{
           marginTop: 14, borderRadius: 12, padding: 16,
@@ -210,6 +218,7 @@ export default function VipPage() {
           {t("vip.earnMore")}
           <ChevronRight size={16} />
         </button>
+        </GuestGate>
       </div>
     </div>
   );

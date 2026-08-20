@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle, Camera, Crown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { resolveAssetUrl } from '@/lib/tokens';
@@ -33,6 +34,7 @@ export default function AccountDetailsPage() {
     : null;
 
   useEffect(() => {
+    if (!useAuthStore.getState().isAuthenticated) { setLoadingProfile(false); return; } // guests see the login wall
     api.get('/me').then((res) => {
       if (res.data) {
         const raw = res.data as { profile?: typeof res.data } | typeof res.data;
@@ -102,6 +104,7 @@ export default function AccountDetailsPage() {
       </div>
 
       <div className="edit-form-scroll">
+        <GuestGate message={t('profile.guestMessage')}>
         {loadingProfile && (
           <div className="edit-profile-loading">
             <div className="skeleton" style={{ width: 96, height: 96, borderRadius: '50%', margin: '0 auto 16px' }} />
@@ -227,6 +230,7 @@ export default function AccountDetailsPage() {
         )}
           </>
         )}
+        </GuestGate>
       </div>
     </div>
   );

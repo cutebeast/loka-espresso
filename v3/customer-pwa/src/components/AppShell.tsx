@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useCartStore } from '@/stores/cartStore';
+import { idbStorageReady } from '@/lib/idbStorage';
 import api from '@/lib/api';
 import type { Store as StoreType } from '@/lib/api';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
@@ -143,6 +145,22 @@ export default function AppShell() {
   const prevRequestSignIn = useRef(requestSignIn);
   useEffect(() => {
     setAppHost(window.location.host);
+  }, []);
+  // IndexedDB-backed persist rehydration. idbStorage serves getItem from an
+  // in-memory cache that is only populated when idbStorageReady resolves —
+  // which is AFTER the stores' synchronous create()-time rehydrate. Without
+  // this second, explicit rehydrate the persisted cart and ui state (guest
+  // flag, selected store, dine-in session, checkout draft) were silently
+  // dropped on every reload (proven live: cart empty after refresh despite a
+  // valid IDB record).
+  useEffect(() => {
+    let cancelled = false;
+    idbStorageReady.then(() => {
+      if (cancelled) return;
+      useCartStore.persist.rehydrate();
+      useUIStore.persist.rehydrate();
+    });
+    return () => { cancelled = true; };
   }, []);
   // Kiosk mode (subdomain or #kiosk route) always uses the LIGHT theme — a
   // bright in-store LCD reads better light, regardless of the app's theme.

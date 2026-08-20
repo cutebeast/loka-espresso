@@ -87,7 +87,10 @@ export function usePhoneAuth() {
       return true;
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, t('auth.otpInvalidError')));
-      return false;
+      // Rethrow — callers must see the failure. Swallowing it here made the
+      // OTP screen's auto-submit retry the same wrong code forever (proven
+      // live: 193 /auth/login calls in 8s, spinner never cleared).
+      throw err;
     } finally {
       setLoading(false);
     }
