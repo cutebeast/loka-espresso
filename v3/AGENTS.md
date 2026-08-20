@@ -2210,3 +2210,7 @@ Gates: unit **108/108** · webhook E2E 7/7 · admin portal rebuilt + select veri
 ### Round 40 nav audit — every PWA back button verified live (2026-08-21)
 
 Full live trace of all 24 back-button pages. Correct: menu→home, cart→menu, rewards→home, promotions/information/events/workshops/lucky-draw/feedback/checkin→home, profile→home, my-rewards/history/my-card/account-details/payment-methods/saved-addresses/notifications/settings/referral/reservations/help-support/legal→profile, order-detail→orders, checkout→cart, legal→pageParams.backTo. Fixed this pass: wallet→home, vip→home (neither is on the profile menu — dashboard entries only), check-in + vip guest walls were missing their headers entirely (no back button at all). Verified live post-fix.
+
+### Round 40 flow fix — checkout top-up returns to the order (2026-08-21, tester report)
+
+Tester: insufficient wallet at checkout → top up → landed on wallet/profile instead of the order. Fixed end-to-end: checkout sends `returnTo=checkout` + prefilled shortage; `/wallets/topup/checkout` appends topup params with `&` when the return URL already has `?`; WalletPage redirects to returnTo after success (and its back button honors returnTo). Verified live: "Top up RM 46 to continue" → prefilled 46.00 → simulator pay → #checkout with the order intact.

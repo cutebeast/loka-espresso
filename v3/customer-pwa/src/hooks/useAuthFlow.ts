@@ -249,6 +249,20 @@ export function useAuthFlow() {
       }
       setTimeout(() => setPage(target), 100);
     }
+    // Post-login action intent (e.g. guest tapped "Proceed to Checkout" on the
+    // cart — continue the flow instead of landing back on the cart page).
+    try {
+      const intent = sessionStorage.getItem('loka:postLogin');
+      if (intent === 'checkout') {
+        sessionStorage.removeItem('loka:postLogin');
+        const ui = useUIStore.getState();
+        if (!ui.selectedStore && ui.orderMode !== 'dine_in') {
+          ui.setShowStorePicker(true);
+          return;
+        }
+        setTimeout(() => setPage('checkout'), 100);
+      }
+    } catch { /* private mode — fall through */ }
     if (pendingArticleId.current != null) {
       setPage('information', { selectedInfoId: pendingArticleId.current });
       pendingArticleId.current = null;

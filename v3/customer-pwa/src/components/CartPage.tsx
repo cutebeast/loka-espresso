@@ -449,6 +449,9 @@ export default function CartPage() {
             className="cart-checkout-btn"
             onClick={() => {
               if (isGuest) {
+                // Remember the intent — after sign-in the flow continues to
+                // checkout instead of dropping the user back on the cart.
+                try { sessionStorage.setItem('loka:postLogin', 'checkout'); } catch { /* private mode */ }
                 triggerSignIn();
                 return;
               }
