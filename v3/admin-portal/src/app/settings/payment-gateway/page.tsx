@@ -18,6 +18,17 @@ const STRIPE_KEYS = [{
   label: "Enable Stripe",
   type: "boolean"
 }, {
+  key: "stripe.checkout_mode",
+  label: "Checkout Mode",
+  type: "select",
+  options: [{
+    value: "stripe",
+    label: "Stripe (live checkout)"
+  }, {
+    value: "simulator",
+    label: "Simulator (local test page)"
+  }]
+}, {
   key: "stripe.automatic_tax_enabled",
   label: "Enable Stripe Automatic Tax",
   type: "boolean"
@@ -349,6 +360,7 @@ export default function PaymentGatewaySettingsPage() {
     key: string;
     label: string;
     type: string;
+    options?: { value: string; label: string }[];
   }) => {
     const item = configs[cfg.key];
     if (!item) return null;
@@ -357,6 +369,35 @@ export default function PaymentGatewaySettingsPage() {
         ...prev,
         [cfg.key]: v ? "true" : "false"
       }))} label={cfg.label} />;
+    }
+    if (cfg.type === "select" && cfg.options) {
+      return <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6
+      }}>
+        <label style={{
+          fontSize: 13,
+          fontWeight: 500
+        }}>{cfg.label}</label>
+        <select value={values[cfg.key] || cfg.options[0]?.value || ""} onChange={e => setValues(prev => ({
+          ...prev,
+          [cfg.key]: e.target.value
+        }))} style={{
+          border: "1px solid var(--color-border-light)",
+          borderRadius: "var(--radius-sm)",
+          padding: "8px 10px",
+          fontSize: 13,
+          background: "var(--color-bg-white, #fff)"
+        }}>
+          {cfg.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {cfg.key === "stripe.checkout_mode" && values[cfg.key] === "simulator" && <p style={{
+          fontSize: 12,
+          color: "var(--color-warning-dark, #8A6D1F)",
+          margin: 0
+        }}>Hosted checkouts (wallet top-up, pay links) open the local simulated checkout page. No real payments are made.</p>}
+      </div>;
     }
     const isSecret = cfg.type === "password" || item.is_sensitive;
     const visible = visibleSecrets[cfg.key];

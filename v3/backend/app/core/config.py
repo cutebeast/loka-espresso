@@ -153,7 +153,10 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str | None = None
     stripe_checkout_success_url: str | None = None
     stripe_checkout_cancel_url: str | None = None
-    stripe_simulator_checkout_url: str | None = "https://checkout.stripe.com/test-session/{session_id}"
+    # None = built-in local simulator page (services/payment.py builds it with
+    # the session's real return URLs). The old checkout.stripe.com/test-session
+    # placeholder was a dead URL (AccessDenied) that broke dev top-ups.
+    stripe_simulator_checkout_url: str | None = None
 
     @property
     def is_production(self) -> bool:

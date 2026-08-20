@@ -6,7 +6,7 @@ from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Form, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -592,3 +592,149 @@ async def request_topup(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Online wallet top-up is not available until a payment provider is integrated. Please top up at a store.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Dev/staging checkout simulator (only active when Stripe keys are NOT set)
+# ---------------------------------------------------------------------------
+
+_SIM_PAGE = """<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulated Checkout</title>
+<style>
+  body {{ font-family: -apple-system, 'Segoe UI', sans-serif; background: #F6F4EF; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+  .card {{ background: #fff; border: 1px solid #E8E6E0; border-radius: 14px; padding: 32px; max-width: 380px; width: 90%; text-align: center; }}
+  .badge {{ display: inline-block; background: #F7F1DF; color: #8A6D1F; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 4px 12px; border-radius: 999px; margin-bottom: 14px; }}
+  h1 {{ font-size: 18px; margin: 0 0 4px; }}
+  .amt {{ font-size: 30px; font-weight: 800; margin: 14px 0 24px; }}
+  button {{ display: block; width: 100%; padding: 13px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 10px; }}
+  .pay {{ background: #3B4A1A; color: #fff; }}
+  .cancel {{ background: transparent; color: #4A4038; border: 1px solid #E8E6E0 !important; }}
+  .note {{ font-size: 11px; color: #8A8078; margin-top: 18px; }}
+</style></head><body>
+<div class="card">
+  <span class="badge">SIMULATED CHECKOUT</span>
+  <h1>{title}</h1>
+  <div class="amt">{amount}</div>
+  <form method="post" action="{complete_url}">
+    {hidden}
+    <input type="hidden" name="success" value="{success}">
+    <input type="hidden" name="cancel" value="{cancel}">
+    <button class="pay" name="action" value="pay" type="submit">Pay now (simulate)</button>
+    <button class="cancel" name="action" value="cancel" type="submit">Cancel</button>
+  </form>
+  <div class="note">Checkout is simulated on this server (Settings → Payment Gateway → Checkout Mode). No real payment is made.</div>
+</div></body></html>"""
+
+
+@public_router.get("/topup/simulator", response_class=None)
+async def wallet_topup_simulator(
+    db: DBDependency,
+    session_id: int = Query(0),
+    payment_id: int = Query(0),
+    type: str = Query("wallet"),
+    success: str = Query(""),
+    cancel: str = Query(""),
+):
+    """Simulated checkout page — active when stripe.checkout_mode='simulator'
+    or no Stripe keys are configured (404 otherwise)."""
+    from fastapi.responses import HTMLResponse
+    from app.services.payment import _use_simulator
+
+    if not await _use_simulator(db):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if type == "order":
+        from app.models.payment import Payment
+        payment = await db.get(Payment, payment_id)
+        if payment is None or payment.status not in ("initiated", "pending_authorization", "failed"):
+            return HTMLResponse("<h3 style='font-family:sans-serif;text-align:center;margin-top:40px'>This checkout session is no longer valid.</h3>", status_code=410)
+        amount = f"{payment.currency_code} {to_decimal(payment.amount):.2f}"
+        hidden = f'<input type="hidden" name="payment_id" value="{payment.id}">'
+        title = "Order Payment"
+    else:
+        session = await db.get(WalletTopupSession, session_id)
+        if session is None or session.status != "pending":
+            return HTMLResponse("<h3 style='font-family:sans-serif;text-align:center;margin-top:40px'>This checkout session is no longer valid.</h3>", status_code=410)
+        amount = f"{session.currency_code} {to_decimal(session.amount):.2f}"
+        hidden = f'<input type="hidden" name="session_id" value="{session.id}">'
+        title = "Wallet Top-up"
+
+    return HTMLResponse(_SIM_PAGE.format(
+        amount=amount,
+        title=title,
+        hidden=hidden,
+        success=success,
+        cancel=cancel,
+        complete_url="/api/wallet/topup/simulator/complete",
+    ))
+
+
+@public_router.post("/topup/simulator/complete", response_class=None)
+async def wallet_topup_simulator_complete(
+    db: DBDependency,
+    session_id: int = Form(0),
+    payment_id: int = Form(0),
+    action: str = Form(...),
+    success: str = Form(""),
+    cancel: str = Form(""),
+):
+    """Complete (or cancel) a simulated checkout and redirect back. Runs the
+    SAME completion code as the real Stripe webhook. 404 when the simulator
+    is not active."""
+    from fastapi.responses import RedirectResponse
+    from app.services.payment import _complete_wallet_topup, _use_simulator
+
+    if not await _use_simulator(db):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # ── Order payment: drive the standard webhook pipeline with a synthetic
+    # checkout.session.completed event (capture, loyalty, e-invoice — all of it)
+    if payment_id:
+        from app.models.payment import Payment
+        from app.services.payment import process_webhook_event
+        from uuid import uuid4
+
+        payment = await db.get(Payment, payment_id)
+        if payment is None:
+            raise HTTPException(status_code=410, detail="Checkout session not found")
+        if action == "pay":
+            fake_pi = f"pi_test_{uuid4().hex}"
+            payload = {
+                "type": "checkout.session.completed",
+                "id": f"evt_sim_{uuid4().hex}",
+                "data": {"object": {
+                    "id": f"cs_test_{uuid4().hex}",
+                    "payment_status": "paid",
+                    "payment_intent": fake_pi,
+                    "amount_total": int(round(float(payment.amount) * 100)),
+                    "currency": (payment.currency_code or "myr").lower(),
+                    "metadata": {"payment_id": str(payment.id), "order_id": str(payment.order_id)},
+                }},
+            }
+            await process_webhook_event(db, "stripe", payload)
+            await db.commit()
+            return RedirectResponse(success or "/", status_code=303)
+        if payment.status in ("initiated", "pending_authorization", "failed"):
+            payment.status = "voided"
+            await db.commit()
+        return RedirectResponse(cancel or "/", status_code=303)
+
+    # ── Wallet top-up
+    session = await db.get(WalletTopupSession, session_id)
+    if session is None:
+        raise HTTPException(status_code=410, detail="Checkout session not found")
+
+    if action == "pay" and session.status == "pending":
+        await _complete_wallet_topup(db, session, "Online top-up via Stripe (simulated)")
+        await db.commit()
+        return RedirectResponse(success or "/#wallet?status=success", status_code=303)
+
+    if action == "pay":
+        # already completed (double submit / refresh) — just send them back
+        return RedirectResponse(success or "/#wallet?status=success", status_code=303)
+
+    if session.status == "pending":
+        session.status = "cancelled"
+        await db.commit()
+    return RedirectResponse(cancel or "/#wallet?status=cancel", status_code=303)

@@ -138,6 +138,17 @@ async def _stripe_enabled(db: AsyncSession) -> bool:
     return bool(await _get_stripe_secret_key(db))
 
 
+async def _use_simulator(db: AsyncSession) -> bool:
+    """Hosted checkouts go to the local simulator page instead of Stripe when
+    stripe.checkout_mode = 'simulator' (admin toggle) or when no real Stripe
+    keys are configured at all."""
+    config = PlatformConfigService(db)
+    mode = (await config.get_str("stripe.checkout_mode", default="stripe")).lower()
+    if mode == "simulator":
+        return True
+    return not await _stripe_enabled(db)
+
+
 async def get_payment_gateway_config(db: AsyncSession) -> dict:
     """Return public payment gateway configuration (no secrets)."""
     publishable = await _get_stripe_publishable_key(db)
@@ -391,10 +402,22 @@ async def create_wallet_topup_checkout_session(
     cancel_url: str | None = None,
 ) -> dict:
     """Create a Stripe Checkout Session for a wallet top-up."""
-    if not await _stripe_enabled(db):
+    if await _use_simulator(db):
+        # Simulator mode (no Stripe keys): redirect to OUR simulator page —
+        # the old default (checkout.stripe.com/test-session/...) is a dead
+        # URL that returns AccessDenied, which made dev top-ups impossible.
         fake_id = f"cs_test_{uuid4().hex}"
         settings = get_settings()
-        checkout_url = (settings.stripe_simulator_checkout_url or "https://checkout.stripe.com/test-session/{session_id}").format(session_id=fake_id)
+        config_service = PlatformConfigService(db)
+        app_base = (await config_service.get_app_public_url()).rstrip("/")
+        from urllib.parse import quote
+        default_sim = (
+            f"{app_base}/api/wallet/topup/simulator"
+            f"?session_id={session_id}"
+            + (f"&success={quote(success_url, safe='')}" if success_url else "")
+            + (f"&cancel={quote(cancel_url, safe='')}" if cancel_url else "")
+        )
+        checkout_url = (settings.stripe_simulator_checkout_url or default_sim).format(session_id=fake_id)
         return {
             "id": fake_id,
             "url": checkout_url,
@@ -404,7 +427,10 @@ async def create_wallet_topup_checkout_session(
     assert api_key is not None
     config_service = PlatformConfigService(db)
     app_public_url = await config_service.get_app_public_url()
-    base = success_url or f"{app_public_url}/#wallet"
+    # Provided URLs are used verbatim — the wallet endpoint builds them with
+    # ?topup_session=&status= already; appending another "?session_id=…&status=…"
+    # produced a malformed double query string and the PWA's return handler
+    # never matched status=success (round-40 top-up bug).
     params: dict = {
         "payment_method_types": await _get_myr_payment_method_types(db),
         "line_items": [
@@ -418,8 +444,8 @@ async def create_wallet_topup_checkout_session(
             }
         ],
         "mode": "payment",
-        "success_url": f"{base}?session_id={{CHECKOUT_SESSION_ID}}&status=success",
-        "cancel_url": f"{base}?session_id={{CHECKOUT_SESSION_ID}}&status=cancel",
+        "success_url": success_url or f"{app_public_url}/#wallet?session_id={{CHECKOUT_SESSION_ID}}&status=success",
+        "cancel_url": cancel_url or f"{app_public_url}/#wallet?session_id={{CHECKOUT_SESSION_ID}}&status=cancel",
         "payment_intent_data": {
             "metadata": {
                 "wallet_topup_session_id": session_id,
@@ -480,10 +506,21 @@ async def create_stripe_checkout_session(
             db, payment, order, api_key, success_url=success_url, cancel_url=cancel_url, customer_id=customer_id
         )
 
-    # Simulator fallback: produce a fake session URL so staff/client UIs can be tested.
+    # Simulator mode (no keys, or stripe.checkout_mode='simulator'): route to
+    # OUR simulator page — the old placeholder URL was a dead link. Completion
+    # runs the same code as a real Stripe webhook.
     session_id = f"cs_test_{uuid4().hex}"
     settings = get_settings()
-    checkout_url = (settings.stripe_simulator_checkout_url or "https://checkout.stripe.com/test-session/{session_id}").format(session_id=session_id)
+    config_service = PlatformConfigService(db)
+    app_base = (await config_service.get_app_public_url()).rstrip("/")
+    from urllib.parse import quote
+    default_sim = (
+        f"{app_base}/api/wallet/topup/simulator"
+        f"?type=order&payment_id={payment.id}"
+        + (f"&success={quote(success_url, safe='')}" if success_url else "")
+        + (f"&cancel={quote(cancel_url, safe='')}" if cancel_url else "")
+    )
+    checkout_url = (settings.stripe_simulator_checkout_url or default_sim).format(session_id=session_id)
     return {
         "id": session_id,
         "url": checkout_url,

@@ -68,6 +68,9 @@ CONFIGS = [
     ("integration.twilio_verify_test_auth_token", '""', "string", "all", True, True),
     ("stripe.enabled", "false", "boolean", "all", False, True),
     ("stripe.automatic_tax_enabled", "false", "boolean", "all", False, True),
+    # Hosted-checkout routing: 'stripe' = real Stripe checkout; 'simulator' =
+    # our local simulated checkout page (also auto-active when no keys set).
+    ("stripe.checkout_mode", '"stripe"', "string", "all", False, True),
     # Payment method lists are JSON arrays (payment-gateway page edits them;
     # the PUT endpoint 404s on unknown keys, so the rows must exist).
     ("stripe.payment_method_types", '["card", "fpx"]', "json", "all", False, True),
