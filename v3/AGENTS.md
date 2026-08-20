@@ -2199,3 +2199,10 @@ Owner: "can we have a setting on the admin portal for simulation page for the PG
 - Config restore: stripe.enabled=false, empty secret, mode=stripe on dev (auto-simulator active).
 
 Gates: unit **108/108** · webhook E2E 7/7 · admin portal rebuilt + select verified live (renders, note, persists).
+
+### Round 40 fix — survey form unusable + back-button targets (2026-08-21, user report w/ screenshots)
+
+- **Survey answer controls never rendered** — the public `/surveys/{id}` API serves options as `answer_options: {"options"|"choices": [...]}`, but VoucherSection expected a flat `options: string[]`; additionally only 4 of the 10 backend question types had renderers (single_choice/rating/text/dropdown). Affected surveys showed the question with NO input → "Please answer all required questions" forever. Fixed: `questionOptions()` extracts from both dict keys (and flat/array), and full type coverage: single_choice (radio), multiple_choice (multi-select joined with " | "), dropdown (select), rating/nps (1-5 / 0-10 buttons), yes_no, date, text fallback for the rest. Verified live: Take Our Survey → 4 options → select → submit → "Survey completed" + reward.
+- **Data repairs**: survey 3's rating question had `{"choices": []}` (now `rating_scale` 1-5); promo banner 38's long_description had a raw Python-list Terms blob (now bullets); `.rd-desc` uses `white-space: pre-line` so \n bullets break correctly.
+- **Back buttons**: events + workshops were wired `onBackProfile` though their entry is the dashboard hub → now `onBackHome`; check-in hardcoded `setPage('profile')` (dashboard quick action) → now home. Full back-target audit: menu→home, cart→menu, rewards→home, promotions/information/lucky-draw/feedback→home, profile subpages→profile, order-detail→orders.
+- Committed `64f0ea0e`; PWA journey E2E 5/5.

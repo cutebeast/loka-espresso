@@ -149,7 +149,7 @@ export default function WalletPage() {
     <div className="topup-screen">
       {/* Header */}
       <div className="topup-header">
-        <button className="topup-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
+        <button className="topup-back-btn" onClick={() => setPage('home')} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
         <h1 className="topup-title">{t('wallet.topUpTitle')}</h1>

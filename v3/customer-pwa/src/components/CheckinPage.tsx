@@ -71,12 +71,20 @@ export default function CheckinPage() {
     }
   };
   if (!isAuthenticated) {
-    return <div className="home-empty" style={{
-      paddingTop: 80
-    }}>
+    return <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Keep the header + back button on the guest wall (round-40 nav fix) */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
+        background: 'var(--loka-bg-card, #fff)', borderBottom: '1px solid var(--color-hair, #E8E6E0)', flexShrink: 0
+      }}>
+        <button onClick={() => setPage('home')} aria-label={t('common.back')} className="sub-back-btn"><ArrowLeft size={20} /></button>
+        <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{t('checkin.title')}</h1>
+      </div>
+      <div className="home-empty" style={{ paddingTop: 80 }}>
         <div className="home-empty-icon"><CalendarCheck size={40} strokeWidth={1.5} /></div>
         <p className="home-empty-text">{t('auth.signInRequired')}</p>
-      </div>;
+      </div>
+    </div>;
   }
   if (loading) {
     return <div className="skeleton home-skeleton-card" style={{

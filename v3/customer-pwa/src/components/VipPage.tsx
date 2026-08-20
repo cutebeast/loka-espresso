@@ -83,8 +83,26 @@ export default function VipPage() {
     // Tiers come from the authed app-data load — guests never receive them, so
     // without this gate the page sat on "Loading…" forever (round-40 crawl).
     return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        <GuestGate message={t("profile.guestMessage")}><div /></GuestGate>
+      <div style={{
+        maxWidth: 480, margin: "0 auto", minHeight: "100vh",
+        background: "var(--color-bg, #FAFAF8)", color: "var(--color-text-primary, #1E1B18)",
+        display: "flex", flexDirection: "column",
+      }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "14px 16px",
+          background: "var(--color-bg-white, #fff)", borderBottom: "1px solid var(--color-hair, #E8E6E0)",
+        }}>
+          <button onClick={() => setPage("home")} aria-label={t("common.back")} style={{
+            background: "none", border: "none", cursor: "pointer", color: "inherit",
+            display: "flex", padding: 6,
+          }}>
+            <ArrowLeft size={20} />
+          </button>
+          <h1 style={{ fontSize: 16, fontWeight: 700 }}>{t("vip.title")}</h1>
+        </div>
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <GuestGate message={t("profile.guestMessage")}><div /></GuestGate>
+        </div>
       </div>
     );
   }
@@ -102,7 +120,7 @@ export default function VipPage() {
         display: "flex", alignItems: "center", gap: 10, padding: "14px 16px",
         background: "var(--color-bg-white, #fff)", borderBottom: "1px solid var(--color-hair, #E8E6E0)",
       }}>
-        <button onClick={() => setPage("profile")} aria-label={t("common.back")} style={{
+        <button onClick={() => setPage("home")} aria-label={t("common.back")} style={{
           background: "none", border: "none", cursor: "pointer", color: "inherit",
           display: "flex", padding: 6,
         }}>
