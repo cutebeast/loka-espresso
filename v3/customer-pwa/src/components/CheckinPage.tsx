@@ -104,7 +104,7 @@ export default function CheckinPage() {
       borderBottom: '1px solid var(--color-hair, #E8E6E0)',
       flexShrink: 0
     }}>
-        <button onClick={() => setPage('profile')} aria-label={t('common.back')} className="sub-back-btn"><ArrowLeft size={20} /></button>
+        <button onClick={() => setPage('home')} aria-label={t('common.back')} className="sub-back-btn"><ArrowLeft size={20} /></button>
         <h1 style={{
       fontSize: 16,
       fontWeight: 700,

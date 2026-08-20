@@ -259,6 +259,8 @@
   line-height: 1.6;
   margin-bottom: 20px;
   font-size: 0.95rem;
+  /* Content uses \n for line breaks (e.g. Terms bullet lists) — honor them */
+  white-space: pre-line;
 }
 .rd-section-title {
   font-weight: 650;

@@ -18,9 +18,25 @@ interface SurveyQuestion {
   id: number;
   question_text: string;
   question_type: string;
-  options: string[] | null;
+  options?: string[] | null;
+  /** Raw backend field: {"options": [...]} or {"choices": [...]} — the public
+   * API serves answer_options, not a flat options list (round-40 survey fix). */
+  answer_options?: unknown;
   is_required: boolean;
-  sort_order: number;
+  sort_order?: number;
+}
+
+/** Extract the flat option list from whichever shape the API served. */
+function questionOptions(q: SurveyQuestion): string[] {
+  if (Array.isArray(q.options) && q.options.length > 0) return q.options.map(String);
+  const ao = q.answer_options;
+  if (Array.isArray(ao)) return ao.map(String);
+  if (ao && typeof ao === 'object') {
+    const dict = ao as Record<string, unknown>;
+    const arr = dict.options ?? dict.choices ?? dict.items;
+    if (Array.isArray(arr)) return arr.map(String);
+  }
+  return [];
 }
 function formatDate(d: string | null | undefined) {
   if (!d) return '';
@@ -167,21 +183,27 @@ export default function VoucherSection({
             <button className="guest-locked-btn" onClick={() => useUIStore.getState().triggerSignIn()}>{t('auth.signIn')}</button>
           </div>}
         {isSurvey && !isGuest && surveyQuestions.length > 0 && !surveyAlreadyDone && <div className="survey-block">
-            {surveyQuestions.map(q => <div key={q.id} className="promo-survey-question">
+            {surveyQuestions.map(q => {
+              const opts = questionOptions(q);
+              const type = q.question_type;
+              const isRating = type === 'rating' || type === 'rating_scale' || type === 'nps';
+              const ratingMax = type === 'nps' ? 10 : 5;
+              const ratingMin = type === 'nps' ? 0 : 1;
+              return <div key={q.id} className="promo-survey-question">
                 <div className="survey-question">
                   <HelpCircle size={16} />
                   {q.question_text}
                   {q.is_required && <span className="promo-required">*</span>}
                 </div>
 
-                {q.question_type === 'rating' && <div className="promo-rating-row">
-                    {[1, 2, 3, 4, 5].map(r => <button key={r} onClick={() => onSurveyAnswer(q.id, r)} className={`promo-rating-btn ${surveyAnswers[q.id] === r ? 'promo-rating-btn-selected' : ''}`}>
+                {isRating && <div className="promo-rating-row">
+                    {Array.from({ length: ratingMax - ratingMin + 1 }, (_, i) => ratingMin + i).map(r => <button key={r} onClick={() => onSurveyAnswer(q.id, r)} className={`promo-rating-btn ${surveyAnswers[q.id] === r ? 'promo-rating-btn-selected' : ''}`}>
                         {r}
                       </button>)}
                   </div>}
 
-                {q.question_type === 'single_choice' && q.options && <div>
-                    {q.options.map(opt => <div key={opt} className={`survey-option ${surveyAnswers[q.id] === opt ? 'selected' : ''}`} onClick={() => onSurveyAnswer(q.id, opt)}>
+                {type === 'single_choice' && opts.length > 0 && <div>
+                    {opts.map(opt => <div key={opt} className={`survey-option ${surveyAnswers[q.id] === opt ? 'selected' : ''}`} onClick={() => onSurveyAnswer(q.id, opt)}>
                         <div className={`promo-radio-circle ${surveyAnswers[q.id] === opt ? 'promo-radio-circle-selected' : ''}`}>
                           {surveyAnswers[q.id] === opt && <div className="promo-radio-dot" />}
                         </div>
@@ -189,13 +211,41 @@ export default function VoucherSection({
                       </div>)}
                   </div>}
 
-                {q.question_type === 'text' && <textarea className="promo-survey-textarea" placeholder={t('promotions.typeAnswer')} onChange={e => onSurveyAnswer(q.id, e.target.value)} />}
+                {type === 'multiple_choice' && opts.length > 0 && <div>
+                    {opts.map(opt => {
+                      const current = typeof surveyAnswers[q.id] === 'string' && surveyAnswers[q.id] ? String(surveyAnswers[q.id]).split(' | ') : [];
+                      const checked = current.includes(opt);
+                      return <div key={opt} className={`survey-option ${checked ? 'selected' : ''}`} onClick={() => {
+                        const next = checked ? current.filter(o => o !== opt) : [...current, opt];
+                        onSurveyAnswer(q.id, next.join(' | '));
+                      }}>
+                        <div className={`promo-radio-circle ${checked ? 'promo-radio-circle-selected' : ''}`}>
+                          {checked && <div className="promo-radio-dot" />}
+                        </div>
+                        {opt}
+                      </div>;
+                    })}
+                  </div>}
 
-                {q.question_type === 'dropdown' && q.options && <select className="promo-survey-select" onChange={e => onSurveyAnswer(q.id, e.target.value)}>
+                {type === 'dropdown' && opts.length > 0 && <select className="promo-survey-select" value={String(surveyAnswers[q.id] ?? '')} onChange={e => onSurveyAnswer(q.id, e.target.value)}>
                     <option value="">{t('promotions.selectOption')}</option>
-                    {q.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    {opts.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>}
-              </div>)}
+
+                {type === 'yes_no' && <div>
+                    {[t('common.yes'), t('common.no')].map(opt => <div key={opt} className={`survey-option ${surveyAnswers[q.id] === opt ? 'selected' : ''}`} onClick={() => onSurveyAnswer(q.id, opt)}>
+                        <div className={`promo-radio-circle ${surveyAnswers[q.id] === opt ? 'promo-radio-circle-selected' : ''}`}>
+                          {surveyAnswers[q.id] === opt && <div className="promo-radio-dot" />}
+                        </div>
+                        {opt}
+                      </div>)}
+                  </div>}
+
+                {type === 'date' && <input type="date" className="promo-survey-select" value={String(surveyAnswers[q.id] ?? '')} onChange={e => onSurveyAnswer(q.id, e.target.value)} />}
+
+                {(type === 'text' || type === 'text_open' || (!isRating && type !== 'single_choice' && type !== 'multiple_choice' && type !== 'dropdown' && type !== 'yes_no' && type !== 'date')) && <textarea className="promo-survey-textarea" placeholder={t('promotions.typeAnswer')} value={String(surveyAnswers[q.id] ?? '')} onChange={e => onSurveyAnswer(q.id, e.target.value)} />}
+              </div>;
+            })}
             <button className="survey-submit-btn" onClick={onSubmitSurvey} disabled={submittingSurvey}>
               {submittingSurvey ? t('common.submitting') : t('promotions.submitSurvey')}
               <Gift size={16} />

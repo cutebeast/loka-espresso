@@ -344,9 +344,9 @@ export default function AppShell() {
       case 'reservations':
         return <LazyRenderer pageKey="reservations" onBack={onBackProfile} />;
       case 'events':
-        return <LazyRenderer pageKey="events" onBack={onBackProfile} />;
+        return <LazyRenderer pageKey="events" onBack={onBackHome} />;
       case 'workshops':
-        return <LazyRenderer pageKey="workshops" onBack={onBackProfile} />;
+        return <LazyRenderer pageKey="workshops" onBack={onBackHome} />;
       case 'checkin':
         return <LazyRenderer pageKey="checkin" onBack={onBackHome} />;
       case 'lucky-draw':
