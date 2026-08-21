@@ -715,6 +715,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_by_staff_id BIGINT REFEREN
 
 ALTER TABLE payment_events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE NOT NULL;
 
+ALTER TABLE refunds ADD COLUMN IF NOT EXISTS approved_by_staff_id BIGINT REFERENCES staff_profiles (id);
 ALTER TABLE refunds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE NOT NULL;
 
 ALTER TABLE reward_catalog ADD COLUMN IF NOT EXISTS how_to_redeem TEXT;
@@ -766,6 +767,7 @@ CREATE INDEX IF NOT EXISTS ix_orders_cancelled_by_staff_id ON orders (cancelled_
 CREATE UNIQUE INDEX IF NOT EXISTS ix_orders_idempotency_key ON orders (idempotency_key);
 CREATE INDEX IF NOT EXISTS ix_orders_payment_flow_status ON orders (payment_flow, status, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_store_client_ref ON orders (store_id, client_ref) WHERE client_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_refunds_approved_by_staff_id ON refunds (approved_by_staff_id);
 CREATE INDEX IF NOT EXISTS ix_voucher_definitions_minimum_tier_id ON voucher_definitions (minimum_tier_id);
 
 -- ============================================================
@@ -775,4 +777,4 @@ CREATE INDEX IF NOT EXISTS ix_voucher_definitions_minimum_tier_id ON voucher_def
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'b9c0d1e2f3a4' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'd1e2f3a4b5c6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

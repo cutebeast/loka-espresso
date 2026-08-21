@@ -165,6 +165,9 @@ class Refund(Base, TimestampMixin):
     approved_by: Mapped[int | None] = mapped_column(
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    approved_by_staff_id: Mapped[int | None] = mapped_column(
+        ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     provider_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     completed_at: Mapped[datetime | None] = mapped_column(

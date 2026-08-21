@@ -1542,6 +1542,7 @@ async def refund_payment(
     reason: str,
     reason_category: str,
     approved_by: int | None,
+    approved_by_staff: int | None = None,
 ) -> Refund:
     """Request a refund for a captured payment."""
     result = await db.execute(
@@ -1554,8 +1555,8 @@ async def refund_payment(
     if payment.status not in ("captured", "partially_refunded"):
         raise PaymentError(f"Cannot refund payment with status {payment.status}", 400)
 
-    if approved_by is None:
-        raise PaymentError("Refund must be approved by an admin account", 403)
+    if approved_by is None and approved_by_staff is None:
+        raise PaymentError("Refund must be approved by an admin or staff account", 403)
 
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
@@ -1595,6 +1596,7 @@ async def refund_payment(
         reason=reason,
         reason_category=reason_category,
         approved_by=approved_by,
+        approved_by_staff_id=approved_by_staff,
         provider_refund_id=provider_refund_id,
         status="pending",
     )

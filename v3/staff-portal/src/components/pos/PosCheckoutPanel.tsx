@@ -7,8 +7,8 @@ import Alert from "@/components/Alert";
 import Drawer from "@/components/Drawer";
 import NumericKeypad from "@/components/NumericKeypad";
 import PosSplitBillSection from "./PosSplitBillSection";
-import { X, QrCode, User, Gift, CreditCard, Banknote, Smartphone, UtensilsCrossed } from "lucide-react";
-import { api, type Customer, type CustomerWallet } from "@/lib/api";
+import { X, QrCode, User, Gift, CreditCard, Banknote, Smartphone, UtensilsCrossed, RotateCcw } from "lucide-react";
+import { api, refundOrder, type Customer, type CustomerWallet } from "@/lib/api";
 import { PaymentMethod } from "./usePosState";
 interface PosCheckoutLineItem {
   menu_item_id?: number;
@@ -22,6 +22,7 @@ interface PosCheckoutLineItem {
 }
 interface PosCheckoutOrder {
   order_number: string;
+  payment_status?: string;
   total_amount?: number;
   total?: number;
   voucher_discount?: number;
@@ -126,6 +127,11 @@ export default function PosCheckoutPanel({
   const discountPresets = discountType === "percentage" ? [5, 10, 15, 20] : [5, 10, 20, 50];
   // Staff meal — one-tap discount configured by the boss (staffmeal.* platform config)
   const [staffMealLoading, setStaffMealLoading] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundSaving, setRefundSaving] = useState(false);
+  const refundable = (order.payment_status === "captured" || order.payment_status === "partially_refunded") && !!orderId;
   const applyStaffMeal = async () => {
     setStaffMealLoading(true);
     try {
@@ -188,6 +194,12 @@ export default function PosCheckoutPanel({
       }}>
             <button className="btn btn-ghost btn-sm" onClick={onScanCustomer}>
               <QrCode size={14} />{t("pos.scan_customer")}</button>
+            {refundable && <button className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }} onClick={() => {
+            setRefundOpen(true);
+            setRefundAmount(String(order.total_amount ?? ""));
+            setRefundReason("");
+          }}>
+              <RotateCcw size={14} />{t("pos.refund")}</button>}
             <span style={{
           fontSize: 12,
           color: "var(--color-text-muted)",
@@ -609,5 +621,44 @@ export default function PosCheckoutPanel({
               </div>}
           </div>}
       </Drawer>
+      {refundOpen && (
+        <div style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120
+      }} onClick={() => setRefundOpen(false)}>
+          <div style={{
+          background: "var(--color-bg-white, #fff)", borderRadius: 12, padding: 20,
+          width: "min(92vw, 400px)"
+        }} onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2">{t("pos.refund")} — {order.order_number}</h3>
+            <label className="block text-sm mb-1">{t("pos.refund_amount")}</label>
+            <input type="number" min="0.01" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} style={{
+            width: "100%", padding: "10px 12px", borderRadius: 8,
+            border: "1px solid var(--color-border, #d1d5db)", marginBottom: 10
+          }} />
+            <label className="block text-sm mb-1">{t("pos.refund_reason")}</label>
+            <input value={refundReason} onChange={e => setRefundReason(e.target.value)} placeholder={t("pos.refund_reason_placeholder")} maxLength={300} style={{
+            width: "100%", padding: "10px 12px", borderRadius: 8,
+            border: "1px solid var(--color-border, #d1d5db)", marginBottom: 14
+          }} />
+            <div className="flex gap-2 justify-end">
+              <button className="btn btn-ghost" onClick={() => setRefundOpen(false)}>{t("common.cancel")}</button>
+              <button className="btn btn-primary" disabled={refundSaving || !refundAmount || parseFloat(refundAmount) <= 0 || refundReason.trim().length < 3} onClick={async () => {
+            setRefundSaving(true);
+            try {
+              const res = await refundOrder(orderId!, parseFloat(refundAmount), refundReason.trim(), "customer_request");
+              onSetMsg(res.status === "completed" ? t("pos.refund_done") : t("pos.refund_pending"));
+              setRefundOpen(false);
+              onSetError("");
+            } catch (e: unknown) {
+              onSetError((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t("pos.refund_failed"));
+            } finally {
+              setRefundSaving(false);
+            }
+          }}>{refundSaving ? t("common.saving") : t("pos.refund_confirm")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>;
 }

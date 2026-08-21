@@ -677,6 +677,18 @@ export interface DeliveryDispatchResult {
   status_advanced: boolean;
 }
 
+export function refundOrder(
+  id: string | number,
+  amount: number,
+  reason: string,
+  reasonCategory: string
+) {
+  return api.post<{ id: number; amount: string; status: string; payment_status: string }>(
+    `/staff/orders/${id}/refund`,
+    { amount, reason, reason_category: reasonCategory }
+  );
+}
+
 export function dispatchDeliveryOrder(
   id: string | number,
   provider: string,

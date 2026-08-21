@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Star, Wallet, Gift, ShoppingBag, Users, Ticket, Circle } from 'lucide-react';
+import { ArrowLeft, Star, Wallet, Gift, ShoppingBag, Users, Ticket, Award, RotateCcw, PlusCircle, MinusCircle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { GuestGate } from '@/components/auth/GuestGate';
@@ -16,14 +16,28 @@ import type { LoyaltyHistoryEntry, Transaction } from '@/lib/api';
 
 type Tab = 'loyalty' | 'wallet';
 
+// Keys are the BACKEND's actual event_type/entry_type values (round-40
+// gap: the map used UI-ish names like purchase/topup, so every real entry
+// — order_earned, credit… — hit the icon guard and was silently dropped;
+// the history page showed date headers with ZERO rows).
 const CATEGORY_ICONS: Record<string, typeof Star> = {
+  order_earned: ShoppingBag,
+  reward_redemption: Star,
+  welcome_bonus: Gift,
+  referral_bonus: Users,
+  promo_bonus: Ticket,
+  tier_bonus: Award,
+  return_deduction: RotateCcw,
+  credit: PlusCircle,
+  debit: MinusCircle,
+  // legacy aliases kept for older rows
   purchase: ShoppingBag,
   order: ShoppingBag,
   reward: Gift,
   referral: Users,
   voucher: Ticket,
   topup: Wallet,
-  refund: Circle,
+  refund: RotateCcw,
   redemption: Star,
   bonus: Gift,
   default: Star,
@@ -193,8 +207,9 @@ export default function HistoryPage() {
                 {items.map((item, idx) => {
                   const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points_delta || 0) > 0 : (item as Transaction).amount > 0;
                   const type = ((item as Transaction).entry_type || (item as LoyaltyHistoryEntry).event_type || '').toLowerCase();
-                  const IconComp = CATEGORY_ICONS[type];
-                  if (!IconComp) return null;
+                  // Non-fatal fallback — an unknown type must still render
+                  // (an icon-map gap must never hide ledger rows again).
+                  const IconComp = (CATEGORY_ICONS[type] ?? CATEGORY_ICONS.default) as typeof Star;
                   const catLabel = categoryLabel(type);
                   return (
                     <div key={item.id || idx} className="history-tx-card">

@@ -18,11 +18,13 @@ from app.models.menu import MenuCategory, MenuItem
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
+from app.models.payment import Payment
+from app.services.payment import refund_payment
 from app.models.staff import StaffProfile
 from app.models.store import DiningTable
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
-from app.schemas.base import APIResponse, BaseSchema
+from app.schemas.base import APIResponse, BaseSchema, Money
 from app.schemas.order import (
     ApplyOrderRewardRequest,
     ApplyOrderVoucherRequest,
@@ -575,6 +577,89 @@ async def get_staff_order_einvoice(
         "myinvois_uuid": doc.myinvois_uuid,
         "validation_link": doc.validation_link,
         "submitted_at": doc.submitted_at.isoformat() if doc.submitted_at else None,
+    })
+
+
+class StaffRefundRequest(BaseSchema):
+    """Counter refund — staff issue a refund for a captured payment."""
+
+    amount: Money = Field(..., gt=0)
+    reason: str = Field(..., min_length=3, max_length=300)
+    reason_category: Literal[
+        "customer_request", "item_unavailable", "quality_issue", "wrong_order", "late_delivery", "other"
+    ] = "other"
+    payment_id: int | None = None
+
+
+@router.post("/{order_id}/refund", response_model=APIResponse[dict])
+async def staff_refund_order(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+    data: StaffRefundRequest,
+):
+    """Refund a captured payment on an order (counter refund).
+
+    Picks the single captured/partially_refunded payment automatically;
+    split-bill orders with multiple payments require payment_id.
+    """
+    order = (
+        await db.execute(
+            select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    payments = (
+        await db.execute(
+            select(Payment)
+            .where(
+                Payment.order_id == order.id,
+                Payment.status.in_(("captured", "partially_refunded")),
+            )
+            .order_by(Payment.id)
+        )
+    ).scalars().all()
+
+    if data.payment_id is not None:
+        payment = next((p for p in payments if p.id == data.payment_id), None)
+        if payment is None:
+            raise HTTPException(status_code=400, detail="payment_id is not a refundable payment on this order")
+    elif len(payments) == 1:
+        payment = payments[0]
+    elif len(payments) == 0:
+        raise HTTPException(status_code=400, detail="This order has no captured payment to refund")
+    else:
+        raise HTTPException(
+            status_code=409,
+            detail="Split-bill order has multiple payments — specify payment_id",
+        )
+
+    try:
+        refund = await refund_payment(
+            db=db,
+            payment_id=payment.id,
+            amount=data.amount,
+            reason=data.reason,
+            reason_category=data.reason_category,
+            approved_by=None,
+            approved_by_staff=staff.id,
+        )
+    except PaymentError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    return APIResponse(data={
+        "id": refund.id,
+        "payment_id": refund.payment_id,
+        "order_id": refund.order_id,
+        "amount": str(refund.amount or 0),
+        "reason": refund.reason,
+        "reason_category": refund.reason_category,
+        "status": refund.status,
+        "payment_status": payment.status,
+        "order_status": order.status,
     })
 
 

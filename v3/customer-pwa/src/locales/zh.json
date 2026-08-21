@@ -431,7 +431,16 @@
       "refund": "退款",
       "reward": "奖励",
       "topup": "充值",
-      "voucher": "优惠券"
+      "voucher": "优惠券",
+      "order_earned": "消费获得",
+      "reward_redemption": "奖励兑换",
+      "welcome_bonus": "新客赠送",
+      "referral_bonus": "邀请奖励",
+      "promo_bonus": "活动赠送",
+      "tier_bonus": "等级奖励",
+      "return_deduction": "退货扣回",
+      "credit": "充值",
+      "debit": "消费"
     },
     "credited": "已入账",
     "debited": "已扣除",

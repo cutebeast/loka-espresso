@@ -397,7 +397,16 @@
       "refund": "Refund",
       "reward": "Reward",
       "topup": "Topup",
-      "voucher": "Voucher"
+      "voucher": "Voucher",
+      "order_earned": "Order earned",
+      "reward_redemption": "Reward redemption",
+      "welcome_bonus": "Welcome bonus",
+      "referral_bonus": "Referral bonus",
+      "promo_bonus": "Promo bonus",
+      "tier_bonus": "Tier bonus",
+      "return_deduction": "Return deduction",
+      "credit": "Top-up",
+      "debit": "Spend"
     },
     "credited": "Credited",
     "debited": "Debited",
