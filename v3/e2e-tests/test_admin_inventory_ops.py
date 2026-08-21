@@ -180,14 +180,18 @@ async def test_inventory_item_relationship_fields(
     category_id = categories[0]["id"]
 
     # Need a supplier
+    # Unique digits-only phone per run — the fixed +60111111111 collided
+    # with residue from previous runs (suppliers aren't purged) and made the
+    # create 409 under suite load (the documented round-39/40 flake).
     suffix = uuid.uuid4().hex[:8]
+    phone_suffix = "".join(ch for ch in uuid.uuid4().hex if ch.isdigit())[:8]
     r_sup = await client.post(
         f"{base_url}/admin/inventory/suppliers",
         headers=admin_headers,
         json={
             "store_id": store_id,
             "supplier_name": f"E2E Item Supplier {suffix}",
-            "phone_number": "+60111111111",
+            "phone_number": f"+6011{phone_suffix}",
             "lead_time_days": 3,
         },
     )

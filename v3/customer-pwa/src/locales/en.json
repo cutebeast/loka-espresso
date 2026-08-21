@@ -320,7 +320,8 @@
     "menuItem": "Menu item",
     "reward": "Reward",
     "welcome": "Welcome",
-    "codeCopyFailed": "Failed to copy code"
+    "codeCopyFailed": "Failed to copy code",
+    "yesterday": "Yesterday"
   },
   "errorBoundary": {
     "message": "An unexpected error occurred. Please try again.",

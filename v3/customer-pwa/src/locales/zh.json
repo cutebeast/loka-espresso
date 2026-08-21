@@ -320,7 +320,8 @@
     "view": "查看",
     "welcome": "欢迎",
     "year": "年",
-    "yourCode": "您的会员码"
+    "yourCode": "您的会员码",
+    "yesterday": "昨天"
   },
   "e2e": {
     "test": {

@@ -2231,3 +2231,12 @@ Audited every flow where the user leaves and should return:
 3. **Profile recent-orders raw status** — `cancelled_by_customer` now prettified ("Cancelled By Customer").
 - Probe note: the staff portal tables page reads `localStorage.staffStoreId` (set at login); cookie-only browser probes see "0 tables" — set it via init script when scripting.
 - Gates: unit 108/108 · E2E orders/journey 20/20 + tables 3/3 · PWA rebuilt, backend restarted.
+
+### Round 40 audit — post-commit verification (2026-08-22)
+
+Audited the 11 round-40 commits (read all round-40 AGENTS.md notes + spot-verified the fixes live):
+- **All round-40 fixes verified live**: staff tables QR fields ship (qr_code_image_url/token/generated_at, 6 tables) · `/loyalty/me` exposes points_expiring_soon + next_points_expiry_at · `/cart/pickup-estimate` 200 with ETA · simulator guards hold (bare GET 410 = invalid session; full flow verified in the notes) · order history ships past orders (10 orders, 8 past).
+- **ONE new issue found & fixed**: `common.yesterday` missing → HistoryPage rendered raw "COMMON.YESTERDAY" (the round-40 history work used the dynamic `t('common.' + group)` with a group value that had no locale key). Added en/zh locales + pwa-ui DB rows. PWA audit 0 problems after.
+- **E2E flake root-caused & fixed** (the twice-recurrent `test_inventory_item_relationship_fields`): it created suppliers with the FIXED phone +60111111111 — residue from previous runs 409'd the create under suite load. Now unique digits-only phones per run + purge covers `E2E-%` inventory items + `E2E Item Supplier%` suppliers.
+- Gates: unit **108/108** · full E2E **241 passed, 3 skipped, 0 failed** · tsc ×3 clean · alembic single head + check clean · 8/8 services · all 5 domains healthy · PWA rebuilt (kiosk/pos-disp restarted) · portal/kiosk/pos-disp audits at known-clean baseline.
+- Known non-issues: order Stripe checkout on dev uses the simulator path (round-40 feature); backend min/max modifier-selection validation on cart add remains sheet-only (documented hardening candidate).
