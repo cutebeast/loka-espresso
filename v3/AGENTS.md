@@ -2223,3 +2223,11 @@ Audited every flow where the user leaves and should return:
 - **Promo/voucher claim, survey submit, reward redeem, lucky-draw spin** — all trigger the sheet as an OVERLAY on the same page; page state (selected promo/reward/detail) survives login — no loss.
 - **Guest→protected page navigation** — pendingGuestPage + savedGuestCart restore the target page and cart (pre-existing, re-verified).
 - Note: repeated OTP sends to the same number hit the send-otp rate limit in quick succession (working as intended; observed only under scripted probing).
+
+### Round 40 fixes — staff QR + order history (2026-08-22, user report w/ screenshots)
+
+1. **Staff portal table QR never displayed** — `GET /staff/tables` built a hand-made dict omitting qr_code_image_url/qr_code_token/qr_generated_at, so the frontend `useQrImages` had nothing to render and the modal always showed the placeholder (generate succeeded — the toast was true — but the display never updated). Fields added; verified live: T1 modal shows the QR + Download/Regenerate.
+2. **PWA order history "No orders yet"** — the empty-state early return checked only ACTIVE orders; customers with only past orders saw the empty state. Now considers past orders + loading state. Verified: 9 past orders render with thumbnails/statuses/reorder.
+3. **Profile recent-orders raw status** — `cancelled_by_customer` now prettified ("Cancelled By Customer").
+- Probe note: the staff portal tables page reads `localStorage.staffStoreId` (set at login); cookie-only browser probes see "0 tables" — set it via init script when scripting.
+- Gates: unit 108/108 · E2E orders/journey 20/20 + tables 3/3 · PWA rebuilt, backend restarted.
