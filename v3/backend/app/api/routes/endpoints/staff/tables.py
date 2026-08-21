@@ -92,6 +92,12 @@ async def staff_list_tables(staff: CurrentStaff, db: DBDependency):
             "occupied_since": (snap.updated_at.isoformat() if snap and snap.status == "occupied" else None),
             "current_order_id": (snap.current_order_id if snap and snap.status == "occupied" else None),
             "is_active": t.is_active,
+            # QR fields — the staff tables UI renders the printed-table QR from
+            # these; omitting them meant the modal always showed the "Generate
+            # QR" placeholder even after a successful generate (round-40 fix).
+            "qr_code_image_url": t.qr_code_image_url,
+            "qr_code_token": t.qr_code_token,
+            "qr_generated_at": t.qr_generated_at.isoformat() if t.qr_generated_at else None,
         })
     return APIResponse(data=out)
 

@@ -140,7 +140,10 @@ export default function OrdersPage() {
 
   useEffect(() => { loadPastOrders(true); }, [loadPastOrders]);
 
-  if (!isLoading && orders.length === 0) {
+  // Empty state only when there are NO active AND NO past orders — the old
+  // check (active only) showed "No orders yet" to customers with order history
+  // (round-40 fix: past orders render in the main view below).
+  if (!isLoading && orders.length === 0 && allPastOrders.length === 0 && !loadingPast) {
     // Guests: sign-in wall (consistent with the other account tabs) instead of
     // a misleading "no orders yet" empty state.
     if (!useAuthStore.getState().isAuthenticated) {

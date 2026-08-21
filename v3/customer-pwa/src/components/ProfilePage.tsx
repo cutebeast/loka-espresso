@@ -169,6 +169,10 @@ export default function ProfilePage() {
     if (s.startsWith('cancelled') || s.includes('cancelled')) return 'cancelled';
     return '';
   }
+  /** "cancelled_by_customer" → "Cancelled by customer" (raw enum otherwise) */
+  function statusLabel(status: string) {
+    return status ? status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+  }
   return <div className="profile-screen">
       {/* Header */}
       <div className="sub-page-header">
@@ -234,7 +238,7 @@ export default function ProfilePage() {
                   <div className="profile-order-right">
                     <div className="profile-order-amount">{formatPrice(order.total)}</div>
                     <div className={`profile-order-status ${statusClass(order.status)}`}>
-                      {order.status}
+                      {statusLabel(order.status)}
                     </div>
                   </div>
                 </div>)}

@@ -2214,3 +2214,12 @@ Full live trace of all 24 back-button pages. Correct: menu→home, cart→menu, 
 ### Round 40 flow fix — checkout top-up returns to the order (2026-08-21, tester report)
 
 Tester: insufficient wallet at checkout → top up → landed on wallet/profile instead of the order. Fixed end-to-end: checkout sends `returnTo=checkout` + prefilled shortage; `/wallets/topup/checkout` appends topup params with `&` when the return URL already has `?`; WalletPage redirects to returnTo after success (and its back button honors returnTo). Verified live: "Top up RM 46 to continue" → prefilled 46.00 → simulator pay → #checkout with the order intact.
+
+### Round 40 flow audit — all leave-and-return paths (2026-08-21, user question)
+
+Audited every flow where the user leaves and should return:
+- **Top-up at checkout** → returns to checkout with shortage prefilled (prev commit).
+- **Workshop booking / any cart checkout as guest** → sign-in sheet → NEW: post-login intent (`sessionStorage loka:postLogin=checkout`) continues to checkout (store picker first when no store). Cart contents persist through login (verified live: Omakase line intact → #checkout).
+- **Promo/voucher claim, survey submit, reward redeem, lucky-draw spin** — all trigger the sheet as an OVERLAY on the same page; page state (selected promo/reward/detail) survives login — no loss.
+- **Guest→protected page navigation** — pendingGuestPage + savedGuestCart restore the target page and cart (pre-existing, re-verified).
+- Note: repeated OTP sends to the same number hit the send-otp rate limit in quick succession (working as intended; observed only under scripted probing).
