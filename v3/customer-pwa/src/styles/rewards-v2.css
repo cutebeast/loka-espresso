@@ -653,3 +653,53 @@
 .detail-terms-list { list-style: none; padding: 5px 10px; background: var(--color-copper-soft); border-radius: 8px; margin: 0; }
 .detail-terms-list li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; font-size: 13px; color: var(--loka-text-primary); line-height: 1.5; border-bottom: 1px solid var(--loka-bg); }
 .detail-terms-list li:last-child { border-bottom: none; }
+
+/* ── Reward redemption success view (rd-modal-*) — themed full-screen state,
+   previously unstyled (rendered as plain white page with unstyled buttons) ── */
+.rd-modal-code {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: var(--loka-bg);
+  text-align: center;
+}
+.rd-modal-icon-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--color-primary-50, #F5F7F0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.rd-modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  margin: 0 0 6px;
+}
+.rd-modal-desc {
+  font-size: 13px;
+  color: var(--loka-text-muted);
+  margin: 0 0 20px;
+}
+.rd-modal-code-box {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--loka-primary);
+  background: var(--loka-bg-card);
+  border: 1px dashed var(--loka-primary);
+  border-radius: 12px;
+  padding: 16px 28px;
+  margin-bottom: 24px;
+  user-select: all;
+}
+.rd-btn-full-mb { width: 100%; margin-bottom: 10px; }
+.rd-btn-full { width: 100%; }
