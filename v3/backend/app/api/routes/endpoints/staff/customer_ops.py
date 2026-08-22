@@ -538,10 +538,15 @@ class ScanCustomerQRRequest(BaseSchema):
 
 class ScanRewardCodeRequest(BaseSchema):
     store_id: int | None = None
+    # Default: scan = lookup/validation ONLY (no consumption). Rewards/vouchers
+    # are consumed only when applied to an order at checkout. Pass
+    # validate_only=false for the legacy explicit in-store redemption path.
+    validate_only: bool = True
 
 
 class ScanVoucherCodeRequest(BaseSchema):
     store_id: int | None = None
+    validate_only: bool = True
 
 
 @router.post("/staff/scan/customer", response_model=APIResponse[dict])
@@ -641,6 +646,24 @@ async def staff_scan_reward_code(
         await db.flush()
         raise HTTPException(status_code=400, detail="Reward has expired")
 
+    if data.validate_only:
+        # Lookup only — do NOT consume. The reward is consumed when staff apply
+        # it to an order at checkout (/staff/orders/{id}/apply-reward).
+        rc_result0 = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
+        rc0 = rc_result0.scalar_one_or_none()
+        snapshot0 = cr.reward_snapshot or {}
+        return APIResponse(
+            data={
+                "reward_id": cr.id,
+                "name": rc0.reward_name if rc0 else snapshot0.get("reward_name"),
+                "reward_name": rc0.reward_name if rc0 else snapshot0.get("reward_name"),
+                "customer_id": cr.customer_id,
+                "valid": True,
+                "success": True,
+                "message": f"Reward valid: {rc0.reward_name if rc0 else 'Unknown'}",
+            }
+        )
+
     cr.status = "used"
     cr.used_at = now
     # Always attribute the redemption to the staff member's own store (token
@@ -694,6 +717,24 @@ async def staff_scan_voucher_code(
         cv.status = "expired"
         await db.flush()
         raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    if data.validate_only:
+        # Lookup only — do NOT consume. The voucher is consumed when staff apply
+        # it to an order at checkout (/staff/orders/{id}/apply-voucher).
+        vd_result0 = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))
+        vd0 = vd_result0.scalar_one_or_none()
+        snapshot0 = cv.voucher_snapshot or {}
+        return APIResponse(
+            data={
+                "voucher_id": cv.id,
+                "title": vd0.display_title if vd0 else snapshot0.get("display_title"),
+                "voucher_title": vd0.display_title if vd0 else snapshot0.get("display_title"),
+                "customer_id": cv.customer_id,
+                "valid": True,
+                "success": True,
+                "message": f"Voucher valid: {vd0.display_title if vd0 else 'Unknown'}",
+            }
+        )
 
     cv.status = "used"
     cv.used_at = now

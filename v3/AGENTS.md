@@ -2257,3 +2257,11 @@ User: "staff portal don't have any page to allow the refund process… check adm
 3. **Redemption success view had zero CSS** (rd-modal-* classes undefined) — rendered as an unstyled white page. Full themed styling added (centered, gift icon, dashed gold code box, buttons).
 4. **Rewards usage flow verified end-to-end** (user question): redeem → reward lands on the customer's account (My Rewards shows QR + code + expiry) → usable TWO ways: staff scans at POS (`/staff/scan/reward/{code}` marks it used — verified live) or applied at online checkout (reward picker → rewardRedemptionCode on order create). Voucher claims go straight to the account likewise.
 - Gates: unit 108/108 · voucher/reward + promotions E2E 4/4 · PWA rebuilt.
+
+### Round 40 — redemption flows verified + kiosk store setup (2026-08-22, user request)
+
+- **Customer online redemption verified live**: checkout voucher picker lists account vouchers + rewards (active only), 15% voucher applied RM 22.00 → RM 18.70; rewards apply via rewardRedemptionCode at order create.
+- **Staff flow verified live**: phone search → customer card → Rewards & Vouchers tab → available rewards/vouchers with Use buttons + Scan Reward QR. (Fixed a missing " · " separator between points and expiry.)
+- **Kiosk/tablet store config (the untouched gap)**: storeId was hardcoded `'1'`. Now `?store=N` → `localStorage loka-kiosk-store` → one-time store picker setup screen listing all stores (public /stores); tablet flow chains store setup → table setup. Menu load waits for a chosen store; setup phases exempt from inactivity reset. Verified live: fresh device → picker → welcome; reload → remembered; ?store=1 → skips setup.
+- Note: "Probe Reward v3" rows in the demo account are E2E residue (test reward catalog entries) — harmless on dev.
+- Gates: unit 108/108 · voucher/reward + PWA journey E2E 7/7 · PWA rebuilt (kiosk restarted).

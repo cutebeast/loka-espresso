@@ -567,6 +567,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "wallet.type_phone_number_or_name": "Type phone number or name...",
   "wallet.use": "Use",
   "wallet.use_2": "Use",
+  "wallet.apply_at_checkout": "Apply at checkout",
   "wallet.vouchers": "Vouchers",
   "wallet.wallet_top_up": "Wallet Top-Up",
   "wallet.zero_amount": "0.00",

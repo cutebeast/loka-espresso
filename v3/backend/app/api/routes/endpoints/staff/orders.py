@@ -16,6 +16,7 @@ from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.menu import MenuCategory, MenuItem
 from app.models.platform import AuditLog
+from app.models.iam import AdminAccount
 from app.models.pos import OrderModificationLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.payment import Payment
@@ -57,6 +58,19 @@ def _audit_principal_id(staff) -> int | None:
 async def _require_store_order(staff, order: Order) -> None:
     if order.store_id != staff.store_id:
         raise HTTPException(status_code=403, detail="Access denied for this store")
+
+
+async def _adjustment_admin_id(db, staff) -> int | None:
+    """order_adjustments.approved_by FKs admin_accounts.id — a staff_profiles id
+    violates it (409 FK error on staff-context apply-voucher/apply-reward).
+    Resolve the ADMIN account behind admin-context staff sessions; plain staff
+    get NULL (the AuditLog already records the acting principal)."""
+    pid = getattr(staff, "principal_id", None)
+    if not pid:
+        return None
+    return (
+        await db.execute(select(AdminAccount.id).where(AdminAccount.principal_id == pid))
+    ).scalar_one_or_none()
 
 
 # Staff status machine: monotonic forward only. Terminal statuses
@@ -888,7 +902,7 @@ async def apply_staff_order_voucher(
         adjustment_type="discount_override",
         amount_delta=money_round(-discount, precision, rounding_mode),
         reason=f"Voucher applied: {voucher_code} ({voucher_def.display_title if voucher_def else voucher_type})",
-        approved_by=staff.id,
+        approved_by=await _adjustment_admin_id(db, staff),
     )
     db.add(adj)
 
@@ -1009,7 +1023,7 @@ async def apply_staff_order_reward(
         adjustment_type="discount_override",
         amount_delta=money_round(-discount, precision, rounding_mode),
         reason=f"Reward applied: {reward_cat.reward_name if reward_cat else customer_reward.redemption_code}",
-        approved_by=staff.id,
+        approved_by=await _adjustment_admin_id(db, staff),
     )
     db.add(adj)
 

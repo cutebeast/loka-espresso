@@ -3,7 +3,7 @@
 import { RoleGuard, canUsePOS } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { searchCustomers, getCustomerWallet, getCustomerById, topUpWallet, api, markRewardUsed, markVoucherUsed, scanCustomerCode, scanRewardCode, scanVoucherCode, type Customer, type CustomerWallet, type Reward, type Voucher } from "@/lib/api";
+import { searchCustomers, getCustomerWallet, getCustomerById, topUpWallet, api, scanCustomerCode, scanRewardCode, scanVoucherCode, type Customer, type CustomerWallet, type Reward, type Voucher } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -11,7 +11,7 @@ import Card from "@/components/Card";
 import EmptyState from "@/components/EmptyState";
 import QrScannerModal from "@/components/QrScannerModal";
 import SkeletonCard from "@/components/SkeletonCard";
-import { Search, QrCode, Wallet, Banknote, Gift, Ticket, User, Lock, CheckCircle, ScanLine } from "lucide-react";
+import { Search, QrCode, Wallet, Banknote, Gift, Ticket, User, Lock, ScanLine } from "lucide-react";
 type Tab = "topup" | "rewards";
 // Admin top-up credits the wallet directly; only cash/counter payment is supported.
 type PaymentMethod = "cash";
@@ -52,17 +52,7 @@ function WalletPageContent() {
   const [showScanner, setShowScanner] = useState(false);
   const [scanMode, setScanMode] = useState<"customer" | "reward" | "voucher">("customer");
 
-  // Redeem state
-  const [redeemingId, setRedeemingId] = useState<number | null>(null);
-  const [redeemType, setRedeemType] = useState<"reward" | "voucher" | null>(null);
 
-  // Redeem PIN state
-  const [showRedeemPin, setShowRedeemPin] = useState(false);
-  const [redeemPin, setRedeemPin] = useState("");
-  const [pendingRedeem, setPendingRedeem] = useState<{
-    reward?: Reward;
-    voucher?: Voucher;
-  } | null>(null);
   const MAX_TOPUP = 100000;
   const doSearch = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -207,73 +197,6 @@ function WalletPageContent() {
     } finally {
       setToppingUp(false);
     }
-  };
-  const handleUseReward = async (reward: Reward) => {
-    if (!selectedCustomer) {
-      setError(t("wallet.err_search_customer"));
-      return;
-    }
-    setPendingRedeem({
-      reward
-    });
-    setShowRedeemPin(true);
-    setRedeemPin("");
-  };
-  const handleUseVoucher = async (voucher: Voucher) => {
-    if (!selectedCustomer) {
-      setError(t("wallet.err_search_customer"));
-      return;
-    }
-    setPendingRedeem({
-      voucher
-    });
-    setShowRedeemPin(true);
-    setRedeemPin("");
-  };
-  const executeRedeem = async () => {
-    if (!pendingRedeem || !selectedCustomer) {
-      setError(t("wallet.err_select_reward"));
-      return;
-    }
-    const valid = await verifyPin(redeemPin);
-    if (!valid) {
-      attemptCountRef.current++;
-      setError(t("wallet.err_invalid_pin"));
-      return;
-    }
-    attemptCountRef.current = 0;
-    setShowRedeemPin(false);
-    setRedeemPin("");
-    if (pendingRedeem.reward) {
-      const reward = pendingRedeem.reward;
-      setRedeemingId(reward.id);
-      setRedeemType("reward");
-      try {
-        const res = await markRewardUsed(selectedCustomer.id, reward.id);
-        setSuccess(res.message || t("wallet.reward_used_success"));
-        if (selectedCustomer) loadCustomer(selectedCustomer);
-      } catch (e: unknown) {
-        setError(parseApiError(e, t("wallet.redeem_reward_failed")));
-      } finally {
-        setRedeemingId(null);
-        setRedeemType(null);
-      }
-    } else if (pendingRedeem.voucher) {
-      const voucher = pendingRedeem.voucher;
-      setRedeemingId(voucher.id);
-      setRedeemType("voucher");
-      try {
-        const res = await markVoucherUsed(selectedCustomer.id, voucher.id);
-        setSuccess(res.message || t("wallet.voucher_used_success"));
-        if (selectedCustomer) loadCustomer(selectedCustomer);
-      } catch (e: unknown) {
-        setError(parseApiError(e, t("wallet.redeem_voucher_failed")));
-      } finally {
-        setRedeemingId(null);
-        setRedeemType(null);
-      }
-    }
-    setPendingRedeem(null);
   };
   const formatRewardName = (r: Reward) => {
     return r.name || (r.redemption_code ? t("common.reward_n", { id: r.redemption_code }) : t("common.reward_n", { id: r.id }));
@@ -574,37 +497,6 @@ function WalletPageContent() {
         flexDirection: "column",
         gap: 16
       }}>
-              {/* Redeem PIN Entry */}
-              {showRedeemPin && <Card style={{
-          textAlign: "center"
-        }}>
-                  <div style={{
-            fontSize: 18,
-            fontWeight: 700,
-            marginBottom: 16
-          }}>{t("wallet.enter_your_pin_to_confirm")}</div>
-                  <form onSubmit={e => e.preventDefault()} style={{
-            display: "contents"
-          }}>
-                  <input type="password" inputMode="numeric" value={redeemPin} onChange={e => setRedeemPin(e.target.value)} placeholder={t("wallet.4_digits")} maxLength={6} className="form-input" style={{
-              textAlign: "center",
-              fontSize: 24,
-              letterSpacing: 8,
-              marginBottom: 16
-            }} autoFocus />
-                  </form>
-                  <div style={{
-            display: "flex",
-            gap: 10
-          }}>
-                    <button className="btn btn-ghost flex-1" onClick={() => {
-              setShowRedeemPin(false);
-              setRedeemPin("");
-              setPendingRedeem(null);
-            }}>{t("wallet.cancel")}</button>
-                    <button className="btn btn-primary flex-1" onClick={executeRedeem} disabled={redeemPin.length < 6}>{t("wallet.confirm")}</button>
-                  </div>
-                </Card>}
               {/* Rewards */}
               <Card title={t("wallet.available_rewards", { count: walletData.rewards?.length || 0 })}>
                 {!walletData.rewards || walletData.rewards.length === 0 ? <EmptyState title={t("wallet.no_rewards")} description={t("wallet.this_customer_has_no_available_rewards")} icon={<Gift size={40} />} /> : <div style={{
@@ -637,9 +529,9 @@ function WalletPageContent() {
                     })()}</>}
                           </div>
                         </div>
-                        <button className="btn btn-sm btn-success" onClick={() => handleUseReward(reward)} disabled={redeemingId === reward.id && redeemType === "reward"}>
-                          {redeemingId === reward.id && redeemType === "reward" ? "..." : <><CheckCircle size={12} />{t("wallet.use")}</>}
-                        </button>
+                        {/* Read-only — rewards are consumed when applied to an
+                            order at POS checkout, never standalone here */}
+                        <span className="badge badge-sm badge-outline">{t("wallet.apply_at_checkout")}</span>
                       </div>)}
                   </div>}
                 <div style={{
@@ -684,9 +576,7 @@ function WalletPageContent() {
                     })()}</>}
                           </div>
                         </div>
-                        <button className="btn btn-sm btn-success" onClick={() => handleUseVoucher(voucher)} disabled={redeemingId === voucher.id && redeemType === "voucher"}>
-                          {redeemingId === voucher.id && redeemType === "voucher" ? "..." : <><CheckCircle size={12} />{t("wallet.use_2")}</>}
-                        </button>
+                        <span className="badge badge-sm badge-outline">{t("wallet.apply_at_checkout")}</span>
                       </div>)}
                   </div>}
                 <div style={{
