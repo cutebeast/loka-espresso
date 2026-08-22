@@ -26,7 +26,7 @@ pytestmark = [pytest.mark.admin]
 
 @pytest.mark.asyncio
 async def test_voucher_create_and_redeem_flow(
-    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, cleanup_registry: dict
+    client: httpx.AsyncClient, admin_headers: dict, staff_headers: dict, base_url: str, store_id: int, cleanup_registry: dict
 ):
     """Create a voucher definition, assign to customer, verify wallet, redeem."""
     # 1. Find a customer
@@ -60,58 +60,85 @@ async def test_voucher_create_and_redeem_flow(
     if not voucher_defs:
         pytest.skip("No voucher definitions in seed data")
 
-    # Try to find or create a voucher definition
-    voucher_def = voucher_defs[0]
+    # Try to find or create a voucher definition — skip first-order-only ones
+    # (this customer may have ordered before, so they would legitimately 400)
+    voucher_def = next(
+        (v for v in voucher_defs if not v.get("first_order_only") and not v.get("first_order")),
+        voucher_defs[0],
+    )
     voucher_def_id = voucher_def["id"]
 
-    # 4. Assign voucher to customer via wallet — find existing or skip
-    r_wallet = await client.get(
-        f"{base_url}/admin/customers/{customer_id}/wallet",
-        headers=admin_headers,
-    )
-    wallet_data = r_wallet.json()["data"]
-    customer_vouchers = wallet_data.get("vouchers", [])
-    if not customer_vouchers:
-        # Try to issue a voucher via direct assignment
-        try:
-            voucher_assigned = False
-            r_assign = await client.post(
-                f"{base_url}/admin/customers/{customer_id}/award-voucher",
-                headers=admin_headers,
-                json={"voucher_id": voucher_def_id},
-            )
-            if r_assign.status_code in (200, 201):
-                data = r_assign.json().get("data", r_assign.json())
-                voucher_id = data.get("id") or data.get("voucher_id")
-                assert voucher_id is not None, f"Cannot determine voucher ID from response: {data}"
-                voucher_assigned = True
-        except httpx.ConnectError:
-            pass
-        if not voucher_assigned:
+    # 4. Assign a FRESH voucher to the customer (existing wallet vouchers may be
+    # first-order-only and legitimately reject this repeat customer).
+    voucher_assigned = False
+    voucher_id = None
+    try:
+        r_assign = await client.post(
+            f"{base_url}/admin/customers/{customer_id}/award-voucher",
+            headers=admin_headers,
+            json={"voucher_id": voucher_def_id},
+        )
+        if r_assign.status_code in (200, 201):
+            data = r_assign.json().get("data", r_assign.json())
+            voucher_id = data.get("id") or data.get("voucher_id")
+            assert voucher_id is not None, f"Cannot determine voucher ID from response: {data}"
+            voucher_assigned = True
+    except httpx.ConnectError:
+        pass
+    if not voucher_assigned:
+        r_wallet = await client.get(
+            f"{base_url}/admin/customers/{customer_id}/wallet",
+            headers=admin_headers,
+        )
+        wallet_data = r_wallet.json()["data"]
+        customer_vouchers = wallet_data.get("vouchers", [])
+        if not customer_vouchers:
             pytest.skip("Cannot assign voucher — no vouchers in wallet and assignment failed")
-    else:
         voucher_id = customer_vouchers[0].get("id") or customer_vouchers[0].get("voucher_id")
         assert voucher_id is not None, "Cannot determine voucher ID for redemption"
 
-    # 5. Redeem the voucher
-    try:
-        r_redeem = await client.post(
-            f"{base_url}/admin/customers/{customer_id}/use-voucher/{voucher_id}",
-            headers=admin_headers,
-            json={"store_id": store_id, "notes": "E2E round8 test redemption"},
-        )
-    except httpx.ConnectError:
-        pytest.skip("Voucher redeem endpoint not available")
+    # 5. Redeem the voucher through the PROPER order-tied flow: create a POS
+    # order for the customer, apply the voucher to it (consumes it), then
+    # cancel the order (releases it back). The standalone admin/staff
+    # "use-voucher" endpoints were removed (round-40 redesign).
+    staff_h = staff_headers
+    r_menu = await client.get(f"{base_url}/menu/stores/1")
+    assert r_menu.status_code == 200, r_menu.text
+    item = next(i for i in r_menu.json()["data"]["items"] if not str(i.get("item_code", "")).startswith("EX-") and float(i.get("base_price") or i.get("price") or 0) > 0)
 
-    if r_redeem.status_code == 404:
-        pytest.skip("Voucher redeem endpoint not implemented")
-    assert r_redeem.status_code == 200, (
-        f"Voucher redeem failed with status {r_redeem.status_code}: {r_redeem.text}"
+    r_order = await client.post(
+        f"{base_url}/staff/pos/orders",
+        headers=staff_h,
+        json={"order_type": "takeaway", "customer_id": customer_id,
+              "line_items": [{"menu_item_id": item["id"], "quantity": 1}]},
     )
-    result = r_redeem.json().get("data", r_redeem.json())
-    assert result.get("success") is True or "message" in result
+    assert r_order.status_code in (200, 201), r_order.text
+    order_data = r_order.json()["data"]
+    order_id = order_data.get("order_id") or order_data.get("id")
 
-    # 6. Verify wallet after redemption
+    # apply by the customer's voucher code
+    r_wv = await client.get(f"{base_url}/admin/customers/{customer_id}/wallet", headers=admin_headers)
+    code = next((v.get("code") for v in (r_wv.json()["data"].get("vouchers") or []) if (v.get("id") or v.get("voucher_id")) == voucher_id), None)
+    assert code, "Cannot find the assigned voucher's code"
+
+    r_apply = await client.post(
+        f"{base_url}/staff/orders/{order_id}/apply-voucher",
+        headers=staff_h,
+        json={"voucher_code": code},
+    )
+    assert r_apply.status_code == 200, f"Voucher apply failed with status {r_apply.status_code}: {r_apply.text}"
+    apply_data = r_apply.json().get("data", r_apply.json())
+    assert "discount_amount" in apply_data or "new_total" in apply_data
+
+    # 6. Cancel the order — the voucher is released back to active
+    r_cancel = await client.post(
+        f"{base_url}/staff/orders/{order_id}/cancel",
+        headers=staff_h,
+        json={"reason": "e2e voucher flow cleanup"},
+    )
+    assert r_cancel.status_code == 200, r_cancel.text
+
+    # 7. Verify wallet after the apply/cancel round-trip
     r_wallet_after = await client.get(
         f"{base_url}/admin/customers/{customer_id}/wallet",
         headers=admin_headers,

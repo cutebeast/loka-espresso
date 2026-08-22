@@ -2265,3 +2265,11 @@ User: "staff portal don't have any page to allow the refund process… check adm
 - **Kiosk/tablet store config (the untouched gap)**: storeId was hardcoded `'1'`. Now `?store=N` → `localStorage loka-kiosk-store` → one-time store picker setup screen listing all stores (public /stores); tablet flow chains store setup → table setup. Menu load waits for a chosen store; setup phases exempt from inactivity reset. Verified live: fresh device → picker → welcome; reload → remembered; ?store=1 → skips setup.
 - Note: "Probe Reward v3" rows in the demo account are E2E residue (test reward catalog entries) — harmless on dev.
 - Gates: unit 108/108 · voucher/reward + PWA journey E2E 7/7 · PWA rebuilt (kiosk restarted).
+
+### Round 40 redesign — reward/voucher consumption is order-tied (2026-08-23, user direction)
+
+Owner: standalone "Use" on the staff wallet page was wrong — rewards/vouchers must be consumed at checkout against an order. Changes:
+- **Scan endpoints were consuming on lookup**: `/staff/scan/reward/{code}` + `/staff/scan/voucher/{code}` marked the reward/voucher USED when staff merely scanned to view it. Both now default `validate_only: true` (return validity + info, no state change); `validate_only=false` keeps the legacy explicit redemption.
+- **REAL BUG — staff apply 409 FK error**: `order_adjustments.approved_by` FKs `admin_accounts.id` but staff apply-voucher/apply-reward passed `staff.id` (staff_profiles) — failed for any staff id without a colliding admin account row. `_adjustment_admin_id()` resolves the admin account behind admin-context staff sessions; plain staff get NULL (AuditLog records the acting principal).
+- **Staff wallet page is read-only for redemption**: "Use" buttons removed → "Apply at checkout" badges; PIN-redeem modal + dead handlers removed. The correct path exists at POS checkout: attach customer (phone search or QR scan) → "Apply Discounts & Wallet" drawer → vouchers/rewards listed → Apply ties them to the order (consumed on apply, released on cancel — verified live: apply→used, cancel→active).
+- Gates: unit 108/108 · voucher/reward E2E 2/2 · staff-portal rebuilt.

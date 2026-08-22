@@ -22,10 +22,6 @@ from app.models.store import Store
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, BaseSchema
-from app.schemas.customer import (
-    UseRewardRequest,
-    UseVoucherRequest,
-)
 from app.schemas.wallet import AdminTopupRequest, WalletOut
 from app.services.platform_config import PlatformConfigService
 
@@ -426,110 +422,6 @@ async def staff_wallet_topup(staff: Annotated[StaffProfile, Depends(RequireStaff
     return APIResponse(data={"message": "Top-up complete", "new_balance": float(new_balance)})
 
 
-@router.post("/staff/customers/{customer_id}/use-reward/{reward_id}", response_model=APIResponse[dict])
-async def staff_use_reward(
-    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
-    db: DBDependency,
-    customer_id: int,
-    reward_id: int,
-    data: UseRewardRequest,
-):
-    """Mark a customer's reward as used in-store."""
-    result = await db.execute(
-        select(CustomerReward).where(
-            CustomerReward.id == reward_id,
-            CustomerReward.customer_id == customer_id,
-        ).with_for_update()
-    )
-    cr = result.scalar_one_or_none()
-    if not cr:
-        raise HTTPException(status_code=404, detail="Reward not found for this customer")
-
-    if cr.status == "used":
-        raise HTTPException(status_code=400, detail="Reward already used")
-    if cr.status == "expired":
-        raise HTTPException(status_code=400, detail="Reward has expired")
-    if cr.status == "cancelled":
-        raise HTTPException(status_code=400, detail="Reward was cancelled")
-
-    now = datetime.now(timezone.utc)
-    if cr.expires_at and cr.expires_at < now:
-        cr.status = "expired"
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Reward has expired")
-
-    cr.status = "used"
-    cr.used_at = now
-    # Always attribute the redemption to the staff member's own store (token
-    # store_id for admin-context staff sessions); ignore client-supplied store_id.
-    store_id = staff.store_id
-    cr.store_id = store_id
-
-    principal_id = _audit_principal_id(staff)
-    if principal_id:
-        db.add(AuditLog(
-            principal_id=principal_id,
-            action="update",
-            resource_type="customer_reward",
-            resource_id=reward_id,
-            changes_summary={"customer_id": customer_id, "store_id": store_id, "redemption_code": cr.redemption_code},
-        ))
-    await db.commit()
-    return APIResponse(data={"message": "Reward marked as used", "success": True})
-
-
-@router.post("/staff/customers/{customer_id}/use-voucher/{voucher_id}", response_model=APIResponse[dict])
-async def staff_use_voucher(
-    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
-    db: DBDependency,
-    customer_id: int,
-    voucher_id: int,
-    data: UseVoucherRequest,
-):
-    """Mark a customer's voucher as used in-store."""
-    result = await db.execute(
-        select(CustomerVoucher).where(
-            CustomerVoucher.id == voucher_id,
-            CustomerVoucher.customer_id == customer_id,
-        ).with_for_update()
-    )
-    cv = result.scalar_one_or_none()
-    if not cv:
-        raise HTTPException(status_code=404, detail="Voucher not found for this customer")
-
-    if cv.status == "used":
-        raise HTTPException(status_code=400, detail="Voucher already used")
-    if cv.status == "expired":
-        raise HTTPException(status_code=400, detail="Voucher has expired")
-    if cv.status == "revoked":
-        raise HTTPException(status_code=400, detail="Voucher was revoked")
-
-    now = datetime.now(timezone.utc)
-    if cv.expires_at and cv.expires_at < now:
-        cv.status = "expired"
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Voucher has expired")
-
-    cv.status = "used"
-    cv.used_at = now
-    # Always attribute the redemption to the staff member's own store (token
-    # store_id for admin-context staff sessions); ignore client-supplied store_id.
-    store_id = staff.store_id
-    cv.store_id = store_id
-
-    principal_id = _audit_principal_id(staff)
-    if principal_id:
-        db.add(AuditLog(
-            principal_id=principal_id,
-            action="update",
-            resource_type="customer_voucher",
-            resource_id=voucher_id,
-            changes_summary={"customer_id": customer_id, "store_id": store_id, "voucher_code": cv.voucher_code},
-        ))
-    await db.commit()
-    return APIResponse(data={"message": "Voucher marked as used", "success": True})
-
-
 # ── Scan endpoints ──
 
 class ScanCustomerQRRequest(BaseSchema):
@@ -538,15 +430,10 @@ class ScanCustomerQRRequest(BaseSchema):
 
 class ScanRewardCodeRequest(BaseSchema):
     store_id: int | None = None
-    # Default: scan = lookup/validation ONLY (no consumption). Rewards/vouchers
-    # are consumed only when applied to an order at checkout. Pass
-    # validate_only=false for the legacy explicit in-store redemption path.
-    validate_only: bool = True
 
 
 class ScanVoucherCodeRequest(BaseSchema):
     store_id: int | None = None
-    validate_only: bool = True
 
 
 @router.post("/staff/scan/customer", response_model=APIResponse[dict])
@@ -646,36 +533,10 @@ async def staff_scan_reward_code(
         await db.flush()
         raise HTTPException(status_code=400, detail="Reward has expired")
 
-    if data.validate_only:
-        # Lookup only — do NOT consume. The reward is consumed when staff apply
-        # it to an order at checkout (/staff/orders/{id}/apply-reward).
-        rc_result0 = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
-        rc0 = rc_result0.scalar_one_or_none()
-        snapshot0 = cr.reward_snapshot or {}
-        return APIResponse(
-            data={
-                "reward_id": cr.id,
-                "name": rc0.reward_name if rc0 else snapshot0.get("reward_name"),
-                "reward_name": rc0.reward_name if rc0 else snapshot0.get("reward_name"),
-                "customer_id": cr.customer_id,
-                "valid": True,
-                "success": True,
-                "message": f"Reward valid: {rc0.reward_name if rc0 else 'Unknown'}",
-            }
-        )
-
-    cr.status = "used"
-    cr.used_at = now
-    # Always attribute the redemption to the staff member's own store (token
-    # store_id for admin-context staff sessions); ignore client-supplied store_id.
-    store_id = staff.store_id
-    cr.store_id = store_id
-
+    # Scan = lookup/validation ONLY. The reward is consumed when staff apply
+    # it to an order at checkout (/staff/orders/{id}/apply-reward).
     rc_result = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
     rc = rc_result.scalar_one_or_none()
-
-    await db.commit()
-
     snapshot = cr.reward_snapshot or {}
     return APIResponse(
         data={
@@ -685,7 +546,7 @@ async def staff_scan_reward_code(
             "customer_id": cr.customer_id,
             "valid": True,
             "success": True,
-            "message": f"Reward redeemed: {rc.reward_name if rc else 'Unknown'}",
+            "message": f"Reward valid: {rc.reward_name if rc else 'Unknown'}",
         }
     )
 
@@ -718,38 +579,10 @@ async def staff_scan_voucher_code(
         await db.flush()
         raise HTTPException(status_code=400, detail="Voucher has expired")
 
-    if data.validate_only:
-        # Lookup only — do NOT consume. The voucher is consumed when staff apply
-        # it to an order at checkout (/staff/orders/{id}/apply-voucher).
-        vd_result0 = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))
-        vd0 = vd_result0.scalar_one_or_none()
-        snapshot0 = cv.voucher_snapshot or {}
-        return APIResponse(
-            data={
-                "voucher_id": cv.id,
-                "title": vd0.display_title if vd0 else snapshot0.get("display_title"),
-                "voucher_title": vd0.display_title if vd0 else snapshot0.get("display_title"),
-                "customer_id": cv.customer_id,
-                "valid": True,
-                "success": True,
-                "message": f"Voucher valid: {vd0.display_title if vd0 else 'Unknown'}",
-            }
-        )
-
-    cv.status = "used"
-    cv.used_at = now
-    # Always attribute the redemption to the staff member's own store (token
-    # store_id for admin-context staff sessions); ignore client-supplied store_id.
-    store_id = staff.store_id
-    cv.store_id = store_id
-
+    # Scan = lookup/validation ONLY. The voucher is consumed when staff apply
+    # it to an order at checkout (/staff/orders/{id}/apply-voucher).
     vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))
     vd = vd_result.scalar_one_or_none()
-    if vd:
-        vd.global_use_count += 1
-
-    await db.commit()
-
     snapshot = cv.voucher_snapshot or {}
     return APIResponse(
         data={
@@ -759,6 +592,6 @@ async def staff_scan_voucher_code(
             "customer_id": cv.customer_id,
             "valid": True,
             "success": True,
-            "message": f"Voucher applied: {vd.display_title if vd else 'Unknown'}",
+            "message": f"Voucher valid: {vd.display_title if vd else 'Unknown'}",
         }
     )

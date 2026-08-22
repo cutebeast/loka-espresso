@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { searchCustomers, getCustomerWallet, markVoucherUsed, markRewardUsed, scanCustomerCode } from "@/lib/api";
-import type { Customer, CustomerWallet, Reward, Voucher } from "@/lib/api";
+import { searchCustomers, getCustomerWallet, scanCustomerCode } from "@/lib/api";
+import type { Customer, CustomerWallet } from "@/lib/api";
 
 export function usePosCustomer() {
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [customerWallet, setCustomerWallet] = useState<CustomerWallet | null>(null);
   const [showRewardsDrawer, setShowRewardsDrawer] = useState(false);
-  const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const customerSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -52,35 +51,14 @@ export function usePosCustomer() {
     return customer;
   }, []);
 
-  const handleBurnReward = useCallback(async (customer: Customer, reward: Reward) => {
-    setRedeemingId(reward.id);
-    try {
-      await markRewardUsed(customer.id, reward.id, "Used at POS");
-      await loadCustomerWallet(customer.id);
-      return true;
-    } catch (e: unknown) { throw e; } finally { setRedeemingId(null); }
-  }, [loadCustomerWallet]);
-
-  const handleBurnVoucher = useCallback(async (customer: Customer, voucher: Voucher) => {
-    setRedeemingId(voucher.id);
-    try {
-      await markVoucherUsed(customer.id, voucher.id, "Used at POS");
-      await loadCustomerWallet(customer.id);
-      return true;
-    } catch (e: unknown) { throw e; } finally { setRedeemingId(null); }
-  }, [loadCustomerWallet]);
-
   return {
     searchQ, setSearchQ,
     searchResults, setSearchResults,
     customerWallet, setCustomerWallet,
     showRewardsDrawer, setShowRewardsDrawer,
-    redeemingId, setRedeemingId,
     loadCustomerWallet,
     handleCustomerSelect,
     searchCustomersDebounced,
     handleCustomerQrScan,
-    handleBurnReward,
-    handleBurnVoucher,
   };
 }

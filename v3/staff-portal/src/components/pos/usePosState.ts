@@ -18,7 +18,7 @@ import {
   getMenuItems, getMenuCategories, getTables, getOrders, getBundleProducts,
   createPosOrder,
   type MenuItem, type Category, type Customer, type Table,
-  type Reward, type Voucher, type BundleProduct
+  type BundleProduct
 } from "@/lib/api";
 import { api } from "@/lib/api";
 import { pwaBaseUrl } from "@/lib/pwaBase";
@@ -721,24 +721,10 @@ export function usePosState() {
     searchResults: customerHook.searchResults, setSearchResults: customerHook.setSearchResults,
     customerWallet: customerHook.customerWallet, setCustomerWallet: customerHook.setCustomerWallet,
     showRewardsDrawer: customerHook.showRewardsDrawer, setShowRewardsDrawer: customerHook.setShowRewardsDrawer,
-    redeemingId: customerHook.redeemingId, setRedeemingId: customerHook.setRedeemingId,
     searchCustomersDebounced: customerHook.searchCustomersDebounced,
     loadCustomerWallet: customerHook.loadCustomerWallet,
     handleCustomerSelect,
     handleCustomerQrScan,
-    handleBurnReward: (reward: Reward) =>
-      cartHook.selectedCustomer
-        ? customerHook.handleBurnReward(cartHook.selectedCustomer, reward)
-            .then(() => { setMsg(t("wallet.reward_used", { message: t("wallet.reward_used_success") })); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
-            .catch((e) => setError((e as Error).message))
-        : undefined,
-    handleBurnVoucher: (voucher: Voucher) =>
-      cartHook.selectedCustomer
-        ? customerHook.handleBurnVoucher(cartHook.selectedCustomer, voucher)
-            .then(() => { setMsg(t("wallet.voucher_used", { message: t("wallet.voucher_used_success") })); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
-            .catch((e) => setError((e as Error).message))
-        : undefined,
-
     // Checkout (from usePosCheckout)
     checkoutOrder: checkoutHook.checkoutOrder, setCheckoutOrder: checkoutHook.setCheckoutOrder,
     checkoutCustomer: checkoutHook.checkoutCustomer, setCheckoutCustomer: checkoutHook.setCheckoutCustomer,

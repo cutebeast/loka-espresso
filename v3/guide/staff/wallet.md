@@ -38,3 +38,9 @@ Check customer wallet balances and process wallet top-ups.
 
 ## Related
 - [Admin — Customers](../admin/customers.md)
+
+## Rewards & vouchers (view-only here)
+
+The **Rewards & Vouchers** tab shows a customer's available rewards and vouchers. They are consumed **at the POS checkout**: attach the customer to the order (phone search or QR scan), open "Apply Discounts & Wallet", and apply the voucher or reward to that order. Applying to an order marks it used; cancelling the order releases it back. Scanning a reward/voucher QR only validates it — it never consumes.
+
+> Legacy note: the old standalone "Use" buttons and mark-used endpoints were removed (they consumed rewards/vouchers with no order attached).

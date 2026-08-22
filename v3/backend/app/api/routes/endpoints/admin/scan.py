@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, require_store_admin
+from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.reward import CustomerReward, RewardCatalog
@@ -121,17 +121,10 @@ async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, dat
         await db.flush()
         raise HTTPException(status_code=400, detail="Reward has expired")
 
-    cr.status = "used"
-    cr.used_at = now
-    if data.store_id:
-        await require_store_admin(db, admin, data.store_id)
-        cr.store_id = data.store_id
-
+    # Scan = lookup/validation ONLY (order-tied consumption happens via the
+    # staff order apply paths). Previously this marked the reward USED on scan.
     rc_result = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
     rc = rc_result.scalar_one_or_none()
-
-    await db.commit()
-
     snapshot = cr.reward_snapshot or {}
     return APIResponse(
         data={
@@ -141,7 +134,7 @@ async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, dat
             "customer_id": cr.customer_id,
             "valid": True,
             "success": True,
-            "message": f"Reward redeemed: {rc.reward_name if rc else 'Unknown'}",
+            "message": f"Reward valid: {rc.reward_name if rc else 'Unknown'}",
         }
     )
 
@@ -170,19 +163,10 @@ async def scan_voucher_code(admin: CurrentAdmin, db: DBDependency, code: str, da
         await db.flush()
         raise HTTPException(status_code=400, detail="Voucher has expired")
 
-    cv.status = "used"
-    cv.used_at = now
-    if data.store_id:
-        await require_store_admin(db, admin, data.store_id)
-        cv.store_id = data.store_id
-
+    # Scan = lookup/validation ONLY (order-tied consumption happens via the
+    # staff order apply paths). Previously this marked the voucher USED on scan.
     vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))
     vd = vd_result.scalar_one_or_none()
-    if vd:
-        vd.global_use_count += 1
-
-    await db.commit()
-
     snapshot = cv.voucher_snapshot or {}
     return APIResponse(
         data={
@@ -192,6 +176,6 @@ async def scan_voucher_code(admin: CurrentAdmin, db: DBDependency, code: str, da
             "customer_id": cv.customer_id,
             "valid": True,
             "success": True,
-            "message": f"Voucher applied: {vd.display_title if vd else 'Unknown'}",
+            "message": f"Voucher valid: {vd.display_title if vd else 'Unknown'}",
         }
     )

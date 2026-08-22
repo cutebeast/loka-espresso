@@ -173,12 +173,6 @@ class AwardVoucherRequest(BaseSchema):
     reason: str = "Admin awarded"
 
 
-class UseRewardRequest(BaseSchema):
-    store_id: int | None = None
-
-
-class UseVoucherRequest(BaseSchema):
-    store_id: int | None = None
 
 
 class SetTierRequest(BaseSchema):

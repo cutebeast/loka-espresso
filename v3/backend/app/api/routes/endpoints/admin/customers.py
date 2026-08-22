@@ -23,8 +23,6 @@ from app.schemas.customer import (
     CustomerCreate,
     CustomerUpdate,
     SetTierRequest,
-    UseRewardRequest,
-    UseVoucherRequest,
 )
 
 router = APIRouter(prefix="/admin/customers", tags=["admin — customers"])
@@ -432,86 +430,6 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     await db.commit()
     await db.refresh(cv)
     return APIResponse(data={"message": "Voucher awarded", "voucher_id": cv.id, "voucher_code": cv.voucher_code, "voucher_title": vd.display_title})
-
-
-@router.post("/{customer_id}/use-reward/{reward_id}", response_model=APIResponse[dict])
-async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, reward_id: int, data: UseRewardRequest):
-    """Mark a customer's reward as used in-store."""
-    result = await db.execute(
-        select(CustomerReward).where(
-            CustomerReward.id == reward_id,
-            CustomerReward.customer_id == customer_id,
-        ).with_for_update()
-    )
-    cr = result.scalar_one_or_none()
-    if not cr:
-        raise HTTPException(status_code=404, detail="Reward not found for this customer")
-
-    if cr.status == "used":
-        raise HTTPException(status_code=400, detail="Reward already used")
-    if cr.status == "expired":
-        raise HTTPException(status_code=400, detail="Reward has expired")
-    if cr.status == "cancelled":
-        raise HTTPException(status_code=400, detail="Reward was cancelled")
-
-    now = datetime.now(timezone.utc)
-    if cr.expires_at and cr.expires_at < now:
-        cr.status = "expired"
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Reward has expired")
-
-    cr.status = "used"
-    cr.used_at = now
-    if data.store_id is not None:
-        cr.store_id = data.store_id
-
-    db.add(AuditLog(
-        principal_id=admin.id, action="update", resource_type="customer_reward",
-        resource_id=reward_id,
-        changes_summary={"customer_id": customer_id, "store_id": data.store_id, "redemption_code": cr.redemption_code},
-    ))
-    await db.commit()
-    return APIResponse(data={"message": "Reward marked as used", "success": True})
-
-
-@router.post("/{customer_id}/use-voucher/{voucher_id}", response_model=APIResponse[dict])
-async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, voucher_id: int, data: UseVoucherRequest):
-    """Mark a customer's voucher as used in-store."""
-    result = await db.execute(
-        select(CustomerVoucher).where(
-            CustomerVoucher.id == voucher_id,
-            CustomerVoucher.customer_id == customer_id,
-        ).with_for_update()
-    )
-    cv = result.scalar_one_or_none()
-    if not cv:
-        raise HTTPException(status_code=404, detail="Voucher not found for this customer")
-
-    if cv.status == "used":
-        raise HTTPException(status_code=400, detail="Voucher already used")
-    if cv.status == "expired":
-        raise HTTPException(status_code=400, detail="Voucher has expired")
-    if cv.status == "revoked":
-        raise HTTPException(status_code=400, detail="Voucher was revoked")
-
-    now = datetime.now(timezone.utc)
-    if cv.expires_at and cv.expires_at < now:
-        cv.status = "expired"
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Voucher has expired")
-
-    cv.status = "used"
-    cv.used_at = now
-    if data.store_id is not None:
-        cv.store_id = data.store_id
-
-    db.add(AuditLog(
-        principal_id=admin.id, action="update", resource_type="customer_voucher",
-        resource_id=voucher_id,
-        changes_summary={"customer_id": customer_id, "store_id": data.store_id, "voucher_code": cv.voucher_code},
-    ))
-    await db.commit()
-    return APIResponse(data={"message": "Voucher marked as used", "success": True})
 
 
 @router.post("/{customer_id}/set-tier", response_model=APIResponse[dict])

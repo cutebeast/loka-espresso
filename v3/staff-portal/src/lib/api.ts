@@ -1026,15 +1026,7 @@ export function topUpWallet(payload: {
   return api.post<{ message: string; new_balance: number }>("/staff/wallets/topup", payload);
 }
 
-export function markRewardUsed(customerId: number, rewardId: number, notes?: string) {
-  const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
-  return api.post<{ message: string; success: boolean }>(`/staff/customers/${customerId}/use-reward/${rewardId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
-}
 
-export function markVoucherUsed(customerId: number, voucherId: number, notes?: string) {
-  const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
-  return api.post<{ message: string; success: boolean }>(`/staff/customers/${customerId}/use-voucher/${voucherId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
-}
 
 export function scanCustomerCode(code: string) {
   return api.post<{
