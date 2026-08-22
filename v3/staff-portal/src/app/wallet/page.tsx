@@ -631,7 +631,7 @@ function WalletPageContent() {
                 }}>
                             {reward.redemption_code && <>{t("wallet.code")}{reward.redemption_code} · </>}
                             {reward.points_spent !== undefined && <>{reward.points_spent}{t("wallet.pts")}</>}
-                            {reward.expires_at && <>{(() => {
+                            {reward.expires_at && <>{reward.points_spent !== undefined ? " · " : ""}{(() => {
                       const d = new Date(reward.expires_at);
                       return !isNaN(d.getTime()) ? t("common.expires", { date: d.toLocaleDateString() }) : null;
                     })()}</>}

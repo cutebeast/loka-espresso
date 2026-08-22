@@ -197,7 +197,13 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{r.reward_name}</p>
-                    <p className="text-[11px] text-text-muted">{parseRewardInfo(r.reward_name).description || t('checkout.rewardFallback')}</p>
+                    {(() => {
+                      const desc = parseRewardInfo(r.reward_name).description;
+                      // Skip the subtitle when it's just the name repeated
+                      return desc && desc !== r.reward_name
+                        ? <p className="text-[11px] text-text-muted">{desc}</p>
+                        : null;
+                    })()}
                   </div>
                   <Gift size={14} color={LOKA.copper} />
                 </button>

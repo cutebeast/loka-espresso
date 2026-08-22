@@ -82,7 +82,7 @@ interface CartItem {
   bundle_title?: string;
 }
 
-type KioskPhase = 'welcome' | 'order_type' | 'table_number' | 'phone' | 'menu' | 'item' | 'bundle' | 'cart' | 'addon_deals' | 'checkout' | 'payment_select' | 'success' | 'setup';
+type KioskPhase = 'welcome' | 'order_type' | 'table_number' | 'phone' | 'menu' | 'item' | 'bundle' | 'cart' | 'addon_deals' | 'checkout' | 'payment_select' | 'success' | 'setup' | 'store_setup';
 type Orientation = 'portrait' | 'landscape';
 type KioskMode = 'standing' | 'tablet';
 
@@ -108,9 +108,22 @@ function modifierRequirementsMet(item: KioskMenuItem, selections: Record<number,
 export default function KioskPage() {
   const { pageParams } = useUIStore();
   const { t, locale, setLocale } = useTranslation();
-  const storeId = parseInt((pageParams.store as string) || '1', 10);
+  // Store resolution: ?store=N URL param → device-persisted choice → one-time
+  // setup screen. (Was: hardcoded default store 1 — every store's kiosk would
+  // have ordered into store 1.)
+  const KIOSK_STORE_KEY = 'loka-kiosk-store';
+  const [storeId, setStoreId] = useState<number | null>(() => {
+    const fromUrl = parseInt((pageParams.store as string) || '', 10);
+    if (!isNaN(fromUrl)) return fromUrl;
+    try {
+      const saved = localStorage.getItem(KIOSK_STORE_KEY);
+      const n = saved ? parseInt(saved, 10) : NaN;
+      return isNaN(n) ? null : n;
+    } catch { return null; }
+  });
+  const [availableStores, setAvailableStores] = useState<{ id: number; store_name: string; city?: string }[]>([]);
 
-  const [phase, setPhase] = useState<KioskPhase>('welcome');
+  const [phase, setPhase] = useState<KioskPhase>(storeId ? 'welcome' : 'store_setup');
   const [kioskMode, setKioskMode] = useState<KioskMode>('standing');
   const [orderType, setOrderType] = useState<'dine_in' | 'takeaway'>('dine_in');
   const [tableNumber, setTableNumber] = useState('');
@@ -157,6 +170,7 @@ export default function KioskPage() {
     if (isTablet) {
       setKioskMode('tablet');
       setOrderType('dine_in');
+      if (!storeId) return; // store setup first; table setup follows
       const urlTable = searchParams.get('table');
       if (urlTable) {
         setTableNumber(urlTable);
@@ -172,7 +186,22 @@ export default function KioskPage() {
         }
       }
     }
-  }, []);
+  }, [storeId]);
+
+  // ── Store list for the one-time setup screen (only when needed) ──
+  useEffect(() => {
+    if (storeId) return;
+    api.get('/stores').then((res: { data?: unknown }) => {
+      const list = Array.isArray(res.data) ? res.data : ((res.data as { items?: unknown[] })?.items ?? []);
+      setAvailableStores(list as { id: number; store_name: string; city?: string }[]);
+    }).catch(() => setAvailableStores([]));
+  }, [storeId]);
+
+  const pickStore = (id: number) => {
+    setStoreId(id);
+    try { localStorage.setItem(KIOSK_STORE_KEY, String(id)); } catch {}
+    setPhase(kioskMode === 'tablet' ? 'setup' : 'welcome');
+  };
 
   // ── Orientation detection ──
   useEffect(() => {
@@ -192,6 +221,7 @@ export default function KioskPage() {
 
   // ── Load menu data ──
   useEffect(() => {
+    if (!storeId) return; // wait for the store setup screen
     const loadData = async () => {
       setLoading(true);
       try {
@@ -235,14 +265,14 @@ export default function KioskPage() {
       }
     };
     loadData();
-  }, []);
+  }, [storeId, t]);
 
   // ── Inactivity timer with warning ──
   const resetInactivity = useCallback(() => {
     if (inactivityRef.current) clearTimeout(inactivityRef.current);
     if (warnRef.current) clearTimeout(warnRef.current);
     setInactivityWarn(false);
-    if (phase !== 'welcome' && phase !== 'success') {
+    if (phase !== 'welcome' && phase !== 'success' && phase !== 'setup' && phase !== 'store_setup') {
       warnRef.current = setTimeout(() => {
         setInactivityWarn(true);
       }, INACTIVITY_TIMEOUT_MS - INACTIVITY_WARNING_MS);
@@ -632,6 +662,31 @@ export default function KioskPage() {
       }}
     >
       <AnimatePresence mode="wait">
+        {/* ── STORE SETUP (one-time per device; persisted to localStorage) ── */}
+        {phase === 'store_setup' && (
+          <motion.div key="store_setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24 }}>
+            <div style={{ fontSize: fs(36, 28), fontWeight: 800, color: LOKA.primary, marginBottom: 8 }}>LOKA Espresso</div>
+            <div style={{ fontSize: fs(20, 16), color: '#888', marginBottom: fs(32, 24) }}>Kiosk Setup — Select Store</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 420 }}>
+              {availableStores.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#999', fontSize: fs(16, 14) }}>{t('common.loading')}</div>
+              )}
+              {availableStores.map(s => (
+                <button key={s.id} onClick={() => pickStore(s.id)} style={{
+                  ...kioskBtnPrimary(fs), fontSize: fs(20, 16), padding: '16px 24px', textAlign: 'left',
+                }}>
+                  {s.store_name}{s.city ? ` — ${s.city}` : ''}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: fs(14, 12), color: '#999', marginTop: fs(20, 16), maxWidth: 420, textAlign: 'center' }}>
+              Staff: pick this device's store once. The choice is saved on this device.
+              Override anytime with ?store=N in the URL.
+            </p>
+          </motion.div>
+        )}
+
         {/* ── TABLET SETUP (staff sets table number once) ── */}
         {phase === 'setup' && (
           <motion.div key="setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1392,7 +1447,7 @@ export default function KioskPage() {
       </AnimatePresence>
 
       {/* Inactivity countdown overlay */}
-      {(inactivityWarn && phase !== 'welcome' && phase !== 'success') && (
+      {(inactivityWarn && phase !== 'welcome' && phase !== 'success' && phase !== 'setup' && phase !== 'store_setup') && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.7)', zIndex: 200,

@@ -2249,3 +2249,11 @@ User: "staff portal don't have any page to allow the refund process… check adm
 - **History-page gap (the "what else did you miss" answer)**: auditing under the past-only condition exposed that `HistoryPage` rendered date headers with ZERO rows — `CATEGORY_ICONS` used UI-ish keys (purchase/topup/…) while the backend writes `order_earned`/`reward_redemption`/`welcome_bonus`/`referral_bonus`/`promo_bonus`/`tier_bonus`/`return_deduction`/`credit`/`debit`, and the icon guard `if (!IconComp) return null` SILENTLY DROPPED every entry. Fixed: real keys mapped + non-fatal fallback to the default icon (an icon-map gap must never hide ledger rows again) + 9 `history.category.*` labels en/zh. Verified live: 8 loyalty rows + 15 wallet rows render.
 - RULES: (1) enum-ish maps keyed to backend values must be sourced from the backend's actual writes (grep `event_type=`/`entry_type=`) — UI-friendly key names drift silently; (2) rendering guards that `return null` on a lookup miss turn data bugs into invisible UI — fall back, never drop.
 - Also: `common.yesterday` locale key added (history date groups). Schema dump regenerated.
+
+### Round 40 fixes — surveys/rewards (2026-08-22, user report w/ screenshots)
+
+1. **Store Review survey showed no rating buttons** — my earlier `UPDATE survey_questions … rating_scale` never committed (missing `s.commit()` — rolled back silently). Re-applied WITH commit; API now serves rating_scale 1-5; 5 rating buttons render live. RULE: scripted DB writes must commit — and the write must be re-read after to prove it landed.
+2. **Raw "Terms: ['…', '…']" python-list text** on promo banners 39/40/41 (38 was fixed the day before) — all cleaned to bullet lists.
+3. **Redemption success view had zero CSS** (rd-modal-* classes undefined) — rendered as an unstyled white page. Full themed styling added (centered, gift icon, dashed gold code box, buttons).
+4. **Rewards usage flow verified end-to-end** (user question): redeem → reward lands on the customer's account (My Rewards shows QR + code + expiry) → usable TWO ways: staff scans at POS (`/staff/scan/reward/{code}` marks it used — verified live) or applied at online checkout (reward picker → rewardRedemptionCode on order create). Voucher claims go straight to the account likewise.
+- Gates: unit 108/108 · voucher/reward + promotions E2E 4/4 · PWA rebuilt.
