@@ -254,8 +254,34 @@ async def purge_soft_deleted_residue() -> None:
             "DELETE FROM inventory_items WHERE item_code LIKE 'E2E-%' OR item_name LIKE 'E2E Inventory Item%'"
         ))
         await db.execute(text(
-            "DELETE FROM suppliers WHERE supplier_name LIKE 'E2E Item Supplier%' OR supplier_name LIKE 'Freq Test%'"
+            "DELETE FROM suppliers WHERE supplier_name LIKE 'E2E %' OR supplier_name LIKE 'Freq Test%'"
         ))
+        # Orphaned content translations (record hard-deleted without the API
+        # delete path — e.g. items purged by this script). UI-key rows have
+        # table_name='' or a namespace name — never touch those.
+        content_tables = (
+            "menu_items", "menu_categories", "menu_modifier_groups", "menu_modifier_options",
+            "inventory_items", "inventory_categories", "product_cards",
+            "information_cards", "event_cards", "event_categories", "promo_banners",
+            "reward_catalog", "voucher_definitions", "bundle_products", "bundle_categories",
+            "bundle_types", "survey_definitions", "survey_questions", "system_pages",
+            "notification_templates", "admin_notifications", "dietary_tags", "allergens",
+            "loyalty_tiers", "stores", "splash_screens", "marketing_campaigns", "tax_categories",
+            "help_articles",
+        )
+        total_orphans = 0
+        for t in content_tables:
+            try:
+                async with db.begin_nested():  # one drifted table must not poison the purge
+                    n = (await db.execute(text(
+                        f"DELETE FROM translations tr WHERE tr.table_name = '{t}' "
+                        f"AND NOT EXISTS (SELECT 1 FROM {t} x WHERE x.id = tr.record_id)"
+                    ))).rowcount
+                    total_orphans += n
+            except Exception:
+                pass  # table drifted — never fatal
+        if total_orphans:
+            print(f"purged {total_orphans} orphaned content translation row(s)")
         # Live junk staff from E2E runs (test_admin_audit_reports "Audit Staff",
         # test_admin_auth_orders "Clock Staff", bare "test" profile). All FKs
         # are CASCADE/SET NULL — direct delete is safe.
