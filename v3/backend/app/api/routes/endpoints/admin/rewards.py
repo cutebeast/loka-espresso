@@ -355,6 +355,14 @@ async def redeem_reward(
     await db.commit()
     await db.refresh(customer_reward)
 
+    # Transactional notification (savepoint-isolated; never blocks redemption).
+    from app.services.transactional_notifications import notify_event
+    await notify_event(
+        db, "reward_redeemed", customer.id,
+        context={"reward_name": reward.reward_name},
+        entity_type="customer_reward", entity_id=customer_reward.id,
+    )
+
     data = {c: getattr(customer_reward, c) for c in customer_reward.__table__.columns.keys()}
     data["reward_name"] = reward.reward_name
     return APIResponse(data=CustomerRewardOut.model_validate(data))

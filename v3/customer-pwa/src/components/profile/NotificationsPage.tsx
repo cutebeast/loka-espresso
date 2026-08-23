@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Package, Gift, Wallet, Star, Info, Calendar, ArrowLeft } from 'lucide-react';
+import { Bell, Package, Gift, Wallet, Star, Info, Calendar, ArrowLeft, Settings } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { GuestGate } from '@/components/auth/GuestGate';
@@ -170,6 +170,9 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="notif-header">
         <h1 className="notif-title">{t('notifications.title')}</h1>
+        <button className="notif-settings-btn" onClick={() => setPage('notif-settings')} aria-label={t('notifSettings.title')}>
+          <Settings size={19} />
+        </button>
         <button className="notif-close-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
@@ -233,6 +236,8 @@ export default function NotificationsPage() {
                       onClick={() => {
                         if (!n.is_read) handleMarkRead(n.id);
                         handleAction(n);
+                        // Campaign click analytics (fire-and-forget).
+                        api.post(`/notifications/me/${n.id}/click`).catch(() => {});
                       }}
                     >
                       <div className={`notif-icon ${iconClass}`}>

@@ -1,5 +1,6 @@
 """Commerce service — referral rewards, loyalty crediting."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy import select
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.customer import Customer, ReferralEvent
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.core.business_time import BUSINESS_TZ
+
+logger = logging.getLogger(__name__)
 
 
 async def _recalculate_tier(db: AsyncSession, account: LoyaltyAccount):
@@ -36,6 +39,20 @@ async def _recalculate_tier(db: AsyncSession, account: LoyaltyAccount):
         if current is None or best.sort_order > current.sort_order:
             account.current_tier_id = best.id
             account.last_tier_change_at = datetime.now(timezone.utc)
+            # Transactional notification (savepoint-isolated, never blocks).
+            from app.services.transactional_notifications import notify_event
+            try:
+                multiplier = float(best.points_multiplier or 1)
+                await notify_event(
+                    db, "tier_upgrade", account.customer_id,
+                    context={
+                        "tier_name": best.name or "a new tier",
+                        "multiplier": f"{multiplier:g}×",
+                    },
+                    entity_type="tier", entity_id=best.id,
+                )
+            except Exception:
+                logger.exception("tier_upgrade notification failed for account %s", account.id)
 
 
 async def _birthday_points_multiplier(db: AsyncSession, customer_id: int) -> Decimal:
@@ -105,6 +122,20 @@ async def grant_voucher_to_customer(
         expires_at=expires_at,
     )
     db.add(cv)
+    await db.flush()
+    # Transactional notification (template-driven, never blocks the grant).
+    from app.services.transactional_notifications import notify_event
+    discount = ""
+    if vd.voucher_type in ("percentage_discount", "fixed_amount_off", "fixed_discount"):
+        discount = f"{float(vd.discount_value or 0):g}"
+        discount = (f"{discount}% off" if vd.voucher_type == "percentage_discount" else f"RM {discount} off")
+    elif vd.voucher_type == "free_delivery":
+        discount = "Free delivery"
+    await notify_event(
+        db, "voucher_granted", customer_id,
+        context={"voucher_title": vd.display_title or vd.voucher_code, "discount": discount},
+        entity_type="customer_voucher", entity_id=cv.id,
+    )
     return cv
 
 
@@ -277,6 +308,16 @@ async def credit_referral_points(
     db.add(ledger)
 
     await db.flush()
+    # Transactional notification (savepoint-isolated, never blocks).
+    from app.services.transactional_notifications import notify_event
+    try:
+        await notify_event(
+            db, "referral_credited", referrer_customer_id,
+            context={"points": points},
+            entity_type="referral_event", entity_id=invitee_customer_id or 0,
+        )
+    except Exception:
+        logger.exception("referral_credited notification failed for customer %s", referrer_customer_id)
     return points
 
 

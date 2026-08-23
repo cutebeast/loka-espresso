@@ -192,10 +192,9 @@ async def register_customer(
         voucher_code = str(cfg.get("loyalty.welcome_reward_voucher_code") or "WELCOME-RM5")
         await grant_voucher_to_customer(db, customer.id, voucher_code, source="welcome_reward")
 
-    # Day-one discovery: inbox message so the new member actually sees their
-    # welcome gift (drives the notification bell badge + inbox card).
+    # Day-one discovery: transactional welcome notification (template-driven;
+    # falls back to nothing when the welcome template is disabled).
     try:
-        from app.models.notification import NotificationMessage
         gift_parts: list[str] = []
         if reward_type in ("points", "points_and_voucher"):
             gift_parts.append(f"{welcome_pts} bonus points")
@@ -208,13 +207,12 @@ async def register_customer(
             )
             gift_parts.append(vd_result.scalar_one_or_none() or "a welcome voucher")
         if gift_parts:
-            db.add(NotificationMessage(
-                customer_id=customer.id,
-                message_type="loyalty",
-                title="Welcome to LOKA Espresso",
-                body=f"Your welcome gift is here: {' and '.join(gift_parts)}. Find it in My Rewards.",
-                action_url="#my-rewards",
-            ))
+            from app.services.transactional_notifications import notify_event
+            await notify_event(
+                db, "welcome", customer.id,
+                context={"gifts": " and ".join(gift_parts)},
+                entity_type="customer", entity_id=customer.id,
+            )
     except Exception:
         logger.warning("Failed to create welcome notification for customer %s", customer.id, exc_info=True)
     

@@ -54,6 +54,7 @@ const pageImporters: Record<string, () => Promise<{
   'payment-methods': () => import('./profile/PaymentMethodsPage'),
   'saved-addresses': () => import('./profile/SavedAddressesPage'),
   notifications: () => import('./profile/NotificationsPage'),
+  'notif-settings': () => import('./profile/NotifSettingsPage'),
   'help-support': () => import('./profile/HelpSupportPage'),
   legal: () => import('./LegalPage'),
   settings: () => import('./profile/SettingsPage'),
@@ -327,6 +328,8 @@ export default function AppShell() {
         return <LazyRenderer pageKey="saved-addresses" />;
       case 'notifications':
         return <LazyRenderer pageKey="notifications" />;
+      case 'notif-settings':
+        return <LazyRenderer pageKey="notif-settings" />;
       case 'help-support':
         return <LazyRenderer pageKey="help-support" />;
       case 'legal':

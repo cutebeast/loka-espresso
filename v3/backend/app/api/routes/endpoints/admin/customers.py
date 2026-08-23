@@ -429,6 +429,20 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     db.add(cv)
     await db.commit()
     await db.refresh(cv)
+    # Transactional notification (savepoint-isolated; never blocks the award).
+    from app.services.transactional_notifications import notify_event
+    discount = ""
+    if vd.voucher_type in ("percentage_discount", "fixed_amount_off", "fixed_discount"):
+        discount = f"{float(vd.discount_value or 0):g}"
+        discount = (f"{discount}% off" if vd.voucher_type == "percentage_discount" else f"RM {discount} off")
+    elif vd.voucher_type == "free_delivery":
+        discount = "Free delivery"
+    await notify_event(
+        db, "voucher_granted", customer_id,
+        context={"voucher_title": vd.display_title or vd.voucher_code, "discount": discount},
+        entity_type="customer_voucher", entity_id=cv.id,
+        self_commit=True,  # endpoint already committed — notify commits itself
+    )
     return APIResponse(data={"message": "Voucher awarded", "voucher_id": cv.id, "voucher_code": cv.voucher_code, "voucher_title": vd.display_title})
 
 

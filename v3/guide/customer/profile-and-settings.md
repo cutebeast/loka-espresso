@@ -94,3 +94,13 @@ Tap a notification to open it, or tap **Mark All as Read**.
 ## Related
 - [Getting Started](getting-started.md)
 - [Help & Support](help-and-support.md)
+
+## Notification settings
+
+From the notifications page, tap the settings (gear) icon:
+
+- **Channels** — turn Push / SMS / WhatsApp on or off. The in-app inbox is always on.
+- **Push topics** — choose which push topics you receive: order updates, promotions & lucky draw, points & rewards, wallet & account.
+- **Quiet hours** — push, SMS and WhatsApp pause during your chosen window (the inbox still fills up).
+
+Automated messages (order ready, voucher granted, refunds, wallet top-ups…) follow these settings.

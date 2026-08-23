@@ -89,3 +89,26 @@ When creating a new notification, select a template from the **Quick fill from t
 - **Push notifications**: Via web push API (browser permission required)
 - **Email**: Via configured SMTP provider
 - **In-app**: Visible in the PWA notification center
+
+## Transactional notifications (auto-send)
+
+Templates linked to a real **event** are sent automatically by the system when
+that event happens — no manual send needed:
+
+- **Events**: welcome, order confirmed / preparing / ready / out-for-delivery /
+  delivered / cancelled, refund processed, payment reminder, voucher granted,
+  reward redeemed, wallet top-up, tier upgrade, referral credited, points
+  expiring soon, lucky-draw win, reservation reminder.
+- **Template editor**: pick the event, toggle **enabled**, choose channels
+  (Inbox is always on; Push/SMS/WhatsApp optional), set priority and an action
+  deep link, and use the `{placeholders}` listed per event. The **Preview**
+  button interpolates sample values.
+- **Language**: the customer receives the message in their app language
+  (English or Chinese) — edit the Chinese copy on the template's 中文 tab.
+- **Send Log** (`Notifications → Send Log`): every automated notification with
+  the customer, message and event, filterable by event.
+- Customers opt out per channel and per topic (and can set quiet hours) from
+  the PWA — Inbox always delivers.
+
+> The welcome message is template-driven; editing the "Welcome" template now
+> changes what new members receive.

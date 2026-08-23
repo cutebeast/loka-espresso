@@ -754,6 +754,9 @@ async def staff_delivery_dispatch(
         status_advanced = True
 
     await db.commit()
+    # Transactional notification (savepoint-isolated; never blocks dispatch).
+    from app.services.transactional_notifications import notify_order_status
+    await notify_order_status(db, order, "out_for_delivery", provider=str(data.provider))
     return APIResponse(data={
         "order_id": order.id,
         "provider": fulfillment.delivery_provider,
@@ -1456,6 +1459,8 @@ async def cancel_staff_order(
     await reverse_order_effects(db, order)
     cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
+    from app.services.transactional_notifications import notify_order_status
+    await notify_order_status(db, order, "cancelled_by_merchant", reason=reason or "Cancelled by staff")
     return APIResponse(data={
         "id": order.id,
         "order_number": order.order_number,
@@ -1919,6 +1924,9 @@ async def staff_update_order_status(
         actor_id=staff.id,
     ))
     await db.commit()
+    # Transactional notification (savepoint-isolated; never blocks the status change).
+    from app.services.transactional_notifications import notify_order_status
+    await notify_order_status(db, order, status, reason=reason)
     return APIResponse(data={"id": order.id, "status": order.status})
 
 

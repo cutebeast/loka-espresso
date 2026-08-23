@@ -280,6 +280,14 @@ async def spin_wheel(
 
     await db.commit()
 
+    # Transactional notification (savepoint-isolated; never blocks the spin).
+    from app.services.transactional_notifications import notify_event
+    await notify_event(
+        db, "lucky_draw_win", customer.id,
+        context={"prize": vd.display_title or "a prize", "campaign_name": campaign.title or "Lucky Draw"},
+        entity_type="lucky_draw_spin", entity_id=spin.id,
+    )
+
     return APIResponse(
         data=LuckyDrawSpinResult(
             segment=LuckyDrawSegmentOut.model_validate(winner),

@@ -155,13 +155,22 @@ async def _sweep_stale_orders() -> None:
 
 
 async def _periodic_order_sweep() -> None:
-    """Run the stale-order sweep every 5 minutes until cancelled on shutdown."""
+    """Run the stale-order sweep + transactional reminders every 5 minutes."""
     while True:
         await asyncio.sleep(300)
         try:
             await _sweep_stale_orders()
         except Exception:
             logger.warning("Periodic stale order sweep failed", exc_info=True)
+        try:
+            from app.services.transactional_notifications import sweep_transactional_reminders
+            from app.core.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as db:
+                counts = await sweep_transactional_reminders(db)
+                if any(counts.values()):
+                    logger.info("Transactional reminders sent: %s", counts)
+        except Exception:
+            logger.warning("Transactional reminder sweep failed", exc_info=True)
 
 
 @asynccontextmanager

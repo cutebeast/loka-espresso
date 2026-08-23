@@ -8,6 +8,7 @@ import { isNotFoundError } from "@/lib/errors";
 import NotFoundState from "@/components/NotFoundState";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
+import TransactionalTemplateFields from "@/components/TransactionalTemplateFields";
 const LOCALES = [{
   code: "en",
   localeKey: "locale.english",
@@ -59,7 +60,12 @@ export default function TemplateEditPage() {
         title: t.title || "",
         body: t.body || "",
         notification_type: t.notification_type || "general",
-        audience_segment: t.audience_segment || "all_users"
+        audience_segment: t.audience_segment || "all_users",
+        event_key: t.event_key || null,
+        is_enabled: t.is_enabled !== false,
+        channels: t.channels || ["in_app"],
+        priority: t.priority || "normal",
+        action_url_template: t.action_url_template || ""
       });
       const x: Record<string, string> = {};
       for (const lc of LOCALES) {
@@ -202,6 +208,7 @@ export default function TemplateEditPage() {
             ...form,
             name: e.target.value
           })} /></div>
+            <TransactionalTemplateFields form={form} setForm={setForm} previewSample={{ customer_name: "Alex", order_number: "POS-0812-ABC12345", store_name: "Loka Espresso (PKL)", gifts: "50 bonus points", amount: "5.00", balance: "55.00", points: "250", date: "2026-08-31", tier_name: "Origin", multiplier: "1.2×", voucher_title: "LOKA Tuesday", discount: "15% off", reward_name: "Signature Sandwich", provider: "Lalamove", prize: "RM 5 Off", campaign_name: "Daily Lucky Spin", event_name: "Table 3", time: "tomorrow", reason: "Auto-cancelled", method: "your wallet", amount_due: "12.00" }} />
             <div className="df-field" style={{
           gridColumn: "1/-1"
         }}><label className="df-label">{t("notifications_templates_[id].title")}</label><input required value={form.title} onChange={e => setForm({

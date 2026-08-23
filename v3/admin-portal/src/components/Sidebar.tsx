@@ -132,6 +132,7 @@ const navItems: NavItem[] = [
     children: [
       { id: "notificationsList", labelKey: "admin.nav.notifications.list", href: "/notifications" },
       { id: "notificationsTemplates", labelKey: "admin.nav.notifications.templates", href: "/notifications/templates" },
+      { id: "notificationsEvents", labelKey: "admin.nav.notifications.events", href: "/notifications/events" },
       { id: "notificationsReport", labelKey: "admin.nav.notifications.report", href: "/notifications/report" },
     ],
   },

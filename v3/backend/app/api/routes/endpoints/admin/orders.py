@@ -375,6 +375,10 @@ async def update_order_status(
     await db.commit()
     await db.refresh(order)
 
+    # Transactional notification (savepoint-isolated; never blocks the status change).
+    from app.services.transactional_notifications import notify_order_status
+    await notify_order_status(db, order, status_value, reason=data.reason)
+
     response_data = {
         "id": order.id,
         "status": order.status,
@@ -1340,6 +1344,8 @@ async def cancel_order_staff(
     await reverse_order_effects(db, order)
     cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
+    from app.services.transactional_notifications import notify_order_status
+    await notify_order_status(db, order, "cancelled_by_merchant", reason=reason or "Cancelled by staff")
     return APIResponse(data={
         "id": order.id,
         "order_number": order.order_number,

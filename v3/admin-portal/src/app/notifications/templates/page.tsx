@@ -58,6 +58,7 @@ export default function TemplatesPage() {
       }}><h1 className="page-title" style={{
           margin: 0
         }}>{t("notifications_templates.notification_templates")}</h1><p className="page-subtitle">{t("notifications_templates.subtitle_count", { count: items.length })}</p></div>
+        <button onClick={() => router.push("/notifications/events")} className="btn btn-ghost btn-sm">{t("notifications_templates.send_log")}</button>
         <button onClick={() => router.push("/notifications/templates/new")} className="btn btn-primary btn-sm"><Plus size={16} />{t("notifications_templates.add_template")}</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}

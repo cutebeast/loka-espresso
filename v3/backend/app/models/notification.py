@@ -5,6 +5,7 @@ from typing import List
 
 from sqlalchemy import (
     desc,
+    text,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -80,7 +81,9 @@ class AdminNotification(Base, TimestampMixin):
 
 
 class NotificationTemplate(Base, TimestampMixin):
-    """Reusable notification templates for quick compose."""
+    """Reusable notification templates. `event_key` templates are the
+    transactional-notification engine (auto-sent by notify_event);
+    templates without an event_key remain manual compose helpers."""
     __tablename__ = "notification_templates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -94,6 +97,15 @@ class NotificationTemplate(Base, TimestampMixin):
         String(50), nullable=False, default="all_users"
     )
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # ── Transactional engine fields ──
+    event_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Delivery channels for transactional sends (in_app is always implied).
+    channels: Mapped[list] = mapped_column(JSONB, nullable=False, default=lambda: ["in_app", "push_notification"])
+    # Human-readable list of supported placeholders for this event.
+    variables: Mapped[list] = mapped_column(JSONB, nullable=False, default=lambda: [])
+    priority: Mapped[str] = mapped_column(String(10), nullable=False, default="normal")
+    action_url_template: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -105,6 +117,16 @@ class NotificationTemplate(Base, TimestampMixin):
             " OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$'"
             " OR audience_segment ~ '^event:[0-9]{1,10}$'",
             name="ck_notification_templates_audience",
+        ),
+        CheckConstraint(
+            "priority IN ('low','normal','high','urgent')",
+            name="ck_notification_templates_priority",
+        ),
+        Index(
+            "uq_notification_templates_event_key",
+            "event_key",
+            unique=True,
+            postgresql_where=text("event_key IS NOT NULL"),
         ),
     )
 
@@ -134,6 +156,10 @@ class NotificationMessage(Base):
         DateTime(timezone=True), nullable=True
     )
     campaign_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Transactional template that generated this message (translation merge key).
+    template_id: Mapped[int | None] = mapped_column(
+        ForeignKey("notification_templates.id", ondelete="SET NULL"), nullable=True
+    )
     expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -231,5 +257,38 @@ class NotificationPreference(Base, TimestampMixin):
         ),
         UniqueConstraint(
             "customer_id", "channel", "message_category", name="uq_notification_preferences"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Transactional notification events (idempotency ledger)
+# ---------------------------------------------------------------------------
+
+
+class NotificationEventsLog(Base):
+    """One row per delivered transactional event per customer — the
+    idempotency guard that stops status re-sends / retries from
+    double-notifying."""
+    __tablename__ = "notification_events_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    event_key: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    customer_id: Mapped[int] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("notification_messages.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "event_key", "entity_type", "entity_id", "customer_id",
+            name="uq_notification_events_once",
         ),
     )

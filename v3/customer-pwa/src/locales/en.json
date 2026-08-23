@@ -1432,5 +1432,26 @@
     "thanks": "Thank you!",
     "thanksSub": "Your feedback reached the store team. We read every message.",
     "another": "Send another"
+  },
+  "notifSettings": {
+    "title": "Notification settings",
+    "channelsTitle": "Channels",
+    "channelsDesc": "Choose how you want to hear from us. The in-app inbox is always on.",
+    "push": "Push notifications",
+    "sms": "SMS",
+    "whatsapp": "WhatsApp",
+    "categoriesTitle": "Push topics",
+    "categoriesDesc": "What kind of push notifications you receive.",
+    "catOrders": "Order updates",
+    "catPromos": "Promotions & lucky draw",
+    "catLoyalty": "Points & rewards",
+    "catSystem": "Wallet & account",
+    "quietTitle": "Quiet hours",
+    "quietDesc": "Push, SMS and WhatsApp are paused during these hours (the inbox still fills up).",
+    "quietStart": "Quiet hours start",
+    "quietEnd": "Quiet hours end",
+    "clear": "Clear",
+    "saved": "Saved",
+    "saving": "Saving…"
   }
 }

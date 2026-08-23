@@ -793,6 +793,9 @@ async def auto_cancel_order(db: AsyncSession, order: Order, reason: str) -> bool
     # Local import: services/payment.py already imports from this module.
     from app.services.payment import cancel_pending_order_payments
     await cancel_pending_order_payments(db, order.id)
+    # Transactional notification (savepoint-isolated; never blocks the cancel).
+    from app.services.transactional_notifications import notify_order_status
+    await notify_order_status(db, order, "cancelled_by_customer", reason=reason)
     return True
 
 

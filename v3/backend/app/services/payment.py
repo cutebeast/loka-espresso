@@ -1684,6 +1684,29 @@ async def refund_payment(
     await db.commit()
     await db.refresh(refund)
 
+    # Transactional notification (savepoint-isolated, never blocks the refund).
+    if refund.status == "completed":
+        try:
+            from app.services.transactional_notifications import notify_event
+            order_row = (await db.execute(
+                select(Order.customer_id, Order.order_number).where(Order.id == payment.order_id)
+            )).first()
+            order_number = order_row[1] or "" if order_row else ""
+            order_customer_id = order_row[0] if order_row else None
+            method_map = {"cash": "cash", "internal_wallet": "your wallet", "store_credit": "store credit"}
+            method = method_map.get(payment.provider or "", "your original payment method")
+            await notify_event(
+                db, "refund_processed", order_customer_id,
+                context={
+                    "order_number": order_number,
+                    "amount": f"{refund_amount:.2f}",
+                    "method": method,
+                },
+                entity_type="refund", entity_id=refund.id,
+            )
+        except Exception:
+            logger.warning("refund_processed notification failed for refund %s", refund.id, exc_info=True)
+
     # MyInvois refund note (type 04) — self-gated on einvoice.auto_issue,
     # requires the original type-01 doc, swallows all failures.
     from app.services.einvoice import issue_refund_note_for_payment
@@ -1971,6 +1994,14 @@ async def _complete_wallet_topup(
     session.completed_at = datetime.now(timezone.utc)
     if provider_session_id:
         session.provider_session_id = provider_session_id
+    await db.flush()
+    # Transactional notification (savepoint-isolated, never blocks the credit).
+    from app.services.transactional_notifications import notify_event
+    await notify_event(
+        db, "wallet_topup", session.customer_id,
+        context={"amount": f"{session.amount:.2f}", "balance": f"{new_balance:.2f}"},
+        entity_type="wallet_topup_session", entity_id=session.id,
+    )
     await db.commit()
 
 

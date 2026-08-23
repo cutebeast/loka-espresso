@@ -23,6 +23,7 @@ class NotificationMessageOut(BaseSchema):
     is_read: bool = False
     read_at: datetime | None = None
     campaign_id: int | None = None
+    template_id: int | None = None
     expires_at: datetime | None = None
     created_at: datetime
 
@@ -157,6 +158,12 @@ class NotificationTemplateBase(BaseSchema):
     notification_type: ADMIN_NOTIFICATION_TYPES = "general"
     audience_segment: AudienceSegment = "all_users"
     image_url: str | None = Field(None, max_length=500)
+    event_key: str | None = Field(None, max_length=50)
+    is_enabled: bool = True
+    channels: list[str] = Field(default_factory=lambda: ["in_app", "push_notification"])
+    variables: list[str] = Field(default_factory=list)
+    priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    action_url_template: str | None = Field(None, max_length=500)
 
 
 class NotificationTemplateCreate(NotificationTemplateBase):
@@ -170,6 +177,12 @@ class NotificationTemplateUpdate(BaseSchema):
     notification_type: ADMIN_NOTIFICATION_TYPES | None = None
     audience_segment: AudienceSegment | None = None
     image_url: str | None = Field(None, max_length=500)
+    event_key: str | None = Field(None, max_length=50)
+    is_enabled: bool | None = None
+    channels: list[str] | None = None
+    variables: list[str] | None = None
+    priority: Literal["low", "normal", "high", "urgent"] | None = None
+    action_url_template: str | None = Field(None, max_length=500)
 
 
 class NotificationTemplateOut(NotificationTemplateBase, TimestampedSchema):

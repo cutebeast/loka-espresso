@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
+import TransactionalTemplateFields from "@/components/TransactionalTemplateFields";
 const TYPES = ["general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"];
 export default function TemplateNewPage() {
   const {
@@ -17,12 +18,17 @@ export default function TemplateNewPage() {
   const {
     allSegments: AUDIENCES
   } = useAudienceSegments();
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Record<string, any>>({
     name: "",
     title: "",
     body: "",
     notification_type: "general",
-    audience_segment: "all_users"
+    audience_segment: "all_users",
+    event_key: null,
+    is_enabled: true,
+    channels: ["in_app", "push_notification"],
+    priority: "normal",
+    action_url_template: "",
   });
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,29 +64,30 @@ export default function TemplateNewPage() {
           <div className="df-field" style={{
             gridColumn: "1/-1"
           }}><label className="df-label">{t("notifications_templates_new.template_name")}</label><input required value={form.name} onChange={e => setForm({
-              ...form,
-              name: e.target.value
-            })} placeholder={t("notifications_templates_new.e_g_welcome_message")} /></div>
+               ...form,
+               name: e.target.value
+             })} placeholder={t("notifications_templates_new.e_g_welcome_message")} /></div>
+          <TransactionalTemplateFields form={form} setForm={setForm} previewSample={{ customer_name: "Alex", order_number: "POS-0812-ABC12345", store_name: "Loka Espresso (PKL)", gifts: "50 bonus points", amount: "5.00", balance: "55.00", points: "250", date: "2026-08-31", tier_name: "Origin", multiplier: "1.2×", voucher_title: "LOKA Tuesday", discount: "15% off", reward_name: "Signature Sandwich", provider: "Lalamove", prize: "RM 5 Off", campaign_name: "Daily Lucky Spin", event_name: "Table 3", time: "tomorrow", reason: "Auto-cancelled", method: "your wallet", amount_due: "12.00" }} />
           <div className="df-field" style={{
             gridColumn: "1/-1"
           }}><label className="df-label">{t("notifications_templates_new.title")}</label><input required value={form.title} onChange={e => setForm({
-              ...form,
-              title: e.target.value
-            })} /></div>
-          <div className="df-field"><label className="df-label">{t("notifications_templates_new.type")}</label><select value={form.notification_type} onChange={e => setForm({
-              ...form,
-              notification_type: e.target.value
-            })}>{TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-          <div className="df-field"><label className="df-label">{t("notifications_templates_new.audience")}</label><select value={form.audience_segment} onChange={e => setForm({
-              ...form,
-              audience_segment: e.target.value
-            })}>{AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</select></div>
+               ...form,
+               title: e.target.value
+             })} /></div>
           <div className="df-field" style={{
             gridColumn: "1/-1"
           }}><label className="df-label">{t("notifications_templates_new.body")}</label><textarea rows={4} value={form.body} onChange={e => setForm({
-              ...form,
-              body: e.target.value
-            })} /></div>
+               ...form,
+               body: e.target.value
+             })} /></div>
+          <div className="df-field"><label className="df-label">{t("notifications_templates_new.type")}</label><select value={form.notification_type} onChange={e => setForm({
+               ...form,
+               notification_type: e.target.value
+             })}>{TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+          <div className="df-field"><label className="df-label">{t("notifications_templates_new.audience")}</label><select value={form.audience_segment} onChange={e => setForm({
+               ...form,
+               audience_segment: e.target.value
+             })}>{AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</select></div>
         </div><div className="df-actions" style={{
           marginTop: 20
         }}><button type="button" onClick={() => router.push("/notifications/templates")} className="btn btn-ghost">{t("notifications_templates_new.cancel")}</button><button type="submit" className="btn btn-primary" disabled={saving}><Save size={16} />{saving ? "Creating..." : "Create Template"}</button></div></form>

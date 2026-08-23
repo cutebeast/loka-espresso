@@ -1419,5 +1419,26 @@
     "noWorkshops": "暂无可参加的工作坊",
     "seatsLeft": "剩余{count}个名额",
     "title": "工作坊与课程"
+  },
+  "notifSettings": {
+    "title": "通知设置",
+    "channelsTitle": "通知渠道",
+    "channelsDesc": "选择接收方式。应用内收件箱始终开启。",
+    "push": "推送通知",
+    "sms": "短信",
+    "whatsapp": "WhatsApp",
+    "categoriesTitle": "推送类型",
+    "categoriesDesc": "选择想接收的推送内容。",
+    "catOrders": "订单动态",
+    "catPromos": "促销与抽奖",
+    "catLoyalty": "积分与奖励",
+    "catSystem": "钱包与账户",
+    "quietTitle": "免打扰时段",
+    "quietDesc": "该时段内暂停推送、短信与 WhatsApp（收件箱照常收录）。",
+    "quietStart": "开始时间",
+    "quietEnd": "结束时间",
+    "clear": "清除",
+    "saved": "已保存",
+    "saving": "保存中…"
   }
 }

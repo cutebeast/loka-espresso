@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
 from app.services.translation import merge_translations, translate_single
@@ -166,14 +167,88 @@ async def create_template(
     data: NotificationTemplateCreate,
 ):
     """Create a notification template."""
-    tmpl = NotificationTemplate(**data.model_dump())
+    from app.services.transactional_notifications import TRANSACTIONAL_EVENTS
+
+    payload = data.model_dump()
+    if payload.get("event_key"):
+        if payload["event_key"] not in TRANSACTIONAL_EVENTS:
+            raise HTTPException(status_code=400, detail=f"Unknown event_key: {payload['event_key']}")
+        if not payload.get("variables"):
+            payload["variables"] = TRANSACTIONAL_EVENTS[payload["event_key"]]["variables"]
+    else:
+        payload["variables"] = []
+    tmpl = NotificationTemplate(**payload)
     db.add(tmpl)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="A template for this event already exists")
     schedule_auto_translate("notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
     await db.refresh(tmpl)
     return APIResponse(data=NotificationTemplateOut.model_validate(tmpl))
 
 
+
+# Transactional engine — event registry + send log
+# ---------------------------------------------------------------------------
+
+@admin_router.get("/events", response_model=APIResponse[list[dict]])
+async def list_transactional_events(admin: CurrentAdmin):
+    """Event registry for the template editor: key, label, category, variables."""
+    from app.services.transactional_notifications import TRANSACTIONAL_EVENTS
+    return APIResponse(data=[
+        {
+            "event_key": key,
+            "label": meta["label"],
+            "category": meta["category"],
+            "message_type": meta["message_type"],
+            "variables": meta["variables"],
+        }
+        for key, meta in sorted(TRANSACTIONAL_EVENTS.items(), key=lambda kv: kv[1]["label"])
+    ])
+
+
+@admin_router.get("/events-log", response_model=APIResponse[PaginatedResponse[dict]])
+async def list_notification_events(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    event_key: str | None = Query(None),
+):
+    """Send log of the transactional engine (idempotency ledger)."""
+    from app.models.customer import Customer
+    from app.models.notification import NotificationEventsLog
+
+    base = (
+        select(NotificationEventsLog, Customer.display_name, NotificationMessage.title)
+        .outerjoin(Customer, Customer.id == NotificationEventsLog.customer_id)
+        .outerjoin(NotificationMessage, NotificationMessage.id == NotificationEventsLog.message_id)
+    )
+    if event_key:
+        base = base.where(NotificationEventsLog.event_key == event_key)
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+    rows = (await db.execute(
+        base.order_by(NotificationEventsLog.id.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).all()
+    items = [
+        {
+            "id": ev.id,
+            "event_key": ev.event_key,
+            "entity_type": ev.entity_type,
+            "entity_id": ev.entity_id,
+            "customer_id": ev.customer_id,
+            "customer_name": name,
+            "message_title": title,
+            "message_id": ev.message_id,
+            "created_at": ev.created_at,
+        }
+        for ev, name, title in rows
+    ]
+    return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page,
+                                              total_pages=max(1, -(-total // per_page))))
 @admin_router.get("/{notif_id}", response_model=APIResponse[AdminNotificationOut])
 async def get_notification(
     db: DBDependency,
@@ -485,15 +560,28 @@ async def update_template(
     data: NotificationTemplateUpdate,
 ):
     """Update a notification template."""
+    from app.services.transactional_notifications import TRANSACTIONAL_EVENTS
+
     result = await db.execute(select(NotificationTemplate).where(NotificationTemplate.id == template_id))
     tmpl = result.scalar_one_or_none()
     if tmpl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     update_data = data.model_dump(exclude_unset=True)
+    if update_data.get("event_key"):
+        if update_data["event_key"] not in TRANSACTIONAL_EVENTS:
+            raise HTTPException(status_code=400, detail=f"Unknown event_key: {update_data['event_key']}")
     for field, value in update_data.items():
         setattr(tmpl, field, value)
+    if tmpl.event_key and not tmpl.variables:
+        tmpl.variables = TRANSACTIONAL_EVENTS[tmpl.event_key]["variables"]
+    if not tmpl.event_key:
+        tmpl.variables = []
     tmpl.updated_at = datetime.now(timezone.utc)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="A template for this event already exists")
     schedule_auto_translate("notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
     await db.refresh(tmpl)
     return APIResponse(data=NotificationTemplateOut.model_validate(tmpl))
@@ -514,6 +602,9 @@ async def delete_template(
     await db.commit()
     await delete_translations(db, "notification_templates", template_id)
     return APIResponse(data={"id": template_id, "deleted": True})
+
+
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -581,9 +672,9 @@ async def list_my_notifications(
         stmt = stmt.where(NotificationMessage.is_read.is_(is_read))
     result = await db.execute(stmt)
     item_dicts = [NotificationMessageOut.model_validate(n).model_dump() for n in result.scalars().all()]
-    # Translations live on the parent admin_notifications row — message ids are
-    # unrelated and would miss (or collide with the wrong notification). Key
-    # the merge by campaign_id, then copy the translated fields back.
+    # Broadcast messages carry translations on the parent admin_notifications
+    # row (keyed by campaign_id); transactional messages carry them on the
+    # notification_templates row (keyed by template_id).
     keyed = [dict(item, id=item["campaign_id"]) for item in item_dicts if item.get("campaign_id")]
     if keyed:
         await merge_translations(db, keyed, "admin_notifications", locale)
@@ -593,6 +684,9 @@ async def list_my_notifications(
             if translated is not None:
                 item["title"] = translated["title"]
                 item["body"] = translated["body"]
+    # Transactional (template-driven) messages are pre-localized by the
+    # dispatcher to the customer's preferred language — no merge here (a
+    # request-locale merge would overwrite the stored language).
 
     return APIResponse(
         data=PaginatedResponse(
@@ -622,11 +716,48 @@ async def mark_notification_read(
     if msg is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
+    first_open = not msg.is_read
     msg.is_read = True
     msg.read_at = datetime.now(timezone.utc)
+    if first_open and msg.campaign_id:
+        from app.models.marketing import CampaignAnalytics
+        analytics = (await db.execute(
+            select(CampaignAnalytics).where(CampaignAnalytics.campaign_id == msg.campaign_id)
+        )).scalar_one_or_none()
+        if analytics is not None:
+            analytics.opens_count += 1
+            analytics.unique_opens += 1  # per-read unique increment (message-granular)
     await db.commit()
     await db.refresh(msg)
     return APIResponse(data=NotificationMessageOut.model_validate(msg))
+
+
+@public_router.post("/me/{message_id}/click", response_model=APIResponse[dict])
+async def click_notification(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    message_id: int,
+):
+    """Record a notification action-tap (campaign click analytics)."""
+    result = await db.execute(
+        select(NotificationMessage).where(
+            NotificationMessage.id == message_id,
+            NotificationMessage.customer_id == customer.id,
+        )
+    )
+    msg = result.scalar_one_or_none()
+    if msg is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    if msg.campaign_id:
+        from app.models.marketing import CampaignAnalytics
+        analytics = (await db.execute(
+            select(CampaignAnalytics).where(CampaignAnalytics.campaign_id == msg.campaign_id)
+        )).scalar_one_or_none()
+        if analytics is not None:
+            analytics.clicks_count += 1
+            analytics.unique_clicks += 1
+            await db.commit()
+    return APIResponse(data={"clicked": True})
 
 
 @public_router.get("/preferences/me", response_model=APIResponse[list[NotificationPreferenceOut]])

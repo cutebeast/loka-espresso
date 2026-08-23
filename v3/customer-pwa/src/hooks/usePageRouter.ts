@@ -8,18 +8,18 @@ import type { PageId } from '@/lib/api';
 const VALID_PAGES: PageId[] = [
   'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
   'wallet', 'history', 'promotions', 'information', 'my-rewards',
-  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'guest-pay', 'referral', 'reservations', 'events', 'workshops', 'checkin', 'lucky-draw', 'vip', 'feedback', 'kiosk',
+  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'notif-settings', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'guest-pay', 'referral', 'reservations', 'events', 'workshops', 'checkin', 'lucky-draw', 'vip', 'feedback', 'kiosk',
 ];
 
 export const SUB_PAGES: PageId[] = [
   'cart', 'checkout', 'order-detail', 'guest-pay', 'wallet', 'history',
   'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'workshops', 'referral', 'checkin', 'lucky-draw', 'vip', 'feedback',
+  'payment-methods', 'saved-addresses', 'notifications', 'notif-settings', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'workshops', 'referral', 'checkin', 'lucky-draw', 'vip', 'feedback',
 ];
 
 // 'checkin' requires auth upfront (nav triggers the sign-in modal);
 // 'settings' is guest-allowed (matches PUBLIC_PAGES in useAuthFlow).
-const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'reservations', 'checkin'];
+const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'notif-settings', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'reservations', 'checkin'];
 
 export function usePageRouter() {
   const setPage = useUIStore((s) => s.setPage);
