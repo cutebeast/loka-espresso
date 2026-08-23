@@ -335,6 +335,7 @@ async def send_campaign(
         # Inbox delivery — mirrors the admin notifications send path
         type_map = {"promotional": "promotion", "informational": "system", "event": "promotion", "loyalty": "loyalty"}
         msg_type = type_map.get(campaign.campaign_type, "system")
+        message_id_by_customer: dict[int, int] = {}
         for cid in customer_ids:
             msg = NotificationMessage(
                 customer_id=cid, message_type=msg_type, priority="normal",
@@ -342,7 +343,22 @@ async def send_campaign(
                 image_url=campaign.hero_image_url, action_url=campaign.cta_url,
             )
             db.add(msg)
+            await db.flush()
+            message_id_by_customer[cid] = msg.id
             delivered_count += 1
+
+        if campaign.channel == "push_notification":
+            # Deliver the actual web push to subscribed devices (opt-outs
+            # honored, dead subscriptions cleared, delivery logs written).
+            from app.services.messaging import fan_out_web_push
+            await fan_out_web_push(
+                db,
+                customer_ids,
+                message_id_by_customer,
+                title=campaign.campaign_name,
+                body=campaign.body_content or "",
+                url=campaign.cta_url or "/",
+            )
 
     elif campaign.channel == "sms" and customer_ids:
         sid, token, sms_from, _ = await get_twilio_credentials(db)

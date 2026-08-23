@@ -6,6 +6,7 @@ and honor the integration.twilio_use_test_credentials toggle.
 """
 
 import logging
+import re
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -96,3 +97,77 @@ async def send_whatsapp_via_twilio(
     the recipient phone gets the whatsapp: prefix added as needed."""
     wa_to = phone if phone.startswith("whatsapp:") else f"whatsapp:{phone}"
     return await send_sms_via_twilio(account_sid, auth_token, whatsapp_from, wa_to, body, db=db)
+
+
+_GONE_PUSH_RE = re.compile(r"\b(404|410)\b")
+
+
+async def fan_out_web_push(
+    db,
+    customer_ids: list[int],
+    message_id_by_customer: dict[int, int],
+    title: str,
+    body: str,
+    url: str = "/",
+) -> dict[str, int]:
+    """Send web-push to each customer's subscribed devices (campaigns +
+    notifications share this path). Honors per-customer push opt-outs,
+    clears dead (404/410) subscriptions, and writes delivery logs.
+    Returns {"sent": N, "failed": N, "skipped": N}."""
+    from datetime import datetime as _dt, timezone as _tz
+
+    from app.models.customer import CustomerDevice
+    from app.models.notification import NotificationDeliveryLog, NotificationPreference
+    from app.services.web_push import send_web_push
+
+    pref_result = await db.execute(
+        select(NotificationPreference).where(
+            NotificationPreference.customer_id.in_(customer_ids),
+            NotificationPreference.channel == "push_notification",
+        )
+    )
+    opted_out = {p.customer_id for p in pref_result.scalars().all() if not p.is_enabled}
+
+    dev_result = await db.execute(
+        select(CustomerDevice).where(
+            CustomerDevice.customer_id.in_(customer_ids),
+            CustomerDevice.is_active.is_(True),
+            CustomerDevice.deleted_at.is_(None),
+            CustomerDevice.web_push_subscription.isnot(None),
+        )
+    )
+    devices = [d for d in dev_result.scalars().all() if d.web_push_subscription]
+
+    now = _dt.now(_tz.utc)
+    stats = {"sent": 0, "failed": 0, "skipped": 0}
+    push_payload = {"title": title, "body": body or "", "url": url or "/"}
+    gone_re = _GONE_PUSH_RE
+
+    for cid in customer_ids:
+        mid = message_id_by_customer.get(cid)
+        if cid in opted_out:
+            stats["skipped"] += 1
+            continue
+        cust_devices = [d for d in devices if d.customer_id == cid]
+        if not cust_devices:
+            stats["skipped"] += 1
+            continue
+        for dev in cust_devices:
+            endpoint = str((dev.web_push_subscription or {}).get("endpoint", ""))[:255]
+            result = await send_web_push(db, dev.web_push_subscription, push_payload)
+            ok = bool(result.get("success"))
+            if not ok and gone_re.search(str(result.get("error") or "")):
+                dev.web_push_subscription = None
+            stats["sent" if ok else "failed"] += 1
+            if mid is not None:
+                db.add(NotificationDeliveryLog(
+                    message_id=mid,
+                    channel="push_notification",
+                    device_id=dev.id,
+                    recipient_address=endpoint,
+                    status="sent" if ok else "failed",
+                    provider="webpush",
+                    error_message=None if ok else str(result.get("error", ""))[:500],
+                    sent_at=now if ok else None,
+                ))
+    return stats

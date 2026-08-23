@@ -1,7 +1,6 @@
 """Admin and public notification endpoints."""
 
 import asyncio
-import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -58,7 +57,8 @@ NOTIFICATION_TYPE_LABEL = {
 }
 
 # Push-provider responses that mean the subscription is permanently dead.
-_GONE_PUSH_RE = re.compile(r"\b(404|410)\b")
+# Shared web-push fan-out lives in app/services/messaging.py::fan_out_web_push
+# (used by both the notifications send path and campaign sends).
 
 # Valid notification-preference keys (mirror the DB enum/check constraint —
 # invalid values fall back to the push_notification/all defaults).
@@ -398,9 +398,7 @@ async def _fan_out_channels(
     if not extra or not customer_ids:
         return {}
 
-    from app.models.customer import CustomerDevice
     from app.services.messaging import get_twilio_credentials, send_sms_via_twilio, send_whatsapp_via_twilio
-    from app.services.web_push import send_web_push
 
     # Per-channel customer opt-outs (default: enabled when no preference row)
     pref_result = await db.execute(
@@ -423,24 +421,19 @@ async def _fan_out_channels(
         )
         phone_map = {row[0]: row[1] for row in phone_result.all()}
 
-    devices: list[CustomerDevice] = []
-    if "push_notification" in extra:
-        dev_result = await db.execute(
-            select(CustomerDevice).where(
-                CustomerDevice.customer_id.in_(customer_ids),
-                CustomerDevice.is_active.is_(True),
-                CustomerDevice.deleted_at.is_(None),
-                CustomerDevice.web_push_subscription.isnot(None),
-            )
-        )
-        devices = [d for d in dev_result.scalars().all() if d.web_push_subscription]
-
     twilio_sid = twilio_token = sms_from = wa_from = ""
     if "sms" in extra or "whatsapp" in extra:
         twilio_sid, twilio_token, sms_from, wa_from = await get_twilio_credentials(db)
 
     now = datetime.now(timezone.utc)
     stats: dict[str, dict[str, int]] = {c: {"sent": 0, "failed": 0, "skipped": 0} for c in extra}
+
+    if "push_notification" in extra:
+        from app.services.messaging import fan_out_web_push
+        stats["push_notification"] = await fan_out_web_push(
+            db, customer_ids, message_ids,
+            title=notif.title, body=notif.body or "", url=notif.action_url or "/",
+        )
 
     def _log(message_id: int, channel: str, ok: bool, *, device_id=None, address=None, provider=None, error=None):
         db.add(NotificationDeliveryLog(
@@ -454,30 +447,8 @@ async def _fan_out_channels(
             sent_at=now if ok else None,
         ))
 
-    push_payload = {"title": notif.title, "body": notif.body or "", "url": notif.action_url or "/"}
-
     for cid in customer_ids:
         mid = message_ids[cid]
-
-        if "push_notification" in extra:
-            if (cid, "push_notification") in opted_out:
-                stats["push_notification"]["skipped"] += 1
-            else:
-                cust_devices = [d for d in devices if d.customer_id == cid]
-                if not cust_devices:
-                    stats["push_notification"]["skipped"] += 1
-                for dev in cust_devices:
-                    endpoint = str((dev.web_push_subscription or {}).get("endpoint", ""))[:255]
-                    result = await send_web_push(db, dev.web_push_subscription, push_payload)
-                    ok = bool(result.get("success"))
-                    if not ok and _GONE_PUSH_RE.search(str(result.get("error") or "")):
-                        # 404/410 = subscription is gone for good — clear it so
-                        # later sends skip the dead endpoint.
-                        dev.web_push_subscription = None
-                    stats["push_notification"]["sent" if ok else "failed"] += 1
-                    _log(mid, "push_notification", ok, device_id=dev.id,
-                         address=endpoint,
-                         provider="webpush", error=None if ok else str(result.get("error", ""))[:500])
 
         if "sms" in extra:
             phone = phone_map.get(cid)
