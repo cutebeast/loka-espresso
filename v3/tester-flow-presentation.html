@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FNB Super App v3 — Flow Diagrams (Tester Briefing)</title>
+<style>
+  :root {
+    --ink:#26201a; --brown:#3d2f24; --cream:#faf6ee; --card:#ffffff; --line:#e4dccb;
+    --green:#1f7a4d; --green-bg:#e8f3ec; --orange:#c0562f; --orange-bg:#fbeee6;
+    --blue:#2d5f8a; --blue-bg:#e9f1f8; --purple:#6a4c93; --purple-bg:#f1ecf7;
+    --teal:#0e6e6e; --teal-bg:#e6f2f2; --rose:#b3402a; --rose-bg:#fbe9e4;
+    --slate:#5a6472; --slate-bg:#eef1f4; --amber:#9a6b00; --amber-bg:#fdf3dc;
+    --muted:#6f6558;
+  }
+  @page { size: A4 landscape; margin: 8mm 10mm 13mm 10mm; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:var(--cream); font-size:12.5px; line-height:1.45;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .slide { page-break-after:always; break-after:page; background:var(--cream); padding:4mm 1mm 8mm; position:relative; }
+  .slide:last-child { page-break-after:auto; }
+  .kicker { font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--green); margin-bottom:2px; }
+  h1 { font-size:21px; margin:0 0 6px; color:var(--brown); line-height:1.15; }
+  h2 { font-size:14px; margin:8px 0 4px; color:var(--brown); }
+  p { margin:3px 0; }
+  .sub { color:var(--muted); font-size:11.5px; }
+  .footer {
+    position:absolute; bottom:0; left:1mm; right:1mm; font-size:8.5px; color:var(--muted);
+    border-top:1px solid var(--line); padding-top:2px; display:flex; justify-content:space-between;
+  }
+  table { width:100%; border-collapse:collapse; margin:6px 0; background:var(--card); }
+  th,td { border:1px solid var(--line); padding:4px 7px; text-align:left; vertical-align:top; }
+  th { background:var(--brown); color:#fff; font-size:10.5px; }
+  tr:nth-child(even) td { background:#fbf7ee; }
+  .box { border:1px solid var(--line); background:var(--card); border-radius:6px; padding:7px 10px; margin:6px 0; }
+  .green  { border-left:4px solid var(--green); background:var(--green-bg); }
+  .orange { border-left:4px solid var(--orange); background:var(--orange-bg); }
+  .blue   { border-left:4px solid var(--blue); background:var(--blue-bg); }
+  .rose   { border-left:4px solid var(--rose); background:var(--rose-bg); }
+  .pill { display:inline-block; border-radius:999px; padding:1px 9px; font-size:10.5px; font-weight:700; }
+  .pill.g{background:var(--green-bg);color:var(--green);} .pill.o{background:var(--orange-bg);color:var(--orange);}
+  .pill.b{background:var(--blue-bg);color:var(--blue);} .pill.r{background:var(--rose-bg);color:var(--rose);}
+  .small { font-size:10.5px; color:var(--muted); }
+  code { background:#f1ece0; padding:0 4px; border-radius:3px; font-size:10.5px; }
+  .cover { text-align:center; padding-top:28mm; }
+  .cover h1 { font-size:32px; }
+  .cover .band { width:90px; height:5px; background:var(--green); margin:16px auto; border-radius:3px; }
+  .cover .meta { color:var(--muted); font-size:12.5px; margin-top:20px; }
+  .toc td { border:none; border-bottom:1px solid var(--line); padding:5px 4px; }
+  .toc td.n { width:36px; color:var(--green); font-weight:700; }
+  svg { width:100%; height:auto; display:block; margin:4px 0; }
+  svg text { font-family:inherit; }
+  .diag-title { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin:2px 0 0; }
+  ul { margin:3px 0 3px 16px; padding:0; } li { margin:2px 0; }
+  .ok { color:var(--green); font-weight:700; } .warn { color:var(--rose); font-weight:700; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin:4px 0 2px; font-size:10.5px; color:var(--muted); }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .sw { width:12px; height:12px; border-radius:3px; display:inline-block; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ 1. COVER ══════════ -->
+<div class="slide cover">
+  <div class="kicker">Tester Briefing · FNB Super App v3</div>
+  <h1>Ordering · Redemption · Loyalty · Payments</h1>
+  <div class="band"></div>
+  <p style="font-size:16px;color:var(--brown)">Visual flow diagrams of every customer-facing journey,<br>and the rules that protect vouchers, rewards, points and money</p>
+  <div class="meta">
+    23 August 2026 · Customer PWA · Kiosk · Staff POS · Admin Portal<br>
+    Companion checklists: <code>staff_portal_test_checklist.csv</code> · <code>admin_portal_test_checklist.csv</code>
+  </div>
+</div>
+
+<!-- ══════════ 2. TOC ══════════ -->
+<div class="slide">
+  <div class="kicker">Contents</div>
+  <h1>Diagram index</h1>
+  <table class="toc">
+    <tr><td class="n">01</td><td>System map — six surfaces, one backend</td></tr>
+    <tr><td class="n">02</td><td>Ordering channels — payment timing overview</td></tr>
+    <tr><td class="n">03</td><td>PWA ordering flow</td></tr>
+    <tr><td class="n">04</td><td>Kiosk flow — phone step &amp; sign-in redemption</td></tr>
+    <tr><td class="n">05</td><td>Staff POS flow — redemption drawer &amp; walk-ins</td></tr>
+    <tr><td class="n">06</td><td>Loyalty points — earn → credit → spend → reverse</td></tr>
+    <tr><td class="n">07</td><td>Redemption state machine — the golden rule</td></tr>
+    <tr><td class="n">08</td><td>Payment capture pipeline</td></tr>
+    <tr><td class="n">09</td><td>Refund flow &amp; loyalty clawback</td></tr>
+    <tr><td class="n">10</td><td>Auto-cancel &amp; housekeeping sweeps</td></tr>
+    <tr><td class="n">11</td><td>Test accounts &amp; dev switches</td></tr>
+    <tr><td class="n">12</td><td>P1 tester checklist + golden rules</td></tr>
+  </table>
+</div>
+
+<!-- ══════════ 3. SYSTEM MAP ══════════ -->
+<div class="slide">
+  <div class="kicker">01 · System map</div>
+  <h1>Six surfaces, one backend</h1>
+  <svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+    </defs>
+    <text x="100" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">ORDER IN</text>
+    <text x="900" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">OPERATE &amp; MANAGE</text>
+    <g transform="translate(20,40)"><rect width="160" height="64" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="80" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1f7a4d">Customer PWA</text><text x="80" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">app.loyaltysystem.uk</text></g>
+    <g transform="translate(20,140)"><rect width="160" height="64" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="80" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#2d5f8a">Kiosk / Tablet</text><text x="80" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">kiosk.loyaltysystem.uk</text></g>
+    <g transform="translate(20,240)"><rect width="160" height="64" rx="10" fill="#fbeee6" stroke="#c0562f" stroke-width="1.5"/><text x="80" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#c0562f">Staff POS</text><text x="80" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">staff.loyaltysystem.uk</text></g>
+    <g transform="translate(400,120)">
+      <rect width="220" height="104" rx="14" fill="#3d2f24"/>
+      <text x="110" y="30" text-anchor="middle" font-size="13.5" font-weight="700" fill="#ffffff">BACKEND API</text>
+      <text x="110" y="50" text-anchor="middle" font-size="10.5" fill="#d9cdb8">single source of truth</text>
+      <text x="110" y="72" text-anchor="middle" font-size="10.5" fill="#faf6ee">orders · wallet · loyalty</text>
+      <text x="110" y="90" text-anchor="middle" font-size="10.5" fill="#faf6ee">redemption · payments · e-invoice</text>
+    </g>
+    <g transform="translate(820,40)"><rect width="160" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="80" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#3d2f24">Staff Portal</text><text x="80" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">staff.loyaltysystem.uk</text></g>
+    <g transform="translate(820,140)"><rect width="160" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="80" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#3d2f24">Admin Portal</text><text x="80" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">admin.loyaltysystem.uk</text></g>
+    <g transform="translate(820,240)"><rect width="160" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="80" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#3d2f24">POS Customer Display</text><text x="80" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">pos-disp.loyaltysystem.uk</text></g>
+    <path d="M180 72 H300 V150 H398" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s1a)"/>
+    <path d="M180 172 H398" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s1a)"/>
+    <path d="M180 272 H300 V194 H398" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s1a)"/>
+    <path d="M620 150 H700 V72 H818" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s1a)"/>
+    <path d="M620 172 H818" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s1a)"/>
+    <path d="M620 194 H700 V272 H818" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s1a)"/>
+    <g transform="translate(330,332)"><rect width="340" height="26" rx="13" fill="#e8f3ec" stroke="#1f7a4d"/><text x="170" y="17" text-anchor="middle" font-size="11" font-weight="700" fill="#1f7a4d">ONE ORDER RECORD — same totals on every screen</text></g>
+  </svg>
+  <p class="sub">Whichever channel creates an order, the same row appears in the POS queue, the Kitchen Display, the Admin Portal and the customer's app.</p>
+</div>
+
+<!-- ══════════ 4. CHANNELS / PAYMENT TIMING ══════════ -->
+<div class="slide">
+  <div class="kicker">02 · Ordering channels</div>
+  <h1>Three ordering surfaces, two payment timings</h1>
+  <svg viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+    </defs>
+    <g transform="translate(20,20)"><rect width="300" height="150" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1f7a4d">Customer PWA</text><text x="150" y="46" text-anchor="middle" font-size="11" fill="#3d2f24">signed-in customers</text><rect x="20" y="60" width="260" height="34" rx="8" fill="#ffffff" stroke="#c9dccf"/><text x="150" y="81" text-anchor="middle" font-size="10.5">Takeaway / Delivery → pay BEFORE food</text><rect x="20" y="102" width="260" height="34" rx="8" fill="#ffffff" stroke="#c9dccf"/><text x="150" y="123" text-anchor="middle" font-size="10.5">Dine-in (table QR) → OPEN TAB, pay after</text></g>
+    <g transform="translate(350,20)"><rect width="300" height="150" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#2d5f8a">Kiosk / Tablet</text><text x="150" y="46" text-anchor="middle" font-size="11" fill="#3d2f24">guests, no login needed</text><rect x="20" y="60" width="260" height="34" rx="8" fill="#ffffff" stroke="#c8d9e8"/><text x="150" y="81" text-anchor="middle" font-size="10.5">ALWAYS prepaid — card / wallet QR on phone</text><rect x="20" y="102" width="260" height="34" rx="8" fill="#ffffff" stroke="#c8d9e8"/><text x="150" y="123" text-anchor="middle" font-size="10.5">OTP sign-in needed to redeem voucher/reward</text></g>
+    <g transform="translate(680,20)"><rect width="300" height="150" rx="10" fill="#fbeee6" stroke="#c0562f" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#c0562f">Staff POS</text><text x="150" y="46" text-anchor="middle" font-size="11" fill="#3d2f24">walk-ins &amp; phone orders</text><rect x="20" y="60" width="260" height="34" rx="8" fill="#ffffff" stroke="#eeddce"/><text x="150" y="81" text-anchor="middle" font-size="10.5">Cash · card · QR · wallet · split bill</text><rect x="20" y="102" width="260" height="34" rx="8" fill="#ffffff" stroke="#eeddce"/><text x="150" y="123" text-anchor="middle" font-size="10.5">Paid-now or pay-later (points on capture)</text></g>
+    <g transform="translate(290,190)"><rect width="420" height="66" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="210" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#9a6b00">PAY-BEFORE-FOOD: kitchen only after payment</text><text x="210" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">unpaid → auto-cancel (kiosk 15 min · others 2 h)</text></g>
+    <g transform="translate(740,190)"><rect width="240" height="66" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="120" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a4d">OPEN TAB: food first, pay after</text><text x="120" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">never auto-cancelled</text></g>
+    <path d="M470 170 V222" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s2a)"/>
+    <path d="M840 170 V222" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s2a)"/>
+  </svg>
+</div>
+
+<!-- ══════════ 5. PWA FLOW ══════════ -->
+<div class="slide">
+  <div class="kicker">03 · Customer PWA</div>
+  <h1>PWA ordering flow</h1>
+  <svg viewBox="0 0 1000 620" style="height:600px;width:auto;max-width:100%;display:block;margin:0 auto" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s3d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a9a9a"/></marker>
+    </defs>
+    <g transform="translate(250,16)"><rect width="240" height="40" rx="20" fill="#3d2f24"/><text x="120" y="25" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">START — browse app</text></g>
+    <g transform="translate(250,78)"><rect width="240" height="52" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3d2f24">Browse as GUEST</text><text x="120" y="40" text-anchor="middle" font-size="10.5" fill="#6f6558">menu · promos · events · workshops</text></g>
+    <g transform="translate(250,152)"><rect width="240" height="52" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f7a4d">SIGN IN</text><text x="120" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">phone number + one OTP</text></g>
+    <g transform="translate(250,226)"><rect width="240" height="52" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3d2f24">Build the cart</text><text x="120" y="40" text-anchor="middle" font-size="10.5" fill="#6f6558">items · modifiers · bundles · BYOT</text></g>
+    <g transform="translate(250,300)"><rect width="240" height="56" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="2"/><text x="120" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f7a4d">Apply ONE redemption</text><text x="120" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">voucher OR reward — never both</text></g>
+    <g transform="translate(250,378)"><rect width="240" height="52" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3d2f24">PAY</text><text x="120" y="40" text-anchor="middle" font-size="10.5" fill="#6f6558">wallet · Stripe · HitPay · cash</text></g>
+    <g transform="translate(250,452)"><rect width="240" height="56" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="#3d2f24">Order lifecycle</text><rect x="14" y="28" width="46" height="18" rx="9" fill="#e8f3ec"/><text x="37" y="41" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1f7a4d">pending</text><rect x="64" y="28" width="58" height="18" rx="9" fill="#e8f3ec"/><text x="93" y="41" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1f7a4d">confirmed</text><rect x="126" y="28" width="58" height="18" rx="9" fill="#e8f3ec"/><text x="155" y="41" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1f7a4d">preparing</text><rect x="188" y="28" width="40" height="18" rx="9" fill="#e8f3ec"/><text x="208" y="41" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1f7a4d">ready</text></g>
+    <g transform="translate(250,530)"><rect width="240" height="44" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="120" y="27" text-anchor="middle" font-size="11.5" font-weight="700" fill="#9a6b00">Cancel — pending &amp; unpaid only</text></g>
+    <path d="M370 56 V78" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <path d="M370 130 V152" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <path d="M370 204 V226" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <path d="M370 278 V300" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <path d="M370 356 V378" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <path d="M370 430 V452" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <path d="M370 508 V530" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s3a)"/>
+    <g transform="translate(580,40)"><rect width="400" height="58" rx="8" fill="#ffffff" stroke="#d8cdb8" stroke-dasharray="5 3"/><text x="200" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">GUEST = BROWSE ONLY</text><text x="200" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">guests see everything but cannot order — no guest checkout</text></g>
+    <g transform="translate(580,126)"><rect width="400" height="58" rx="8" fill="#ffffff" stroke="#d8cdb8" stroke-dasharray="5 3"/><text x="200" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">ACCOUNT-TIED</text><text x="200" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">vouchers, rewards, points and wallet always belong to the signed-in profile</text></g>
+    <g transform="translate(580,278)"><rect width="400" height="78" rx="8" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="200" y="20" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f7a4d">GOLDEN RULE</text><text x="200" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">one voucher OR one reward per order — server rejects both</text><text x="200" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">eligibility checked first (min-spend · tier · caps · scope)</text><text x="200" y="70" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1f7a4d">rejected order consumes NOTHING</text></g>
+    <g transform="translate(580,388)"><rect width="400" height="58" rx="8" fill="#ffffff" stroke="#d8cdb8" stroke-dasharray="5 3"/><text x="200" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">PAYMENT METHODS</text><text x="200" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">wallet (OTP-confirmed) · Stripe card/FPX · HitPay · cash at counter</text></g>
+    <g transform="translate(580,462)"><rect width="400" height="58" rx="8" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="200" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#2d5f8a">POINTS FOLLOW THE MONEY</text><text x="200" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">estimated at checkout → credited when payment captured</text></g>
+    <g transform="translate(580,536)"><rect width="400" height="58" rx="8" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="200" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">CANCEL = FULL RELEASE</text><text x="200" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">voucher/reward → active · stock restored · auto-cancel 2 h unpaid</text></g>
+    <path d="M490 60 H578" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s3d)"/>
+    <path d="M490 155 H578" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s3d)"/>
+    <path d="M490 317 H578" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s3d)"/>
+    <path d="M490 417 H578" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s3d)"/>
+    <path d="M490 491 H578" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s3d)"/>
+    <path d="M490 565 H578" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s3d)"/>
+  </svg>
+</div>
+
+<!-- ══════════ 6. KIOSK ══════════ -->
+<div class="slide">
+  <div class="kicker">04 · Kiosk / Tablet</div>
+  <h1>Kiosk flow — phone step &amp; sign-in redemption</h1>
+  <svg viewBox="0 0 1000 600" style="height:585px;width:auto;max-width:100%;display:block;margin:0 auto" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s4d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a9a9a"/></marker>
+    </defs>
+    <g transform="translate(370,16)"><rect width="240" height="40" rx="20" fill="#3d2f24"/><text x="120" y="25" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">START — tap to order</text></g>
+    <g transform="translate(370,76)"><rect width="240" height="48" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Order type — Dine-In / Takeaway</text></g>
+    <g transform="translate(370,142)"><rect width="240" height="48" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#2d5f8a">Phone step (optional)</text></g>
+    <g transform="translate(370,208)"><rect width="240" height="48" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Menu → cart → checkout</text></g>
+    <g transform="translate(370,274)"><rect width="240" height="48" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">PAYMENT SELECT</text></g>
+    <g transform="translate(30,380)"><rect width="290" height="60" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="145" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Pay with CARD</text><text x="145" y="44" text-anchor="middle" font-size="10.5" fill="#6f6558">QR → pay on your phone</text></g>
+    <g transform="translate(355,380)"><rect width="290" height="60" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="145" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Pay with WALLET</text><text x="145" y="44" text-anchor="middle" font-size="10.5" fill="#6f6558">QR → pay on your phone (OTP)</text></g>
+    <g transform="translate(680,380)"><rect width="290" height="60" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="2"/><text x="145" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a4d">SIGN IN to redeem</text><text x="145" y="44" text-anchor="middle" font-size="10.5" fill="#3d2f24">phone + OTP → pick ONE voucher/reward</text></g>
+    <path d="M490 322 V380" fill="none" stroke="#8a7f6f" stroke-width="1.8"/>
+    <path d="M470 348 H175" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M175 348 V378" fill="none" stroke="#8a7f6f" stroke-width="1.8"/>
+    <path d="M490 348 V378" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M510 348 H825" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M825 348 V378" fill="none" stroke="#8a7f6f" stroke-width="1.8"/>
+    <g transform="translate(370,488)"><rect width="240" height="48" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#2d5f8a">Order PAID (prepaid) → kitchen</text></g>
+    <path d="M175 440 V456 H470" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M490 456 V488" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M825 440 V456 H510" fill="none" stroke="#8a7f6f" stroke-width="1.8"/>
+    <path d="M490 56 V76" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M490 124 V142" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M490 190 V208" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <path d="M490 256 V274" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s4a)"/>
+    <g transform="translate(30,548)"><rect width="290" height="46" rx="8" fill="#fbe9e4" stroke="#b3402a" stroke-width="1.5"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#b3402a">SKIP sign-in → CANNOT redeem (401)</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">guests order and pay — no voucher/reward</text></g>
+    <g transform="translate(355,548)"><rect width="290" height="46" rx="8" fill="#ffffff" stroke="#d8cdb8" stroke-dasharray="5 3"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#6f6558">PHONE STEP ≠ REDEMPTION</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">links the order to a profile for points only</text></g>
+    <g transform="translate(680,548)"><rect width="290" height="46" rx="8" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1f7a4d">SIGNED-IN order = member's order</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">discount applied · points credit on capture</text></g>
+    <g transform="translate(30,16)"><rect width="300" height="96" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="150" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">SHARED-SCREEN SAFETY</text><text x="150" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">sign-in wiped on order finish</text><text x="150" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">or after 60 s inactivity</text><text x="150" y="74" text-anchor="middle" font-size="10.5" fill="#3d2f24">unpaid order → auto-cancel 15 min</text></g>
+    <path d="M330 64 H368" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s4d)"/>
+  </svg>
+</div>
+
+<!-- ══════════ 7. POS ══════════ -->
+<div class="slide">
+  <div class="kicker">05 · Staff POS</div>
+  <h1>POS flow — redemption drawer &amp; walk-ins</h1>
+  <svg viewBox="0 0 1000 600" style="height:585px;width:auto;max-width:100%;display:block;margin:0 auto" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s5d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a9a9a"/></marker>
+    </defs>
+    <g transform="translate(370,16)"><rect width="240" height="40" rx="20" fill="#3d2f24"/><text x="120" y="25" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">START — build order</text></g>
+    <g transform="translate(370,76)"><rect width="240" height="48" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Type · items · modifiers · bundles</text></g>
+    <g transform="translate(370,142)"><polygon points="120,0 240,40 120,80 0,40" fill="#fbeee6" stroke="#c0562f" stroke-width="1.5"/><text x="120" y="45" text-anchor="middle" font-size="11.5" font-weight="700" fill="#c0562f">Attach customer?</text></g>
+    <g transform="translate(370,244)"><rect width="240" height="48" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a4d">Apply Discounts &amp; Wallet</text></g>
+    <g transform="translate(370,312)"><rect width="240" height="48" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Take payment</text></g>
+    <g transform="translate(370,380)"><rect width="240" height="48" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Send to kitchen → KDS → serve</text></g>
+    <g transform="translate(370,448)"><rect width="240" height="48" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="120" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="#9a6b00">Refund if needed (money roles)</text></g>
+    <path d="M490 56 V76" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M490 124 V142" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M490 222 V244" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M490 292 V312" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M490 360 V380" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M490 428 V448" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <g transform="translate(30,142)"><rect width="290" height="58" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="145" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a4d">YES — member</text><text x="145" y="44" text-anchor="middle" font-size="10.5" fill="#3d2f24">search phone · scan loyalty QR</text></g>
+    <g transform="translate(680,142)"><rect width="290" height="58" rx="10" fill="#f2f0ea" stroke="#9a9383" stroke-width="1.5"/><text x="145" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#6f6558">NO — walk-in</text><text x="145" y="44" text-anchor="middle" font-size="10.5" fill="#6f6558">no redemption · no points</text></g>
+    <path d="M370 182 H322" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M610 182 H678" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M175 200 V222 H470" fill="none" stroke="#8a7f6f" stroke-width="1.8" marker-end="url(#s5a)"/>
+    <path d="M825 200 V222 H510" fill="none" stroke="#8a7f6f" stroke-width="1.8"/>
+    <g transform="translate(30,312)"><rect width="290" height="74" rx="8" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1f7a4d">REDEMPTION DRAWER</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">one voucher OR one reward per order</text><text x="145" y="48" text-anchor="middle" font-size="10" fill="#3d2f24">second apply → 400</text><text x="145" y="62" text-anchor="middle" font-size="10" fill="#3d2f24">+ full / partial wallet payment</text></g>
+    <g transform="translate(680,312)"><rect width="290" height="74" rx="8" fill="#ffffff" stroke="#d8cdb8" stroke-dasharray="5 3"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#6f6558">PAYMENT OPTIONS</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">cash (change) · card · Stripe QR</text><text x="145" y="48" text-anchor="middle" font-size="10" fill="#3d2f24">wallet · split bill (item / even)</text><text x="145" y="62" text-anchor="middle" font-size="10" fill="#3d2f24">offline queue + client_ref replay</text></g>
+    <g transform="translate(30,448)"><rect width="290" height="48" rx="8" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2d5f8a">PAY-LATER ORDERS</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">points credit when the payment is captured</text></g>
+    <g transform="translate(680,448)"><rect width="290" height="48" rx="8" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="145" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#9a6b00">AFTER CHECKOUT</text><text x="145" y="34" text-anchor="middle" font-size="10" fill="#3d2f24">Refund button · Key Delivery dispatch · e-invoice QR</text></g>
+    <path d="M320 349 H368" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s5d)"/>
+    <path d="M680 349 H612" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s5d)"/>
+    <g transform="translate(30,520)"><rect width="940" height="52" rx="10" fill="#f2f0ea" stroke="#9a9383" stroke-width="1.5"/><text x="470" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">ROLE GATES</text><text x="470" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">POS/orders/inventory/wastage/duties = all roles · Kitchen (KDS) + Equipment = kitchen_staff / shift_supervisor / store_manager only · refund = money roles</text></g>
+  </svg>
+</div>
+
+<!-- ══════════ 8. LOYALTY ══════════ -->
+<div class="slide">
+  <div class="kicker">06 · Loyalty</div>
+  <h1>Loyalty points — earn → credit → spend → reverse</h1>
+  <svg viewBox="0 0 1000 600" style="height:585px;width:auto;max-width:100%;display:block;margin:0 auto" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s6a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s6r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3402a"/></marker>
+    </defs>
+    <g transform="translate(30,60)"><rect width="210" height="76" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="105" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">1 · Order placed</text><text x="105" y="42" text-anchor="middle" font-size="10" fill="#6f6558">points ESTIMATED</text><text x="105" y="58" text-anchor="middle" font-size="10" fill="#6f6558">pre-discount subtotal</text></g>
+    <g transform="translate(270,60)"><rect width="210" height="76" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="2"/><text x="105" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#2d5f8a">2 · Payment captured</text><text x="105" y="42" text-anchor="middle" font-size="10" fill="#3d2f24">points CREDITED</text><text x="105" y="58" text-anchor="middle" font-size="10" fill="#3d2f24">idempotent · never double</text></g>
+    <g transform="translate(510,60)"><rect width="210" height="76" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="105" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a4d">3 · Wallet balance</text><text x="105" y="42" text-anchor="middle" font-size="10" fill="#3d2f24">spendable points</text><text x="105" y="58" text-anchor="middle" font-size="10" fill="#3d2f24">+ annual-spend counter</text></g>
+    <g transform="translate(750,60)"><rect width="220" height="76" rx="10" fill="#f1ecf7" stroke="#6a4c93" stroke-width="1.5"/><text x="110" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#6a4c93">4 · Redeem → reward</text><text x="110" y="42" text-anchor="middle" font-size="10" fill="#3d2f24">points spent · code issued</text><text x="110" y="58" text-anchor="middle" font-size="10" fill="#3d2f24">tier · cost · caps checked</text></g>
+    <path d="M240 98 H268" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s6a)"/>
+    <path d="M480 98 H508" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s6a)"/>
+    <path d="M720 98 H748" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s6a)"/>
+    <g transform="translate(750,200)"><rect width="220" height="76" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="110" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">5 · Use on an order</text><text x="110" y="42" text-anchor="middle" font-size="10" fill="#6f6558">any channel</text><text x="110" y="58" text-anchor="middle" font-size="10" fill="#6f6558">ONE per order</text></g>
+    <path d="M860 136 V198" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s6a)"/>
+    <g transform="translate(750,330)"><rect width="220" height="76" rx="10" fill="#fbe9e4" stroke="#b3402a" stroke-width="1.5"/><text x="110" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="#b3402a">6 · Cancel / refund</text><text x="110" y="42" text-anchor="middle" font-size="10" fill="#3d2f24">pro-rata clawback</text><text x="110" y="58" text-anchor="middle" font-size="10" fill="#3d2f24">annual spend decremented</text></g>
+    <path d="M860 276 V328" fill="none" stroke="#b3402a" stroke-width="2" marker-end="url(#s6r)"/>
+    <path d="M750 368 H615 V140 H480" fill="none" stroke="#b3402a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#s6r)"/>
+    <text x="662" y="268" text-anchor="middle" font-size="10.5" font-weight="700" fill="#b3402a" transform="rotate(90 662 268)">points return to the ledger</text>
+    <g transform="translate(30,200)"><rect width="640" height="206" rx="12" fill="#eef1f4" stroke="#5a6472" stroke-width="1.5"/><text x="320" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#5a6472">TIER LADDER — qualification is SPEND-based (rolling 12 months)</text>
+      <g transform="translate(20,36)"><rect width="190" height="66" rx="10" fill="#ffffff" stroke="#c9b98f"/><text x="95" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3d2f24">Bloom — 1.0×</text><text x="95" y="40" text-anchor="middle" font-size="10" fill="#6f6558">everyone starts here</text><text x="95" y="54" text-anchor="middle" font-size="10" fill="#6f6558">RM 0</text></g>
+      <g transform="translate(225,36)"><rect width="190" height="66" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="95" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2d5f8a">Origin — 1.2×</text><text x="95" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">RM 500 spend / 12 mo</text><text x="95" y="54" text-anchor="middle" font-size="10" fill="#3d2f24">auto-upgrade</text></g>
+      <g transform="translate(430,36)"><rect width="190" height="66" rx="10" fill="#f1ecf7" stroke="#6a4c93" stroke-width="1.5"/><text x="95" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#6a4c93">Reserve — 1.5×</text><text x="95" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">RM 1,500 spend / 12 mo</text><text x="95" y="54" text-anchor="middle" font-size="10" fill="#3d2f24">auto-upgrade</text></g>
+      <path d="M210 69 H223" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s6a)"/>
+      <path d="M415 69 H428" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s6a)"/>
+      <g transform="translate(20,118)"><rect width="600" height="72" rx="10" fill="#ffffff" stroke="#c9c2b2"/><text x="300" y="20" text-anchor="middle" font-size="10.5" font-weight="700" fill="#6f6558">MULTIPLIERS ON TOP</text><text x="300" y="38" text-anchor="middle" font-size="10" fill="#3d2f24">1 pt / RM 1 subtotal (pre-discount) · birthday month ×2 · BYOT order ×2 (Reserve ×3)</text><text x="300" y="56" text-anchor="middle" font-size="10" fill="#3d2f24">window closes below threshold → drop one tier (Reserve→Origin→Bloom)</text></g>
+    </g>
+  </svg>
+</div>
+
+<!-- ══════════ 9. REDEMPTION STATE MACHINE ══════════ -->
+<div class="slide">
+  <div class="kicker">07 · Redemption — the golden rule</div>
+  <h1>Voucher / reward state machine</h1>
+  <svg viewBox="0 0 1000 600" style="height:585px;width:auto;max-width:100%;display:block;margin:0 auto" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s7a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s7g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f7a4d"/></marker>
+      <marker id="s7o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0562f"/></marker>
+      <marker id="s7r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3402a"/></marker>
+    </defs>
+    <g transform="translate(40,190)"><rect width="200" height="96" rx="14" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="2.5"/><text x="100" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#1f7a4d">ACTIVE</text><text x="100" y="50" text-anchor="middle" font-size="10.5" fill="#3d2f24">in the wallet</text><text x="100" y="66" text-anchor="middle" font-size="10.5" fill="#3d2f24">eligible · not expired</text><text x="100" y="82" text-anchor="middle" font-size="10.5" fill="#3d2f24">shown PWA · kiosk · POS</text></g>
+    <g transform="translate(400,190)"><rect width="200" height="96" rx="14" fill="#fbeee6" stroke="#c0562f" stroke-width="2.5"/><text x="100" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#c0562f">USED</text><text x="100" y="50" text-anchor="middle" font-size="10.5" fill="#3d2f24">bound to an order</text><text x="100" y="66" text-anchor="middle" font-size="10.5" fill="#3d2f24">discount applied</text><text x="100" y="82" text-anchor="middle" font-size="10.5" fill="#3d2f24">counters incremented</text></g>
+    <g transform="translate(400,420)"><rect width="200" height="80" rx="14" fill="#f2f0ea" stroke="#9a9383" stroke-width="2"/><text x="100" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#6f6558">EXPIRED</text><text x="100" y="50" text-anchor="middle" font-size="10.5" fill="#6f6558">hidden everywhere</text><text x="100" y="66" text-anchor="middle" font-size="10.5" fill="#6f6558">5-min sweep + JIT</text></g>
+    <g transform="translate(40,420)"><rect width="200" height="80" rx="14" fill="#fbe9e4" stroke="#b3402a" stroke-width="2"/><text x="100" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="#b3402a">REJECTED — 400 / 401</text><text x="100" y="50" text-anchor="middle" font-size="10.5" fill="#3d2f24">guard fired first</text><text x="100" y="66" text-anchor="middle" font-size="10.5" fill="#3d2f24">wallet untouched</text></g>
+    <g transform="translate(360,40)"><polygon points="140,0 280,52 140,104 0,52" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="140" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">Other redemption</text><text x="140" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">already bound?</text></g>
+    <path d="M240 238 H282 L360 82 V78" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s7a)"/>
+    <path d="M640 92 V120 L500 188" fill="none" stroke="#1f7a4d" stroke-width="2" marker-end="url(#s7g)"/>
+    <text x="672" y="150" font-size="10.5" font-weight="700" fill="#1f7a4d">applied to an order</text>
+    <path d="M500 286 V328 L140 418" fill="none" stroke="#c0562f" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#s7o)"/>
+    <text x="452" y="368" font-size="10.5" font-weight="700" fill="#c0562f">order cancelled → RELEASED</text>
+    <text x="452" y="384" font-size="10" fill="#6f6558">(manual cancel, staff/admin cancel, or auto-cancel)</text>
+    <path d="M240 270 V452 L398" fill="none" stroke="#9a9383" stroke-width="2" marker-end="url(#s7a)"/>
+    <text x="278" y="380" font-size="10.5" font-weight="700" fill="#6f6558">expires_at passed</text>
+    <path d="M500 144 V186" fill="none" stroke="#b3402a" stroke-width="2" marker-end="url(#s7r)"/>
+    <text x="516" y="170" font-size="10.5" font-weight="700" fill="#b3402a">yes → 400</text>
+    <text x="516" y="184" font-size="10" fill="#6f6558">one voucher OR one reward</text>
+    <path d="M240 170 H140 V420" fill="none" stroke="#b3402a" stroke-width="2" stroke-dasharray="5 4"/>
+    <g transform="translate(680,40)"><rect width="300" height="196" rx="12" fill="#faf6ee" stroke="#b9ac94" stroke-width="1.5"/><text x="150" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#3d2f24">SAME GUARD — EVERY CHANNEL</text>
+      <rect x="16" y="34" width="268" height="30" rx="8" fill="#e8f3ec"/><text x="150" y="54" text-anchor="middle" font-size="10.5" fill="#1f7a4d">PWA checkout — both fields → 400</text>
+      <rect x="16" y="72" width="268" height="30" rx="8" fill="#e9f1f8"/><text x="150" y="92" text-anchor="middle" font-size="10.5" fill="#2d5f8a">Kiosk — no sign-in → 401 · both → 400</text>
+      <rect x="16" y="110" width="268" height="30" rx="8" fill="#fbeee6"/><text x="150" y="130" text-anchor="middle" font-size="10.5" fill="#c0562f">Staff POS drawer — second apply → 400</text>
+      <rect x="16" y="148" width="268" height="30" rx="8" fill="#ffffff" stroke="#c9c2b2"/><text x="150" y="168" text-anchor="middle" font-size="10.5" fill="#3d2f24">Admin order detail — both ways → 400</text></g>
+    <g transform="translate(680,250)"><rect width="300" height="130" rx="12" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="150" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f7a4d">BEFORE THE FLIP — checked first</text>
+      <text x="150" y="44" text-anchor="middle" font-size="10.5" fill="#3d2f24">ownership (this customer's item)</text>
+      <text x="150" y="60" text-anchor="middle" font-size="10.5" fill="#3d2f24">status active · not expired</text>
+      <text x="150" y="76" text-anchor="middle" font-size="10.5" fill="#3d2f24">min-spend · tier gate · first-order-only</text>
+      <text x="150" y="92" text-anchor="middle" font-size="10.5" fill="#3d2f24">use caps · store/item/category scope</text>
+      <text x="150" y="114" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1f7a4d">any failure → 400, nothing consumed</text></g>
+    <g transform="translate(680,396)"><rect width="300" height="104" rx="12" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="150" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#9a6b00">ORDER-TIED — NO STANDALONE USE</text>
+      <text x="150" y="42" text-anchor="middle" font-size="10.5" fill="#3d2f24">no "mark used" buttons anywhere</text>
+      <text x="150" y="58" text-anchor="middle" font-size="10.5" fill="#3d2f24">scanning a QR only VALIDATES</text>
+      <text x="150" y="74" text-anchor="middle" font-size="10.5" fill="#3d2f24">consumption = applied to an order</text>
+      <text x="150" y="90" text-anchor="middle" font-size="10.5" fill="#3d2f24">release on cancel is automatic</text></g>
+  </svg>
+</div>
+
+<!-- ══════════ 10. PAYMENT PIPELINE ══════════ -->
+<div class="slide">
+  <div class="kicker">08 · Payments</div>
+  <h1>Payment capture pipeline</h1>
+  <svg viewBox="0 0 1000 560" style="height:540px;width:auto;max-width:100%;display:block;margin:0 auto" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s8a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s8r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3402a"/></marker>
+    </defs>
+    <g transform="translate(20,40)"><rect width="230" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="115" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Stripe webhook</text><text x="115" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">card · FPX · checkout session</text></g>
+    <g transform="translate(20,130)"><rect width="230" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="115" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Guest-pay wallet</text><text x="115" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">kiosk QR paid on phone · OTP-gated</text></g>
+    <g transform="translate(20,220)"><rect width="230" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="115" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">POS cash / card / wallet</text><text x="115" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">staff confirm · offline replay</text></g>
+    <g transform="translate(20,310)"><rect width="230" height="64" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="115" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">PWA wallet pay</text><text x="115" y="46" text-anchor="middle" font-size="10.5" fill="#6f6558">OTP-confirmed · HitPay also routes here</text></g>
+    <g transform="translate(330,150)"><rect width="270" height="140" rx="14" fill="#e6f2f2" stroke="#0e6e6e" stroke-width="2"/><text x="135" y="30" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0e6e6e">PAYMENT CAPTURED</text><text x="135" y="50" text-anchor="middle" font-size="10.5" fill="#3d2f24">_sync_order_payment_status</text><text x="135" y="70" text-anchor="middle" font-size="10.5" fill="#3d2f24">idempotent · row-locked</text><text x="135" y="90" text-anchor="middle" font-size="10.5" fill="#3d2f24">status → captured / settled</text><text x="135" y="112" text-anchor="middle" font-size="10.5" fill="#3d2f24">unpaid → paid, kitchen release</text></g>
+    <path d="M250 72 H328" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <path d="M250 162 H328" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <path d="M250 252 H328" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <path d="M250 342 H328" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <g transform="translate(680,40)"><rect width="300" height="64" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#1f7a4d">Credit loyalty points</text><text x="150" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">order_earned ledger · tier multiplier</text></g>
+    <g transform="translate(680,130)"><rect width="300" height="64" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#2d5f8a">Accrue annual spend</text><text x="150" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">drives tier upgrades (RM500 / RM1,500)</text></g>
+    <g transform="translate(680,220)"><rect width="300" height="64" rx="10" fill="#f1ecf7" stroke="#6a4c93" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#6a4c93">Grant lucky-draw tickets</text><text x="150" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">spend-based campaigns (e.g. RM50 = 1)</text></g>
+    <g transform="translate(680,310)"><rect width="300" height="64" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="150" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#9a6b00">Issue e-invoice</text><text x="150" y="46" text-anchor="middle" font-size="10.5" fill="#3d2f24">LHDN consolidation — auto when enabled</text></g>
+    <path d="M600 170 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <path d="M600 200 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <path d="M600 230 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <path d="M600 260 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s8a)"/>
+    <g transform="translate(330,400)"><rect width="270" height="56" rx="10" fill="#fbe9e4" stroke="#b3402a" stroke-width="1.5"/><text x="135" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#b3402a">Failure / dispute / chargeback</text><text x="135" y="42" text-anchor="middle" font-size="10.5" fill="#3d2f24">reverse the credit — money never drifts</text></g>
+    <path d="M465 290 V398" fill="none" stroke="#b3402a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#s8r)"/>
+    <g transform="translate(680,410)"><rect width="300" height="46" rx="10" fill="#ffffff" stroke="#c9c2b2"/><text x="150" y="18" text-anchor="middle" font-size="10.5" font-weight="700" fill="#6f6558">STATUSES</text><text x="150" y="36" text-anchor="middle" font-size="9.5" fill="#3d2f24">initiated · pending_authorization · authorized · captured · settled · failed · voided · chargeback · refunded · partially_refunded</text></g>
+    <g transform="translate(20,420)"><rect width="230" height="56" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="115" y="22" text-anchor="middle" font-size="10.5" font-weight="700" fill="#9a6b00">WALLET RULES</text><text x="115" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">spending always OTP-verified</text><text x="115" y="54" text-anchor="middle" font-size="10" fill="#3d2f24">no auto-registration on guest-pay</text></g>
+  </svg>
+</div>
+
+<!-- ══════════ 11. REFUNDS ══════════ -->
+<div class="slide">
+  <div class="kicker">09 · Refunds</div>
+  <h1>Refund flow &amp; loyalty clawback</h1>
+  <svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s9a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s9r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3402a"/></marker>
+    </defs>
+    <g transform="translate(340,30)"><rect width="320" height="52" rx="10" fill="#3d2f24"/><text x="160" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">Refund request</text><text x="160" y="40" text-anchor="middle" font-size="10.5" fill="#d9cdb8">staff POS (money roles) · admin order detail</text></g>
+    <g transform="translate(340,112)"><polygon points="160,0 320,42 160,84 0,42" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="160" y="36" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">Amount ≤ remaining</text><text x="160" y="52" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">refundable balance?</text></g>
+    <g transform="translate(340,226)"><polygon points="160,0 320,42 160,84 0,42" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="160" y="36" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">Same refund</text><text x="160" y="52" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">within 60 s?</text></g>
+    <g transform="translate(340,340)"><rect width="320" height="60" rx="10" fill="#e6f2f2" stroke="#0e6e6e" stroke-width="2"/><text x="160" y="24" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0e6e6e">EXECUTE</text><text x="160" y="44" text-anchor="middle" font-size="10.5" fill="#3d2f24">cash / wallet / store-credit instant · card via provider</text></g>
+    <path d="M500 82 V112" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+    <path d="M500 196 V226" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+    <path d="M500 310 V340" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+    <g transform="translate(30,112)"><rect width="240" height="56" rx="10" fill="#fbe9e4" stroke="#b3402a" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#b3402a">NO → 400 over-refund</text><text x="120" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">error returns the exact balance left</text></g>
+    <g transform="translate(30,226)"><rect width="240" height="56" rx="10" fill="#fbe9e4" stroke="#b3402a" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#b3402a">YES → 409 duplicate</text><text x="120" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">idempotency — no double-refund</text></g>
+    <path d="M340 140 H272" fill="none" stroke="#b3402a" stroke-width="2" marker-end="url(#s9r)"/>
+    <path d="M340 254 H272" fill="none" stroke="#b3402a" stroke-width="2" marker-end="url(#s9r)"/>
+    <g transform="translate(680,80)"><rect width="300" height="74" rx="10" fill="#fbe9e4" stroke="#b3402a" stroke-width="1.5"/><text x="150" y="20" text-anchor="middle" font-size="11.5" font-weight="700" fill="#b3402a">POINTS CLAWED BACK</text><text x="150" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">pro-rata on partial refunds</text><text x="150" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">annual spend decremented</text></g>
+    <g transform="translate(680,176)"><rect width="300" height="74" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="150" y="20" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f7a4d">FULL REFUND</text><text x="150" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">voucher / reward on the order</text><text x="150" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">released → active again</text></g>
+    <g transform="translate(680,272)"><rect width="300" height="74" rx="10" fill="#f2f0ea" stroke="#9a9383" stroke-width="1.5"/><text x="150" y="20" text-anchor="middle" font-size="11.5" font-weight="700" fill="#6f6558">LUCKY-DRAW TICKETS</text><text x="150" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">NOT clawed back — by design</text><text x="150" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">do not remove tickets for refunds</text></g>
+    <path d="M660 117 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+    <path d="M660 213 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+    <path d="M660 309 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+    <g transform="translate(30,340)"><rect width="240" height="96" rx="10" fill="#ffffff" stroke="#d8cdb8" stroke-dasharray="5 3"/><text x="120" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#6f6558">AUDIT TRAIL</text><text x="120" y="38" text-anchor="middle" font-size="10" fill="#3d2f24">every refund audit-logged:</text><text x="120" y="54" text-anchor="middle" font-size="10" fill="#3d2f24">approver · amount · reason</text><text x="120" y="70" text-anchor="middle" font-size="10" fill="#3d2f24">payment details · status</text></g>
+    <g transform="translate(340,430)"><rect width="320" height="52" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="160" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2d5f8a">E-INVOICE</text><text x="160" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">refund credit note issued to LHDN when applicable</text></g>
+    <path d="M500 400 V430" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s9a)"/>
+  </svg>
+</div>
+
+<!-- ══════════ 12. AUTO-CANCEL ══════════ -->
+<div class="slide">
+  <div class="kicker">10 · Housekeeping</div>
+  <h1>Auto-cancel &amp; expiry sweeps</h1>
+  <svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="s10a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a7f6f"/></marker>
+      <marker id="s10g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f7a4d"/></marker>
+      <marker id="s10r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3402a"/></marker>
+    </defs>
+    <g transform="translate(390,30)"><rect width="220" height="52" rx="10" fill="#ffffff" stroke="#b9ac94" stroke-width="1.5"/><text x="110" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#3d2f24">Unpaid prepaid order</text><text x="110" y="40" text-anchor="middle" font-size="10.5" fill="#6f6558">pay-before-food channels</text></g>
+    <g transform="translate(390,116)"><polygon points="110,0 220,40 110,80 0,40" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="110" y="35" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">Money guard:</text><text x="110" y="51" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">captured money?</text></g>
+    <g transform="translate(30,236)"><rect width="240" height="52" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1f7a4d">YES — NEVER auto-cancelled</text><text x="120" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">paid money stays paid</text></g>
+    <g transform="translate(390,236)"><rect width="220" height="52" rx="10" fill="#eef1f4" stroke="#5a6472" stroke-width="1.5"/><text x="110" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#5a6472">NO → sweeper (every 5 min)</text><text x="110" y="40" text-anchor="middle" font-size="10" fill="#3d2f24">startup + periodic</text></g>
+    <path d="M500 82 V116" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s10a)"/>
+    <path d="M390 156 H272" fill="none" stroke="#1f7a4d" stroke-width="2" marker-end="url(#s10g)"/>
+    <path d="M390 176 V236" fill="none" stroke="#8a7f6f" stroke-width="2"/>
+    <path d="M500 196 V236" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s10a)"/>
+    <g transform="translate(30,330)"><rect width="240" height="56" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="120" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2d5f8a">Kiosk orders</text><text x="120" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">cancel after 15 min unpaid</text></g>
+    <g transform="translate(390,330)"><rect width="220" height="56" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="110" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2d5f8a">PWA / other prepaid</text><text x="110" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">cancel after 2 h unpaid</text></g>
+    <g transform="translate(680,330)"><rect width="290" height="56" rx="10" fill="#e9f1f8" stroke="#2d5f8a" stroke-width="1.5"/><text x="145" y="22" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2d5f8a">Payment-session limbo</text><text x="145" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">cancel after 24 h · open tabs NEVER</text></g>
+    <path d="M390 288 V330" fill="none" stroke="#8a7f6f" stroke-width="2"/>
+    <path d="M280 330 H120" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s10a)"/>
+    <path d="M500 330 V328 H500" fill="none" stroke="#8a7f6f" stroke-width="2"/>
+    <path d="M610 358 H678" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s10a)"/>
+    <g transform="translate(390,426)"><rect width="220" height="52" rx="10" fill="#fbeee6" stroke="#c0562f" stroke-width="2"/><text x="110" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#c0562f">AUTO-CANCEL</text><text x="110" y="40" text-anchor="middle" font-size="10.5" fill="#3d2f24">full reversal · audit-logged</text></g>
+    <path d="M150 386 V402 H390" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s10a)"/>
+    <path d="M500 386 V426" fill="none" stroke="#8a7f6f" stroke-width="2" marker-end="url(#s10a)"/>
+    <path d="M825 386 V402 H612" fill="none" stroke="#8a7f6f" stroke-width="2"/>
+    <g transform="translate(680,426)"><rect width="290" height="90" rx="10" fill="#e8f3ec" stroke="#1f7a4d" stroke-width="1.5"/><text x="145" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#1f7a4d">FULL RELEASE</text><text x="145" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">voucher/reward → active</text><text x="145" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">stock restored from the ledger</text><text x="145" y="70" text-anchor="middle" font-size="10.5" fill="#3d2f24">seats freed · table unlocked</text></g>
+    <g transform="translate(30,426)"><rect width="290" height="90" rx="10" fill="#fdf3dc" stroke="#9a6b00" stroke-width="1.5"/><text x="145" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#9a6b00">EXPIRY SWEEPS</text><text x="145" y="38" text-anchor="middle" font-size="10.5" fill="#3d2f24">voucher/reward past expires_at → expired</text><text x="145" y="54" text-anchor="middle" font-size="10.5" fill="#3d2f24">5-min sweep + wallet-view check</text><text x="145" y="70" text-anchor="middle" font-size="10.5" fill="#3d2f24">hidden in PWA · kiosk · POS drawer</text></g>
+  </svg>
+</div>
+
+<!-- ══════════ 13. TEST ACCOUNTS ══════════ -->
+<div class="slide">
+  <div class="kicker">11 · Test accounts</div>
+  <h1>Accounts &amp; dev switches</h1>
+  <table>
+    <tr><th>Account</th><th>Password</th><th>Role</th><th>Store</th><th>Notes</th></tr>
+    <tr><td><code>admin@loyaltysystem.uk</code></td><td><code>admin123</code></td><td>system_admin</td><td>All</td><td>Full access; required for Settings/config &amp; wallet money moves</td></tr>
+    <tr><td><code>manager@loyaltysystem.uk</code></td><td><code>manager123</code></td><td>store_manager</td><td>1 (PKL)</td><td>Manage store, refunds</td></tr>
+    <tr><td><code>tester-store@loyaltysystem.uk</code></td><td><code>Test1234!</code></td><td>store_manager</td><td>1</td><td>Role-scoping tests (seeded)</td></tr>
+    <tr><td><code>staff1@loyaltysystem.uk</code> / <code>staff2@…</code></td><td>PIN</td><td>server S1 / cashier S2</td><td>1 / 2</td><td>Staff portal &amp; POS</td></tr>
+    <tr><td><code>kitchen@loyaltysystem.uk</code></td><td><code>kitchen123</code></td><td>kitchen_staff</td><td>1</td><td>Kitchen Display tests</td></tr>
+    <tr><td><code>s1-supervisor@ / s1-cashier@ / s1-kitchen@</code></td><td><code>Test1234!</code></td><td>supervisor / cashier / kitchen</td><td>1</td><td rowspan="2">Role-gate tests (seeded; PIN 123456 where set)</td></tr>
+    <tr><td><code>s2-server@ / s2-delivery@</code></td><td><code>Test1234!</code></td><td>server / delivery</td><td>2</td></tr>
+    <tr><td>Customer (demo)</td><td>OTP <code>000000</code></td><td>Reserve tier</td><td>—</td><td>Login with phone <code>+60123456001</code></td></tr>
+    <tr><td>Customer (demo 2)</td><td>OTP <code>000000</code></td><td>—</td><td>—</td><td>Phone <code>+60123456002</code>; walk-in profile <code>+0000000000</code></td></tr>
+  </table>
+  <div class="box orange">
+    <b>Dev-only switches (off at go-live):</b> OTP bypass (<code>otp.bypass_enabled = true</code> — any code works, use <code>000000</code>) · Payment simulator (Admin → Payment Gateway → <b>Checkout Mode: Simulator</b> instead of live Stripe). Stripe/HitPay keys are NOT set on dev — use the simulator for card flows.
+  </div>
+</div>
+
+<!-- ══════════ 14. P1 + GOLDEN RULES ══════════ -->
+<div class="slide">
+  <div class="kicker">12 · Tester priorities</div>
+  <h1>P1 checklist + golden rules</h1>
+  <table>
+    <tr><th>#</th><th>Flow</th><th>Expected result</th></tr>
+    <tr><td>1</td><td>PWA checkout with BOTH a voucher and a reward</td><td>400 "Choose one voucher OR one reward per order"; wallet untouched</td></tr>
+    <tr><td>2</td><td>Staff POS: apply voucher → apply reward on the same order</td><td>Second apply rejected 400; first stays applied</td></tr>
+    <tr><td>3</td><td>Admin: same both-ways (voucher then reward / reward then voucher)</td><td>400 on the second redemption</td></tr>
+    <tr><td>4</td><td>Kiosk: redeem without sign-in</td><td>401; guest cannot redeem</td></tr>
+    <tr><td>5</td><td>Kiosk: OTP sign-in → pick one voucher/reward → pay</td><td>Discount applied; order under member account; session wiped on finish</td></tr>
+    <tr><td>6</td><td>Cancel an order with an applied voucher/reward</td><td>Item back to <code>active</code>; stock/table/seat released</td></tr>
+    <tr><td>7</td><td>Expired voucher/reward</td><td>Hidden from wallet/POS/kiosk within ~5 min (or on wallet open)</td></tr>
+    <tr><td>8</td><td>Pay an order → check points</td><td>Points credited on capture only; unpaid order earns nothing</td></tr>
+    <tr><td>9</td><td>Refund (partial + full)</td><td>Pro-rata point clawback; annual spend reduced; voucher released on full refund; tickets stay</td></tr>
+    <tr><td>10</td><td>Unpaid kiosk order left alone</td><td>Auto-cancelled after 15 min; other prepaid after 2 h; open tabs never</td></tr>
+    <tr><td>11</td><td>Role gates (s1-cashier)</td><td>POS/orders/inventory/wastage/duties OK; Kitchen + Equipment = Access Denied</td></tr>
+    <tr><td>12</td><td>Cross-store isolation (s2 accounts)</td><td>Store 2 data only; store-scoped admin cannot touch other stores' orders</td></tr>
+  </table>
+  <div class="box orange"><b>Golden rules:</b> ① One redemption per order (voucher OR reward, every channel, both directions). ② Redemptions are order-tied — scanning only validates; released on cancel. ③ Error paths never consume. ④ Points follow the money — credit on capture, pro-rata clawback on refunds. ⑤ Captured money is never auto-cancelled. ⑥ Guests earn nothing.</div>
+  <div class="box green"><b>Verification state (23 Aug 2026):</b> backend unit 119/119 · end-to-end suite 247 passed / 3 skipped / 0 failed · DB redemption invariants clean (0 stacked discounts, 0 unreleased bindings, 0 duplicates) · all six surfaces healthy.</div>
+</div>
+
+</body>
+</html>
