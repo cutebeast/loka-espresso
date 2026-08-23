@@ -992,6 +992,11 @@ async def create_order_from_cart(
     voucher_used: CustomerVoucher | None = None
     reward_used: CustomerReward | None = None
 
+    # Golden rule (flow doc §2A): ONE voucher OR ONE reward per order.
+    # Reject before any consumption so a rejected order leaves both statuses untouched.
+    if data.voucher_code and data.reward_id:
+        raise OrderError("Choose one voucher OR one reward per order", 400)
+
     if data.voucher_code:
         voucher_result = await db.execute(
             select(CustomerVoucher).where(

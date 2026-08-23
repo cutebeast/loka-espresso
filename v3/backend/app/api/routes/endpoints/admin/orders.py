@@ -660,6 +660,16 @@ async def apply_order_voucher(
         raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
     if order.payment_status in ("captured", "settled"):
         raise HTTPException(status_code=400, detail="Cannot apply voucher to an order that has already been paid")
+    if to_decimal(order.reward_discount) > 0:
+        raise HTTPException(status_code=400, detail="This order already has a reward applied — one voucher OR one reward per order")
+    # A zero-discount redemption (e.g. free_delivery reward on a takeaway order)
+    # leaves reward_discount at 0 — also reject when a reward is bound to the order.
+    bound_reward = (await db.execute(
+        select(CustomerReward.id).where(CustomerReward.order_id == order_id).limit(1)
+    )).scalar_one_or_none()
+    if bound_reward is not None:
+        raise HTTPException(status_code=400, detail="This order already has a reward applied — one voucher OR one reward per order")
+
     result = await db.execute(
         select(CustomerVoucher, VoucherDefinition)
         .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id, isouter=True)
@@ -780,7 +790,7 @@ async def apply_order_voucher(
         action="apply_voucher",
         resource_type="order",
         resource_id=order_id,
-        changes_summary={"voucher_code": voucher_code, "discount": discount, "customer_id": order.customer_id},
+        changes_summary={"voucher_code": voucher_code, "discount": str(discount), "customer_id": order.customer_id},
     ))
 
     await db.commit()
@@ -820,6 +830,16 @@ async def apply_order_reward(
         raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
     if order.payment_status in ("captured", "settled"):
         raise HTTPException(status_code=400, detail="Cannot apply reward to an order that has already been paid")
+    if to_decimal(order.voucher_discount) > 0:
+        raise HTTPException(status_code=400, detail="This order already has a voucher applied — one voucher OR one reward per order")
+    # A zero-discount redemption (e.g. free_delivery voucher on a takeaway order)
+    # leaves voucher_discount at 0 — also reject when a voucher is bound to the order.
+    bound_voucher = (await db.execute(
+        select(CustomerVoucher.id).where(CustomerVoucher.order_id == order_id).limit(1)
+    )).scalar_one_or_none()
+    if bound_voucher is not None:
+        raise HTTPException(status_code=400, detail="This order already has a voucher applied — one voucher OR one reward per order")
+
     result = await db.execute(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
@@ -839,6 +859,11 @@ async def apply_order_reward(
     now = datetime.now(timezone.utc)
     if customer_reward.expires_at and customer_reward.expires_at < now:
         raise HTTPException(status_code=400, detail="Reward has expired")
+
+    order_base = to_decimal(order.items_subtotal)
+    min_order = to_decimal(reward_cat.minimum_order_value) if reward_cat else Decimal(0)
+    if order_base < min_order:
+        raise HTTPException(status_code=400, detail=f"Reward requires minimum order of {min_order:.2f}")
 
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
@@ -897,7 +922,7 @@ async def apply_order_reward(
         action="apply_reward",
         resource_type="order",
         resource_id=order_id,
-        changes_summary={"reward_id": reward_id, "discount": discount, "customer_id": order.customer_id},
+        changes_summary={"reward_id": reward_id, "discount": str(discount), "customer_id": order.customer_id},
     ))
 
     await db.commit()
