@@ -18,12 +18,14 @@ import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSwipe } from '@/hooks/useSwipe';
 import api from '@/lib/api';
+import type { UserReward, UserVoucher } from '@/lib/api';
+import { normalizePhone } from '@/lib/phone';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import {
   Utensils, ShoppingBag, Search, Plus, Minus, Trash2,
   ShoppingCart, ArrowLeft, ArrowRight, CheckCircle, Loader2,
   CreditCard, Smartphone, Phone, Sparkles, Wallet, ArrowLeftRight,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Gift, Tag
 } from 'lucide-react';
 import KioskItemPage from './kiosk/KioskItemPage';
 import KioskBundlePage, { type KioskBundle, type KioskBundleComponent } from './kiosk/KioskBundlePage';
@@ -82,7 +84,7 @@ interface CartItem {
   bundle_title?: string;
 }
 
-type KioskPhase = 'welcome' | 'order_type' | 'table_number' | 'phone' | 'menu' | 'item' | 'bundle' | 'cart' | 'addon_deals' | 'checkout' | 'payment_select' | 'success' | 'setup' | 'store_setup';
+type KioskPhase = 'welcome' | 'order_type' | 'table_number' | 'phone' | 'menu' | 'item' | 'bundle' | 'cart' | 'addon_deals' | 'checkout' | 'payment_select' | 'redeem_phone' | 'redeem_otp' | 'redeem_pick' | 'success' | 'setup' | 'store_setup';
 type Orientation = 'portrait' | 'landscape';
 type KioskMode = 'standing' | 'tablet';
 
@@ -151,6 +153,22 @@ export default function KioskPage() {
   // Stable idempotency key per cart-checkout attempt: a double-tap / retry of
   // the same cart replays the existing order instead of duplicating it.
   const idempotencyKeyRef = useRef<string | null>(null);
+
+  // ── Member sign-in at checkout (redeem vouchers/rewards) ──
+  // OTP-verified on the kiosk itself (dev OTP bypass applies until go-live);
+  // the access token authorizes the order so voucher/reward ownership checks pass.
+  const [redeemPhoneInput, setRedeemPhoneInput] = useState('');
+  const [redeemOtpInput, setRedeemOtpInput] = useState('');
+  const [memberToken, setMemberToken] = useState<string | null>(null);
+  const [memberPhone, setMemberPhone] = useState('');
+  const [memberVouchers, setMemberVouchers] = useState<UserVoucher[]>([]);
+  const [memberRewards, setMemberRewards] = useState<UserReward[]>([]);
+  const [selectedRedemption, setSelectedRedemption] = useState<
+    | { kind: 'voucher'; code: string; label: string }
+    | { kind: 'reward'; id: number; label: string }
+    | null
+  >(null);
+  const [redeemBusy, setRedeemBusy] = useState(false);
 
   const returnPhaseRef = useRef<KioskPhase>('menu');
 
@@ -289,6 +307,7 @@ export default function KioskPage() {
         setPhoneInput('');
         setSearchQuery('');
         setInactivityWarn(false);
+        resetMemberSession(true);
       }, INACTIVITY_TIMEOUT_MS);
     }
   }, [phase, kioskMode]);
@@ -573,6 +592,75 @@ export default function KioskPage() {
     idempotencyKeyRef.current = null;
   }, [cart]);
 
+  // ── Member session helpers ──
+  // End the member session: best-effort backend logout (clears the HttpOnly
+  // cookie the login set on this shared device) + local state wipe.
+  const resetMemberSession = (logout: boolean) => {
+    if (logout && memberToken) {
+      api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${memberToken}` } }).catch(() => {});
+    }
+    setMemberToken(null);
+    setMemberPhone('');
+    setMemberVouchers([]);
+    setMemberRewards([]);
+    setSelectedRedemption(null);
+    setRedeemPhoneInput('');
+    setRedeemOtpInput('');
+    setRedeemBusy(false);
+  };
+
+  const startRedeemSignIn = () => {
+    setRedeemPhoneInput('');
+    setRedeemOtpInput('');
+    setError('');
+    setPhase('redeem_phone');
+  };
+
+  const sendRedeemOtp = async () => {
+    const digits = redeemPhoneInput.replace(/\D/g, '');
+    if (digits.length < 9 || redeemBusy) return;
+    setRedeemBusy(true);
+    setError('');
+    try {
+      const phone = normalizePhone(redeemPhoneInput);
+      await api.post('/auth/send-otp', { phone_number: phone });
+      setMemberPhone(phone);
+      setPhase('redeem_otp');
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('kiosk.redeem_login_failed');
+      setError(msg);
+    } finally {
+      setRedeemBusy(false);
+    }
+  };
+
+  const verifyRedeemOtp = async () => {
+    if (redeemOtpInput.trim().length < 4 || redeemBusy) return;
+    setRedeemBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/login', { phone_number: memberPhone, otp_code: redeemOtpInput.trim() });
+      const token = res.data?.tokens?.access_token;
+      if (!token) throw new Error('missing access token');
+      setMemberToken(token);
+      // Load the member's active vouchers + rewards for the picker
+      const w = await api.get('/wallet/me', { headers: { Authorization: `Bearer ${token}` } });
+      const data = w.data as { vouchers?: UserVoucher[]; rewards?: UserReward[] } | undefined;
+      setMemberVouchers((data?.vouchers ?? []).filter(v => v.status === 'active' || v.status === 'available'));
+      setMemberRewards((data?.rewards ?? []).filter(r => r.status === 'active' || r.status === 'available'));
+      setPhase('redeem_pick');
+    } catch {
+      setError(t('kiosk.redeem_login_failed'));
+    } finally {
+      setRedeemBusy(false);
+    }
+  };
+
+  const pickRedemption = (sel: { kind: 'voucher'; code: string; label: string } | { kind: 'reward'; id: number; label: string }) => {
+    setSelectedRedemption(sel);
+    setPhase('payment_select');
+  };
+
   // ── Place order ──
   const placeOrder = async (method: 'card' | 'wallet') => {
     setLoading(true);
@@ -600,8 +688,11 @@ export default function KioskPage() {
         })),
         dining_table_number: orderType === 'dine_in' ? (tableNumber ? (tableNumber.match(/^[0-9]+$/) ? 'T' + tableNumber : tableNumber) : undefined) : undefined,
         ...(customerPhone ? { customer_phone: customerPhone } : {}),
+        ...(selectedRedemption?.kind === 'voucher' ? { voucher_code: selectedRedemption.code } : {}),
+        ...(selectedRedemption?.kind === 'reward' ? { reward_id: selectedRedemption.id } : {}),
       };
-      const res = await api.post('/kiosk/orders', payload);
+      const res = await api.post('/kiosk/orders', payload,
+        memberToken ? { headers: { Authorization: `Bearer ${memberToken}` } } : undefined);
       const data = res.data?.data || res.data;
       _orderId.current = data.order_id;
       setOrderNumber(data.order_number);
@@ -619,8 +710,17 @@ export default function KioskPage() {
         setPhase('success');
       }
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('kiosk.order_failed');
+      const resp = (e as { response?: { status?: number; data?: { detail?: string } } })?.response;
+      const msg = resp?.data?.detail || t('kiosk.order_failed');
       setError(msg);
+      if (resp?.status === 401 && memberToken) {
+        // Member session no longer valid — drop it so the retry is a clean guest order
+        resetMemberSession(true);
+      } else if (resp?.status === 400 && selectedRedemption) {
+        // Voucher/reward rejected (ineligible, min spend, …) — unselect it so a
+        // retry doesn't fail the same way; the member stays signed in.
+        setSelectedRedemption(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -642,6 +742,7 @@ export default function KioskPage() {
     }
     setCustomerPhone('');
     setPhoneInput('');
+    resetMemberSession(true);
     setPhase(kioskMode === 'tablet' ? 'menu' : 'welcome');
   };
 
@@ -1387,6 +1488,50 @@ export default function KioskPage() {
           <motion.div key="payment_select" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 24 }}>
             <h1 style={{ fontSize: fs(40, 32), fontWeight: 800 }}>{t('kiosk.payment_method')}</h1>
+
+            {/* Member redemption — sign in with OTP to spend vouchers/rewards */}
+            {!memberToken ? (
+              <button onClick={startRedeemSignIn} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: `${fs(16, 14)}px ${fs(28, 24)}px`, borderRadius: 14,
+                border: `2px dashed ${LOKA.gold}`, background: 'rgba(198,156,88,0.08)',
+                color: LOKA.gold, fontSize: fs(20, 17), fontWeight: 700, cursor: 'pointer',
+              }}>
+                <Gift size={fs(26, 22)} />
+                {t('kiosk.redeem_signin')}
+              </button>
+            ) : (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
+                padding: `${fs(14, 12)}px ${fs(20, 16)}px`, borderRadius: 14,
+                border: `2px solid ${LOKA.gold}`, background: 'rgba(198,156,88,0.08)',
+                maxWidth: isPortrait ? 420 : 640,
+              }}>
+                <Gift size={fs(24, 20)} style={{ color: LOKA.gold, flexShrink: 0 }} />
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: fs(15, 13), color: '#888' }}>{t('kiosk.redeem_signed_in_as', { phone: memberPhone })}</div>
+                  {selectedRedemption ? (
+                    <div style={{ fontSize: fs(19, 16), fontWeight: 700, color: LOKA.primary }}>
+                      {t('kiosk.redeem_selected')}: {selectedRedemption.label}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: fs(16, 14), color: '#666' }}>{t('kiosk.redeem_applied_note')}</div>
+                  )}
+                </div>
+                {selectedRedemption ? (
+                  <button onClick={() => setSelectedRedemption(null)} style={{ ...kioskBtnGhost(fs), padding: '8px 16px', fontSize: fs(16, 14) }}>
+                    {t('kiosk.redeem_remove')}
+                  </button>
+                ) : (
+                  <button onClick={() => setPhase('redeem_pick')} style={{ ...kioskBtnGhost(fs), padding: '8px 16px', fontSize: fs(16, 14), borderColor: LOKA.gold, color: LOKA.gold }}>
+                    {t('kiosk.redeem_choose')}
+                  </button>
+                )}
+                <button onClick={() => resetMemberSession(true)} style={{ ...kioskBtnGhost(fs), padding: '8px 16px', fontSize: fs(16, 14) }}>
+                  {t('kiosk.redeem_signout')}
+                </button>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', flexDirection: isPortrait ? 'column' : 'row', width: isPortrait ? '100%' : 'auto', maxWidth: isPortrait ? 420 : 'none', padding: isPortrait ? '0 24px' : 0 }}>
               <button onClick={() => placeOrder('card')} disabled={loading} style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
@@ -1419,6 +1564,138 @@ export default function KioskPage() {
             <button onClick={() => setPhase('checkout')} style={{ ...kioskBtnGhost(fs), marginTop: 16 }}>
               <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
             </button>
+          </motion.div>
+        )}
+
+        {/* ── REDEEM: PHONE ── */}
+        {phase === 'redeem_phone' && (
+          <motion.div key="redeem_phone" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 24px' }}>
+            <Gift size={fs(64, 48)} style={{ color: LOKA.gold, marginBottom: fs(24, 16) }} />
+            <h1 style={{ fontSize: fs(36, 28), fontWeight: 800, marginBottom: fs(12, 8), textAlign: 'center' }}>{t('kiosk.redeem_phone_title')}</h1>
+            <p style={{ fontSize: fs(18, 16), color: '#888', marginBottom: fs(28, 20), maxWidth: 480, textAlign: 'center' }}>
+              {t('kiosk.redeem_phone_desc')}
+            </p>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="0123456789"
+              value={redeemPhoneInput}
+              onChange={e => setRedeemPhoneInput(e.target.value.replace(/[^0-9+]/g, ''))}
+              style={{
+                fontSize: fs(28, 24), padding: '14px 24px', borderRadius: 12, border: '2px solid #ddd',
+                width: '100%', maxWidth: 360, textAlign: 'center', marginBottom: fs(24, 20),
+              }}
+              autoFocus
+            />
+            {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(18, 16), marginBottom: 16, textAlign: 'center' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button onClick={() => { setError(''); setPhase('payment_select'); }} style={kioskBtnGhost(fs)}>
+                <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
+              </button>
+              <button onClick={sendRedeemOtp} disabled={redeemPhoneInput.replace(/\D/g, '').length < 9 || redeemBusy} style={{
+                ...kioskBtnPrimary(fs),
+                opacity: (redeemPhoneInput.replace(/\D/g, '').length >= 9 && !redeemBusy) ? 1 : 0.5,
+              }}>
+                {redeemBusy ? <Loader2 size={24} className="animate-spin" /> : t('kiosk.redeem_send_code')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── REDEEM: OTP ── */}
+        {phase === 'redeem_otp' && (
+          <motion.div key="redeem_otp" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 24px' }}>
+            <Smartphone size={fs(64, 48)} style={{ color: LOKA.primary, marginBottom: fs(24, 16) }} />
+            <h1 style={{ fontSize: fs(36, 28), fontWeight: 800, marginBottom: fs(12, 8), textAlign: 'center' }}>{t('kiosk.redeem_otp_title')}</h1>
+            <p style={{ fontSize: fs(18, 16), color: '#888', marginBottom: fs(28, 20), maxWidth: 480, textAlign: 'center' }}>
+              {t('kiosk.redeem_otp_desc', { phone: memberPhone })}
+            </p>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="••••••"
+              value={redeemOtpInput}
+              onChange={e => setRedeemOtpInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+              style={{
+                fontSize: fs(36, 30), padding: '14px 24px', borderRadius: 12, border: '2px solid #ddd',
+                width: '100%', maxWidth: 300, textAlign: 'center', letterSpacing: 8, marginBottom: fs(24, 20),
+              }}
+              autoFocus
+            />
+            {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(18, 16), marginBottom: 16, textAlign: 'center' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button onClick={() => { setError(''); setPhase('redeem_phone'); }} style={kioskBtnGhost(fs)}>
+                <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
+              </button>
+              <button onClick={verifyRedeemOtp} disabled={redeemOtpInput.length < 4 || redeemBusy} style={{
+                ...kioskBtnPrimary(fs),
+                opacity: (redeemOtpInput.length >= 4 && !redeemBusy) ? 1 : 0.5,
+              }}>
+                {redeemBusy ? <Loader2 size={24} className="animate-spin" /> : t('kiosk.redeem_verify')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── REDEEM: PICK VOUCHER / REWARD ── */}
+        {phase === 'redeem_pick' && (
+          <motion.div key="redeem_pick" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: 'white', borderBottom: '2px solid #eee' }}>
+              <button onClick={() => setPhase('payment_select')} style={kioskBtnGhost(fs)}>
+                <ArrowLeft size={fs(24, 20)} style={{ marginRight: 8 }} /> {t('kiosk.back')}
+              </button>
+              <h1 style={{ flex: 1, textAlign: 'center', fontSize: fs(32, 26), fontWeight: 800 }}>{t('kiosk.redeem_pick_title')}</h1>
+              <div style={{ width: 120 }} />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: fs(24, 20), maxWidth: 640, margin: '0 auto', width: '100%' }}>
+              {memberVouchers.length === 0 && memberRewards.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 48, fontSize: fs(20, 18), color: '#888' }}>
+                  {t('kiosk.redeem_none_available')}
+                </div>
+              ) : (
+                <>
+                  {memberVouchers.map(v => (
+                    <button key={`v-${v.id}`} onClick={() => pickRedemption({
+                      kind: 'voucher', code: v.code,
+                      label: `${v.code} (${v.discount_type === 'percentage_off' ? `${v.discount_value}%` : formatPrice(v.discount_value)})`,
+                    })} style={{
+                      display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+                      padding: fs(18, 16), marginBottom: 12, borderRadius: 14, cursor: 'pointer',
+                      border: `2px solid ${LOKA.gold}40`, background: 'white',
+                    }}>
+                      <Tag size={fs(26, 22)} style={{ color: LOKA.gold, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: fs(20, 17), fontWeight: 700 }}>{v.voucher_title || v.code}</div>
+                        <div style={{ fontSize: fs(15, 13), color: '#888' }}>
+                          {v.code} · {v.discount_type === 'percentage_off' ? `${v.discount_value}% off` : `${formatPrice(v.discount_value)} off`}
+                          {v.min_spend ? ` · min ${formatPrice(v.min_spend)}` : ''}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  {memberRewards.map(r => (
+                    <button key={`r-${r.id}`} onClick={() => pickRedemption({ kind: 'reward', id: r.id, label: r.reward_name })} style={{
+                      display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+                      padding: fs(18, 16), marginBottom: 12, borderRadius: 14, cursor: 'pointer',
+                      border: `2px solid ${LOKA.primary}40`, background: 'white',
+                    }}>
+                      <Gift size={fs(26, 22)} style={{ color: LOKA.primary, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: fs(20, 17), fontWeight: 700 }}>{r.reward_name}</div>
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+            <div style={{ padding: 20, background: 'white', borderTop: '2px solid #eee', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => setPhase('payment_select')} style={kioskBtnGhost(fs)}>
+                {t('kiosk.redeem_no_thanks')}
+              </button>
+            </div>
           </motion.div>
         )}
 

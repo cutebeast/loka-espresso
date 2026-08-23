@@ -2273,3 +2273,21 @@ Owner: standalone "Use" on the staff wallet page was wrong — rewards/vouchers 
 - **REAL BUG — staff apply 409 FK error**: `order_adjustments.approved_by` FKs `admin_accounts.id` but staff apply-voucher/apply-reward passed `staff.id` (staff_profiles) — failed for any staff id without a colliding admin account row. `_adjustment_admin_id()` resolves the admin account behind admin-context staff sessions; plain staff get NULL (AuditLog records the acting principal).
 - **Staff wallet page is read-only for redemption**: "Use" buttons removed → "Apply at checkout" badges; PIN-redeem modal + dead handlers removed. The correct path exists at POS checkout: attach customer (phone search or QR scan) → "Apply Discounts & Wallet" drawer → vouchers/rewards listed → Apply ties them to the order (consumed on apply, released on cancel — verified live: apply→used, cancel→active).
 - Gates: unit 108/108 · voucher/reward E2E 2/2 · staff-portal rebuilt.
+
+### Round 40 cleanup — legacy redemption paths removed (2026-08-23)
+
+Owner: "remove any bad legacy logic, keep the proper logic only". Deleted rather than deprecated:
+- `/staff/customers/{id}/use-reward|use-voucher` + `/admin/customers/{id}/use-*` endpoints GONE (404 now); UseRewardRequest/UseVoucherRequest schemas removed.
+- Scan endpoints (staff + admin) are pure validation — the validate_only flag and consume branches removed entirely.
+- Staff portal: `markRewardUsed`/`markVoucherUsed` lib functions, `handleBurn*` in usePosCustomer/usePosState, and the wallet PIN-redeem modal all removed.
+- E2E `test_voucher_create_and_redeem_flow` rewritten to the proper flow: assign voucher → POS order with customer → `/staff/orders/{id}/apply-voucher` → cancel → released. (Caught a legit 400: first-order-only vouchers reject repeat customers — test now assigns a fresh unrestricted voucher.)
+- Verified live: removed endpoints 404; scans validate without consuming (reward stays active); staff wallet page renders read-only lists with no errors.
+- Guide updated: `guide/staff/wallet.md` documents the order-tied redemption flow.
+
+### Round 41 — kiosk/tablet checkout redemption (2026-08-23)
+
+Owner: redemption rules — PWA self-service at online checkout; kiosk/tablet offer OTP sign-in at checkout (guests who skip stay guests and simply can't redeem); POS stays staff-side (attach customer by phone/QR, apply via the order drawer).
+- **Backend `public/kiosk.py`**: `KioskOrderCreateRequest` accepts `voucher_code`/`reward_id`; new `_get_optional_authenticated_customer` mirrors `get_current_customer` (Bearer → type=access + customer_id + token_version + active) but returns None instead of raising. Redemption without a valid member token → 401 before any DB writes; a valid session takes precedence over phone/walk-in so `create_order_from_cart` ownership checks apply. Response adds `discount_amount`.
+- **Kiosk UI (`KioskPage.tsx`)**: payment_select gains "Sign in to use rewards & vouchers" → `redeem_phone` → `redeem_otp` (6-digit, dev OTP bypass applies pre-go-live) → `redeem_pick` (active vouchers + rewards from `/wallet/me` with the Bearer token). Order payload carries voucher_code/reward_id + Authorization header. 401 on order → member session dropped; 400 → redemption unselected (member stays signed in). Session wiped (with best-effort `/auth/logout` so the shared-device cookie clears) on success-screen reset AND inactivity timeout.
+- Verified live: voucher-without-token 401; voucher order → customer 139, voucher_discount applied, total 0 on a 100% pass; reward order → consumed; cancel releases both back to active; Playwright E2E walked the full kiosk UI (sign-in → pick reward → order placed); POS phone-lookup + wallet fetch still green.
+- Gates: unit 108/108 · tsc clean · E2E voucher/reward + PWA journey 7/7 · customer-pwa rebuilt, kiosk-v3/pos-disp-v3 restarted.

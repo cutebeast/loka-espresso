@@ -603,7 +603,24 @@
     "phone_loyalty_note": "Enter your phone to earn loyalty points on this order",
     "bundle_fixed_hint": "Includes all items below",
     "bundle_multi_hint": "Choose one item from each course",
-    "bundle_pick_hint": "Pick any {n}"
+    "bundle_pick_hint": "Pick any {n}",
+    "redeem_signin": "Sign in to use rewards & vouchers",
+    "redeem_phone_title": "Member Sign In",
+    "redeem_phone_desc": "Enter your phone number — we will send a verification code to confirm it is you.",
+    "redeem_send_code": "Send Code",
+    "redeem_otp_title": "Enter Verification Code",
+    "redeem_otp_desc": "We sent a 6-digit code to {phone}",
+    "redeem_verify": "Verify",
+    "redeem_login_failed": "Sign-in failed — please check the code and try again",
+    "redeem_pick_title": "Your Rewards & Vouchers",
+    "redeem_none_available": "No active vouchers or rewards on this account",
+    "redeem_selected": "Applied",
+    "redeem_remove": "Remove",
+    "redeem_choose": "Choose",
+    "redeem_signed_in_as": "Signed in as {phone}",
+    "redeem_no_thanks": "Continue without",
+    "redeem_applied_note": "Discount is applied to your order total at payment",
+    "redeem_signout": "Sign out"
   },
   "layouts": {
     "wizard_layout": {

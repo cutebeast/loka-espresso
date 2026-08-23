@@ -49,6 +49,10 @@ class KioskOrderCreateRequest(BaseSchema):
     # Client-generated key so a double-tap / retry replays the existing order
     # instead of creating a duplicate (see create_order_from_cart)
     idempotency_key: str | None = Field(None, max_length=255)
+    # Redemption — requires a customer Bearer token (OTP sign-in at the kiosk);
+    # ownership/eligibility is validated inside create_order_from_cart.
+    voucher_code: str | None = Field(None, max_length=50)
+    reward_id: int | None = Field(None, gt=0)
 
 
 class KioskOrderOut(BaseSchema):
@@ -57,6 +61,7 @@ class KioskOrderOut(BaseSchema):
     status: str
     payment_status: str
     total_amount: Money
+    discount_amount: Money
     currency_code: str
     pay_token: str
 
@@ -129,6 +134,36 @@ async def _find_or_create_kiosk_customer(db, raw_phone: str) -> Customer | None:
     db.add(customer)
     await db.flush()
     await db.refresh(customer)
+    return customer
+
+
+async def _get_optional_authenticated_customer(request: Request, db) -> Customer | None:
+    """Resolve a customer Bearer token if present and valid; None otherwise.
+
+    Mirrors get_current_customer but never raises — the kiosk order endpoint is
+    public, and a token is only required when the request redeems a
+    voucher/reward (enforced by the caller).
+    """
+    from app.core.security import decode_token
+
+    token = request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return None
+    if payload.get("type") != "access":
+        return None
+    customer_id = int(payload.get("customer_id") or 0)
+    if not customer_id:
+        return None
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if customer is None or customer.deleted_at is not None or not customer.is_active:
+        return None
+    if int(payload.get("token_version", 0)) != (getattr(customer, "token_version", 0) or 0):
+        return None
     return customer
 
 
@@ -235,10 +270,23 @@ async def create_kiosk_order(
         for v in v_result.scalars().all():
             variants_map[v.id] = v
 
-    # Get or create customer — phone-based if provided, else walk-in.
+    # Redemption requires an OTP-verified customer session — a guest/walk-in
+    # order can never spend vouchers or rewards.
+    wants_redemption = bool(data.voucher_code or data.reward_id)
+    auth_customer = await _get_optional_authenticated_customer(request, db)
+    if wants_redemption and auth_customer is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign in to redeem vouchers or rewards",
+        )
+
+    # Get or create customer — an authenticated session takes precedence, then
+    # phone-based if provided, else walk-in.
     # A phone matching a deactivated account yields None (never reactivates
     # it, never duplicates the unique phone row) → order as walk-in guest.
-    if data.customer_phone:
+    if auth_customer is not None:
+        kiosk_customer = auth_customer
+    elif data.customer_phone:
         kiosk_customer = await _find_or_create_kiosk_customer(db, data.customer_phone)
         if kiosk_customer is None:
             kiosk_customer = await _get_or_create_walkin_customer(db)
@@ -389,6 +437,8 @@ async def create_kiosk_order(
         fulfillment_type="dine_in_service" if data.order_type == "dine_in" else "counter_pickup",
         dining_table_id=dining_table_id,
         idempotency_key=data.idempotency_key,
+        voucher_code=data.voucher_code,
+        reward_id=data.reward_id,
     )
 
     try:
@@ -432,6 +482,7 @@ async def create_kiosk_order(
             status=order.status,
             payment_status=order.payment_status,
             total_amount=order.total_amount,
+            discount_amount=order.discount_amount,
             currency_code=store.currency_code,
             pay_token=pay_token,
         )
