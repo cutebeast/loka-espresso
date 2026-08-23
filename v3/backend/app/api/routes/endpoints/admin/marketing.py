@@ -339,6 +339,7 @@ async def send_campaign(
             msg = NotificationMessage(
                 customer_id=cid, message_type=msg_type, priority="normal",
                 title=campaign.campaign_name, body=campaign.body_content,
+                image_url=campaign.hero_image_url, action_url=campaign.cta_url,
             )
             db.add(msg)
             delivered_count += 1

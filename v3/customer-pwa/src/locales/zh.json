@@ -1231,7 +1231,10 @@
     "results_one": "{count} 个结果",
     "results_other": "{count} 个结果",
     "searchPlaceholder": "按名称或区域搜索",
-    "title": "选择您的 Loka门店"
+    "title": "选择您的 Loka门店",
+    "closedNow": "休息中",
+    "specialClosed": "{reason} · 今日休息",
+    "specialHours": "{reason} · {open}–{close}"
   },
   "surveys": {
     "backToSurveys": "返回问卷",

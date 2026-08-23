@@ -142,6 +142,12 @@ async def list_stores(
         store_dict["special_hours"] = [
             StoreSpecialHoursOut.model_validate(h) for h in special_map.get(store.id, [])
         ]
+        # Customer-facing open state (timezone-aware, special hours take priority)
+        store_dict["is_open"] = _is_store_open(
+            store,
+            hours_map.get(store.id, []),
+            special_map.get(store.id, []),
+        )
         store_dicts.append(store_dict)
 
     # Apply translations
@@ -187,6 +193,11 @@ async def get_store(db: DBDependency, locale: OptionalLocale, store_id: int):
     store_dict["special_hours"] = [
         StoreSpecialHoursOut.model_validate(h) for h in special_result.scalars().all()
     ]
+    store_dict["is_open"] = _is_store_open(
+        store,
+        hours_result.scalars().all(),
+        special_result.scalars().all(),
+    )
 
     await translate_single(db, store_dict, "stores", locale)
 

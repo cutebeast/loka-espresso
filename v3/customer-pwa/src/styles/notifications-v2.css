@@ -130,6 +130,16 @@
   transition: background 0.15s;
 }
 
+/* Campaign / promotional banner image attached to the notification */
+.notif-image {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 10px;
+  margin: 8px 0 2px;
+  border: 1px solid var(--loka-border-light);
+  object-fit: cover;
+}
+
 .notif-card:active { background: var(--loka-bg-light); }
 
 .notif-card.unread {

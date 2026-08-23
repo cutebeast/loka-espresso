@@ -14,6 +14,8 @@ interface Notification {
   title: string;
   body?: string;
   type?: string;
+  image_url?: string | null;
+  action_url?: string | null;
   is_read: boolean;
   created_at?: string;
 }
@@ -74,7 +76,30 @@ function getDateGroup(dateStr?: string): string {
 }
 
 export default function NotificationsPage() {
-  const { setPage, showToast } = useUIStore();
+  const { setPage, showToast, categories } = useUIStore();
+
+  /* Navigate a notification's action deep link (admin-prepared CTA).
+     Mirrors EventsPage.handleAction: #hash pages via the router,
+     #menu?cat=slug with category preselection, http(s) in a new tab. */
+  const handleAction = (n: Notification) => {
+    const url = n.action_url || '';
+    if (!url) return;
+    if (/^https?:\/\//i.test(url)) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const menuMatch = url.match(/^#menu(?:\?.*?\bcat=([\w-]+))?/);
+    if (menuMatch) {
+      const slug = menuMatch[1];
+      const cat = slug ? categories.find(c => c.slug === slug) : null;
+      setPage('menu', cat ? { selectedCategoryId: cat.id } : {});
+      return;
+    }
+    if (url.startsWith('#')) {
+      const target = url.slice(1).split('?')[0];
+      if (target) setPage(target as Parameters<typeof setPage>[0]);
+    }
+  };
   const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +230,10 @@ export default function NotificationsPage() {
                     <div
                       key={n.id}
                       className={`notif-card ${n.is_read ? 'read' : 'unread'}`}
-                      onClick={() => !n.is_read && handleMarkRead(n.id)}
+                      onClick={() => {
+                        if (!n.is_read) handleMarkRead(n.id);
+                        handleAction(n);
+                      }}
                     >
                       <div className={`notif-icon ${iconClass}`}>
                         <Icon size={20} />
@@ -215,6 +243,15 @@ export default function NotificationsPage() {
                           <span className="notif-heading">{n.title}</span>
                           {!n.is_read && <span className="notif-unread-dot" />}
                         </div>
+                        {n.image_url && (
+                          <img
+                            src={n.image_url}
+                            alt=""
+                            className="notif-image"
+                            loading="lazy"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
                         {n.body && <div className="notif-desc">{n.body}</div>}
                         <div className="notif-time">{timeAgo(n.created_at, t)}</div>
                       </div>

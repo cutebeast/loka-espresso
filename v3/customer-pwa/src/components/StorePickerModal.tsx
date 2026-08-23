@@ -127,7 +127,21 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
                 <div className="store-picker-item-info">
                   <div className="store-picker-item-name">{store.store_name}</div>
                   {formatStoreAddress(store) && <div className="store-picker-item-address">{formatStoreAddress(store)}</div>}
-                  <span className="store-picker-item-status">{t('storePicker.openNow')}</span>
+                  <span className={`store-picker-item-status ${store.is_open === false ? 'closed' : ''}`}>
+                    {store.is_open === false ? t('storePicker.closedNow') : t('storePicker.openNow')}
+                  </span>
+                  {(() => {
+                    const today = new Date();
+                    const pad = (v: number) => String(v).padStart(2, '0');
+                    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+                    const special = (store.special_hours || []).find(h => h.special_date?.slice(0, 10) === todayStr);
+                    if (!special) return null;
+                    const time = (v?: string | null) => (v ? v.slice(0, 5) : '');
+                    const label = special.is_closed
+                      ? t('storePicker.specialClosed', { reason: special.reason })
+                      : t('storePicker.specialHours', { reason: special.reason, open: time(special.open_time), close: time(special.close_time) });
+                    return <div className="store-picker-special">{label}</div>;
+                  })()}
                   {store.pickup_lead_minutes != null && (
                     <div className="store-picker-pickup-badge">
                       <Clock size={12} />

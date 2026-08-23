@@ -145,6 +145,7 @@ class StorePublicOut(BaseSchema):
     is_accepting_orders: bool
     operating_hours: list[StoreOperatingHoursOut] = []
     special_hours: list[StoreSpecialHoursOut] = []
+    is_open: bool = True
 
 
 class DiningTableBase(BaseSchema):

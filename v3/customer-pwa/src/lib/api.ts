@@ -184,6 +184,8 @@ export interface Store {
   latitude?: number | null;
   longitude?: number | null;
   operating_hours?: OperatingHour[];
+  special_hours?: SpecialHour[];
+  is_open?: boolean;
   pickup_lead_minutes?: number;
   delivery_radius_km?: number;
   first_order_minutes_after_open?: number;
@@ -193,6 +195,16 @@ export interface Store {
   currency_code?: string;
   pos_integration_type?: string | null;
   delivery_integration_type?: string | null;
+}
+
+export interface SpecialHour {
+  id: number;
+  store_id: number;
+  special_date: string;
+  open_time?: string | null;
+  close_time?: string | null;
+  reason: string;
+  is_closed: boolean;
 }
 
 // ---------- Menu ----------
