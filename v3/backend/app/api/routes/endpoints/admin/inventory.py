@@ -178,6 +178,7 @@ async def list_items(
             selectinload(InventoryItem.supplier),
         )
         .where(InventoryItem.deleted_at.is_(None))
+        .order_by(InventoryItem.id.desc())
     )
     if category_id is not None:
         base_stmt = base_stmt.where(InventoryItem.category_id == category_id)

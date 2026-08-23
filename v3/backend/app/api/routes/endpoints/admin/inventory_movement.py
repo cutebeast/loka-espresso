@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from app.api.routes.deps import CurrentAdmin, DBDependency, enum_filter_or_400, require_store_admin
 from app.core.business_time import day_start_utc, day_end_utc
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock, WastageReport
-from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
+from app.schemas.base import APIResponse, BaseSchema, Money, PaginatedResponse
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 
@@ -38,15 +38,15 @@ class MovementLogOut(BaseSchema):
     store_id: int
     inventory_item_id: int
     movement_type: str
-    quantity_delta: float
-    stock_after: float
-    reserved_delta: float
-    reserved_after: float
+    quantity_delta: Money
+    stock_after: Money
+    reserved_delta: Money
+    reserved_after: Money
     reason: str
     reference_type: str | None
     reference_id: int | None
-    unit_cost_at_movement: float | None
-    movement_cost: float | None
+    unit_cost_at_movement: Money | None
+    movement_cost: Money | None
     performed_by: int | None
     created_at: datetime
     item_name: str | None = None

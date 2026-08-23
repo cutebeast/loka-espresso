@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.base import BaseSchema, TimestampedSchema
+from app.schemas.base import BaseSchema, Money, TimestampedSchema
 
 
 class StoreOperatingHoursBase(BaseSchema):
@@ -138,7 +138,7 @@ class StorePublicOut(BaseSchema):
     logo_url: str | None
     banner_image_url: str | None
     pickup_lead_minutes: int
-    delivery_radius_km: float
+    delivery_radius_km: Money
     first_order_minutes_after_open: int
     last_order_minutes_before_close: int
     is_active: bool

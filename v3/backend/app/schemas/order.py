@@ -75,7 +75,7 @@ class OrderFulfillmentOut(BaseSchema):
     started_at: datetime | None
     completed_at: datetime | None
     delivery_fee_snapshot: Money
-    delivery_distance_km: float | None
+    delivery_distance_km: Money | None
     notes: str | None
     created_at: datetime
     updated_at: datetime

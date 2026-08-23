@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.translation import Translation, TranslationCache
@@ -532,6 +533,11 @@ def schedule_auto_translate(table_name: str, record_id: int, fields: dict[str, s
             from app.core.database import AsyncSessionLocal
             async with AsyncSessionLocal() as db:
                 await auto_translate_record(db, table_name, record_id, fields)
+        except StaleDataError:
+            # The record (or its translations) was deleted between schedule and
+            # run — a normal race with admin deletes/E2E cleanup. Nothing to
+            # translate anymore; not an error.
+            logger.info("schedule_auto_translate skipped for %s.%s — record deleted", table_name, record_id)
         except Exception:
             logger.exception("schedule_auto_translate failed for %s.%s", table_name, record_id)
 

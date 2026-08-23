@@ -36,14 +36,14 @@ class TipAllocationOut(BaseSchema):
     order_id: int
     staff_id: int | None  # None = pooled tip, not yet distributed
     tip_amount: Money
-    tip_percentage: float | None
+    tip_percentage: Money | None
     allocation_type: str
     created_at: datetime
     store_id: int | None = None
     store_name: str | None = None
     staff_name: str | None = None
     payment_method: str | None = None
-    total_tip: float = 0
+    total_tip: Money = 0
 
 
 # ---------------------------------------------------------------------------
