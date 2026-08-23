@@ -2291,3 +2291,10 @@ Owner: redemption rules — PWA self-service at online checkout; kiosk/tablet of
 - **Kiosk UI (`KioskPage.tsx`)**: payment_select gains "Sign in to use rewards & vouchers" → `redeem_phone` → `redeem_otp` (6-digit, dev OTP bypass applies pre-go-live) → `redeem_pick` (active vouchers + rewards from `/wallet/me` with the Bearer token). Order payload carries voucher_code/reward_id + Authorization header. 401 on order → member session dropped; 400 → redemption unselected (member stays signed in). Session wiped (with best-effort `/auth/logout` so the shared-device cookie clears) on success-screen reset AND inactivity timeout.
 - Verified live: voucher-without-token 401; voucher order → customer 139, voucher_discount applied, total 0 on a 100% pass; reward order → consumed; cancel releases both back to active; Playwright E2E walked the full kiosk UI (sign-in → pick reward → order placed); POS phone-lookup + wallet fetch still green.
 - Gates: unit 108/108 · tsc clean · E2E voucher/reward + PWA journey 7/7 · customer-pwa rebuilt, kiosk-v3/pos-disp-v3 restarted.
+
+### Round 41b — auto-expire lapsed vouchers/rewards (2026-08-23)
+
+Expired rows kept status='active' forever — nothing flipped them, so they showed in the PWA wallet, kiosk picker, and POS drawer until the order-time guard rejected with "Voucher has expired". Two-layer fix:
+- **Global sweep**: `_sweep_stale_orders` (startup + every 5 min) bulk-marks CustomerVoucher/CustomerReward past expires_at as 'expired' ('reserved' rows untouched — owned by the order lifecycle).
+- **Just-in-time**: `expire_stale_wallet_items(db, customer_id)` in services/commerce.py, called at the top of `/wallet/me`, `/staff/customers/{id}/wallet`, and `/rewards/me` to cover the <5-min window between sweeps.
+- Verified live: LOKA-09C53D8E (expired) auto-flipped to 'expired' and dropped from `/wallet/me`; unit 108/108.

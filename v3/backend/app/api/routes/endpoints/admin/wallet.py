@@ -382,6 +382,9 @@ async def get_my_wallet(
     db: DBDependency,
 ):
     """Get current customer's wallet, vouchers, and rewards. Auto-creates wallet if not found."""
+    from app.services.commerce import expire_stale_wallet_items
+    if await expire_stale_wallet_items(db, customer.id):
+        await db.commit()
     wallet = await _get_customer_wallet(db, customer.id)
     if wallet is None:
         wallet = Wallet(

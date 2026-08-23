@@ -278,3 +278,35 @@ async def credit_referral_points(
 
     await db.flush()
     return points
+
+
+async def expire_stale_wallet_items(db: AsyncSession, customer_id: int) -> int:
+    """Lazily mark a customer's expired vouchers/rewards as 'expired'.
+
+    Rows are granted with status 'active' and a future expires_at, but nothing
+    swept them once that date passed — so expired items kept appearing in every
+    wallet view (PWA wallet, kiosk picker, POS drawer) until the order-time
+    guard rejected them. Only 'active' rows are touched: 'reserved' items
+    belong to in-flight orders and are owned by the order lifecycle.
+    Caller must commit when the returned count is non-zero.
+    """
+    from app.models.reward import CustomerReward
+    from app.models.voucher import CustomerVoucher
+
+    now = datetime.now(timezone.utc)
+    expired = 0
+    for model in (CustomerVoucher, CustomerReward):
+        result = await db.execute(
+            select(model).where(
+                model.customer_id == customer_id,
+                model.status == "active",
+                model.expires_at.is_not(None),
+                model.expires_at < now,
+            )
+        )
+        for row in result.scalars().all():
+            row.status = "expired"
+            expired += 1
+    if expired:
+        await db.flush()
+    return expired

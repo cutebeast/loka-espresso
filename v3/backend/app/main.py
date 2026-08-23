@@ -127,6 +127,32 @@ async def _sweep_stale_orders() -> None:
         except Exception:
             logger.warning("Limbo sweep failed for order %s", order_id, exc_info=True)
 
+    # Expire vouchers/rewards whose validity has lapsed. Rows are granted as
+    # 'active' with a future expires_at and nothing else flips them, so without
+    # this they linger in every wallet view (PWA, kiosk picker, POS drawer)
+    # until the order-time guard rejects them. 'reserved' rows belong to
+    # in-flight orders and are owned by the order lifecycle — untouched here.
+    from sqlalchemy import update
+
+    from app.models.reward import CustomerReward
+    from app.models.voucher import CustomerVoucher
+
+    try:
+        async with AsyncSessionLocal() as db:
+            for model in (CustomerVoucher, CustomerReward):
+                await db.execute(
+                    update(model)
+                    .where(
+                        model.status == "active",
+                        model.expires_at.is_not(None),
+                        model.expires_at < now,
+                    )
+                    .values(status="expired")
+                )
+            await db.commit()
+    except Exception:
+        logger.warning("Wallet item expiry sweep failed", exc_info=True)
+
 
 async def _periodic_order_sweep() -> None:
     """Run the stale-order sweep every 5 minutes until cancelled on shutdown."""

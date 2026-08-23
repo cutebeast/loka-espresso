@@ -302,6 +302,10 @@ async def staff_customer_wallet_items(staff: CurrentStaff, db: DBDependency, cus
     """Get customer's active rewards and vouchers (staff-scoped view)."""
     customer = await _get_customer_or_404(db, customer_id)
 
+    from app.services.commerce import expire_stale_wallet_items
+    if await expire_stale_wallet_items(db, customer_id):
+        await db.commit()
+
     rr = await db.execute(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)

@@ -245,6 +245,9 @@ async def list_my_rewards(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List current customer's rewards."""
+    from app.services.commerce import expire_stale_wallet_items
+    if await expire_stale_wallet_items(db, customer.id):
+        await db.commit()
     count_stmt = select(func.count(CustomerReward.id)).where(CustomerReward.customer_id == customer.id)
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
