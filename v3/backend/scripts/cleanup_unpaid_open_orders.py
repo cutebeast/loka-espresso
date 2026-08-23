@@ -256,6 +256,16 @@ async def purge_soft_deleted_residue() -> None:
         await db.execute(text(
             "DELETE FROM suppliers WHERE supplier_name LIKE 'E2E Item Supplier%' OR supplier_name LIKE 'Freq Test%'"
         ))
+        # Live junk staff from E2E runs (test_admin_audit_reports "Audit Staff",
+        # test_admin_auth_orders "Clock Staff", bare "test" profile). All FKs
+        # are CASCADE/SET NULL — direct delete is safe.
+        n = (await db.execute(text(
+            "DELETE FROM staff_profiles WHERE email_address LIKE '%audit-staff-%' "
+            "OR email_address LIKE '%clock-staff-%' "
+            "OR (display_name = 'test' AND email_address IS NULL)"
+        ))).rowcount
+        if n:
+            print(f"purged {n} junk E2E staff profile(s)")
         # Wastage reports hold RESTRICT FKs into menu_items too — clear them
         # before the item purge (proven live: probe waste blocked the delete).
         await db.execute(text(

@@ -13,10 +13,10 @@ ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail
 012,1. Login & Profile,Logout,sidebar,P1,Logout works,Click Logout then try opening /orders directly,Redirected to /login,,
 013,1. Login & Profile,Profile,/profile,P2,View own profile,Open Profile page,Name/role/store shown correctly for the logged-in account,,
 014,1. Login & Profile,Language,sidebar,P1,Language switcher EN/中文 only,Open the language selector,Only English and 中文 are offered (no BM/Tamil/Turkish),,
-015,1. Login & Profile,Language,sidebar,P2,Chinese UI,Switch to 中文 and check 3 pages (Orders, Wastage, Help),Labels render in Chinese; switching back to EN works,,
+015,1. Login & Profile,Language,sidebar,P2,Chinese UI,"Switch to 中文 and check 3 pages (Orders, Wastage, Help)",Labels render in Chinese; switching back to EN works,,
 016,2. Home,Dashboard,/,P2,Home loads,Open staff home after login,Dashboard loads with sidebar (Order / Reports / Personal tabs); no console errors,,
-017,2. Home,Dashboard,/,P2,Sidebar sections,Click each of the 3 sidebar tabs (Order, Reports, Personal),Each tab shows only its section cards: Order (POS/Orders/Kitchen/Tables/Bookings/Customers), Reports (Equipment/Grease Trap/Garbage/Inventory/Wastage), Personal (Clock/Shifts/Tasks/Help/Profile),,
-018,3. Orders & Tables,Orders,/orders,P1,Order queue loads,Open Orders page,Queue tab shows only LIVE orders (confirmed/preparing/ready); no cancelled; no pending/unpaid,,(DB may be empty — an empty list is fine, not a bug)
+017,2. Home,Dashboard,/,P2,Sidebar sections,"Click each of the 3 sidebar tabs (Order, Reports, Personal)","Each tab shows only its section cards: Order (POS/Orders/Kitchen/Tables/Bookings/Customers), Reports (Equipment/Grease Trap/Garbage/Inventory/Wastage), Personal (Clock/Shifts/Tasks/Help/Profile)",,
+018,3. Orders & Tables,Orders,/orders,P1,Order queue loads,Open Orders page,Queue tab shows only LIVE orders (confirmed/preparing/ready); no cancelled; no pending/unpaid,,"(DB may be empty — an empty list is fine, not a bug)"
 019,3. Orders & Tables,Orders,/orders,P1,Queue excludes old + cancelled,Create an order then cancel it (or wait); refresh Orders,Queue tab shows only last 24 hours of live orders; cancelled orders NOT in queue,,
 020,3. Orders & Tables,Orders,/orders,P1,Unpaid tab shows problem orders,Create an unpaid order (skip payment); wait 30+ min or check existing,Unpaid tab shows only unpaid orders older than 30 minutes (issue orders),,
 021,3. Orders & Tables,Orders,/orders,P2,History tab,Open History tab,Delivered + cancelled orders listed with all-time window,,
@@ -27,7 +27,7 @@ ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail
 026,4. POS,POS page,/pos,P1,Add items to cart,Add 2 items with modifiers,Cart shows items/modifiers/prices correctly,,
 027,4. POS,Checkout,/pos,P1,Cash payment,Checkout with cash; enter tendered amount,Change calculated correctly; receipt/success screen shows,,
 028,4. POS,Checkout,/pos,P1,Order appears everywhere,Paid order check: Orders page + Kitchen display + admin portal Orders,Order visible in all three with same total,,
-029,4. POS,Staff Meal,/pos,P1,Staff Meal button applies discount,Add items; in Staff Discount card tap Staff Meal,Discount applied per admin setting (Settings → Staff Meal, default 10%); total reduces correctly,,
+029,4. POS,Staff Meal,/pos,P1,Staff Meal button applies discount,Add items; in Staff Discount card tap Staff Meal,"Discount applied per admin setting (Settings → Staff Meal, default 10%); total reduces correctly",,
 030,4. POS,Manual discount,/pos,P2,Manual % and RM discount,Apply manual 10% then RM 2 discount via preset buttons,Both compute correctly; None clears it,,
 031,4. POS,Stock deduction,/pos,P1,Sale deducts linked inventory,Sell an item that is linked to inventory (recipe); check admin Inventory → Stock Levels,Stock decreased by recipe qty × items sold,,
 032,4. POS,Stock warning,/pos,P1,Sale NOT blocked at zero stock,Sell a linked item whose stock is 0/negative,Sale completes; amber stock warning shows on success screen; stock goes negative in admin,,
@@ -41,17 +41,17 @@ ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail
 040,5. Kitchen Display,KDS display mode,/kitchen?mode=display,P1,Wall-screen display mode,Open /kitchen?mode=display (kitchen account),View-only 3-column kanban: New/Preparing/Done; no buttons/filters/search; full height; live badge,,
 041,5. Kitchen Display,KDS display mode,/kitchen?mode=display,P2,Display auto-refresh,Create an order from POS while watching display mode,New order appears within ~3 seconds,,
 042,5. Kitchen Display,KDS display mode,/kitchen?mode=display,P2,Sound alert,Enable sound; create a new order,Beep plays when new order appears (may need user gesture first),,
-043,6. POS Customer Display,Display,/pos/display,P1,Display opens from POS,On POS click Tools → Display (or Display button),Customer display opens in a new window showing idle screen with store name + clock + promo banners,,
+043,6. POS Customer Display,Display,/pos/display,P1,Display opens from POS,On POS click Tools → Customer Screen (display button),Customer display opens in a new window showing idle screen with store name + clock + promo banners,,ROUND 39/40 — idle is a promo carousel (wallet top-up QR removed)
 044,6. POS Customer Display,Display,/pos/display,P1,Order shows on display,Add items to POS cart; check display,Items appear with images/quantities/running total (same-browser instant or ≤2s cross-device),,
 045,6. POS Customer Display,Display,/pos/display,P1,Payment QR on display,Checkout with QR payment on POS; check display,Display shows large QR code + total for customer to scan,,
 046,6. POS Customer Display,Display,/pos/display,P2,Paid screen,Complete payment; check display,Green thank-you screen with total + order number; auto-returns to idle after ~25s,,
 047,6. POS Customer Display,Display,/pos/display,P2,Language toggle,On idle screen tap EN / 中文,Only EN and 中文 offered; display language switches,,
-048,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Welcome + promo banners,Open kiosk URL,Welcome screen shows store name, clock, and rotating promo banner carousel (8s intervals),,
+048,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Welcome + promo banners,Open kiosk URL,"Welcome screen shows store name, clock, and rotating promo banner carousel (8s intervals)",,
 049,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Full ordering flow,Tap to Order → Dine In → enter table number → skip phone → add item → cart → checkout → Pay Now,Flow completes step by step without errors,,
 050,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Table number required,Select Dine In and try to continue without table number,Continue disabled until table number entered,,
 051,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Dine In / Takeaway toggle,On menu page tap the toggle button,Dine In ↔ Takeaway switches with single tap (button shows current mode + swap icon),,
 052,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Bundle ordering,Open a bundle category; build a bundle; add to cart,Bundle builder works; cart shows bundle title on items,,
-053,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Payment select screen,Tap Pay Now at checkout,Screen shows 2 options: Pay with Card + Pay with Wallet (NOT a direct QR),,
+053,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Payment select screen,Tap Pay Now at checkout,"Screen shows 2 payment options: Pay with Card + Pay with Wallet (NOT a direct QR), plus a 'Sign in to use rewards & vouchers' link",,ROUND 41 added the sign-in option
 054,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Wallet payment QR,Tap Pay with Wallet,Order created; QR code shown; success screen has 120s timer,,
 055,7. Kiosk,Kiosk standing,kiosk.loyaltysystem.uk,P1,Card payment QR,Tap Pay with Card,Order created; QR code shown (customer pays via phone — no card entry on kiosk),,
 056,7. Kiosk,Tablet,kiosk.loyaltysystem.uk/tablet,P1,Tablet setup,Open tablet URL; enter table 5; Set Table & Start,Tablet skips welcome/order-type — goes straight to menu with table 5 remembered,,
@@ -63,10 +63,10 @@ ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail
 062,10. Time Clock,Clock,/time-clock,P1,Clock in,Tap Clock In,Confirmation shows; event recorded with correct MYT time,,
 063,10. Time Clock,Clock,/time-clock,P1,Break start/end,Start a break then end it,Both events recorded in order,,
 064,10. Time Clock,Clock,/time-clock,P1,Clock out,Tap Clock Out,Event recorded; day summary updates,,
-065,11. Shifts,Shifts,/shifts,P2,My shifts,Open Shifts page,Assigned shifts show with correct planned times (e.g. 09:00 shows 09:00, not 17:00),,
+065,11. Shifts,Shifts,/shifts,P2,My shifts,Open Shifts page,"Assigned shifts show with correct planned times (e.g. 09:00 shows 09:00, not 17:00)",,
 066,12. Inventory,Stock list,/inventory,P1,Inventory loads,Open Inventory,Items for your store show with current stock,,
 067,12. Inventory,Stock update,/inventory,P1,Update count,Update an item's count with a reason,Stock updates; admin Inventory → Movements shows an adjustment entry with your name,,
-068,12. Inventory,Blank count blocked,/inventory,P1,Clear the count field and save,Validation error shown; stock NOT zeroed,,
+068,12. Inventory,Inventory,/inventory,P1,Blank count blocked,Clear the count field and save,Validation error shown; stock NOT zeroed,,
 069,12. Inventory,Store scoping,/inventory,P1,Store isolation,Login as Store 2 account and open Inventory,Only Store 2 items/stock visible,,
 070,13. Wastage,Report,/wastage,P1,Menu item wastage,Report 2 pcs of a menu item with a reason; submit,Success message; report appears in admin Inventory → Wastage Reports as pending,,
 071,13. Wastage,Photos,/wastage,P1,Attach up to 5 photos,Report wastage with 3 photos,Photos visible in admin Wastage Reports viewer,,
@@ -77,11 +77,17 @@ ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail
 076,15. Equipment,Equipment,/equipment,P2,Equipment list,Open Equipment,Store equipment shows,,
 077,15. Equipment,Equipment,/equipment,P2,Report operational check,Submit a daily OK check with photo,Recorded; admin Equipment → Reports shows it,,
 078,15. Equipment,Equipment,/equipment,P2,Report broken,Report an item as broken with photo,Equipment status changes; admin sees maintenance report with photo,,
-079,16. Wallet,Wallet,/wallet,P3,Wallet page,Open Wallet page,Balance/transactions for the logged-in staff show without errors (empty OK),,
-080,17. Help,Help center,/help,P2,Staff guide loads,Open Help from sidebar,Staff Portal guide articles list (Staff audience only, not Admin/PWA),,
-081,18. Roles,Role gates,all,P1,Cashier access,Cashier can: POS, orders, tables, inventory, wastage, garbage, grease-trap, equipment, kitchen,Each opens without Access Denied,,
-082,18. Roles,Role gates,all,P1,Kitchen role access,Login as kitchen@loyaltysystem.uk; check kitchen + duty pages,Kitchen display works; duty pages open per role matrix; no 500s,,
-083,18. Roles,Role gates,all,P2,Server role access (Store 2),Login as s2-server; check pages,Pages load; Store 2 data only everywhere; no cross-store data visible,,
-084,19. End-to-End,Daily ops flow,multiple,P1,Full outlet day,Cashier: clock in → open POS → sell 3 items (1 linked, 1 Staff Meal) → kitchen bumps on KDS → pay cash → verify table locks (dine-in) → supervisor verifies a wastage report in admin → clock out,Every step works; admin shows order, movements, wastage review, time events — all with correct MYT times,,
-085,19. End-to-End,Data consistency,multiple,P1,Cross-portal totals,Compare one order's total in staff POS, staff Orders, admin Orders, and customer receipt,Same total everywhere,,
-086,19. End-to-End,Unpaid order lifecycle,multiple,P1,Unpaid order isolation,Create a POS/kiosk order without paying; wait; check Queue/Unpaid/KDS/Admin,Unpaid order: hidden from Queue + KDS; appears in Unpaid tab (after 30 min); auto-cancelled after 2h; admin dashboard revenue NOT inflated,,
+079,16. Wallet,Wallet,/wallet,P1,Customers tool (customer lookup),Open Customers; search a customer by phone or scan their QR,"Customer card shows wallet balance, transactions, rewards & vouchers (read-only — vouchers/rewards show 'Apply at checkout' badges, NOT Use buttons)",,"ROUND 40 — page renamed 'Customers'; it is a customer-lookup tool, NOT the staff's own wallet; redemption happens at POS checkout only"
+080,17. Help,Help center,/help,P2,Staff guide loads,Open Help from sidebar,"Staff Portal guide articles list (Staff audience only, not Admin/PWA)",,
+081,18. Roles,Role gates,all,P1,Cashier access,"Cashier can: POS, orders, tables, inventory, wastage, garbage, grease-trap, customers (wallet)",Each opens without Access Denied,,
+082,18. Roles,Role gates,all,P1,Cashier DENIED on kitchen + equipment,As cashier: open /kitchen and /equipment directly,Both show Access Denied (KDS + equipment are kitchen_staff/shift_supervisor/store_manager only),,Verified against useStaffRole.tsx 2026-08-23
+083,18. Roles,Role gates,all,P1,Kitchen role access,Login as kitchen@loyaltysystem.uk; check kitchen + duty pages,Kitchen display works; duty pages open per role matrix; no 500s,,
+084,18. Roles,Role gates,all,P2,Server role access (Store 2),Login as s2-server; check pages,Pages load; Store 2 data only everywhere; no cross-store data visible,,
+085,19. End-to-End,Daily ops flow,multiple,P1,Full outlet day,"Cashier: clock in → open POS → sell 3 items (1 linked, 1 Staff Meal) → kitchen bumps on KDS → pay cash → verify table locks (dine-in) → supervisor verifies a wastage report in admin → clock out","Every step works; admin shows order, movements, wastage review, time events — all with correct MYT times",,
+086,19. End-to-End,Data consistency,multiple,P1,Cross-portal totals,"Compare one order's total in staff POS, staff Orders, admin Orders, and customer receipt",Same total everywhere,,
+087,19. End-to-End,Unpaid order lifecycle,multiple,P1,Unpaid order isolation,Create a POS/kiosk order without paying; wait; check Queue/Unpaid/KDS/Admin,Unpaid order: hidden from Queue + KDS; appears in Unpaid tab (after 30 min); auto-cancelled after 2h; admin dashboard revenue NOT inflated,,
+088,20. Redemption (POS),POS checkout,pos,P1,Apply Discounts & Wallet — one per order,Attach a customer who has a voucher AND a reward; open Apply Discounts & Wallet; apply the voucher (200); then try the reward,"Same order: applying the second redemption is rejected 400 'one voucher OR one reward per order'; the first stays applied",,"ROUND 41c hard rule — also verify reward-first → voucher-rejected, and that cancelling the order releases the applied item back to active"
+089,20. Redemption (POS),POS checkout,pos,P1,Redemption is order-tied,Scan a customer's reward/voucher QR at the Customers page,Scan validates only (shows info) — nothing is consumed; NO 'Use' buttons exist anywhere,,ROUND 40 — standalone redemption removed
+090,20. Redemption (POS),POS checkout,pos,P1,Staff refund from checkout,Open a captured order from the queue; tap Refund; enter amount + reason,"Same rules as admin: over-refund blocked, wallet refunds credit the wallet, points clawed back pro-rata, voucher/reward released on FULL refund",,"ROUND 40 — money roles (cashier/server/shift_supervisor/store_manager)"
+091,21. Delivery,Dispatch,/orders,P1,Key Delivery,Create a delivery order (PWA); open Orders; tap Key Delivery; pick provider + booking ref,Order advances to out_for_delivery with the provider badge; Update Delivery re-keys the reference,,ROUND 38 pass 10
+092,22. Kiosk redemption,Kiosk standing,kiosk.loyaltysystem.uk,P1,Sign in to redeem,At kiosk checkout tap 'Sign in to use rewards & vouchers' → phone + OTP → pick ONE voucher or reward → pay,Skipping sign-in cannot redeem (401); signed-in order applies the discount and is placed under the member account; session wiped on success/inactivity,,ROUND 41
