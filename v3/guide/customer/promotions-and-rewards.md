@@ -60,8 +60,8 @@ Your points balance at the top, your progress to the next loyalty tier, and a ca
 ### Redeem a reward
 1. Open **Rewards** and tap a reward.
 2. Tap **Redeem for … pts**. You need enough points; some items also require the Origin or Reserve tier.
-3. Points are deducted and you get a redemption code.
-4. Show the code to the cashier to collect your item. The reward is also saved in **My Rewards**.
+3. Points are deducted and the reward lands in **My Rewards** with a redemption code and expiry date.
+4. Use the reward on an order: apply it at checkout in the app, or have staff apply it at the POS checkout drawer (scanning your code validates it — the reward is consumed when it is applied to an order).
 
 ## My Rewards page
 
@@ -76,8 +76,11 @@ Two tabs:
 Cards show the expiry date — "Expires today" or "Expires in N days" — so use them soon.
 
 ### Use a reward or voucher
-- **In store:** tap the card, then show the code to the cashier at the counter.
-- **In the app:** select the voucher at checkout before paying.
+- **In the app:** select the voucher or reward at checkout before paying — **one per order** (a voucher OR a reward, never both). The discount appears in the order summary.
+- **In store:** staff apply it to your order at the POS — show your loyalty QR from **My Card** (or give your phone number), and the cashier opens **Apply Discounts & Wallet** on your order and applies the voucher or reward. Scanning a code only validates it; a voucher or reward is consumed when it is applied to an order, and released again if that order is cancelled.
+
+### Expiry
+Cards show the expiry date — "Expires today" or "Expires in N days". Expired vouchers and rewards are hidden from your wallet automatically (a background sweep runs every few minutes, plus a check each time the wallet opens).
 
 ## Daily Check-in
 

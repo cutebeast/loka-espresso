@@ -39,8 +39,8 @@ The Staff Portal is where daily store operations happen: taking orders at the PO
 1. Customer arrives or places an order remotely.
 2. Staff opens **POS** and selects order type (dine-in or takeaway).
 3. For dine-in, staff selects or scans a table.
-4. Staff adds items, modifiers, vouchers, and rewards.
-5. Staff takes payment (cash or Stripe QR).
+4. Staff adds items and modifiers, and attaches the customer (needed for vouchers, rewards, and wallet payment).
+5. At checkout, staff applies one voucher or reward (never both) and takes payment (cash, card, QR, or wallet).
 6. Order appears in **Kitchen Display** for preparation.
 7. Kitchen updates status: `confirmed` → `preparing` → `ready_for_pickup`.
 8. Server delivers the order or customer collects it.

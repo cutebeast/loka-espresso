@@ -57,13 +57,15 @@ For dine-in orders:
 
 ### Apply voucher
 1. Tap **Add Voucher**.
-2. Enter the voucher code.
+2. Enter the voucher code (or pick one from your wallet).
 3. Tap **Apply**.
 
 ### Apply reward
 1. Tap **Add Reward**.
 2. Select an available reward from **My Rewards**.
 3. Tap **Apply**.
+
+> **One per order** — you can apply EITHER a voucher OR a reward, never both. Selecting one replaces the other, and the server enforces the same rule.
 
 ### Cart totals
 

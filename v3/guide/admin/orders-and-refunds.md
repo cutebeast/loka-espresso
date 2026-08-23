@@ -50,12 +50,18 @@ All orders with order number, customer, store, type, status, payment status, and
 
 | Status | Meaning |
 |--------|---------|
-| pending | Awaiting payment. |
+| initiated | Order created, awaiting payment. |
+| pending_authorization | A payment session (e.g. Stripe checkout) is open but not yet completed. |
 | authorized | Payment authorized but not captured. |
 | captured | Payment captured successfully. |
-| paid | Marked as paid (cash or equivalent). |
+| partially_refunded | Part of the payment refunded. |
+| refunded | Fully refunded. |
 | failed | Payment failed. |
-| refunded / partially_refunded | Refund processed. |
+| voided | Payment session voided or expired. |
+| chargeback | Disputed by the cardholder. |
+| settled | Provider-settled (treated as captured for reporting). |
+
+> "Paid" is not a stored status — it is an internal alias for captured/settled used in some filters.
 
 ## Order Detail (`/orders/[id]`)
 
@@ -96,17 +102,19 @@ An order can be settled by several payments when staff split the bill at the POS
 
 ## Refunds (`/refunds`)
 
-The Refunds page lists every refund with order number, amount, reason, status, and date. New refunds are created from the **order detail** page, not here.
+The Refunds page lists every refund with order number, amount, reason, status, and date. New refunds are created from the **order detail** page (or the staff POS), not here.
 
 ### Process a refund
 1. Open the order from **Orders**.
 2. In the payments section, enter the refund **amount** and **reason** on the relevant payment, then confirm.
 3. The refund is validated against the remaining refundable balance — over-refunding is rejected with the exact amount left.
 
+Staff can also refund from the POS checkout panel (money roles) — the same rules and validation apply on both paths.
+
 ### Refund rules
 - Only **captured** payments can be refunded (full or partial). Multiple partial refunds are allowed up to the captured total.
 - **Duplicate protection**: an identical refund (same payment, amount, and reason) within 60 seconds is rejected as a duplicate — it is safe if you click twice by accident.
-- **Every refund is audit-logged** with the approving admin, amount, reason, and payment details.
+- **Every refund is audit-logged** with the approving admin (or staff member), amount, reason, and payment details.
 - The order shows `partially_refunded` or `refunded` once a refund is recorded.
 
 ### When the money settles
@@ -115,8 +123,8 @@ The Refunds page lists every refund with order number, amount, reason, status, a
 | Cash / wallet / store credit | **Completed immediately** — cash is handed back at the counter; wallet refunds credit the customer's wallet balance straight away (visible with a ledger entry). |
 | Stripe / HitPay | Sent to the payment provider; the refund completes when the provider confirms it. |
 
-### Policy: loyalty and lucky draw on refunds
-**Points and lucky-draw tickets are NOT clawed back on refunds.** The customer keeps the loyalty points, annual tier spend, and any draw tickets earned from the original order. This is intentional — do not manually deduct points for a refund unless the owner asks for a one-off adjustment (done from the customer's Loyalty account page).
+### Policy: loyalty on refunds
+**Loyalty points ARE clawed back on refunds** — proportionally for partial refunds — and the customer's annual-spend counter is reduced to match (the ledger records a `return_deduction`). On a **full refund**, any voucher or reward used on the order is released back to the customer (active again). **Lucky-draw tickets are NOT clawed back** — intentional design; do not remove them for a refund.
 
 ### Limitations
 - Refunds depend on the original payment method — gateway methods refund through the gateway; other methods are handled by the manager directly.

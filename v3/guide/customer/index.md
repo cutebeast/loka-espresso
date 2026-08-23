@@ -45,14 +45,14 @@ The Customer PWA is the customer-facing app for browsing the menu, placing order
    - **Dine-in** — scans table QR or selects table.
    - **Takeaway** — pickup time.
    - **Delivery** — enters delivery address.
-7. Applies voucher or reward if available.
+7. Applies ONE voucher or reward if available (never both).
 8. Selects payment method and pays.
 9. Order appears in **Orders** with live status updates.
 10. Customer receives notifications when order is confirmed, preparing, and ready.
 
-## Guest checkout
+## Guest browsing
 
-If enabled, customers can place an order without creating an account by entering a phone number. Guest orders can be viewed via the order detail deep link sent by SMS or email.
+Guests (not signed in) can browse the whole app — menu, promotions, events, workshops, and store info. Placing an order requires an account (phone number + one OTP), so vouchers, rewards, points, and wallet always belong to a signed-in customer. In-store, staff can serve customers as walk-ins without an app account (no vouchers/rewards/points for walk-ins).
 
 ## Cross-references
 

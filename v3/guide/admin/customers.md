@@ -77,8 +77,10 @@ Customer feedback submissions from the PWA help/support form.
 
 Each customer has a wallet (created on first use). Admin can:
 - View wallet balance and ledger (all transactions)
-- Add credits or debits via admin adjustment
+- Add credits or debits via admin adjustment (**HQ admins only** — system_admin / regional_manager; store managers cannot move wallet money)
 - View voucher and reward balances
+
+> Redemption note: vouchers and rewards in the wallet are **order-tied** — they are consumed when applied to an order (staff apply them in the POS checkout drawer, customers at app checkout), never standalone. There is no "mark used" action.
 
 ## Vouchers
 

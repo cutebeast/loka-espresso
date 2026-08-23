@@ -14,9 +14,11 @@ Welcome to the Loka Espresso internal guide. This resource is here to help every
 
 The same order can be created from three different entry points. Each guide explains the journey from that point of view:
 
-1. **Customer PWA** — customer browses menu, customises items, checks out, and pays.
-2. **Staff POS** — staff creates the order for the customer, applies vouchers/rewards, and takes payment.
+1. **Customer PWA** — customer browses menu, customises items, checks out, and pays. Also the **kiosk** (in-store self-ordering) — guests order freely; redemption needs an OTP sign-in at checkout.
+2. **Staff POS** — staff creates the order for the customer, attaches them by phone/QR, applies one voucher or reward (never both), and takes payment.
 3. **Admin Portal** — managers monitor the order, update status, handle refunds, and run reports.
+
+Golden rules across all channels: **one voucher OR one reward per order** (never both); redemptions are always tied to an order and are released automatically when the order is cancelled (including auto-cancel: kiosk after 15 minutes, other unpaid prepaid orders after 2 hours); loyalty points are estimated at checkout and credited when the payment is captured, with proportional clawback on refunds.
 
 Cross-references between the three guides are included so you can follow an order end-to-end.
 

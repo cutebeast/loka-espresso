@@ -65,16 +65,16 @@ The **Profile → Payment Methods** page lists cards saved to your account. Addi
 
 ### How tiers work
 
-Tiers are earned with **lifetime points** (never expire):
+Tiers are earned by **eligible spend over a rolling 12-month window**:
 
-| Tier | Lifetime points needed | Multiplier |
-|------|------------------------|------------|
+| Tier | Eligible spend in 12 months | Multiplier |
+|------|------------------------------|------------|
 | Bloom | 0 — everyone starts here | 1.0× |
-| Origin | 500 | 1.2× |
-| Reserve | 1,500 | 1.5× |
+| Origin | RM 500 | 1.2× |
+| Reserve | RM 1,500 | 1.5× |
 
-Higher tiers earn more points per order. The **Membership Tiers** page (tap the tier card on the dashboard, or open it from your profile) shows:
-- Your current tier, lifetime points and progress to the next milestone.
+Spend counts each time a payment goes through, and upgrades happen automatically. When a 12-month window closes below the tier's threshold, you move down one tier (Reserve → Origin → Bloom) and a fresh window starts. The **Membership Tiers** page (tap the tier card on the dashboard, or open it from your profile) shows:
+- Your current tier and progress to the next milestone.
 - The milestone rail (Bloom → Origin → Reserve).
 - A side-by-side benefits table — free delivery, priority seating, VIP event access, monthly free item, exclusive menu access, birthday reward, order discounts and welcome bonus points per tier.
 
@@ -85,7 +85,11 @@ Higher tiers earn more points per order. The **Membership Tiers** page (tap the 
 
 ## Points expiry
 
-Points may expire after a configured period of inactivity. Check the expiry policy in **Profile → Settings** or **My Card**.
+Points may expire after a configured period of inactivity. When some of your points are due to expire within 30 days, the Rewards page shows a "N points expiring on D" hint. Check the expiry policy in **Profile → Settings** or **My Card**.
+
+## When points are credited
+
+Order points are **estimated at checkout but only credited to your balance when the payment is captured** — an unpaid order earns nothing until it is paid. If a paid order is cancelled or refunded, the points are reversed (proportionally for partial refunds), and the spend stops counting toward your tier window.
 
 ## Related
 - [Promotions & Rewards](promotions-and-rewards.md)

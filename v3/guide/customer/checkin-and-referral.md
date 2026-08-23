@@ -25,13 +25,13 @@ Check in on consecutive days to earn streak bonuses. The longer the streak, the 
 ## Referral page
 
 ### Purpose
-Invite friends and earn rewards when they sign up and place their first order.
+Invite friends and earn bonus points when they sign up with your code and their first order is **paid**.
 
 ### How it works
 1. Open **Referral**.
 2. Copy your unique referral code or share link.
 3. Share via messaging apps, email, or social media.
-4. When a friend signs up with your code, both of you receive a reward.
+4. When a friend signs up with your code, you earn the referral bonus points once their first order is paid (their signup welcome bonus is separate).
 
 ### Track referrals
 The page shows:
@@ -40,10 +40,7 @@ The page shows:
 - Rewards earned
 
 ### Referral rewards
-Rewards are configured by the store and may include:
-- Wallet credit
-- Voucher
-- Bonus points
+The referrer earns the configured referral bonus points (default 50) when the invitee's first order is paid. Amounts are configured by the store.
 
 ## Related
 - [Wallet & Loyalty](wallet-and-loyalty.md)

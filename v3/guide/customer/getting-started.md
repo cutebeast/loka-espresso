@@ -47,8 +47,8 @@ The dashboard is a clean summary (everything else lives on its own page):
 
 - **Stat strip** — points, wallet balance, and your loyalty tier at a glance.
 - **Pickup / Delivery tiles** — jump straight into ordering.
-- **Tier progress card** — lifetime points toward the next tier (tap to open the **Membership Tiers** page with the full benefits table and milestone rail).
-- **Quick actions** — Check-in (with streak badge), Wallet, Referrals, Help.
+- **Tier progress card** — your progress toward the next tier (tap to open the **Membership Tiers** page with the full benefits table and milestone rail). Tiers are earned by eligible spend over a rolling 12 months.
+- **Quick actions** — Check-in (with streak badge), Wallet, Referrals, Feedback.
 - **Featured banner** — the store's current home banner or top promotion.
 - **What's on** — four tiles linking to the dedicated pages: **Events**, **Promotions**, **Lucky Draw**, and **Info**. Badges show how many items are live.
 
@@ -86,4 +86,4 @@ Tap **Profile → Help & Support** for FAQ and contact options.
 
 ## Loka Tuesday
 
-Every Tuesday, all menu items earn 2× loyalty points automatically. No code needed — points are calculated at order creation time.
+Every Tuesday, active members automatically receive a **LOKA Tuesday voucher** — 15% off that day, no code needed. The voucher lands in **My Rewards → My Vouchers** and a countdown card appears on the home page ("Today!" on Tuesdays). Apply it at checkout like any other voucher.

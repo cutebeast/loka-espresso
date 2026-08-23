@@ -63,8 +63,16 @@ Swipe down to refresh the order list.
 
 ### Cancel an order
 1. Open the order detail.
-2. Tap **Cancel Order** if the order is still pending or confirmed.
+2. Tap **Cancel Order** while the order is still pending and unpaid.
 3. Confirm.
+
+Cancelling releases everything on the order: any voucher or reward used on it goes back to your wallet (active again), booked seats and table locks are freed, and stock is restored. Orders that have been paid can't be cancelled this way — ask staff for a refund.
+
+### Unpaid orders auto-cancel
+Unpaid pay-before-food orders cancel themselves after a while: kiosk orders after **15 minutes**, all others after **2 hours** (a background sweep runs every few minutes). Dine-in open tabs (pay after your meal) are never auto-cancelled. An auto-cancelled order gets the same full release as a manual cancel.
+
+### Points arrive with the payment
+Loyalty points for an order are estimated at checkout and credited to your balance when the payment is captured. Pay for an unpaid order from the order detail ("Pay Now") and the points follow the payment.
 
 ## Deep links
 

@@ -112,7 +112,7 @@ Settings stored in platform configuration (`loyalty.*` keys). Edit a value and s
 
 ## How customers earn and spend points
 
-1. Customer pays for an order while logged in → base points = eligible amount × points-per-currency × tier multiplier. A BYOT (bring-your-own-tumbler) order replaces the tier multiplier with 2× (3× for Reserve), and the birthday month doubles the result on top.
+1. Customer pays for an order while logged in → base points = eligible amount × points-per-currency × tier multiplier. Points are **estimated at order creation and credited when the payment is captured**; refunds claw them back proportionally. A BYOT (bring-your-own-tumbler) order replaces the tier multiplier with 2× (3× for Reserve), and the birthday month doubles the result on top.
 2. Extra points come from check-ins, referrals, and bonuses — all visible in the ledger.
 3. Points are spent in the Rewards Marketplace (see [Marketing](marketing.md)); redemptions deduct from the balance immediately.
 
@@ -143,6 +143,7 @@ When a customer redeems a reward in the PWA:
 1. The system checks the reward is active, the redemption cap (if any) is not reached, the customer meets the minimum tier, and the balance covers the points cost.
 2. Points are deducted immediately and a `reward_redemption` ledger entry is written with a snapshot of the reward.
 3. A redemption with a unique code is created in the customer's name, valid for the reward's validity period (default 30 days).
+4. The reward is then **used on an order** — the customer applies it at app checkout or staff apply it at the POS checkout drawer. One voucher OR one reward per order, never both; cancelling the order releases it back to the customer. Expired rewards are hidden from the wallet automatically.
 
 Redemption totals per reward are visible under **Marketing → Rewards Marketplace**.
 

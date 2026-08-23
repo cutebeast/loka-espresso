@@ -1,7 +1,7 @@
 ﻿ID,Section,Page,Route,Priority,Test Case,Steps,Expected Result,Result (Pass/Fail/Blocked/Skip),Notes / Bug Details
 001,0. Test Setup,Environment,https://admin.loyaltysystem.uk,P1,Verify environment access,Open the URL in Chrome incognito; confirm TLS padlock,Login page loads without certificate or mixed-content warnings,,Dev environment — data here is seed/test data
 002,0. Test Setup,Accounts,/login,P1,System admin account,Login with admin@loyaltysystem.uk / admin123,"Lands on dashboard; sidebar shows ALL sections incl. Settings, Translations, Audit Log",,Use this account for all P1 tests unless stated
-003,0. Test Setup,Accounts,/admins,P1,Create store_manager test account,Admins > New Admin: email tester-store@loyaltysystem.uk; password Test1234!; role store_manager; assign Store 1 only,Account created; can login; sidebar hides Settings/Translations/Audit Log,,Needed for role-scoping tests; delete after testing
+003,0. Test Setup,Accounts,/admins,P1,Create store_manager test account,Admins > New Admin: email tester-store@loyaltysystem.uk; password Test1234!; role store_manager; assign Store 1 only,Account created; can login; sees the FULL sidebar (no role filtering in the sidebar — same entries as system_admin); Settings page cannot load data (config is system_admin-only → 403/blocked state); wallet/points actions blocked,tester-store@ may already exist (seeded account) — reuse it; delete after testing
 004,0. Test Setup,Convention,—,P1,How to fill this sheet,For each row run the steps; write Pass/Fail/Blocked/Skip in the Result column; put details + screenshot link in Notes,Every row has a Result by end of testing,,"Report any 500 error, blank page, or console error immediately as a bug"
 005,1. Login & Auth,Login,/login,P1,Valid login,Enter admin credentials; submit,Redirected to dashboard; no full-page error,,
 006,1. Login & Auth,Login,/login,P1,Wrong password — generic error,Login with admin email + wrong password,Generic 'invalid credentials' error (no hint whether email exists); NOT a lock message,,Round 35: error must be identical for unknown email vs wrong password
@@ -20,13 +20,13 @@
 019,3. Stores,New,/stores/new,P3,Create store validation,Submit empty form,Required-field errors; no 422 red banner,,
 020,3. Stores,Settings,/stores/settings,P3,Store settings page,Open settings,Loads; toggles persist after save+reload,,
 021,3. Stores,Hours,/stores/[id],P3,Operating hours,Edit operating hours; save,Saved; special hours can be added without date errors,,Round 32 fixed empty-date 422s — verify no regression
-022,4. Menu,Items,/menu/items,P1,Item list loads,Open Menu > Items,"All 160+ items listed with name, price, category, status; images load; pagination works",,
+022,4. Menu,Items,/menu/items,P1,Item list loads,Open Menu > Items,"All 166 items listed with name, price, category, status; images load; pagination works",,
 023,4. Menu,Items,/menu/items,P2,Search + filter,Search 'latte'; filter by category,Results narrow correctly,,
 024,4. Menu,Item New,/menu/items/new,P1,Create item,"Create test item with name, price, category, image; save",Item appears in list; no 422; image displays,,
 025,4. Menu,Item Edit,/menu/items/[id],P1,Edit item price only,Open an item; change ONLY the price; save,Saved; item's OTHER data unchanged,,
-026,4. Menu,Item Edit,/menu/items/[id],P1,Price edit does NOT clobber translations,Before: check an item's zh translation in Translations page (or inline tab); edit the item's price; save; re-check translation,The zh/ms/ta/tr translation text is UNCHANGED,,ROUND 35 — was the overwrite bug. Key regression test
-027,4. Menu,Item Edit,/menu/items/[id],P2,Inline translation tab,Open item edit; open the translation/locale tab,ms/zh/ta/tr values shown; can edit one and save; persists after reload,,
-028,4. Menu,Item Edit,/menu/items/[id],P2,Translated name style,Check a translated item name (zh),Format: English Name（中文名）; ms: English Name (Melayu),,ROUND 35 NEW house style — report any name NOT in this format
+026,4. Menu,Item Edit,/menu/items/[id],P1,Price edit does NOT clobber translations,Before: check an item's zh translation in Translations page (or inline tab); edit the item's price; save; re-check translation,The zh translation text is UNCHANGED (zh is the only non-English locale),,ROUND 35 — was the overwrite bug. Key regression test
+027,4. Menu,Item Edit,/menu/items/[id],P2,Inline translation tab,Open item edit; open the translation/locale tab,en/zh values shown; can edit the zh value and save; persists after reload,,Locales restricted to EN + zh (round 35 follow-up 16)
+028,4. Menu,Item Edit,/menu/items/[id],P2,Translated name style,Check a translated item name (zh),Format: English Name（中文名） — report any zh name NOT in this gloss format,,ROUND 35 NEW house style (ms/ta/tr dropped — zh only)
 029,4. Menu,Item Edit,/menu/items/[id],P2,Modifiers & variants,Open an item with modifier groups; add/remove a modifier option; save,Saved; price adjustments correct; variants intact,,
 030,4. Menu,Item Edit,/menu/items/[id],P2,Availability toggle,Mark item unavailable; save; mark available again,Status changes persist,,
 031,4. Menu,Categories,/menu/categories,P2,Category CRUD,Create test category; edit; delete,All work; deleted category gone from list and item dropdowns,,
@@ -35,7 +35,7 @@
 034,4. Menu,Allergens,/menu/allergens,P3,Allergen CRUD,Create/edit/delete test allergen,Works without errors,,
 035,4. Menu,Dietary Tags,/menu/dietary-tags,P3,Tag CRUD,Create/edit/delete test tag,Works,,
 036,4. Menu,Tax,/menu/tax-categories,P3,Tax category CRUD,Create/edit/delete test tax category,Works,,
-037,5. Loyalty,Overview,/loyalty,P3,Loyalty dashboard,Open Loyalty,"Stats render (members, points issued)",,
+037,5. Loyalty,Overview,/loyalty,P3,Loyalty dashboard,Open Loyalty (redirects to Loyalty Tiers),"Tier page renders — Bloom/Origin/Reserve with thresholds, multipliers, benefits",,
 038,5. Loyalty,Tiers,/loyalty/tiers,P2,Tier list,Open tiers,Bloom/Origin/Reserve shown with thresholds and benefits,,
 039,5. Loyalty,Tier Edit,/loyalty/tiers/[id],P2,Edit tier,Change a benefit text; save,Persists,,
 040,5. Loyalty,Accounts,/loyalty/accounts,P2,Account list + detail,Open accounts; open one customer,"Balance, tier, history shown correctly",,
@@ -65,7 +65,7 @@
 064,8. Reports,Reports,/reports,P2,Reports load,Open Reports; switch report types/date ranges,Data renders; no spinners stuck; export (if present) downloads,,
 065,9. Audit Log,Audit,/audit-log,P2,Audit log loads,Open Audit Log,"Recent actions listed with actor, action, resource",,
 066,9. Audit Log,Audit,/audit-log,P2,Refund entries exist,Filter resource_type=refund,Refund entries visible with amount/reason,,Round 35 area
-067,9. Audit Log,Audit,/audit-log,P2,store_manager hidden,Login as store_manager; check sidebar,Audit Log not visible/accessible,,
+067,9. Audit Log,Audit,/audit-log,P2,Audit Log visible to any admin role,Login as store_manager; open Audit Log; filter by severity and action,Audit Log loads and lists entries for store_manager (any admin role can view — the sidebar is NOT role-filtered and the endpoint only requires a valid admin),,CORRECTED — an earlier checklist version claimed this page was hidden for store_manager; it is not
 068,10. Settings,General,/settings,P2,Settings loads,Open Settings,Config sections render; sensitive values masked as ********,,
 069,10. Settings,Payment Gateway,/settings/payment-gateway,P2,Gateway config,Open payment gateway settings,Stripe/HitPay sections load; keys masked; save without changes does not clear keys,,
 070,10. Settings,Twilio,/settings/twilio-verify,P3,Twilio config,Open Twilio settings,Loads; masked values,,
@@ -78,11 +78,11 @@
 077,11. Admin User,Profile,/profile,P2,Own profile,Open profile; update display name; save,Persists,,
 078,12. Translations,Main,/translations,P1,Translation browser,Open Translations; filter namespace=menu; locale=zh,Menu translations listed; item names in English（中文）format,,
 079,12. Translations,Main,/translations,P1,Manual edit is protected,Edit one zh translation to a custom text; save; wait 5 min; re-open; then edit the SOURCE item's price in Menu; re-check translation,Custom text persists — never reverted to auto text,,ROUND 35 core fix — most important translation test
-080,12. Translations,Main,/translations,P2,Auto-translate new content,Create a NEW menu item (English name); wait a minute; check its translations,Auto translations exist in all 4 locales in the gloss format,,
+080,12. Translations,Main,/translations,P2,Auto-translate new content,Create a NEW menu item (English name); wait ~1 minute; check its translations,Auto zh translation exists in the gloss format (background task lands in ~25s; nightly cron is the backstop),,Only zh is auto-filled (EN is the source; ms/ta/tr removed)
 081,12. Translations,Admin UI,/translations/admin,P3,Admin UI translations,Open admin tab; switch locale,UI string rows load; edit one; persists,,
 082,12. Translations,Staff UI,/translations/staff,P3,Staff UI translations,Open staff tab,Rows load,,
 083,12. Translations,PWA UI,/translations/pwa,P3,PWA UI translations,Open PWA tab,Rows load,,
-084,12. Translations,Portal language,sidebar,P3,Portal switches language,Use the portal language selector; switch to Bahasa Melayu and back,UI labels switch; no raw translation keys visible (e.g. menu.items.title),,
+084,12. Translations,Portal language,sidebar,P3,Portal switches language,Use the portal language selector; switch to 中文 and back to English,UI labels switch; no raw translation keys visible (e.g. menu.items.title),,Only EN + zh are available now
 085,13. Customers,List,/customers,P1,Customer list,Open Customers,"Customers listed with phone, tier, wallet",,
 086,13. Customers,Detail,/customers/[id],P1,Customer 360,Open demo customer,"Wallet balance, loyalty points, orders, vouchers, rewards all shown",,
 087,13. Customers,Wallet,/customers/[id],P1,store_manager CANNOT top up/adjust wallet,As store_manager: try wallet topup/adjust/deduct on any customer,403 / action blocked or hidden,,ROUND 35 — HQ-only. Then verify WORKS as system_admin with correct ledger entry
@@ -131,7 +131,7 @@
 130,24. Staff,Attendance,/staff/attendance,P3,Attendance,Open attendance,Clock events listed,,
 131,24. Staff,Tasks,/staff/tasks,P2,Task CRUD,Create task with priority; assign; complete,Full lifecycle works,,
 132,24. Staff,Tips,/staff/tips,P3,Tips page,Open tips,Tip allocations render,,
-133,24. Staff,Roles,/staff/roles,P3,Staff roles,Open roles,Role matrix renders,,
+133,24. Staff,Roles,/staff/roles,P3,Staff roles,Open roles,Staff roles listed (the per-role permission matrix is intentionally not shown for staff roles — staff RBAC is not built yet),,
 134,25. Check-ins,List,/checkins,P3,Check-in list,Open check-ins,Customer check-ins listed,,
 135,25. Check-ins,Settings,/checkins/settings,P3,Check-in settings,Open settings; save,Persists,,
 136,26. Cash Sessions,List,/cash-sessions,P2,POS sessions,Open cash sessions,Sessions with open/close amounts; variance shown correctly,,
@@ -143,3 +143,10 @@
 142,27. Cross-cutting,Images,all,P2,Uploads display,"Check menu item images, promos, splash",All load (no broken image icons); new upload compressed and displays,,
 143,27. Cross-cutting,store_manager scope,all,P1,store_manager sees own store data,"As store_manager: browse dashboard, orders, feedback, inventory",Only Store 1 data everywhere; no Store 2 rows leak,,
 144,27. Cross-cutting,Readonly role,all,P2,readonly_analyst cannot write,(If readonly account exists) try any create/edit,All mutations 403; pages still readable,,
+145,28. Redemption Rule,Orders,/orders/[id],P1,Admin apply-voucher then apply-reward rejected (one per order),Open an unpaid order for a customer who holds an active voucher AND an active reward; apply the voucher (200 with discount); then apply the reward,Same order: apply-reward returns 400 'one voucher OR one reward per order'; the voucher stays applied,,ROUND 41c hard rule. Also verify the reverse order (apply-reward 200 → apply-voucher 400) and that a cancelled order releases the redemption back to 'active'
+146,28. Redemption Rule,Orders,/orders/[id],P1,Full refund releases the applied voucher/reward,On an order with an applied voucher (now paid): issue a FULL refund,The voucher used on the order is released back to 'active' for that customer,,ROUND 34/41c — check the customer's vouchers/rewards in Admin > Customers afterwards
+147,28. Redemption Rule,Customers,/customers/[id],P2,Expired voucher/reward auto-hidden,Backdate a customer voucher/reward expiry (or wait); open the customer's wallet view,Expired items are no longer listed as active (flipped to 'expired' by the 5-minute sweep + wallet-view check),,ROUND 41b
+148,29. Recent Features,Menu,/menu/items/new,P2,Auto inventory link on item save,Create a new menu item with NO recipe rows; save,An LNK-<item_code> inventory item is auto-created in Inventory > Items with 0-stock rows per store,,ROUND 39 — explicit recipes always win; idempotent on re-save
+149,29. Recent Features,Inventory,/inventory/stocks,P2,Negative-stock filters,Enable 'Negative only' on Stock Levels; enable 'Negative impact' on Movements,Only below-zero rows listed; the exact movement that pushed an item negative is traceable,,ROUND 39
+150,29. Recent Features,Inventory,/inventory/wastage,P2,Wastage Reports page,Open Inventory > Wastage Reports; verify/flag a report with notes,Reports listed with photos + store/status/date filters; verify/flag persist,,ROUND 35 follow-up 13 — photo-evidence flow
+151,29. Recent Features,Settings,/settings/payment-gateway,P2,Checkout Mode setting,Open Payment Gateway; switch Checkout Mode (Stripe / Simulator); save,Setting persists; dev orders/top-ups use the simulator page when Simulator is selected,,ROUND 40

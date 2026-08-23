@@ -11,7 +11,7 @@ The Dashboard gives a high-level overview of business performance. It is the fir
 | Widget | Description |
 |--------|-------------|
 | Active Orders | Count of orders currently in `pending`, `confirmed`, `preparing`, or `ready_for_pickup` status. |
-| Total Revenue | Sum of completed order totals for the selected period. |
+| Total Revenue | Net captured revenue (payments minus refunds) for the selected period. |
 | Total Orders | Count of orders placed in the selected period. |
 | Total Customers | Count of registered customers. |
 | Orders by Type | Breakdown of dine-in, takeaway, and delivery orders. |
@@ -35,13 +35,13 @@ The Dashboard gives a high-level overview of business performance. It is the fir
 
 ## Payment Status Filter
 
-All revenue and order-count widgets filter by `payment_status == "captured"`:
+All revenue and order-count widgets count only captured money (revenue is net of refunds):
 - Today's orders/revenue — only paid orders
 - Period orders/revenue — only paid orders
 - Orders by type + monthly charts — only paid orders
 - Active orders KPI intentionally shows pending/confirmed/preparing (kitchen-active)
 
-Unpaid kiosk orders, abandoned PWA carts, and pending walkaway orders are excluded from all revenue metrics. Kiosk orders unpaid for >30 minutes are auto-cancelled during the next kiosk order creation.
+Unpaid kiosk orders, abandoned PWA carts, and pending walkaway orders are excluded from all revenue metrics. Unpaid pay-before-food orders auto-cancel in the background (a sweep runs every 5 minutes): kiosk orders after **15 minutes**, all other prepaid orders after **2 hours**. Open tabs (`pay_after_meal`) are never auto-cancelled.
 
 
 ## Payment Flow Split

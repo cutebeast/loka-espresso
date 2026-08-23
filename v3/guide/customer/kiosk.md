@@ -40,6 +40,16 @@ The self-ordering kiosk lets customers browse the menu, build their order, and p
 - **Pay with Card**: QR code → scan with phone → pay via Stripe (credit/debit) or HitPay (FPX/DuitNow)
 - **Pay with Wallet**: QR code → scan with phone → login/signup → pay from your wallet balance
 
+## Vouchers & rewards at the kiosk
+
+Guests who don't sign in **cannot** use vouchers or rewards — trying to redeem without signing in is rejected by the server. On the payment screen, tap **Sign in to use rewards & vouchers**:
+
+1. Enter your phone number and the OTP sent to it.
+2. Pick **one** voucher or **one** reward from your active wallet items.
+3. The order is placed under your account and the discount is applied to the total.
+
+For safety on a shared screen, the sign-in is wiped automatically when the order finishes or after 60 seconds of inactivity. Entering your phone at the phone step (without the OTP sign-in) only links the order to your profile for loyalty points — it does not unlock redemption.
+
 ## Tablet Mode
 
 Tablets at dining tables skip the welcome/order-type screens. Table number is set by staff during setup. The tablet remembers the table number until staff changes it.
@@ -51,6 +61,8 @@ The kiosk auto-resets after 60 seconds of inactivity. On the success screen, the
 
 ## Payment Timing
 
-- **Kiosk**: always pay BEFORE food (prepaid). Unpaid orders auto-cancel after 15 minutes.
-- **Table QR / PWA dine-in**: open tab — food is prepared and served, you pay after your meal.
-- **PWA takeaway/delivery**: pay before food; unpaid orders auto-cancel after 30 minutes.
+- **Kiosk**: always pay BEFORE food (prepaid). Unpaid kiosk orders auto-cancel after 15 minutes.
+- **Table QR / PWA dine-in**: open tab — food is prepared and served, you pay after your meal. Open tabs are never auto-cancelled.
+- **PWA takeaway/delivery**: pay before food; unpaid orders auto-cancel after 2 hours.
+
+When an order is cancelled (by you or automatically), everything is released: any voucher or reward used on it returns to your wallet, booked seats and table locks are freed, and stock is restored.

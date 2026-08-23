@@ -39,7 +39,7 @@ Tap the **Help** icon in the top header from any page to open this guide.
 2. Choose **Dine-in**.
 3. Select or scan a table.
 4. Add items to the cart. Tap an item to add modifiers.
-5. Apply a voucher or reward if the customer has one.
+5. If the customer has a voucher or reward, attach them first, then open **Apply Discounts & Wallet** at checkout and apply one (never both).
 6. Tap **Charge** and choose payment method (Cash or Stripe QR).
 7. Complete payment.
 

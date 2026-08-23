@@ -78,6 +78,8 @@ The promotional banners shown in the Customer PWA. Every banner carries a reward
 ### What it shows
 Voucher definitions — the templates behind every voucher a customer holds. Customer-facing vouchers are always issued from a definition (via promo banners, the lucky draw, the welcome reward, birthday perks, or admin flows).
 
+> **Redemption rule:** vouchers and rewards are always consumed against an **order** — one voucher OR one reward per order, never both (enforced on every channel). There is no standalone "mark used" action; unused items return to the customer's wallet automatically when the order is cancelled.
+
 ### Create a voucher definition
 1. Click **New Voucher**.
 2. Enter:

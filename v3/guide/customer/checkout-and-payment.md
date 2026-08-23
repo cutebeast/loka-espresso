@@ -36,10 +36,12 @@ Finalise the order, select order type and details, choose payment method, and pa
 
 ## Apply discounts
 
-- **Voucher** — enter a voucher code.
+- **Voucher** — enter a voucher code, or pick one from your wallet.
 - **Reward** — select a reward from My Rewards.
 
-Discounts are applied before tax and service charge according to store settings.
+**One per order** — you can apply EITHER one voucher OR one reward, never both. The discount shows in the order summary before you pay, and only the redemption you selected is consumed with the order.
+
+Discounts are applied before tax and service charge according to store settings. Loyalty points are estimated at checkout and credited to your balance once the payment actually goes through (see [Wallet & Loyalty](wallet-and-loyalty.md)).
 
 ## Payment methods
 
@@ -64,10 +66,7 @@ If the balance is too low, top up first (see [Wallet & Loyalty](wallet-and-loyal
 
 ## Guest checkout
 
-1. If not logged in, tap **Checkout as Guest**.
-2. Enter phone number.
-3. Complete payment.
-4. Order details are sent via SMS or email for tracking.
+Guests can browse the whole app — menu, promotions, events, and workshops — without an account. To **place an order** you must sign in (phone number + one OTP). This keeps vouchers, rewards, loyalty points, and wallet balance tied to your account. In-store, staff can serve you as a walk-in without an app account.
 
 ## BYOT (Bring Your Own Tumbler)
 

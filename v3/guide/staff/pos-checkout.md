@@ -69,7 +69,7 @@ If you try to send a workshop order without a customer attached, the POS blocks 
 2. Tap an order to open checkout.
 3. (Optional) Scan or search the customer to attach them — needed for vouchers, rewards, and wallet payment.
 4. Tap **Apply Discounts & Wallet** to:
-   - Apply one of the customer's vouchers or rewards.
+   - Apply **one** of the customer's vouchers or rewards — one voucher OR one reward per order, never both (a second redemption is rejected).
    - Take a full or partial **wallet payment** from the customer's balance.
 5. (Optional) Apply a staff discount (percentage or fixed amount) and add a tip.
 6. Pick a payment method and confirm.
@@ -128,7 +128,7 @@ The success screen shows the order number, total, and any change. From there you
 
 ## Loyalty and lucky draw (automatic)
 
-- When a customer is attached, loyalty points are awarded automatically based on the order subtotal and their tier multiplier. Walk-in orders earn nothing.
+- When a customer is attached, loyalty points are estimated from the order subtotal and tier multiplier and **credited to their balance once the order is paid**. Walk-in orders earn nothing.
 - Paid amounts count toward the customer's annual spend, which drives tier upgrades (Bloom → Origin → Reserve).
 - When a spend-based lucky draw campaign is active, draw tickets are granted automatically once the order is paid (e.g. RM 50 spent = 1 ticket). Nothing for staff to do.
 
@@ -141,7 +141,7 @@ For stores with a second screen:
 
 | Phase | What the customer sees |
 |-------|------------------------|
-| Idle | Store name, welcome, clock, and the wallet top-up QR. |
+| Idle | Store name, clock, and a rotating carousel of active promo banners. |
 | Building the order | Cart items, quantities, and the running total as you tap. |
 | Checkout (unpaid order) | The actual order's items, service charge, tax, and total. |
 | Split bill | Progress under the total — "RM X of RM Y paid · This share RM Z". |
@@ -154,10 +154,12 @@ The display resets to the idle screen when the order is done or the cart is clea
 
 - Before sending: remove items from the cart or start over.
 - After sending but before payment: a manager can adjust or cancel the order from the orders list.
-- After payment: refunds are handled by a manager in the Admin Portal (see [Admin — Orders & Refunds](../admin/orders-and-refunds.md)). What staff should know:
-  - **Cash refunds settle immediately** — the manager hands the cash back and the system marks the refund completed.
+- After payment: open the order from the queue and use the **Refund** button in the checkout panel (cashier/server/shift supervisor/store manager), or refund from the Admin Portal (see [Admin — Orders & Refunds](../admin/orders-and-refunds.md)). The same rules apply on both paths:
+  - **Cash refunds settle immediately** — hand the cash back and the system marks the refund completed.
   - **Wallet refunds** return the amount to the customer's wallet balance right away.
-  - **Customers keep their loyalty points and lucky-draw tickets** on refunds — points are not deducted. Do not promise a points deduction; if a customer asks, it is café policy that points and tickets stay.
+  - **Points follow the refund** — loyalty points earned on the order are clawed back proportionally, and the customer's annual-spend counter is reduced to match.
+  - **On a full refund**, any voucher or reward used on the order is released back to the customer (active again).
+  - **Lucky-draw tickets are NOT clawed back** on refunds (intentional design).
 
 ## Related
 - [Orders & Tables](orders-and-tables.md)

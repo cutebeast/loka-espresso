@@ -33,14 +33,14 @@ Check customer wallet balances and process wallet top-ups.
 | refund | Refund credited to wallet. |
 
 ## Limitations
-- Customers top-ups via card/gateway may redirect to a payment provider.
-- Maximum top-up amount is configured per store.
+- Counter top-ups require a money role: cashier, server, shift supervisor, or store manager.
+- Card/gateway top-ups may redirect to a payment provider.
 
 ## Related
 - [Admin — Customers](../admin/customers.md)
 
 ## Rewards & vouchers (view-only here)
 
-The **Rewards & Vouchers** tab shows a customer's available rewards and vouchers. They are consumed **at the POS checkout**: attach the customer to the order (phone search or QR scan), open "Apply Discounts & Wallet", and apply the voucher or reward to that order. Applying to an order marks it used; cancelling the order releases it back. Scanning a reward/voucher QR only validates it — it never consumes.
+The **Rewards & Vouchers** tab shows a customer's available rewards and vouchers. They are consumed **at the POS checkout**: attach the customer to the order (phone search or QR scan), open "Apply Discounts & Wallet", and apply the voucher or reward to that order — **one voucher OR one reward per order, never both**. Applying to an order marks it used; cancelling the order releases it back. Scanning a reward/voucher QR only validates it — it never consumes.
 
 > Legacy note: the old standalone "Use" buttons and mark-used endpoints were removed (they consumed rewards/vouchers with no order attached).

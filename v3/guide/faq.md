@@ -54,7 +54,7 @@ For normal menu orders, no — walk-in guests are fine. For workshop/experience 
 ### How do I apply a customer voucher at the POS?
 1. Send the order to the kitchen, then open it from **Unpaid** to check out.
 2. Scan or search the customer to attach them.
-3. Tap **Apply Discounts & Wallet** and pick the voucher or reward, or pay (partly) from their wallet balance.
+3. Tap **Apply Discounts & Wallet** and pick the voucher or reward — **one voucher OR one reward per order, never both** — or pay (partly) from their wallet balance.
 4. Take the remaining payment by cash, card, or QR.
 
 ### A customer wants to book a table. Where do I look?
@@ -75,7 +75,7 @@ Order while signed in — points are based on what you spend, multiplied by your
 Three tiers: **Bloom** (everyone starts here, 1x points), **Origin** (1.2x points), and **Reserve** (1.5x points, priority support). Tiers are based on your spending over a rolling 12 months — keep visiting and you'll be upgraded automatically. Your current tier and progress are on **My Card** and your **Profile**.
 
 ### Where can I see my rewards and vouchers?
-Go to **Profile → My Rewards**. The **My Rewards** tab holds items you redeemed with points; the **My Vouchers** tab holds vouchers from promos, surveys, and the Lucky Draw. Tap a card to show its code to the cashier, or apply it at checkout.
+Go to **Profile → My Rewards**. The **My Rewards** tab holds items you redeemed with points; the **My Vouchers** tab holds vouchers from promos, surveys, and the Lucky Draw. Use one at checkout in the app (one per order), or show your loyalty QR at the counter so staff can apply it to your order — scanning a code only validates it.
 
 ### How does the Lucky Draw work?
 Open **Lucky Draw** from the home-page banner and tap **SPIN**. Depending on the campaign running, you either get free daily spins (come back tomorrow when you run out) or earn draw tickets from paid purchases (e.g. RM 50 = 1 ticket, credited automatically after payment). Every spin wins a voucher, which lands in **My Rewards → My Vouchers**.
@@ -95,8 +95,14 @@ You can browse the menu, promotions, events, and workshops as a guest. Ordering,
 ### What does "ready_for_pickup" mean?
 Your order is prepared and waiting at the counter or designated pickup area.
 
+### Can I use a voucher AND a reward on the same order?
+No — one redemption per order: **EITHER one voucher OR one reward**, never both. This is enforced by the server on every channel (app checkout, kiosk, POS, admin), so a second one is always rejected. You can use the other one on your next order.
+
+### What happens to my voucher/reward if my order is cancelled?
+It is released back to your wallet automatically (active again) — this includes orders auto-cancelled for non-payment (kiosk orders after 15 minutes, other unpaid prepaid orders after 2 hours).
+
 ### How do refunds work? Do I keep my points?
-Refunds are handled by the store manager. Cash refunds are returned immediately at the counter; wallet refunds go straight back to your wallet balance; card/online refunds go back through the payment provider. **Yes — you keep your loyalty points and lucky-draw tickets** from the original order; they are not deducted when an order is refunded.
+Refunds are handled by the store manager (admin) or by staff at the POS. Cash refunds are returned immediately at the counter; wallet refunds go straight back to your wallet balance; card/online refunds go back through the payment provider. **Points follow the refund** — loyalty points earned on the order are deducted proportionally, and your annual-spend progress is reduced to match. Lucky-draw tickets are not affected. On a full refund, any voucher or reward used on the order is returned to your wallet.
 
 ### How do I scan a table QR code?
 Open your phone camera and scan the QR code on the table. This opens the PWA with your table number pre-selected. You can then browse the menu and place your order. This links your order to the table.
