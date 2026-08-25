@@ -149,7 +149,7 @@ export async function placeOrder(params: {
   notes?: string;
   voucherCode?: string;
   rewardRedemptionCode?: string;
-  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod' | 'gateway' | 'hitpay';
+  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'gateway' | 'hitpay';
   recipientName?: string;
   recipientPhone?: string;
   deliveryInstructions?: string;
@@ -159,7 +159,7 @@ export async function placeOrder(params: {
 
   // Wallet/gateway payments require an immediate online confirmation flow and
   // cannot be safely queued offline.
-  const canQueueOffline = params.paymentMethod === 'cash' || params.paymentMethod === 'pay_at_store' || params.paymentMethod === 'cod';
+  const canQueueOffline = params.paymentMethod === 'cash' || params.paymentMethod === 'pay_at_store';
   const isOffline = typeof window !== 'undefined' && !navigator.onLine;
   if (isOffline && !canQueueOffline) {
     throw new Error('This payment method requires an internet connection. Please connect and try again.');

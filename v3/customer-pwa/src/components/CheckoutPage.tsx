@@ -84,7 +84,12 @@ export default function CheckoutPage() {
   const [discountCode, setDiscountCode] = useState(checkoutDraft.discountCode || '');
   const [isByot, setIsByot] = useState(false);
   const [discountValue, setDiscountValue] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway' | 'hitpay'>(checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet'));
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay'>(() => {
+    // COD is no longer supported — sanitize any pre-existing stored draft value.
+    const draft = checkoutDraft.paymentMethod as string | undefined;
+    if (draft && draft !== 'cod') return draft as 'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay';
+    return orderMode === 'dine_in' ? 'pay_at_store' : 'wallet';
+  });
   const [hitpayEnabled, setHitpayEnabled] = useState(false);
   const [notes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
@@ -466,11 +471,6 @@ export default function CheckoutPage() {
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
             <div className="co-payment-info"><div className="co-payment-label">{orderMode === 'dine_in' ? t('checkout.payAtCounter') : t('checkout.payAtStore')}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div></div>}
-          {orderMode === 'delivery' && <div className={`co-payment-card ${paymentMethod === 'cod' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cod')}>
-            <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
-            <div className="co-payment-info"><div className="co-payment-label">{t('checkout.cashOnDelivery')}</div></div>
-            <div className="co-payment-check"><CheckCircle2 size={12} /></div>
-          </div>}
           {stripeReady && <div className={`co-payment-card ${paymentMethod === 'gateway' ? 'selected' : ''}`} onClick={() => setPaymentMethod('gateway')}>
               <div className="co-payment-icon co-payment-icon-gateway"><Banknote size={14} color="#fff" /></div>
               <div className="co-payment-info"><div className="co-payment-label">{t("checkout_page.pay_online_card_fpx")}</div></div>

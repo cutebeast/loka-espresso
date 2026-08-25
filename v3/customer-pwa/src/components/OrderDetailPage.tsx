@@ -405,8 +405,8 @@ export default function OrderDetailPage() {
         <div className="od-section">
           <div className="od-section-title">{t('orderDetail.payment')}</div>
           <div className="od-payment-row">
-            <div className="od-payment-icon">{order.payment_method === 'wallet' ? 'L' : order.payment_method?.toUpperCase()?.slice(0, 4) || t('checkout.cashOnDelivery')}</div>
-            <div className="od-payment-text">{order.payment_method === 'wallet' ? t('orderDetail.lokaWallet') : order.payment_method === 'cod' ? t('checkout.cashOnDelivery') : order.payment_method === 'pay_at_store' ? t('checkout.payAtStore') : order.payment_method} — {formatPrice(order.total_amount)}</div>
+            <div className="od-payment-icon">{order.payment_method === 'wallet' ? 'L' : order.payment_method ? order.payment_method.toUpperCase().slice(0, 4) : '···'}</div>
+            <div className="od-payment-text">{order.payment_method === 'wallet' ? t('orderDetail.lokaWallet') : order.payment_method === 'pay_at_store' ? t('checkout.payAtStore') : order.payment_method ? order.payment_method : t('orderDetail.pendingPayment')} — {formatPrice(order.total_amount)}</div>
           </div>
         </div>
 

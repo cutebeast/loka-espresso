@@ -160,7 +160,6 @@
     "applyVoucher": "Apply Voucher or Reward",
     "asapTime": "ASAP · ~{time}",
     "bundleDiscount": "Combo discount",
-    "cashOnDelivery": "Cash on Delivery",
     "changeAddress": "Change address",
     "changeAddressTitle": "Change Address",
     "changeTable": "Change",
@@ -868,7 +867,8 @@
     "shareTotal": "Total: {amount}",
     "storeId": "Store #{id}",
     "title": "Order Details",
-    "viewEinvoice": "View E-Invoice"
+    "viewEinvoice": "View E-Invoice",
+    "pendingPayment": "Pending payment"
   },
   "orders": {
     "activeOrders": "Active Orders",

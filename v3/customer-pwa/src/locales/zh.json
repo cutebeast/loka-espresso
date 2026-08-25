@@ -159,7 +159,6 @@
     "asapTime": "尽快 · ~{time}",
     "bundleDiscount": "套餐折扣",
     "byotEco": "我自带随行杯（BYOT）— 赚取环保活动奖励积分",
-    "cashOnDelivery": "货到付款",
     "changeAddress": "更改地址",
     "changeAddressTitle": "更改地址",
     "changeTable": "更改",
@@ -922,7 +921,8 @@
     "shareTotal": "总计：{{amount}}",
     "storeId": "门店 #{{id}}",
     "title": "订单详情",
-    "viewEinvoice": "查看电子发票"
+    "viewEinvoice": "查看电子发票",
+    "pendingPayment": "待付款"
   },
   "orders": {
     "activeOrders": "进行中的订单",
