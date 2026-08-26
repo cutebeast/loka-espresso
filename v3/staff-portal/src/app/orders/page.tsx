@@ -242,11 +242,11 @@ export default function OrdersPage() {
       {dispatchOrder && <DeliveryDispatchDialog order={dispatchOrder} saving={dispatchSaving} error={dispatchError} onClose={() => {
       setDispatchOrder(null);
       setDispatchError(null);
-    }} onSubmit={async (provider, externalRef) => {
+    }} onSubmit={async (provider, externalRef, trackingUrl) => {
       setDispatchSaving(true);
       setDispatchError(null);
       try {
-        await dispatchDeliveryOrder(dispatchOrder.id, provider, externalRef);
+        await dispatchDeliveryOrder(dispatchOrder.id, provider, externalRef, trackingUrl);
         setDispatchOrder(null);
         await fetchOrders();
       } catch (err: unknown) {

@@ -354,6 +354,23 @@ export default function OrderDetailPage() {
                 </div>
               </div>
             )}
+            {order.fulfillment?.delivery_provider && (
+              <div className="od-info-row">
+                <div className="od-info-icon copper"><Truck size={14} /></div>
+                <div className="od-info-text">
+                  <div className="od-info-label">{t('orderDetail.courier')}</div>
+                  <div className="od-info-value">
+                    {t(`orderDetail.courierNames.${order.fulfillment.delivery_provider}`)}
+                    {order.fulfillment.delivery_provider_order_id ? ` · ${order.fulfillment.delivery_provider_order_id}` : ''}
+                  </div>
+                  {order.fulfillment.tracking_url && (
+                    <a href={order.fulfillment.tracking_url} target="_blank" rel="noopener noreferrer" className="od-info-value" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                      {t('orderDetail.trackDelivery')}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

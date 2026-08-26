@@ -380,6 +380,25 @@ export interface Order {
   delivery_eta_minutes?: number;
   delivery_courier_name?: string;
   delivery_courier_phone?: string;
+  fulfillment?: OrderFulfillment | null;
+}
+
+export interface OrderFulfillment {
+  id: number;
+  order_id: number;
+  status: string;
+  delivery_provider?: string | null;
+  delivery_provider_order_id?: string | null;
+  tracking_url?: string | null;
+  tracking_number?: string | null;
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  estimated_delivery_at?: string | null;
+  actual_delivery_at?: string | null;
+  delivery_distance_km?: number | null;
+  delivery_address_snapshot?: Record<string, unknown> | null;
+  recipient_name?: string | null;
+  recipient_phone?: string | null;
 }
 
 // ---------- Wallet ----------

@@ -980,6 +980,37 @@ async def create_order_from_cart(
 
     modifier_sub = sum(to_decimal(i.modifier_total) * i.quantity for i in cart_items)
     is_delivery = data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery")
+
+    # Delivery orders: address is mandatory, and the store's delivery radius is
+    # enforced server-side (the PWA radius check is client-side only and
+    # bypassable). The computed distance is reused on the fulfillment record.
+    delivery_distance_km: float | None = None
+    if is_delivery:
+        if not data.delivery_address:
+            raise OrderError("A delivery address is required for delivery orders", 422)
+        addr = data.delivery_address if isinstance(data.delivery_address, dict) else {}
+        try:
+            addr_lat = float(addr["lat"]) if addr.get("lat") is not None else None
+            addr_lng = float(addr["lng"]) if addr.get("lng") is not None else None
+        except (TypeError, ValueError):
+            addr_lat = addr_lng = None
+        store_result = await db.execute(select(Store).where(Store.id == cart.store_id))
+        store_obj = store_result.scalar_one_or_none()
+        if (store_obj is not None and store_obj.latitude is not None and store_obj.longitude is not None
+                and addr_lat is not None and addr_lng is not None):
+            from math import asin, cos, radians, sin, sqrt
+            rlat1, rlat2 = radians(float(store_obj.latitude)), radians(addr_lat)
+            dlat = rlat2 - rlat1
+            dlng = radians(addr_lng - float(store_obj.longitude))
+            h = sin(dlat / 2) ** 2 + cos(rlat1) * cos(rlat2) * sin(dlng / 2) ** 2
+            delivery_distance_km = round(6371 * 2 * asin(sqrt(h)), 2)
+            radius_km = float(store_obj.delivery_radius_km or 0)
+            if radius_km > 0 and delivery_distance_km > radius_km:
+                raise OrderError(
+                    f"This address is {delivery_distance_km:.1f} km away — outside the store's {radius_km:.0f} km delivery area",
+                    422,
+                )
+
     tip = to_decimal(data.tip_amount or 0)
     total = (
         subtotal
@@ -1364,6 +1395,7 @@ async def create_order_from_cart(
             delivery_address_snapshot=delivery_snapshot,
             recipient_name=data.recipient_name,
             recipient_phone=data.recipient_phone,
+            delivery_distance_km=delivery_distance_km,
         )
         db.add(fulfillment)
     

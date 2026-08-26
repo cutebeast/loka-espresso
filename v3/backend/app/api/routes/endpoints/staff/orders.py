@@ -686,6 +686,9 @@ class DeliveryDispatchRequest(BaseSchema):
         "deliveroo", "foodpanda", "postmates", "third_party",
     ]
     external_ref: str = Field(..., min_length=1, max_length=100)
+    # Optional courier tracking link (e.g. the Lalamove share URL) — shown to
+    # the customer on their order page.
+    tracking_url: str | None = Field(None, max_length=500)
 
 
 @router.post("/{order_id}/delivery-dispatch", response_model=APIResponse[dict])
@@ -735,6 +738,8 @@ async def staff_delivery_dispatch(
 
     fulfillment.delivery_provider = data.provider
     fulfillment.delivery_provider_order_id = data.external_ref.strip()
+    if data.tracking_url and data.tracking_url.strip():
+        fulfillment.tracking_url = data.tracking_url.strip()
     fulfillment.delivery_dispatched_at = now
     fulfillment.delivery_dispatched_by = staff.id
     fulfillment.updated_at = now
@@ -761,6 +766,7 @@ async def staff_delivery_dispatch(
         "order_id": order.id,
         "provider": fulfillment.delivery_provider,
         "external_ref": fulfillment.delivery_provider_order_id,
+        "tracking_url": fulfillment.tracking_url,
         "dispatched_at": fulfillment.delivery_dispatched_at.isoformat() if fulfillment.delivery_dispatched_at else None,
         "status": order.status,
         "status_advanced": status_advanced,
@@ -1709,13 +1715,15 @@ async def staff_list_orders(
                 OrderFulfillment.delivery_provider,
                 OrderFulfillment.delivery_provider_order_id,
                 OrderFulfillment.delivery_dispatched_at,
+                OrderFulfillment.tracking_url,
             ).where(OrderFulfillment.order_id.in_(row_ids))
         )
-        for f_order_id, provider, ref, dispatched_at in f_result.all():
+        for f_order_id, provider, ref, dispatched_at, tracking_url in f_result.all():
             dispatch_map[f_order_id] = {
                 "delivery_provider": provider,
                 "delivery_provider_order_id": ref,
                 "delivery_dispatched_at": dispatched_at.isoformat() if dispatched_at else None,
+                "delivery_tracking_url": tracking_url,
             }
 
     station_items: dict[int, list[dict]] = {}

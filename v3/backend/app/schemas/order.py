@@ -65,6 +65,9 @@ class OrderFulfillmentOut(BaseSchema):
     actual_ready_at: datetime | None
     actual_delivery_at: datetime | None
     delivery_provider: str | None
+    # Courier booking reference keyed in by staff at dispatch (e.g. Lalamove
+    # order id) — shown to the customer so they can reference it with the courier.
+    delivery_provider_order_id: str | None
     tracking_url: str | None
     tracking_number: str | None
     driver_name: str | None

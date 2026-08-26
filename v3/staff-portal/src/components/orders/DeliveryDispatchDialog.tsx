@@ -17,7 +17,7 @@ interface Props {
   saving: boolean;
   error: string | null;
   onClose: () => void;
-  onSubmit: (provider: string, externalRef: string) => void;
+  onSubmit: (provider: string, externalRef: string, trackingUrl?: string) => void;
 }
 
 /**
@@ -39,6 +39,7 @@ export default function DeliveryDispatchDialog({
   const [externalRef, setExternalRef] = useState(
     order.delivery_provider_order_id || ""
   );
+  const [trackingUrl, setTrackingUrl] = useState(order.delivery_tracking_url || "");
 
   return (
     <div
@@ -111,6 +112,21 @@ export default function DeliveryDispatchDialog({
           }}
         />
 
+        <label className="block text-sm mb-1">{t("orders.dispatch_tracking_url")}</label>
+        <input
+          value={trackingUrl}
+          onChange={e => setTrackingUrl(e.target.value)}
+          placeholder={t("orders.dispatch_tracking_url_placeholder")}
+          maxLength={500}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            border: "1px solid var(--color-border, #d1d5db)",
+            borderRadius: 8,
+            marginBottom: 12,
+          }}
+        />
+
         {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
         <div className="flex gap-2 justify-end">
@@ -121,7 +137,7 @@ export default function DeliveryDispatchDialog({
             type="button"
             className="btn btn-primary"
             disabled={saving || !provider || externalRef.trim().length === 0}
-            onClick={() => onSubmit(provider, externalRef.trim())}
+            onClick={() => onSubmit(provider, externalRef.trim(), trackingUrl.trim() || undefined)}
           >
             {saving ? t("common.saving") : t("orders.dispatch_save")}
           </button>

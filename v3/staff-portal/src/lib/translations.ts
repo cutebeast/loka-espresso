@@ -243,6 +243,8 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "orders.dispatch_provider": "Delivery provider",
   "orders.dispatch_ref": "Booking reference",
   "orders.dispatch_ref_placeholder": "e.g. LAL-1234567",
+  "orders.dispatch_tracking_url": "Tracking URL (optional)",
+  "orders.dispatch_tracking_url_placeholder": "e.g. https://share.lalamove.com/…",
   "orders.dispatch_save": "Mark dispatched",
   "pos.refund": "Refund",
   "pos.refund_amount": "Refund amount (RM)",

@@ -459,6 +459,7 @@ export interface Order {
   delivery_provider?: string | null;
   delivery_provider_order_id?: string | null;
   delivery_dispatched_at?: string | null;
+  delivery_tracking_url?: string | null;
 }
 
 export interface OrderDetail extends Order {
@@ -692,11 +693,13 @@ export function refundOrder(
 export function dispatchDeliveryOrder(
   id: string | number,
   provider: string,
-  externalRef: string
+  externalRef: string,
+  trackingUrl?: string
 ) {
   return api.post<DeliveryDispatchResult>(`/staff/orders/${id}/delivery-dispatch`, {
     provider,
     external_ref: externalRef,
+    ...(trackingUrl ? { tracking_url: trackingUrl } : {}),
   });
 }
 
