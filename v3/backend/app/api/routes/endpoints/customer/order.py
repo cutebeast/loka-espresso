@@ -94,6 +94,10 @@ async def create_order(
         cart = cart_result.scalar_one_or_none()
         if cart:
             raw_dict["cart_id"] = cart.id
+    # No cart row for (customer, store) — fail cleanly instead of letting
+    # OrderCreate(**raw_dict) raise a pydantic ValidationError (500).
+    if not raw_dict.get("cart_id"):
+        raise HTTPException(status_code=422, detail="Your cart is empty for this store")
 
     # Idempotency key may be supplied in the request body or via the Idempotency-Key header
     idempotency_key = raw_dict.get("idempotency_key") or request.headers.get("Idempotency-Key")

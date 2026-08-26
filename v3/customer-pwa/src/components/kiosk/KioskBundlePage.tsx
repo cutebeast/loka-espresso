@@ -190,7 +190,7 @@ export default function KioskBundlePage({ bundle, onBack, onConfirm, fs, isPortr
           <div style={{ fontSize: fs(28, 24), fontWeight: 800, color: LOKA.primary, margin: "10px 0 18px" }}>
             {formatPrice(bundle.bundle_price)}
             <span style={{ fontSize: fs(16, 14), color: "#888", fontWeight: 500, marginLeft: 10 }}>
-              {isMultiCourse ? t("kiosk.bundle_multi_hint") : isPickX ? t("kiosk.bundle_pick_hint", { n: bundle.pick_count ?? 0 }) : t("kiosk.bundle_fixed_hint")}
+              {isMultiCourse ? t("kiosk.bundle_groups_hint") : isPickX ? t("kiosk.bundle_pick_hint", { n: bundle.pick_count ?? 0 }) : t("kiosk.bundle_fixed_hint")}
             </span>
           </div>
 

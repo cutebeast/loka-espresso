@@ -165,7 +165,10 @@ export async function placeOrder(params: {
     throw new Error('This payment method requires an internet connection. Please connect and try again.');
   }
 
-  await syncCartToServer(items);
+  // The order is placed at the checkout-selected store — sync the cart to
+  // THAT store, not the store the items were first added under, or the
+  // backend finds no cart for (customer, store) and order creation fails.
+  await syncCartToServer(items.map(i => ({ ...i, store_id: params.storeId })));
 
   // The backend enum uses 'takeaway' for customer-collected orders; UI labels it 'pickup'.
   const backendOrderType = params.orderType === 'pickup' ? 'takeaway' : params.orderType;

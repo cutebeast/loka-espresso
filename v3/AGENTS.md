@@ -2323,3 +2323,24 @@ The documented backlog ("transactional notifications — order/reservation event
 - **PWA**: new **Notification settings** page (`notif-settings`, from the notifications header gear): channel toggles (push/SMS/WhatsApp), push topic toggles (orders/promos/loyalty/system), quiet hours — consumes the existing `/notifications/preferences/me` endpoints. Notification tap now posts `/notifications/me/{id}/click` (campaign analytics opens/clicks_count).
 - **Inbox localization**: transactional messages are pre-localized by the dispatcher — the inbox list must NOT merge template translations (a request-locale merge overwrites the stored language). Only campaign_id (broadcast) messages merge at read time.
 - Tests: `tests/test_transactional_notifications.py` (6 unit) + `e2e-tests/test_transactional_notifications.py` (4 E2E: welcome/voucher grant, order transitions + cancel, wallet top-up + send log, registry + preferences). Full E2E **251 passed, 3 skipped, 0 failed** · unit **128/128** · tsc ×3 + eslint clean · alembic head `e2f3a4b5c6d7`.
+
+### Round 42 — pre-launch re-audit + P0 order fix (2026-08-26/27)
+
+Full re-audit after the DeepSeek session (COD removal, i18n, one-redemption rule, notification engine — 16 commits reviewed, all verified safe). Two live Playwright audits (PWA + kiosk) ran against the dev deployment; every confirmed issue fixed and re-verified live.
+
+**P0 launch-blocker**: members could not place ANY order when the checkout store differed from the store the cart was added under — cart synced to the add-time store, order posted to the checkout store, no cart row for (customer, store) → `OrderCreate(cart_id=None)` pydantic 500. Fixed both sides: `cartSync.placeOrder` syncs items to the checkout-selected store; backend `customer/order.py` raises a clean 422 ("cart is empty for this store") instead of a 500.
+
+**Kiosk (8 items)**:
+- Tablet provisioning URLs work again: `KioskPage` reads mode/table from the hash query (`#kiosk?...&mode=tablet&table=N`), and `useAuthFlow` no longer strips `?mode=tablet&table=N` as a false table-QR deep link. Both URL forms land directly on the menu with the table set.
+- Items with variants (Hot/Cold) now REQUIRE a selection before Add to Cart (`modifierRequirementsMet` + `*` marker) — kitchen tickets were ambiguous. PWA was never affected (auto-selects first variant).
+- Cart/add-on/checkout totals show the real payable amount via the shared `previewCartDiscounts` engine (strikethrough component-sum + "Combo discount −RM X"), replacing the "bundle pricing applied at checkout" note.
+- Zero-total success screen: `{0 && …}` JSX bug rendered a bare "0" → `orderTotal !== ''`.
+- Bundle builder hint no longer contradicts per-group quantities ("Complete each group below", new i18n key en/zh).
+- Redemption picker validates vouchers against the cart at pick time (first-order-only/min-spend fail fast with a message instead of rejecting the order at payment).
+- Welcome carousel dots are tappable.
+
+**PWA**: login bottom-sheet now closes on page navigation (it followed users across pages and blocked all browsing). "+ Add" no-op and top-up CSP block NOT reproducible on the current build — both verified working (customize sheet opens; simulator → pay → success redirect completes, no CSP violation).
+
+**Process (launch-blocker)**: `rebuild-portal.sh customer-pwa` now restarts kiosk-v3 + pos-disp-v3 automatically — the stale-build black-screen gap the kiosk audit hit cannot recur.
+
+Verified live: member order at store 2 (then cancelled); tablet hash+query URLs; variant gate; bundle cart/checkout totals RM 39.00; unit 128/128; tsc ×3 clean; E2E suite re-run.

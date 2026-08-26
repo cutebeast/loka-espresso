@@ -283,6 +283,12 @@ export default function AppShell() {
       setShowLoginModal(true);
     }
   }, [requestSignIn]);
+
+  // The login sheet belongs to the screen that asked for it (e.g. checkout) —
+  // it must not follow the user across navigation and block all browsing.
+  useEffect(() => {
+    setShowLoginModal(false);
+  }, [page]);
   const renderPage = useMemo(() => {
     switch (page) {
       case 'home':

@@ -36,6 +36,15 @@ mv .next-fresh .next
 echo "[3/4] $PORTAL: starting ..."
 pm2 start "$PM2_NAME" --update-env >/dev/null
 
+# The customer-pwa build is also served by kiosk-v3 and pos-disp-v3 — if they
+# keep running on the pre-swap build, their HTML references chunks that no
+# longer exist and the kiosk is a black screen. Restart them with every PWA
+# rebuild.
+if [ "$PORTAL" = "customer-pwa" ]; then
+  echo "[+] restarting kiosk-v3 + pos-disp-v3 (they serve this same build) ..."
+  pm2 restart kiosk-v3 pos-disp-v3 --update-env >/dev/null
+fi
+
 echo "[4/4] $PORTAL: waiting for health on :$PORT ..."
 for i in $(seq 1 30); do
   code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$PORT/" || true)

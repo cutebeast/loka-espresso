@@ -620,6 +620,7 @@
     "back_to_menu": "返回菜单",
     "bundle_fixed_hint": "包含以下所有单品",
     "bundle_multi_hint": "每道菜各选一款",
+    "bundle_groups_hint": "请完成以下每一组",
     "bundle_pick_hint": "任选{n}款",
     "bundle_pricing_note": "套餐价格于结账时适用",
     "bundles": "套餐",

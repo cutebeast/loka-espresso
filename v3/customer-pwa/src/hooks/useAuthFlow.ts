@@ -45,6 +45,10 @@ export function useAuthFlow() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
 
+    // Kiosk/tablet devices are provisioned via ?mode=tablet&table=N — those
+    // params belong to the kiosk, never QR-scan or strip them.
+    if (params.get('mode') === 'tablet') return;
+
     const article = params.get('article');
     if (article) {
       const id = parseInt(article, 10);

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import KioskItemPage from './kiosk/KioskItemPage';
 import KioskBundlePage, { type KioskBundle, type KioskBundleComponent } from './kiosk/KioskBundlePage';
-import { previewAddonDiscount } from '@/lib/addonDeal';
+import { previewAddonDiscount, previewCartDiscounts } from '@/lib/addonDeal';
 
 interface KioskModifierOption {
   id: number;
@@ -101,7 +101,11 @@ function cartLineKey(itemId: number, variantId?: number, modifierOptionIds: numb
   return `${itemId}:${variantId ?? ''}:${mods}:${bundleProductId ?? ''}:${bundleComponentId ?? ''}`;
 }
 
-function modifierRequirementsMet(item: KioskMenuItem, selections: Record<number, number[]>): boolean {
+function modifierRequirementsMet(item: KioskMenuItem, selections: Record<number, number[]>, selectedVariant: number | null = null): boolean {
+  // Variants are either/or choices (Hot/Cold, Per Piece/Per 100g) — the
+  // kitchen ticket is ambiguous without one, so a variant is required
+  // whenever the item has any.
+  if ((item.variants?.length ?? 0) > 0 && selectedVariant === null) return false;
   return (item.modifier_groups || []).every(
     (g) => (selections[g.id] || []).length >= (g.min_selections || 0)
   );
@@ -181,6 +185,15 @@ export default function KioskPage() {
   // ── Kiosk mode detection (standing floor LCD vs tablet on table) ──
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
+    // Hash-routed URLs (#kiosk?store=1&mode=tablet&table=5) carry the params
+    // inside the hash — merge them in (query string wins on conflicts).
+    const hashQuery = window.location.hash.split('?')[1];
+    if (hashQuery) {
+      const hashParams = new URLSearchParams(hashQuery);
+      hashParams.forEach((value, key) => {
+        if (!searchParams.has(key)) searchParams.set(key, value);
+      });
+    }
     const pathname = window.location.pathname;
     const isTabletPath = pathname === '/tablet' || pathname.startsWith('/tablet/') || pathname.startsWith('/mode/tablet');
     const mode = searchParams.get('mode');
@@ -553,6 +566,23 @@ export default function KioskPage() {
   const cartTotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
   const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
 
+  // Live bundle/add-on discount preview — mirrors the backend engine
+  // (services/order.py via lib/addonDeal.ts) so the cart/checkout show the
+  // real payable total instead of the inflated component-sum.
+  const cartDiscountPreview = useMemo(() => {
+    if (cart.length === 0) return { bundleDiscount: 0, addonDiscount: 0, total: 0 };
+    const mappedItems = cart.map(c => ({
+      menu_item_id: c.id,
+      quantity: c.qty,
+      price: c.price,
+      bundle_product_id: c.bundle_product_id,
+      bundle_component_id: c.bundle_component_id,
+    }));
+    const mappedBundles = bundles.map(b => ({ ...b, is_active: true }));
+    return previewCartDiscounts(mappedItems as any, menuItems as any, mappedBundles as any);
+  }, [cart, bundles, menuItems]);
+  const cartEstimatedTotal = Math.max(0, cartTotal - cartDiscountPreview.total);
+
   const filteredItems = menuItems.filter(item => {
     if (activeCategory !== null && activeCategory < BUNDLE_CAT_OFFSET && item.category_id !== activeCategory) return false;
     if (activeCategory !== null && activeCategory >= BUNDLE_CAT_OFFSET) return false; // bundle categories show bundles, not items
@@ -574,8 +604,6 @@ export default function KioskPage() {
       preview: previewAddonDiscount(item as any),
     })).filter(x => x.preview !== null);
   }, [addonDealItems]);
-
-  const hasBundleInCart = cartBundleIds.size > 0;
 
   const proceedFromCart = () => {
     if (addonDealItemsWithPreview.length > 0) {
@@ -659,6 +687,29 @@ export default function KioskPage() {
   const pickRedemption = (sel: { kind: 'voucher'; code: string; label: string } | { kind: 'reward'; id: number; label: string }) => {
     setSelectedRedemption(sel);
     setPhase('payment_select');
+  };
+
+  // Validate a voucher against THIS cart before offering it as selected —
+  // eligibility rules (first-order-only, min spend, …) fail here with a clear
+  // message instead of rejecting the whole order at payment time.
+  const pickVoucher = async (v: UserVoucher) => {
+    if (redeemBusy) return;
+    setRedeemBusy(true);
+    setError('');
+    try {
+      await api.post('/vouchers/validate',
+        { voucher_code: v.code, order_total: cartTotal },
+        memberToken ? { headers: { Authorization: `Bearer ${memberToken}` } } : undefined);
+      pickRedemption({
+        kind: 'voucher', code: v.code,
+        label: `${v.code} (${v.discount_type === 'percentage_off' ? `${v.discount_value}%` : formatPrice(v.discount_value)})`,
+      });
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('kiosk.redeem_login_failed');
+      setError(msg);
+    } finally {
+      setRedeemBusy(false);
+    }
   };
 
   // ── Place order ──
@@ -906,14 +957,20 @@ export default function KioskPage() {
                     </button>
                   </>
                 )}
-                {/* Dot indicators */}
+                {/* Dot indicators (tappable) */}
                 {promos.length > 1 && (
                   <div style={{ position: 'absolute', top: 8, right: 12, display: 'flex', gap: 6 }}>
                     {promos.map((_: any, i: number) => (
-                      <div key={i} style={{
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: i === promoIdx ? '#fff' : 'rgba(255,255,255,0.5)',
-                      }} />
+                      <button key={i} onClick={() => setPromoIdx(i)} aria-label={`Go to promo ${i + 1}`} style={{
+                        width: 24, height: 24, minWidth: 24, minHeight: 24, padding: 0,
+                        border: 'none', background: 'transparent', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <div style={{
+                          width: 8, height: 8, borderRadius: '50%',
+                          background: i === promoIdx ? '#fff' : 'rgba(255,255,255,0.5)',
+                        }} />
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1314,11 +1371,18 @@ export default function KioskPage() {
             {cart.length > 0 && (
               <div style={{ padding: 24, background: 'white', borderTop: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: fs(18, 16), color: '#888' }}>
-                    {t('kiosk.total')}
-                    {hasBundleInCart && <span style={{ fontSize: fs(14, 12), color: '#888', marginLeft: 8 }}>({t('kiosk.bundle_pricing_note')})</span>}
+                  <div style={{ fontSize: fs(18, 16), color: '#888' }}>{t('kiosk.total')}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    {cartDiscountPreview.total > 0 && (
+                      <span style={{ fontSize: fs(22, 18), color: '#aaa', textDecoration: 'line-through' }}>{formatPrice(String(cartTotal))}</span>
+                    )}
+                    <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartEstimatedTotal))}</div>
                   </div>
-                  <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartTotal))}</div>
+                  {cartDiscountPreview.total > 0 && (
+                    <div style={{ fontSize: fs(15, 13), color: LOKA.gold, fontWeight: 600 }}>
+                      {t('checkout.bundleDiscount')} -{formatPrice(cartDiscountPreview.total)}
+                    </div>
+                  )}
                 </div>
                 <button onClick={proceedFromCart} style={kioskBtnPrimary(fs)}>
                   {t('kiosk.checkout')} <ArrowRight size={fs(28, 24)} style={{ marginLeft: 8 }} />
@@ -1391,7 +1455,17 @@ export default function KioskPage() {
             <div style={{ padding: 24, background: 'white', borderTop: '2px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: fs(18, 16), color: '#888' }}>{t('kiosk.total')}</div>
-                <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartTotal))}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  {cartDiscountPreview.total > 0 && (
+                    <span style={{ fontSize: fs(22, 18), color: '#aaa', textDecoration: 'line-through' }}>{formatPrice(String(cartTotal))}</span>
+                  )}
+                  <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartEstimatedTotal))}</div>
+                </div>
+                {cartDiscountPreview.total > 0 && (
+                  <div style={{ fontSize: fs(15, 13), color: LOKA.gold, fontWeight: 600 }}>
+                    {t('checkout.bundleDiscount')} -{formatPrice(cartDiscountPreview.total)}
+                  </div>
+                )}
               </div>
               <button onClick={() => setPhase('checkout')} style={kioskBtnPrimary(fs)}>
                 {t('kiosk.checkout')} <ArrowRight size={fs(28, 24)} style={{ marginLeft: 8 }} />
@@ -1435,9 +1509,18 @@ export default function KioskPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 12, borderTop: '2px solid #eee' }}>
                   <div style={{ fontSize: fs(20, 18), fontWeight: 700 }}>
                     {t('kiosk.total')}
-                    {hasBundleInCart && <span style={{ fontSize: fs(14, 12), color: '#888', marginLeft: 8, fontWeight: 400 }}>({t('kiosk.bundle_pricing_note')})</span>}
+                    {cartDiscountPreview.total > 0 && (
+                      <div style={{ fontSize: fs(15, 13), color: LOKA.gold, fontWeight: 600 }}>
+                        {t('checkout.bundleDiscount')} -{formatPrice(cartDiscountPreview.total)}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontSize: fs(32, 28), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartTotal))}</div>
+                  <div style={{ textAlign: 'right' }}>
+                    {cartDiscountPreview.total > 0 && (
+                      <div style={{ fontSize: fs(18, 15), color: '#aaa', textDecoration: 'line-through' }}>{formatPrice(String(cartTotal))}</div>
+                    )}
+                    <div style={{ fontSize: fs(32, 28), fontWeight: 800, color: LOKA.primary }}>{formatPrice(String(cartEstimatedTotal))}</div>
+                  </div>
                 </div>
               </div>
 
@@ -1523,7 +1606,7 @@ export default function KioskPage() {
                     {t('kiosk.redeem_remove')}
                   </button>
                 ) : (
-                  <button onClick={() => setPhase('redeem_pick')} style={{ ...kioskBtnGhost(fs), padding: '8px 16px', fontSize: fs(16, 14), borderColor: LOKA.gold, color: LOKA.gold }}>
+                  <button onClick={() => { setError(''); setPhase('redeem_pick'); }} style={{ ...kioskBtnGhost(fs), padding: '8px 16px', fontSize: fs(16, 14), borderColor: LOKA.gold, color: LOKA.gold }}>
                     {t('kiosk.redeem_choose')}
                   </button>
                 )}
@@ -1651,6 +1734,7 @@ export default function KioskPage() {
               <div style={{ width: 120 }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: fs(24, 20), maxWidth: 640, margin: '0 auto', width: '100%' }}>
+              {error && <div style={{ color: 'var(--color-danger)', fontSize: fs(18, 16), marginBottom: 16, textAlign: 'center' }}>{error}</div>}
               {memberVouchers.length === 0 && memberRewards.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 48, fontSize: fs(20, 18), color: '#888' }}>
                   {t('kiosk.redeem_none_available')}
@@ -1658,13 +1742,11 @@ export default function KioskPage() {
               ) : (
                 <>
                   {memberVouchers.map(v => (
-                    <button key={`v-${v.id}`} onClick={() => pickRedemption({
-                      kind: 'voucher', code: v.code,
-                      label: `${v.code} (${v.discount_type === 'percentage_off' ? `${v.discount_value}%` : formatPrice(v.discount_value)})`,
-                    })} style={{
+                    <button key={`v-${v.id}`} onClick={() => pickVoucher(v)} disabled={redeemBusy} style={{
                       display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
                       padding: fs(18, 16), marginBottom: 12, borderRadius: 14, cursor: 'pointer',
                       border: `2px solid ${LOKA.gold}40`, background: 'white',
+                      opacity: redeemBusy ? 0.6 : 1,
                     }}>
                       <Tag size={fs(26, 22)} style={{ color: LOKA.gold, flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
@@ -1706,7 +1788,7 @@ export default function KioskPage() {
             <CheckCircle size={fs(96, 80)} style={{ color: 'var(--color-success)', marginBottom: 24 }} />
             <h1 style={{ fontSize: fs(52, 42), fontWeight: 800, color: LOKA.primary }}>{t('kiosk.order_placed')}</h1>
             <div style={{ fontSize: fs(36, 28), color: '#666', marginTop: 8 }}>Order #{orderNumber}</div>
-            {orderTotal && <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary, marginTop: 4 }}>{formatPrice(orderTotal)}</div>}
+            {orderTotal !== '' && <div style={{ fontSize: fs(44, 36), fontWeight: 800, color: LOKA.primary, marginTop: 4 }}>{formatPrice(orderTotal)}</div>}
             <div style={{ fontSize: fs(22, 20), color: '#888', marginTop: 16, maxWidth: 400, textAlign: 'center' }}>{t('kiosk.counter_note')}</div>
             {payUrl && (
               <div style={{ marginTop: 24, textAlign: 'center' }}>
@@ -1782,8 +1864,8 @@ export default function KioskPage() {
             onToggleOption={toggleOption}
             selectedVariant={selectedVariant}
             onSelectVariant={setSelectedVariant}
-            canConfirm={modifierRequirementsMet(modifierDrawerItem, selectedOptions)}
-            confirmLabel={modifierRequirementsMet(modifierDrawerItem, selectedOptions) ? t('kiosk.add_to_cart') : t('kiosk.select_required')}
+            canConfirm={modifierRequirementsMet(modifierDrawerItem, selectedOptions, selectedVariant)}
+            confirmLabel={modifierRequirementsMet(modifierDrawerItem, selectedOptions, selectedVariant) ? t('kiosk.add_to_cart') : t('kiosk.select_required')}
             totalPrice={(() => {
               const mods = Object.values(selectedOptions).flat().reduce((sum, modId) => {
                 for (const g of modifierDrawerItem.modifier_groups || []) {

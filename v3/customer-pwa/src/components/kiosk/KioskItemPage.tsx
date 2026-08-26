@@ -91,7 +91,10 @@ export default function KioskItemPage({
 
           {(item.variants?.length ?? 0) > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 10 }}>{t("kiosk.choose_variant")}</div>
+              <div style={{ fontSize: fs(22, 18), fontWeight: 700, marginBottom: 10 }}>
+                {t("kiosk.choose_variant")}
+                <span style={{ color: "var(--color-danger)", marginLeft: 4 }}>*</span>
+              </div>
               {item.variants!.map(v => (
                 <button key={v.id} onClick={() => onSelectVariant(v.id)} style={{
                   display: "flex", justifyContent: "space-between", width: "100%",

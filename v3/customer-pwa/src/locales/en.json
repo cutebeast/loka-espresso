@@ -602,6 +602,7 @@
     "phone_loyalty_note": "Enter your phone to earn loyalty points on this order",
     "bundle_fixed_hint": "Includes all items below",
     "bundle_multi_hint": "Choose one item from each course",
+    "bundle_groups_hint": "Complete each group below",
     "bundle_pick_hint": "Pick any {n}",
     "redeem_signin": "Sign in to use rewards & vouchers",
     "redeem_phone_title": "Member Sign In",
