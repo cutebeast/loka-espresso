@@ -354,6 +354,18 @@ async def auto_translate_record(
     if not columns:
         return 0
 
+    # Guard against the delete-race: a scheduled translate can run after the
+    # record was deleted (e.g. E2E items deleted mid-run). Skipping here
+    # prevents orphaned translation rows; table_name is a trusted constant
+    # from TRANSLATABLE_ENTITIES, never user input.
+    from sqlalchemy import text as _text
+    still_there = (await db.execute(
+        _text(f"SELECT 1 FROM {table_name} WHERE id = :rid LIMIT 1"), {"rid": record_id}
+    )).scalar_one_or_none()
+    if still_there is None:
+        logger.info("auto_translate skipped for %s.%s — record deleted", table_name, record_id)
+        return 0
+
     # Build the list of (column, locale, text) we need translations for.
     needed: list[tuple[str, str, str]] = []
     for col in columns:
