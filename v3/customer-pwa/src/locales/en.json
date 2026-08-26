@@ -239,7 +239,8 @@
   },
   "checkout_page": {
     "pay_online_duitnow_tng_boost_shopeepay": "Pay Online (DuitNow / TnG / Boost / ShopeePay)",
-    "pay_online_card_fpx": "Pay Online (Card / FPX)"
+    "pay_online_card_fpx": "Pay Online (Card / FPX)",
+    "pay_online_eghl": "eGHL (Card / FPX)"
   },
   "common": {
     "add": "Add",
@@ -1363,6 +1364,7 @@
     "phoneHint": "Enter your number to earn loyalty points and get a receipt. No password needed.",
     "payWithCard": "Pay with Card",
     "payWithHitPay": "Pay with HitPay",
+    "payWithEGHL": "Pay with eGHL",
     "payWithWallet": "Pay with Wallet",
     "recommended": "Recommended",
     "processing": "Processing...",

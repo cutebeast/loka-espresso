@@ -26,7 +26,7 @@ export interface CheckoutDraft {
   selectedStore?: Store | null;
   deliveryAddress?: { address: string; lat?: number; lng?: number } | null;
   pickupTime?: string | null;
-  paymentMethod?: 'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay';
+  paymentMethod?: 'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay' | 'eghl';
   notes?: string;
   voucherCode?: string;
   rewardCode?: string;

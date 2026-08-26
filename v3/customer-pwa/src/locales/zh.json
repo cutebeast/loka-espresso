@@ -239,7 +239,8 @@
   },
   "checkout_page": {
     "pay_online_card_fpx": "在线支付（卡 / FPX）",
-    "pay_online_duitnow_tng_boost_shopeepay": "在线支付（DuitNow / TnG / Boost / ShopeePay）"
+    "pay_online_duitnow_tng_boost_shopeepay": "在线支付（DuitNow / TnG / Boost / ShopeePay）",
+    "pay_online_eghl": "eGHL（卡 / FPX）"
   },
   "common": {
     "add": "添加",
@@ -389,6 +390,7 @@
     "payForOrder": "支付订单",
     "payWithCard": "银行卡支付",
     "payWithHitPay": "HitPay 支付",
+    "payWithEGHL": "eGHL 支付",
     "payWithWallet": "使用钱包支付",
     "paymentCancelled": "支付已取消",
     "paymentSuccessful": "支付成功",

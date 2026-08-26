@@ -1,6 +1,7 @@
 """Payment endpoints."""
 
 import asyncio
+import hmac
 import json
 import logging
 import uuid
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 import stripe
 from stripe._error import SignatureVerificationError, StripeError
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -41,6 +43,14 @@ from app.schemas.payment import (
     RefundOut,
 )
 from app.services.hitpay import verify_hitpay_signature, create_hitpay_payment_request
+from app.services.eghl import (
+    EGHLError,
+    build_eghl_checkout_page,
+    create_eghl_checkout,
+    eghl_checkout_token,
+    resolve_eghl_return_redirect,
+    verify_eghl_callback_hash,
+)
 from app.core.rate_limiter import limiter
 from app.services.webhook import (
     extract_event_id,
@@ -177,6 +187,7 @@ async def guest_pay_summary(
     config_service = PlatformConfigService(db)
     stripe_enabled = await config_service.get_bool("stripe.enabled", default=False)
     hitpay_enabled = await config_service.get_bool("hitpay.enabled", default=False)
+    eghl_enabled_flag = await config_service.get_bool("eghl.enabled", default=False)
     wallet_enabled = await config_service.get_bool("wallet.enabled", default=True)
 
     # Amount still owed — net of refunds (matches what POST guest-pay charges).
@@ -220,6 +231,7 @@ async def guest_pay_summary(
                    and amount_due > 0,
         "stripe_enabled": stripe_enabled,
         "hitpay_enabled": hitpay_enabled,
+        "eghl_enabled": eghl_enabled_flag,
         "wallet_enabled": wallet_enabled,
     })
 
@@ -234,7 +246,7 @@ async def guest_pay(
     order_id: int,
     db: DBDependency,
     token: str = Query(..., description="Guest payment token from QR code"),
-    provider: str = Query("stripe", pattern="^(stripe|hitpay|wallet)$"),
+    provider: str = Query("stripe", pattern="^(stripe|hitpay|eghl|wallet)$"),
     phone_number: str | None = Query(None, max_length=20, description="Optional — for loyalty registration"),
     otp_code: str | None = Query(None, max_length=10, description="Required for wallet payments — proves phone ownership"),
 ):
@@ -387,7 +399,7 @@ async def guest_pay(
     payment = Payment(
         order_id=order.id,
         provider="internal_wallet" if provider == "wallet" else provider,
-        payment_method_type="e_wallet" if provider == "wallet" else ("credit_card" if provider == "stripe" else "qr_pay"),
+        payment_method_type="e_wallet" if provider == "wallet" else ("credit_card" if provider in ("stripe", "eghl") else "qr_pay"),
         amount=amount_due,
         currency_code=order.total_amount_currency,
         status="pending_authorization",
@@ -418,6 +430,18 @@ async def guest_pay(
             await db.rollback()
             logger.exception("HitPay guest-pay payment request creation failed")
             raise HTTPException(status_code=503, detail="HitPay payment session could not be created") from exc
+        payment.provider_transaction_id = resp["id"]
+        redirect_url = resp.get("redirect_url")
+    elif provider == "eghl":
+        # eGHL's browser return lands on OUR /eghl/return endpoint, which 303s
+        # to this status-less guest-pay base + ?status=success|cancel.
+        eghl_return_base = f"{base_return}?orderId={order.id}&token={token}"
+        try:
+            resp = await create_eghl_checkout(db, payment, order, None, return_url=eghl_return_base)
+        except Exception as exc:
+            await db.rollback()
+            logger.exception("eGHL guest-pay checkout creation failed")
+            raise HTTPException(status_code=503, detail="eGHL payment session could not be created") from exc
         payment.provider_transaction_id = resp["id"]
         redirect_url = resp.get("redirect_url")
     else:  # wallet
@@ -495,6 +519,7 @@ async def create_intent(
             "cod": "cash",
             "gateway": "stripe",
             "hitpay": "hitpay",
+            "eghl": "eghl",
         }.get(str(pm), str(pm))
     # Map legacy/customer-facing payment method names to valid DB enum values.
     method_type = raw_data.get("payment_method_type") or raw_data.get("payment_method")
@@ -510,6 +535,7 @@ async def create_intent(
             "card": "credit_card",
             "credit_card": "credit_card",
             "hitpay": "qr_pay",
+            "eghl": "credit_card",
         }.get(str(method_type), str(method_type))
     idempotency_key = raw_data.get("idempotency_key") or request.headers.get("Idempotency-Key")
     if idempotency_key:
@@ -1109,6 +1135,66 @@ async def list_payments(
 
 
 # ---------------------------------------------------------------------------
+# eGHL hosted payment page (checkout form, browser return)
+# ---------------------------------------------------------------------------
+# eGHL is a form-POST gateway: our checkout page renders an auto-submitting
+# HTML form posting the signed fields to the eGHL hosted page. The browser
+# return is UX only — the server-to-server callback (/api/webhooks/eghl) is
+# authoritative for the final payment status.
+
+
+@router.get("/eghl/checkout/{payment_id_str}", response_class=HTMLResponse)
+async def eghl_checkout_page(
+    payment_id_str: str,
+    request: Request,
+    db: DBDependency,
+    t: str = Query("", description="Anti-enumeration token (HMAC of the PaymentID)"),
+):
+    """Render the auto-submitting eGHL form for a PaymentID (EG*/EGT*)."""
+    config_service = PlatformConfigService(db)
+    password = await config_service.get_str("eghl.password", default="")
+    if not password or not hmac.compare_digest(eghl_checkout_token(payment_id_str, password), t):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Checkout session not found")
+
+    # Customer IP for the eGHL CustIP field (behind Caddy / the PWA proxy the
+    # real client address is the first X-Forwarded-For entry).
+    forwarded = request.headers.get("x-forwarded-for", "")
+    cust_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "127.0.0.1")
+
+    try:
+        html = await build_eghl_checkout_page(db, payment_id_str, cust_ip or "127.0.0.1")
+    except EGHLError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    if html is None:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="This checkout session is no longer valid")
+    return HTMLResponse(html)
+
+
+@router.api_route("/eghl/return", methods=["GET", "POST"], response_class=None)
+async def eghl_return(request: Request, db: DBDependency):
+    """Browser return from the eGHL hosted page — 303 into the PWA.
+
+    eGHL may return via POST (form fields) or GET (query string); the final
+    status always comes from the callback, this is a UX redirect only.
+    """
+    if request.method == "POST":
+        form = await request.form()
+        fields = {k: str(v) for k, v in form.items()}
+    else:
+        fields = dict(request.query_params)
+
+    payment_id_str = fields.get("PaymentID", "")
+    txn_status = fields.get("TxnStatus", "")
+    if not payment_id_str:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing PaymentID")
+
+    redirect_url = await resolve_eghl_return_redirect(db, payment_id_str, txn_status)
+    if redirect_url is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown PaymentID")
+    return RedirectResponse(redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ---------------------------------------------------------------------------
 # Webhooks
 # ---------------------------------------------------------------------------
 # NOTE: GrabPay was removed 2026-08-17 (never launched — simulator-only). The
@@ -1226,3 +1312,51 @@ async def hitpay_webhook(
         await mark_event_processed("hitpay", event_id)
     logger.info("HitPay webhook processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
     return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
+
+
+@webhook_router.post("/eghl")
+@limiter.limit("200/minute")
+async def eghl_webhook(
+    request: Request,
+    db: DBDependency,
+):
+    """eGHL server-to-server callback (MerchantCallbackURL).
+
+    Posts application/x-www-form-urlencoded fields (NOT JSON). Verified via
+    the HashValue sha256 signature; eGHL expects a plain "OK" 200 response.
+    """
+    config_service = PlatformConfigService(db)
+    password = await config_service.get_str("eghl.password", default="")
+    if not password:
+        logger.error("eGHL callback rejected: eghl.password not configured")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="eGHL password not configured",
+        )
+
+    form = await request.form()
+    fields = {k: str(v) for k, v in form.items()}
+
+    if not verify_eghl_callback_hash(fields, password):
+        logger.warning("eGHL callback rejected: invalid HashValue")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid eGHL HashValue")
+
+    event_id = extract_event_id("eghl", fields)
+    if event_id and await is_event_processed("eghl", event_id):
+        logger.info("eGHL callback duplicate event ignored: %s", event_id)
+        return PlainTextResponse("OK")
+
+    payload = {
+        "type": "eghl.callback",
+        "data": {"object": fields},
+        "transaction_id": fields.get("PaymentID"),
+    }
+    try:
+        payment = await process_webhook_event(db, "eghl", payload)
+    except PaymentError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    if event_id:
+        await mark_event_processed("eghl", event_id)
+    logger.info("eGHL callback processed: event=%s payment_id=%s", event_id, payment.id if payment else None)
+    return PlainTextResponse("OK")

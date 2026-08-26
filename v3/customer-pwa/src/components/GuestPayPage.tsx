@@ -31,6 +31,7 @@ interface GuestOrderData {
   can_pay: boolean;
   stripe_enabled: boolean;
   hitpay_enabled: boolean;
+  eghl_enabled: boolean;
   wallet_enabled: boolean;
 }
 
@@ -94,7 +95,7 @@ export default function GuestPayPage() {
     }
   };
 
-  const handlePay = async (provider: 'stripe' | 'hitpay' | 'wallet') => {
+  const handlePay = async (provider: 'stripe' | 'hitpay' | 'eghl' | 'wallet') => {
     if (!orderId || !token || !order) return;
     setPaying(true);
     try {
@@ -316,7 +317,17 @@ export default function GuestPayPage() {
               {t('guestPay.payWithHitPay')}
             </button>
           )}
-          {!order.stripe_enabled && !order.hitpay_enabled && !order.wallet_enabled && (
+          {order.eghl_enabled && (
+            <button
+              className="guest-pay-btn secondary"
+              onClick={() => handlePay('eghl')}
+              disabled={paying}
+            >
+              <CreditCard size={18} />
+              {t('guestPay.payWithEGHL')}
+            </button>
+          )}
+          {!order.stripe_enabled && !order.hitpay_enabled && !order.eghl_enabled && !order.wallet_enabled && (
             <p className="guest-pay-no-provider">{t('guestPay.noProvider')}</p>
           )}
         </div>

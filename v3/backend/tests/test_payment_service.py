@@ -226,6 +226,105 @@ async def test_process_webhook_event_hitpay_completed_records_payment_id(monkeyp
     assert result.extra_metadata["hitpay_payment_type"] == "duitnow"
 
 
+@pytest.mark.asyncio
+async def test_process_webhook_event_eghl_success_captures_payment(monkeypatch, fake_config):
+    """An eGHL callback with TxnStatus=0 should capture the payment and record the txn id."""
+    payment = Payment(
+        id=3,
+        order_id=1,
+        provider="eghl",
+        provider_transaction_id="EG3",
+        status="pending_authorization",
+        amount=Decimal("25.00"),
+        captured_amount=Decimal("0"),
+        payment_method_type="credit_card",
+        currency_code="MYR",
+        extra_metadata={},
+    )
+
+    db = _async_db()
+    order = SimpleNamespace(id=1, status="pending", total_amount=Decimal("25.00"))
+    db.execute.side_effect = [
+        _fake_result(payment),   # payment lookup by provider_transaction_id (PaymentID)
+        _fake_result(order),     # capture safety-net: order row
+        _scalars_result([]),     # capture safety-net: no other captured payments
+    ]
+    monkeypatch.setattr("app.services.payment._sync_order_payment_status", AsyncMock())
+    monkeypatch.setattr("app.services.payment._add_payment_event", AsyncMock())
+
+    result = await process_webhook_event(
+        db,
+        "eghl",
+        {
+            "type": "eghl.callback",
+            "transaction_id": "EG3",
+            "data": {
+                "object": {
+                    "TxnID": "TXN999",
+                    "ServiceID": "SIT",
+                    "PaymentID": "EG3",
+                    "TxnStatus": "0",
+                    "Amount": "25.00",
+                    "CurrencyCode": "MYR",
+                    "AuthCode": "AUTH01",
+                }
+            },
+        },
+    )
+
+    assert result.status == "captured"
+    assert result.captured_amount == Decimal("25.00")
+    assert result.extra_metadata["eghl_txn_id"] == "TXN999"
+    assert result.extra_metadata["eghl_auth_code"] == "AUTH01"
+
+
+@pytest.mark.asyncio
+async def test_process_webhook_event_eghl_failure_marks_failed(monkeypatch, fake_config):
+    """An eGHL callback with a non-zero TxnStatus should fail the payment."""
+    payment = Payment(
+        id=4,
+        order_id=1,
+        provider="eghl",
+        provider_transaction_id="EG4",
+        status="pending_authorization",
+        amount=Decimal("25.00"),
+        captured_amount=Decimal("0"),
+        payment_method_type="credit_card",
+        currency_code="MYR",
+        extra_metadata={},
+    )
+
+    db = _async_db()
+    db.execute.side_effect = [
+        _fake_result(payment),   # payment lookup by provider_transaction_id
+    ]
+    monkeypatch.setattr("app.services.payment._sync_order_payment_status", AsyncMock())
+    monkeypatch.setattr("app.services.payment._add_payment_event", AsyncMock())
+
+    result = await process_webhook_event(
+        db,
+        "eghl",
+        {
+            "type": "eghl.callback",
+            "transaction_id": "EG4",
+            "data": {
+                "object": {
+                    "TxnID": "TXN998",
+                    "ServiceID": "SIT",
+                    "PaymentID": "EG4",
+                    "TxnStatus": "1",
+                    "Amount": "25.00",
+                    "CurrencyCode": "MYR",
+                    "TxnMessage": "Declined",
+                }
+            },
+        },
+    )
+
+    assert result.status == "failed"
+    assert result.failure_message == "Declined"
+
+
 # ---------------------------------------------------------------------------
 # refund_payment (internal wallet path)
 # ---------------------------------------------------------------------------

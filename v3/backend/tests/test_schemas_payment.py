@@ -33,3 +33,8 @@ def test_payment_method_type_rejects_invalid_values():
 def test_payment_method_provider_accepts_hitpay():
     pm = PaymentMethodBase(method_type="qr_pay", provider="hitpay")
     assert pm.provider == "hitpay"
+
+
+def test_payment_method_provider_accepts_eghl():
+    pm = PaymentMethodBase(method_type="credit_card", provider="eghl")
+    assert pm.provider == "eghl"

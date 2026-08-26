@@ -2344,3 +2344,19 @@ Full re-audit after the DeepSeek session (COD removal, i18n, one-redemption rule
 **Process (launch-blocker)**: `rebuild-portal.sh customer-pwa` now restarts kiosk-v3 + pos-disp-v3 automatically — the stale-build black-screen gap the kiosk audit hit cannot recur.
 
 Verified live: member order at store 2 (then cancelled); tablet hash+query URLs; variant gate; bundle cart/checkout totals RM 39.00; unit 128/128; tsc ×3 clean; E2E suite re-run.
+
+### Round 43 — delivery launch-readiness + Twilio audit + eGHL (2026-08-27)
+
+**Delivery (manual courier workflow)**: the system was already 90% ready (staff dispatch dialog keys provider + booking ref, out_for_delivery/delivered statuses, notifications). Gaps closed:
+- `OrderFulfillmentOut` exposes `delivery_provider_order_id`; PWA order detail shows courier name (i18n en/zh) + booking ref + tracking link.
+- Staff dispatch dialog takes an optional tracking URL (e.g. Lalamove share link); persisted on the fulfillment, shown to the customer.
+- Server-side hardening: delivery orders REQUIRE an address (was client-only); store `delivery_radius_km` enforced at order creation with haversine distance (was client-only, bypassable); computed distance recorded on `OrderFulfillment.delivery_distance_km`.
+- Deferred deliberately: `OrderFulfillment.status` machine, admin-portal dispatch action, push on the delivered template.
+
+**Twilio go-live (audit, no code needed)**: Twilio Verify is fully implemented — go-live = config only. Set `integration.twilio_verify_account_sid/auth_token/service_sid`, `use_test_credentials=false`, and `otp.bypass_enabled=false` (this kills the 000000 bypass; also rotate `otp.bypass_code`). Rate limiting fails closed if Redis is down — confirm Redis. Caution: `seed_platform.py` seeds `otp.bypass_enabled=true` — re-disable after any reseed.
+
+**eGHL**: Malaysian PG (card/FPX) integrated as a third provider (bootstrap priority stripe > eghl > hitpay), hosted-page + SHA256 hash pattern mirroring HitPay.
+- PaymentID maps 1:1 to local rows: `EG{payment.id}` (orders, stored on `provider_transaction_id`) / `EGT{session.id}` (wallet top-ups, `provider_session_id`). eGHL is form-POST, so `create_eghl_checkout` returns OUR backend page `GET /api/payments/eghl/checkout/{PaymentID}?t=<hmac>` (auto-submits the signed form; `t` = HMAC(password, PaymentID)[:16] blocks PII enumeration of the sequential ids).
+- Browser return `GET|POST /api/payments/eghl/return` 303s into the PWA hash page (UX only); server callback `POST /api/webhooks/eghl` (form-encoded, HashValue-verified, plain "OK" response) is authoritative — `confirm_payment`'s eghl branch is a deliberate no-op.
+- Config keys `eghl.*` seeded in migration `f3a4b5c6d7e8` (head) + `seed_platform.py`; refunds are manual (refund row stays pending, `eghl_manual_{id}` ref); wallet top-up return loses the `?returnTo=` param vs HitPay (session table has no metadata column).
+

@@ -210,6 +210,10 @@ async def test_customer_orders_for_all_types(
             "cart_id": cart_id,
             "order_type": "delivery",
             "fulfillment_type": "standard_delivery",
+            # Server-side rule (round 43): delivery orders must carry an address
+            "delivery_address": {"address": "1 Jalan Test, Kuala Lumpur", "recipient": "E2E Tester"},
+            "recipient_name": "E2E Tester",
+            "recipient_phone": "+60123456789",
         })
         assert r_order.status_code == 201, f"Delivery order failed: {r_order.text}"
         order = r_order.json()["data"]

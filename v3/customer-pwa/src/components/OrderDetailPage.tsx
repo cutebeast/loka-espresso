@@ -67,6 +67,7 @@ export default function OrderDetailPage() {
   const [payIntent, setPayIntent] = useState<{ paymentId: number; clientSecret: string } | null>(null);
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [hitpayEnabled, setHitpayEnabled] = useState(false);
+  const [eghlEnabled, setEghlEnabled] = useState(false);
   const orderId = pageParams.orderId ?? currentOrder?.id ?? null;
   const hashStatus = pageParams.status as string | undefined;
   const returnPaymentId = pageParams.paymentId as string | undefined;
@@ -95,6 +96,7 @@ export default function OrderDetailPage() {
         const cfg = res.data || {};
         if (cfg.stripe_publishable_key) setStripePublishableKey(cfg.stripe_publishable_key);
         setHitpayEnabled(!!cfg.hitpay_enabled);
+        setEghlEnabled(!!cfg.eghl_enabled);
       })
       .catch((e: unknown) => { console.error('[OrderDetail] payment config failed:', e); showToast(t('toast.loadPaymentConfigFailed'), 'error'); });
   }, []);
@@ -211,6 +213,11 @@ export default function OrderDetailPage() {
         if (!data?.client_secret || !data?.payment_id) throw new Error('Unable to start payment');
         setPayIntent({ paymentId: data.payment_id, clientSecret: data.client_secret });
         setPaySheetOpen(true);
+      } else if (eghlEnabled) {
+        const res = await api.post('/payments/intent', { order_id: order.id, provider: 'eghl', payment_method: 'eghl' });
+        const data = res.data;
+        if (!data?.redirect_url || !data?.payment_id) throw new Error('Unable to start payment');
+        window.location.href = data.redirect_url;
       } else if (hitpayEnabled) {
         const res = await api.post('/payments/intent', { order_id: order.id, provider: 'hitpay', payment_method: 'hitpay' });
         const data = res.data;

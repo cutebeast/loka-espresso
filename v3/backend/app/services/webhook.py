@@ -94,6 +94,15 @@ def extract_event_id(provider: str, payload: dict) -> str | None:
         if isinstance(obj, dict):
             return str(obj.get("id", "")) or None
         return None
+    if provider == "eghl":
+        # eGHL posts flat form fields; PaymentID is our own id (EG{payment.id}
+        # / EGT{session.id}). Include TxnStatus so a status change (e.g.
+        # pending → success) is not swallowed by the dedup net.
+        payment_id = payload.get("PaymentID") or payload.get("TxnID")
+        if not payment_id:
+            return None
+        txn_status = payload.get("TxnStatus", "")
+        return f"{payment_id}:{txn_status}"
     return None
 
 

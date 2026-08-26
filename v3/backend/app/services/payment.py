@@ -23,6 +23,11 @@ from app.services.hitpay import (
     create_hitpay_refund,
     get_hitpay_payment_request,
 )
+from app.services.eghl import (
+    EGHLError,
+    _eghl_enabled as eghl_enabled,
+    create_eghl_checkout,
+)
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.order import Order
@@ -157,6 +162,7 @@ async def get_payment_gateway_config(db: AsyncSession) -> dict:
         "stripe_publishable_key": publishable or "",
         "hitpay_enabled": await hitpay_enabled(db),
         "hitpay_payment_methods": await get_hitpay_payment_methods(db),
+        "eghl_enabled": await eghl_enabled(db),
         "currency": await PlatformConfigService(db).get_str("currency.default", default="MYR"),
         "payment_method_types": await _get_myr_payment_method_types(db),
     }
@@ -630,6 +636,14 @@ async def create_payment_intent(
                     "amount": str(existing_payment.amount),
                     "currency": existing_payment.currency_code,
                 }
+            elif existing_payment.provider == "eghl":
+                provider_response = {
+                    "id": existing_payment.provider_transaction_id,
+                    "redirect_url": existing_payment.extra_metadata.get("redirect_url") if existing_payment.extra_metadata else None,
+                    "status": existing_payment.status,
+                    "amount": str(existing_payment.amount),
+                    "currency": existing_payment.currency_code,
+                }
             return existing_payment, provider_response
 
     # Verify order exists and belongs to customer (unlocked fetch — the row
@@ -709,6 +723,7 @@ async def create_payment_intent(
             "simulated": not (
                 (provider == "stripe" and await _stripe_enabled(db))
                 or (provider == "hitpay" and await hitpay_enabled(db))
+                or (provider == "eghl" and await eghl_enabled(db))
             ),
         },
     )
@@ -740,6 +755,22 @@ async def create_payment_intent(
             payment.status = "pending_authorization"
         else:
             raise PaymentError("HitPay is not enabled", 503)
+    elif provider == "eghl":
+        if await eghl_enabled(db):
+            customer_result = await db.execute(select(Customer).where(Customer.id == customer_id))
+            customer = customer_result.scalar_one_or_none()
+            provider_response = await create_eghl_checkout(
+                db, payment, order, customer, return_url=return_url
+            )
+            payment.provider_transaction_id = provider_response["id"]
+            payment.extra_metadata = {
+                **(payment.extra_metadata or {}),
+                "redirect_url": provider_response["url"],
+                "eghl": True,
+            }
+            payment.status = "pending_authorization"
+        else:
+            raise PaymentError("eGHL is not enabled", 503)
     elif provider in ("gcash", "alipay", "wechat_pay"):
         provider_response = _simulate_hosted_provider_intent(payment, return_url)
         payment.provider_transaction_id = provider_response["session_id"]
@@ -938,6 +969,12 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
             raise PaymentError(f"HitPay payment {hitpay_status}", 400)
         else:
             raise PaymentError(f"Unexpected HitPay status: {hitpay_status}", 400)
+    elif payment.provider == "eghl" and await eghl_enabled(db):
+        # eGHL has no practical server-side status query in this integration —
+        # the server-to-server callback (MerchantCallbackURL) is authoritative.
+        # The browser return is UX only, so confirm is a no-op: the payment
+        # stays pending_authorization until the callback captures/fails it.
+        pass
     else:
         # Cash-like / wallet providers are captured immediately on confirmation.
         # Redirect-based providers remain pending until the webhook arrives.
@@ -1397,12 +1434,16 @@ async def cancel_payment(db: AsyncSession, payment_id: int, commit: bool = True)
             await _cancel_stripe_intent(payment, api_key)
     elif payment.provider == "hitpay" and await hitpay_enabled(db) and payment.provider_transaction_id:
         await cancel_hitpay_payment_request(db, payment.provider_transaction_id)
+    # eGHL needs no provider-side cancel: the hosted session simply expires
+    # (PageTimeout) — the local row is voided below.
 
     old_status = payment.status
     payment.status = "voided"
 
     is_real_provider = (payment.provider == "stripe" and stripe_enabled) or (
         payment.provider == "hitpay" and await hitpay_enabled(db)
+    ) or (
+        payment.provider == "eghl" and await eghl_enabled(db)
     )
     await _add_payment_event(
         db,
@@ -1607,6 +1648,8 @@ async def refund_payment(
     stripe_enabled = await _stripe_enabled(db)
     is_real_provider = (payment.provider == "stripe" and stripe_enabled) or (
         payment.provider == "hitpay" and await hitpay_enabled(db)
+    ) or (
+        payment.provider == "eghl" and await eghl_enabled(db)
     )
     try:
         if payment.provider == "stripe" and stripe_enabled:
@@ -1622,6 +1665,12 @@ async def refund_payment(
             )
             refund.provider_refund_id = hitpay_refund["id"]
             refund.status = "completed" if hitpay_refund.get("status") == "completed" else "pending"
+        elif payment.provider == "eghl":
+            # eGHL exposes no refund API — refunds are issued manually in the
+            # eGHL merchant portal. The local row stays "pending" until staff
+            # reconcile it (same manual-settlement shape as a provider without
+            # refund support).
+            refund.provider_refund_id = f"eghl_manual_{refund.id}"
         elif payment.provider in ("internal_wallet", "cash", "store_credit"):
             # Wallet/store-credit/cash refunds are settled the moment they're
             # recorded — there is no external provider to confirm later (cash is
@@ -2387,6 +2436,22 @@ async def process_webhook_event(
                 logger.warning("Wallet top-up session not found for HitPay request %s", transaction_id)
             return None
 
+    # eGHL wallet top-ups have no Payment row either (PaymentID = EGT{session.id}).
+    if payment is None and provider == "eghl":
+        txn_status = str(data.get("TxnStatus", "")).strip()
+        if txn_status == "0":
+            result = await db.execute(
+                select(WalletTopupSession)
+                .where(WalletTopupSession.provider_session_id == transaction_id)
+                .with_for_update()
+            )
+            topup_session = result.scalar_one_or_none()
+            if topup_session is not None:
+                await _complete_wallet_topup(db, topup_session, "Online top-up via eGHL")
+            else:
+                logger.warning("Wallet top-up session not found for eGHL PaymentID %s", transaction_id)
+        return None
+
     if payment is None:
         logger.warning("Payment not found for transaction_id %s", transaction_id)
         return None
@@ -2463,6 +2528,28 @@ async def process_webhook_event(
             payment.failure_message = data.get("status", "HitPay payment failed")
         elif hitpay_status in ("expired", "canceled"):
             new_status = "voided"
+    elif provider == "eghl":
+        # eGHL callback fields: TxnStatus "0" = success, "2" = pending,
+        # anything else = failed.
+        txn_status = str(data.get("TxnStatus", "")).strip()
+        if txn_status == "0":
+            new_status = "captured"
+            try:
+                payment.captured_amount = to_decimal(data.get("Amount", payment.amount))
+            except Exception:
+                payment.captured_amount = payment.amount
+            _cross_check_capture_amount(payment, data.get("CurrencyCode"))
+            payment.extra_metadata = {
+                **(payment.extra_metadata or {}),
+                "eghl_txn_id": data.get("TxnID"),
+                "eghl_auth_code": data.get("AuthCode"),
+            }
+        elif txn_status == "2":
+            # Still pending at the gateway — wait for the final callback.
+            new_status = old_status
+        else:
+            new_status = "failed"
+            payment.failure_message = data.get("TxnMessage") or f"eGHL payment failed (TxnStatus {txn_status})"
 
     # Guard against late capture events reverting terminal states. Exception:
     # voided → captured means Stripe COMPLETED the session before our expire

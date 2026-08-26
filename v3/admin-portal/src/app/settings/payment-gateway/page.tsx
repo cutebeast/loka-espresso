@@ -70,6 +70,23 @@ const HITPAY_KEYS = [{
   label: "API Base URL",
   type: "text"
 }];
+const EGHL_KEYS = [{
+  key: "eghl.enabled",
+  label: "Enable eGHL",
+  type: "boolean"
+}, {
+  key: "eghl.merchant_id",
+  label: "Merchant ID (ServiceID)",
+  type: "text"
+}, {
+  key: "eghl.password",
+  label: "Merchant Password (hash secret)",
+  type: "password"
+}, {
+  key: "eghl.api_base_url",
+  label: "Gateway URL",
+  type: "text"
+}];
 const PUBLIC_URL_KEYS = [{
   key: "app.public_url",
   label: "Customer App Public URL",
@@ -85,7 +102,8 @@ const PUBLIC_URL_KEYS = [{
 }];
 const STRIPE_METHOD_OPTIONS = ["card", "fpx", "alipay", "wechat_pay"];
 const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "fpx", "card"];
-const LABEL_MAP: Record<string, string> = Object.fromEntries([...STRIPE_KEYS, ...HITPAY_KEYS, ...PUBLIC_URL_KEYS].map(cfg => [cfg.key, cfg.label]));
+const EGHL_METHOD_OPTIONS = ["card", "fpx"];
+const LABEL_MAP: Record<string, string> = Object.fromEntries([...STRIPE_KEYS, ...HITPAY_KEYS, ...EGHL_KEYS, ...PUBLIC_URL_KEYS].map(cfg => [cfg.key, cfg.label]));
 function normalizeValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "boolean") return value ? "true" : "false";
@@ -139,7 +157,7 @@ function Toggle({
 function WebhookHint({
   provider
 }: {
-  provider: "stripe" | "hitpay";
+  provider: "stripe" | "hitpay" | "eghl";
 }) {
   const {
     t
@@ -150,7 +168,11 @@ function WebhookHint({
       setOrigin(process.env.NEXT_PUBLIC_ADMIN_DOMAIN || (typeof window !== "undefined" ? window.location.origin : ""));
     }
   }, []);
-  const isStripe = provider === "stripe";
+  const hintText = provider === "stripe"
+    ? "Register this URL in your Stripe dashboard under Developers → Webhook Endpoints. Subscribe to: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled, checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, charge.dispute.created."
+    : provider === "hitpay"
+      ? "Register this URL in your HitPay dashboard under Developers → Webhook Endpoints."
+      : "Register this URL as the Merchant Callback URL in your eGHL merchant portal. The browser return URL is configured automatically — no action needed.";
   return <div style={{
     background: "var(--color-bg-soft, #f9fafb)",
     borderRadius: "var(--radius-sm)",
@@ -170,7 +192,7 @@ function WebhookHint({
       color: "var(--color-text-muted)",
       marginTop: 6
     }}>
-        {isStripe ? "Register this URL in your Stripe dashboard under Developers → Webhook Endpoints. Subscribe to: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled, checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, charge.dispute.created." : "Register this URL in your HitPay dashboard under Developers → Webhook Endpoints."}
+        {hintText}
       </p>
     </div>;
 }
@@ -227,7 +249,7 @@ export default function PaymentGatewaySettingsPage() {
       const initialMethods: Record<string, string[]> = {};
       list.forEach(item => {
         map[item.config_key] = item;
-        if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods") {
+        if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods" || item.config_key === "eghl.payment_methods") {
           initialMethods[item.config_key] = Array.isArray(item.config_value) ? item.config_value.map(String) : [];
         } else if (item.is_sensitive && normalizeValue(item.config_value) === "***") {
           initialValues[item.config_key] = "";
@@ -270,6 +292,13 @@ export default function PaymentGatewaySettingsPage() {
       if (!methodValues["hitpay.payment_methods"]?.length) {
         invalid.add("hitpay.payment_methods");
         errors.push("Select at least one HitPay payment method");
+      }
+    }
+    if (parseBoolean(values["eghl.enabled"] || "false")) {
+      required.push("eghl.merchant_id", "eghl.password", "eghl.api_base_url");
+      if (!methodValues["eghl.payment_methods"]?.length) {
+        invalid.add("eghl.payment_methods");
+        errors.push("Select at least one eGHL payment method");
       }
     }
     for (const key of required) {
@@ -340,7 +369,7 @@ export default function PaymentGatewaySettingsPage() {
       const refreshedMethods: Record<string, string[]> = {};
       list.forEach(item => {
         map[item.config_key] = item;
-        if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods") {
+        if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods" || item.config_key === "eghl.payment_methods") {
           refreshedMethods[item.config_key] = Array.isArray(item.config_value) ? item.config_value.map(String) : [];
         } else {
           refreshedValues[item.config_key] = normalizeValue(item.config_value);
@@ -545,6 +574,54 @@ export default function PaymentGatewaySettingsPage() {
           color: "var(--color-text-muted)",
           marginTop: 16
         }}>{t("settings_payment-gateway.update_these_before_moving_to_a")}</p>
+        </div>
+
+        {/* eGHL (GHL Systems Malaysia) */}
+        <div className="card" style={{
+        padding: 24
+      }}>
+          <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 20
+        }}>
+            <CreditCard size={22} />
+            <h2 style={{
+            fontSize: 17,
+            fontWeight: 600
+          }}>eGHL</h2>
+          </div>
+          <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 16
+        }}>
+            {EGHL_KEYS.map(cfg => <div key={cfg.key}>{renderField(cfg)}</div>)}
+            <p style={{
+            fontSize: 12,
+            color: "var(--color-text-muted)",
+            marginTop: 0
+          }}>Gateway URL — test: https://test2pay.ghl.com/IPGSG/Payment.aspx · live: https://pay.e-ghl.com/IPGSG/Payment.aspx</p>
+            <div>
+              <label style={{
+              fontSize: 13,
+              fontWeight: 500,
+              display: "block",
+              marginBottom: 8
+            }}>{t("settings_payment-gateway.payment_methods_2")}</label>
+              <MethodChips options={EGHL_METHOD_OPTIONS} selected={methodValues["eghl.payment_methods"] || []} onChange={v => setMethodValues(prev => ({
+              ...prev,
+              "eghl.payment_methods": v
+            }))} />
+              <p style={{
+              fontSize: 12,
+              color: "var(--color-text-muted)",
+              marginTop: 8
+            }}>Preferred Malaysia gateway (hosted page: card + FPX online banking).</p>
+            </div>
+            <WebhookHint provider="eghl" />
+          </div>
         </div>
 
         {/* HitPay */}

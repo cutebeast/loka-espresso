@@ -558,6 +558,28 @@ async def create_wallet_topup_checkout(
             logger.exception("HitPay wallet top-up checkout creation failed")
             raise HTTPException(status_code=502, detail="HitPay top-up checkout could not be created") from exc
 
+    if provider == "eghl":
+        from app.services.eghl import create_eghl_checkout
+        try:
+            resp = await create_eghl_checkout(
+                db, None, None, customer, amount=amount, currency=currency,
+                return_url=base_return, topup_session=session,
+            )
+            session.provider_session_id = resp["id"]
+            await db.commit()
+            await db.refresh(session)
+            return APIResponse(data=WalletTopupCheckoutResponse(
+                session_id=session.id,
+                checkout_url=resp["url"],
+                amount=amount,
+                currency_code=currency,
+                status="pending",
+            ))
+        except Exception as exc:
+            await db.rollback()
+            logger.exception("eGHL wallet top-up checkout creation failed")
+            raise HTTPException(status_code=502, detail="eGHL top-up checkout could not be created") from exc
+
     try:
         checkout = await create_wallet_topup_checkout_session(
             db, session.id, customer.id, amount, currency, success_url=success_url, cancel_url=cancel_url

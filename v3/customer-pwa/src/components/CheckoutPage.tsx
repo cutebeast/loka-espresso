@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store, RefreshCw, CreditCard } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
@@ -85,13 +85,14 @@ export default function CheckoutPage() {
   const [discountCode, setDiscountCode] = useState(checkoutDraft.discountCode || '');
   const [isByot, setIsByot] = useState(false);
   const [discountValue, setDiscountValue] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay'>(() => {
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay' | 'eghl'>(() => {
     // COD is no longer supported — sanitize any pre-existing stored draft value.
     const draft = checkoutDraft.paymentMethod as string | undefined;
-    if (draft && draft !== 'cod') return draft as 'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay';
+    if (draft && draft !== 'cod') return draft as 'wallet' | 'pay_at_store' | 'cash' | 'gateway' | 'hitpay' | 'eghl';
     return orderMode === 'dine_in' ? 'pay_at_store' : 'wallet';
   });
   const [hitpayEnabled, setHitpayEnabled] = useState(false);
+  const [eghlEnabled, setEghlEnabled] = useState(false);
   const [notes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
@@ -143,6 +144,7 @@ export default function CheckoutPage() {
         setStripeReady(true);
       }
       setHitpayEnabled(!!cfg.hitpay_enabled);
+      setEghlEnabled(!!cfg.eghl_enabled);
     }).catch((e: unknown) => { console.error('[Checkout] payment config failed:', e); showToast(t('toast.loadPaymentConfigFailed'), 'error'); });
   }, []);
   useEffect(() => {
@@ -313,6 +315,24 @@ export default function CheckoutPage() {
           window.location.href = data.redirect_url;
           return;
         }
+        if (paymentMethod === 'eghl') {
+          if (!eghlEnabled) {
+            throw new Error('eGHL is not available');
+          }
+          const intentRes = await api.post('/payments/intent', {
+            order_id: orderResult.id,
+            provider: 'eghl',
+            payment_method: 'eghl'
+          });
+          const data = intentRes.data;
+          if (!data?.redirect_url || !data?.payment_id) {
+            throw new Error('Unable to start eGHL payment');
+          }
+          // Redirect to the eGHL hosted checkout (via our auto-submit page);
+          // the customer returns to the order detail page with ?status=success|cancel.
+          window.location.href = data.redirect_url;
+          return;
+        }
         clearCheckoutDraft();
         haptic('success');
         setPage('order-detail', {
@@ -475,6 +495,11 @@ export default function CheckoutPage() {
           {hitpayEnabled && <div className={`co-payment-card ${paymentMethod === 'hitpay' ? 'selected' : ''}`} onClick={() => setPaymentMethod('hitpay')}>
               <div className="co-payment-icon co-payment-icon-gateway"><QrCode size={14} color="#fff" /></div>
               <div className="co-payment-info"><div className="co-payment-label">{t("checkout_page.pay_online_duitnow_tng_boost_shopeepay")}</div></div>
+              <div className="co-payment-check"><CheckCircle2 size={12} /></div>
+            </div>}
+          {eghlEnabled && <div className={`co-payment-card ${paymentMethod === 'eghl' ? 'selected' : ''}`} onClick={() => setPaymentMethod('eghl')}>
+              <div className="co-payment-icon co-payment-icon-gateway"><CreditCard size={14} color="#fff" /></div>
+              <div className="co-payment-info"><div className="co-payment-label">{t("checkout_page.pay_online_eghl")}</div></div>
               <div className="co-payment-check"><CheckCircle2 size={12} /></div>
             </div>}
         </div>

@@ -60,7 +60,7 @@ class AdminTopupRequest(BaseSchema):
 class WalletTopupCheckoutRequest(BaseSchema):
     amount: Money = Field(..., gt=0)
     return_url: str | None = Field(None, max_length=500)
-    provider: str | None = Field("stripe", pattern="^(stripe|hitpay)$")
+    provider: str | None = Field("stripe", pattern="^(stripe|hitpay|eghl)$")
 
 
 class WalletTopupCheckoutResponse(BaseSchema):

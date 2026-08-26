@@ -149,7 +149,7 @@ export async function placeOrder(params: {
   notes?: string;
   voucherCode?: string;
   rewardRedemptionCode?: string;
-  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'gateway' | 'hitpay';
+  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'gateway' | 'hitpay' | 'eghl';
   recipientName?: string;
   recipientPhone?: string;
   deliveryInstructions?: string;

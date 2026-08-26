@@ -85,6 +85,15 @@ CONFIGS = [
     ("hitpay.api_key", '""', "string", "all", True, True),
     ("hitpay.salt", '""', "string", "all", True, True),
     ("hitpay.api_base_url", '"https://api.hitpay.com.my"', "string", "all", False, True),
+    # eGHL (GHL Systems Malaysia) hosted payment page — preferred MY gateway
+    # (card + FPX). `eghl.password` is the merchant hash password (sensitive).
+    # api_base_url points at the test hosted page; switch to
+    # https://pay.e-ghl.com/IPGSG/Payment.aspx at go-live.
+    ("eghl.enabled", "false", "boolean", "all", False, True),
+    ("eghl.merchant_id", '""', "string", "all", False, True),
+    ("eghl.password", '""', "string", "all", True, True),
+    ("eghl.api_base_url", '"https://test2pay.ghl.com/IPGSG/Payment.aspx"', "string", "all", False, True),
+    ("eghl.payment_methods", '["card", "fpx"]', "json", "all", False, True),
     # GrabPay removed 2026-08-17 (never launched — simulator-only).
     # Web Push (VAPID) — DB-first since round 38 pass 8; seeded empty so they
     # appear in Admin → Settings → Web Push. Env vars remain the bootstrap

@@ -582,7 +582,9 @@ async def get_config_bootstrap(
     referral_reward_points = await config_svc.get_int("loyalty.referral_reward_points", default=50)
     stripe_on = await config_svc.get_bool("stripe.enabled", default=False)
     hitpay_on = await config_svc.get_bool("hitpay.enabled", default=False)
-    payment_gateway_provider = "stripe" if stripe_on else ("hitpay" if hitpay_on else None)
+    eghl_on = await config_svc.get_bool("eghl.enabled", default=False)
+    # eGHL is the preferred MY gateway when Stripe is off (card + FPX).
+    payment_gateway_provider = "stripe" if stripe_on else ("eghl" if eghl_on else ("hitpay" if hitpay_on else None))
     pickup_lead_minutes = stores[0].pickup_lead_minutes if stores else 15
 
     # Prepare translatable structures
