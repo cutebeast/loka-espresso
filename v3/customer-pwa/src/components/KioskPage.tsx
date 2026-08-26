@@ -888,7 +888,7 @@ export default function KioskPage() {
                 {/* Prev/next chevrons (mouse + touch fallback) */}
                 {promos.length > 1 && (
                   <>
-                    <button onClick={promoPrev} aria-label="Previous promo" style={{
+                    <button onClick={promoPrev} aria-label={t('kiosk.prevPromo')} style={{
                       position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
                       width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: '50%',
                       background: 'rgba(0,0,0,0.35)', color: '#fff', border: 'none', cursor: 'pointer',
@@ -896,7 +896,7 @@ export default function KioskPage() {
                     }}>
                       <ChevronLeft size={fs(26, 22)} />
                     </button>
-                    <button onClick={promoNext} aria-label="Next promo" style={{
+                    <button onClick={promoNext} aria-label={t('kiosk.nextPromo')} style={{
                       position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
                       width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: '50%',
                       background: 'rgba(0,0,0,0.35)', color: '#fff', border: 'none', cursor: 'pointer',
@@ -1710,7 +1710,7 @@ export default function KioskPage() {
             <div style={{ fontSize: fs(22, 20), color: '#888', marginTop: 16, maxWidth: 400, textAlign: 'center' }}>{t('kiosk.counter_note')}</div>
             {payUrl && (
               <div style={{ marginTop: 24, textAlign: 'center' }}>
-                <PaymentQR url={payUrl} size={fs(280, 200)} />
+                <PaymentQR url={payUrl} size={fs(280, 200)} t={t} />
                 <div style={{ fontSize: fs(18, 16), color: '#888', marginTop: 8 }}>
                   <Smartphone size={16} style={{ verticalAlign: 'middle', marginRight: 4 }} />
                   {t('kiosk.scan_to_pay')}
@@ -1826,7 +1826,7 @@ export default function KioskPage() {
 }
 
 // ── Payment QR sub-component ──
-function PaymentQR({ url, size }: { url: string; size: number }) {
+function PaymentQR({ url, size, t }: { url: string; size: number; t: (key: string) => string }) {
   const [qr, setQr] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -1836,7 +1836,7 @@ function PaymentQR({ url, size }: { url: string; size: number }) {
     return () => { cancelled = true; };
   }, [url, size]);
   if (!qr) return <Loader2 size={32} className="animate-spin" />;
-  return <img src={qr} alt="Payment QR" style={{ width: size, height: size, borderRadius: 12 }} />;
+  return <img src={qr} alt={t('kiosk.paymentQrAlt')} style={{ width: size, height: size, borderRadius: 12 }} />;
 }
 
 // ── Auto-reset timer for success screen ──

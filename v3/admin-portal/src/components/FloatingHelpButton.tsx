@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { HelpCircle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 /**
  * Route-to-help-article mapping.
@@ -109,6 +110,7 @@ function getHelpSlug(pathname: string): string {
 }
 
 export default function FloatingHelpButton() {
+  const { t } = useTranslation();
   const pathname = usePathname();
 
   // Don't show on login or help pages
@@ -121,7 +123,7 @@ export default function FloatingHelpButton() {
       href={`/help/${slug}`}
       className="floating-help-btn"
       aria-label="Help"
-      title="View guide for this page"
+      title={t("admin.floatingHelp.title")}
     >
       <HelpCircle size={20} />
     </Link>

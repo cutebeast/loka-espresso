@@ -619,7 +619,10 @@
     "redeem_signed_in_as": "Signed in as {phone}",
     "redeem_no_thanks": "Continue without",
     "redeem_applied_note": "Discount is applied to your order total at payment",
-    "redeem_signout": "Sign out"
+    "redeem_signout": "Sign out",
+    "paymentQrAlt": "Payment QR",
+    "nextPromo": "Next promo",
+    "prevPromo": "Previous promo"
   },
   "layouts": {
     "wizard_layout": {
@@ -1450,5 +1453,18 @@
     "clear": "Clear",
     "saved": "Saved",
     "saving": "Saving…"
+  },
+  "errors": {
+    "oneRedemption": "One voucher OR one reward per order — you already picked one",
+    "otherRedemption": "This order already has a voucher or reward applied",
+    "expired": "This has expired",
+    "insufficient": "Insufficient balance",
+    "notFound": "Voucher or reward not found",
+    "alreadyPaid": "This order has already been paid",
+    "minSpend": "Minimum order value not met",
+    "invalidOtp": "Invalid or expired code",
+    "firstOrderOnly": "This voucher is for first orders only",
+    "tierRequirement": "This reward requires a higher membership tier",
+    "alreadyUsed": "This has already been used"
   }
 }

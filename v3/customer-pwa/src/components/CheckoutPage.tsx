@@ -9,6 +9,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAuthStore } from '@/stores/authStore';
 import { placeOrder } from '@/lib/cartSync';
+import { localizeApiError } from '@/lib/errors';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
@@ -318,13 +319,8 @@ export default function CheckoutPage() {
           orderId: orderResult.id
         });
       } catch (e: unknown) {
-        showToast((e as {
-          response?: {
-            data?: {
-              detail?: string;
-            };
-          };
-        })?.response?.data?.detail || t('toast.orderFailed'), 'error');
+        const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        showToast(localizeApiError(detail, t) || t('toast.orderFailed'), 'error');
       } finally {
         setPlacing(false);
       }
@@ -357,7 +353,7 @@ export default function CheckoutPage() {
       });
     } catch (e: unknown) {
       setGatewayIntentError(true);
-      showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('checkout.payment_retry_toast'), 'error');
+      showToast(localizeApiError((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail, t) || t('checkout.payment_retry_toast'), 'error');
     } finally {
       setRetryingGatewayIntent(false);
     }

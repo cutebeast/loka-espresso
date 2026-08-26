@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
+import { localizeApiError } from '@/lib/errors';
 import { getLocale } from '@/stores/localeStore';
 
 interface EventItem {
@@ -117,7 +118,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
       showToast(t('events.rsvpSuccess'), 'success');
       loadEvents();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || '';
+      const msg = localizeApiError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail, t);
       if (msg.toLowerCase().includes('invite-only')) {
         setRsvpStatus(prev => ({ ...prev, [eventId]: 'locked' }));
         showToast(t('events.inviteOnly'), 'info');

@@ -9,6 +9,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { idbStorageReady } from '@/lib/idbStorage';
 import api from '@/lib/api';
+import { localizeApiError } from '@/lib/errors';
 import type { Store as StoreType } from '@/lib/api';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
@@ -573,13 +574,14 @@ export default function AppShell() {
             store: data.store_name
           }), 'success');
         } catch (err: unknown) {
-          const msg = (err as {
+          const detail = (err as {
             response?: {
               data?: {
                 detail?: string;
               };
             };
-          })?.response?.data?.detail || t('toast.scanTableFailed');
+          })?.response?.data?.detail;
+          const msg = localizeApiError(detail, t) || t('toast.scanTableFailed');
           showToast(msg, 'error');
         }
       }} />

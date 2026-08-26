@@ -387,7 +387,7 @@ export default function TierEditPage() {
               <div className="df-field"><label className="form-label">{t("loyalty_tiers_[id].validity_months")}</label><input type="number" className="w-full border rounded px-3 py-2 text-sm" value={form.validity_months ?? ""} onChange={e => setForm({
               ...form,
               validity_months: e.target.value
-            })} placeholder="12" /><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>Leave empty for no expiry</div></div>
+            })} placeholder="12" /><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>{t("loyalty_tiers_new.no_expiry_hint")}</div></div>
               <div className="df-field"><label className="form-label">{t("loyalty_tiers_[id].renewal_annual_spend")}</label><input type="number" className="w-full border rounded px-3 py-2 text-sm" value={form.renewal_annual_spend ?? ""} onChange={e => setForm({
               ...form,
               renewal_annual_spend: e.target.value
@@ -395,7 +395,7 @@ export default function TierEditPage() {
               <div className="df-field"><label className="form-label">{t("loyalty_tiers_[id].downgrade_to")}</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.downgrade_to_tier_key || ""} onChange={e => setForm({
               ...form,
               downgrade_to_tier_key: e.target.value
-            })}><option value="">—</option>{tiers.filter(tier => tier.tier_key !== form.tier_key).map(tier => <option key={tier.tier_key} value={tier.tier_key}>{tier.display_name} ({tier.tier_key})</option>)}</select><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>Tier to downgrade to if renewal not met</div></div>
+            })}><option value="">—</option>{tiers.filter(tier => tier.tier_key !== form.tier_key).map(tier => <option key={tier.tier_key} value={tier.tier_key}>{tier.display_name} ({tier.tier_key})</option>)}</select><div style={{fontSize:11,color:"var(--color-text-muted)",marginTop:2}}>{t("loyalty_tiers_new.downgrade_hint")}</div></div>
               <div className="df-field"><label style={{
               display: "flex",
               alignItems: "center",

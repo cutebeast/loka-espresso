@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CalendarCheck, Flame, Gift, Clock, ArrowLeft } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { localizeApiError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { LOKA } from '@/lib/tokens';
@@ -58,14 +59,14 @@ export default function CheckinPage() {
       setResult(res.data as unknown as CheckinResult);
       await load();
     } catch (err: unknown) {
-      const msg = (err as {
+      const detail = (err as {
         response?: {
           data?: {
             detail?: string;
           };
         };
       })?.response?.data?.detail;
-      setError(msg || t('common.error'));
+      setError(localizeApiError(detail, t) || t('common.error'));
     } finally {
       setSubmitting(false);
     }
