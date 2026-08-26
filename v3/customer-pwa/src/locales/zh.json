@@ -1196,10 +1196,7 @@
     "enable_notifications": "开启通知",
     "language": "语言",
     "languages": {
-      "en": "英语",
-      "ms": "马来语",
-      "ta": "தமிழ்",
-      "tr": "Türkçe",
+      "en": "English",
       "zh": "中文"
     },
     "lightMode": "浅色模式",

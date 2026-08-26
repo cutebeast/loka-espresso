@@ -23,10 +23,7 @@ export { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, get
 // ── Dynamic locale loaders (non-en locales loaded on demand via code splitting) ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const localeLoaders: Record<string, () => Promise<{ default: Record<string, any> }>> = {
-  ms: () => import('@/locales/ms.json'),
   zh: () => import('@/locales/zh.json'),
-  ta: () => import('@/locales/ta.json'),
-  tr: () => import('@/locales/tr.json'),
 };
 
 // ── Mutable static dictionaries — en always bundled, others loaded dynamically ──

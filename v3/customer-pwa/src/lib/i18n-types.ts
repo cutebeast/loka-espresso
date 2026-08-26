@@ -6,9 +6,9 @@
  * isValidLocale / getDefaultLocale / Locale from i18n.ts).
  */
 
-export type Locale = 'en' | 'ms' | 'zh' | 'ta' | 'tr';
+export type Locale = 'en' | 'zh';
 
-// EN + CN only at launch (2026-08-07); ms may return later, ta/tr dropped.
+// EN + CN only (2026-08-07 restriction; ms/ta/tr fully removed 2026-08-26).
 export const AVAILABLE_LOCALES: Locale[] = ['en', 'zh'];
 export const DEFAULT_LOCALE: Locale = 'en';
 

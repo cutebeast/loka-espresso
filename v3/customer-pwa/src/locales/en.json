@@ -1142,9 +1142,6 @@
     "language": "Language",
     "languages": {
       "en": "English",
-      "ms": "Bahasa Melayu",
-      "ta": "தமிழ்",
-      "tr": "Türkçe",
       "zh": "中文"
     },
     "lightMode": "Light Mode",

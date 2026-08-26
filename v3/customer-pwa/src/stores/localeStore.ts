@@ -34,10 +34,7 @@ export function detectBrowserLocale(): string {
   if (typeof window === 'undefined') return 'en';
   try {
     const lang = navigator.language?.toLowerCase() ?? '';
-    if (lang.startsWith('ms') || lang.startsWith('id')) return 'ms';
     if (lang.startsWith('zh')) return 'zh';
-    if (lang.startsWith('ta')) return 'ta';
-    if (lang.startsWith('tr')) return 'tr';
   } catch { /* browser detection unavailable */ }
   return 'en';
 }
