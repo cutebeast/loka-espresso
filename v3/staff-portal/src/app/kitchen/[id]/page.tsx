@@ -4,7 +4,7 @@ import { RoleGuard, canUseKitchen } from "@/hooks/useStaffRole";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getOrderById, getOrderEinvoice, getOrders, getTables, updateOrderStatus, cancelOrder, transferTable, mergeOrder, OrderDetail, OrderEinvoice, OrderStatus, type Order, type Table } from "@/lib/api";
+import { getOrderById, getOrderEinvoice, getOrders, getTables, printReceipt, updateOrderStatus, cancelOrder, transferTable, mergeOrder, OrderDetail, OrderEinvoice, OrderStatus, type Order, type Table } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
@@ -100,6 +100,19 @@ function KitchenDetailPageContent() {
   const [einvoice, setEinvoice] = useState<OrderEinvoice | null>(null);
   const [einvoiceQr, setEinvoiceQr] = useState("");
   const [einvoiceCopied, setEinvoiceCopied] = useState(false);
+  const [reprinting, setReprinting] = useState(false);
+  const handleReprint = async () => {
+    if (reprinting) return;
+    setReprinting(true);
+    try {
+      await printReceipt(id);
+      window.dispatchEvent(new CustomEvent("pos:toast", { detail: { message: t("pos.receipt_sent_to_printer"), type: "success" } }));
+    } catch (e: unknown) {
+      window.dispatchEvent(new CustomEvent("pos:toast", { detail: { message: parseApiError(e, t("pos.print_failed")), type: "error" } }));
+    } finally {
+      setReprinting(false);
+    }
+  };
   const load = useCallback(async () => {
     try {
       const data = await getOrderById(id);
@@ -599,11 +612,13 @@ function KitchenDetailPageContent() {
           </div>
         </div>}
 
-      {/* Print Ticket */}
+      {/* Print */}
       <div style={{
       display: "flex",
       gap: 8
     }}>
+        <button className="btn btn-outline" disabled={reprinting} onClick={handleReprint}>
+          <Receipt size={16} />{reprinting ? t("common.sending") : t("orders.reprint_receipt")}</button>
         <button className="btn btn-outline" disabled title={t("kitchen.printer_integration_pending")}>
           <Printer size={16} />{t("kitchen.print_kitchen_ticket")}</button>
       </div>

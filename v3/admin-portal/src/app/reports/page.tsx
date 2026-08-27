@@ -2,12 +2,38 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
-import { BarChart3, TrendingUp } from "lucide-react";
+import { BarChart3, TrendingUp, Percent } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/hooks/useCurrency";
 interface Store {
   id: number;
   store_name: string;
+}
+interface MarginRow {
+  menu_item_id: number;
+  item_name: string;
+  quantity: number;
+  revenue: number;
+  cogs: number | null;
+  margin: number | null;
+  margin_pct: number | null;
+  tracked: boolean;
+  tracked_revenue: number;
+  untracked_revenue: number;
+}
+interface MarginReport {
+  rows: MarginRow[];
+  untracked: { quantity: number; revenue: number; items: number };
+  totals: {
+    quantity: number;
+    revenue: number;
+    tracked_revenue: number;
+    untracked_revenue: number;
+    cogs: number;
+    margin: number;
+    margin_pct: number | null;
+  };
+  daily: { date: string; revenue: number; cogs: number; margin: number; untracked_revenue: number }[];
 }
 export default function ReportsPage() {
   const {
@@ -19,7 +45,7 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"sales" | "marketing">("sales");
+  const [activeTab, setActiveTab] = useState<"sales" | "marketing" | "margin">("sales");
   const [data, setData] = useState({
     revenue: 0,
     orders: 0,
@@ -29,6 +55,8 @@ export default function ReportsPage() {
   });
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [marginReport, setMarginReport] = useState<MarginReport | null>(null);
+  const [marginLoading, setMarginLoading] = useState(false);
   const {
     format
   } = useCurrency();
@@ -77,6 +105,19 @@ export default function ReportsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  useEffect(() => {
+    if (activeTab !== "margin") return;
+    setMarginLoading(true);
+    const qs = new URLSearchParams();
+    if (selectedStore) qs.set("store_id", selectedStore);
+    if (dateFrom) qs.set("from_date", dateFrom);
+    if (dateTo) qs.set("to_date", dateTo);
+    api.get<MarginReport>(`/admin/reports/margin${qs.toString() ? "?" + qs.toString() : ""}`).then(d => {
+      if (mountedRef.current) setMarginReport(d);
+    }).catch(e => { console.error('margin:', e); setError(e.message || t("admin.errors.loadFailed")); }).finally(() => {
+      if (mountedRef.current) setMarginLoading(false);
+    });
+  }, [activeTab, selectedStore, dateFrom, dateTo]);
   return <div style={{
     padding: 32
   }}>
@@ -99,6 +140,10 @@ export default function ReportsPage() {
         key: "marketing" as const,
         label: t("reports.marketing_roi"),
         icon: TrendingUp
+      }, {
+        key: "margin" as const,
+        label: t("reports.profit_margin"),
+        icon: Percent
       }].map(tab => <button type="button" key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
         padding: "10px 20px",
         fontSize: 13,
@@ -114,7 +159,7 @@ export default function ReportsPage() {
           </button>)}
       </div>
 
-      {activeTab === "sales" && <div style={{
+      {(activeTab === "sales" || activeTab === "margin") && <div style={{
       display: "flex",
       gap: 12,
       marginBottom: 20,
@@ -159,7 +204,134 @@ export default function ReportsPage() {
         }} /></div>
       </div>}
 
-      {loading ? <div style={{
+      {activeTab === "margin" ? marginLoading ? <div style={{
+      textAlign: "center",
+      padding: 48,
+      color: "var(--color-text-muted)"
+    }}>{t("reports.loading")}</div> : !marginReport || marginReport.rows.length === 0 ? <div className="card" style={{
+      padding: 24
+    }}><p style={{
+          fontSize: 13,
+          opacity: 0.6
+        }}>{t("reports.margin_no_data")}</p></div> : <>
+          <div className="kpi-grid" style={{
+        marginBottom: 24
+      }}>
+            <div className="kpi-card"><div className="kpi-label">{t("reports.total_revenue")}</div><div className="kpi-value">{format(marginReport.totals.revenue)}</div></div>
+            <div className="kpi-card"><div className="kpi-label">{t("reports.margin_cogs")}</div><div className="kpi-value">{format(marginReport.totals.cogs)}</div></div>
+            <div className="kpi-card"><div className="kpi-label">{t("reports.gross_margin")}</div><div className="kpi-value">{format(marginReport.totals.margin)}</div></div>
+            <div className="kpi-card"><div className="kpi-label">{t("reports.margin_pct")}</div><div className="kpi-value">{marginReport.totals.margin_pct != null ? marginReport.totals.margin_pct.toFixed(1) + "%" : "—"}</div></div>
+            <div className="kpi-card"><div className="kpi-label">{t("reports.untracked_revenue")}</div><div className="kpi-value">{format(marginReport.totals.untracked_revenue)}</div></div>
+          </div>
+          <div className="card" style={{
+        padding: 24,
+        marginBottom: 24
+      }}>
+            {marginReport.untracked.revenue > 0 && <p style={{
+          fontSize: 12,
+          color: "var(--color-text-muted)",
+          marginBottom: 12
+        }}>{t("reports.untracked_note", {
+            amount: format(marginReport.untracked.revenue),
+            count: marginReport.untracked.items
+          })}</p>}
+            <div className="table-container"><table className="data-table">
+              <thead><tr><th>{t("reports.margin_item")}</th><th style={{
+                textAlign: "center"
+              }}>{t("reports.margin_qty")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.revenue")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.margin_cogs")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.gross_margin")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.margin_pct")}</th></tr></thead>
+              <tbody>
+                {marginReport.rows.map(r => <tr key={r.menu_item_id}>
+                    <td style={{
+                  fontWeight: 600
+                }}>{r.item_name}{!r.tracked && <span style={{
+                        fontSize: 11,
+                        fontWeight: 400,
+                        opacity: 0.6
+                      }}> — {t("reports.untracked")}</span>}</td>
+                    <td style={{
+                  textAlign: "center"
+                }}>{r.quantity}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{format(r.revenue)}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{r.cogs != null ? format(r.cogs) : "—"}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{r.margin != null ? format(r.margin) : "—"}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{r.margin_pct != null ? r.margin_pct.toFixed(1) + "%" : "—"}</td>
+                  </tr>)}
+                <tr style={{
+                fontWeight: 700,
+                borderTop: "2px solid var(--color-border-light)"
+              }}>
+                  <td>{t("reports.margin_total")}</td>
+                  <td style={{
+                  textAlign: "center"
+                }}>{marginReport.totals.quantity}</td>
+                  <td style={{
+                  textAlign: "right"
+                }}>{format(marginReport.totals.revenue)}</td>
+                  <td style={{
+                  textAlign: "right"
+                }}>{format(marginReport.totals.cogs)}</td>
+                  <td style={{
+                  textAlign: "right"
+                }}>{format(marginReport.totals.margin)}</td>
+                  <td style={{
+                  textAlign: "right"
+                }}>{marginReport.totals.margin_pct != null ? marginReport.totals.margin_pct.toFixed(1) + "%" : "—"}</td>
+                </tr>
+              </tbody>
+            </table></div>
+          </div>
+          {marginReport.daily.length > 1 && <div className="card" style={{
+        padding: 24
+      }}>
+            <h3 style={{
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 8
+        }}><Percent size={18} />{t("reports.margin_daily")}</h3>
+            <div className="table-container"><table className="data-table">
+              <thead><tr><th>{t("reports.margin_date")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.revenue")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.margin_cogs")}</th><th style={{
+                textAlign: "right"
+              }}>{t("reports.gross_margin")}</th></tr></thead>
+              <tbody>
+                {marginReport.daily.map(d => <tr key={d.date}>
+                    <td style={{
+                  fontWeight: 600
+                }}>{d.date}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{format(d.revenue)}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{format(d.cogs)}</td>
+                    <td style={{
+                  textAlign: "right"
+                }}>{format(d.margin)}</td>
+                  </tr>)}
+              </tbody>
+            </table></div>
+          </div>}
+        </> : loading ? <div style={{
       textAlign: "center",
       padding: 48,
       color: "var(--color-text-muted)"

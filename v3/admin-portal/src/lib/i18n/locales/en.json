@@ -192,5 +192,18 @@
   "admin.nav.help.managePwa": "PWA Articles",
   "help.manage_title_admin": "Admin Articles",
   "help.manage_title_staff": "Staff Articles",
-  "help.manage_title_customer": "Customer (PWA) Articles"
+  "help.manage_title_customer": "Customer (PWA) Articles",
+  "reports.profit_margin": "Profit & Margin",
+  "reports.margin_item": "Item",
+  "reports.margin_qty": "Qty Sold",
+  "reports.margin_cogs": "COGS (Ingredients)",
+  "reports.gross_margin": "Gross Margin",
+  "reports.margin_pct": "Margin %",
+  "reports.margin_total": "Total",
+  "reports.margin_no_data": "No paid orders in the selected period.",
+  "reports.untracked_revenue": "Untracked Revenue",
+  "reports.untracked": "untracked",
+  "reports.untracked_note": "{{amount}} revenue across {{count}} item(s) has no recipe/ingredient cost — excluded from COGS & margin.",
+  "reports.margin_daily": "Daily Breakdown",
+  "reports.margin_date": "Date"
 }

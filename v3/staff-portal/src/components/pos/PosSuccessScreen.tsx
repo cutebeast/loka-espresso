@@ -1,9 +1,12 @@
 "use client";
 
 import { useTranslation } from "@/hooks/useTranslation";
+import { useState } from "react";
 import { ShoppingCart, Printer, Archive, Receipt, CheckCircle } from "lucide-react";
 import { PaymentMethod } from "./usePosState";
 import { FEATURE_FLAGS } from "@/lib/featureFlags";
+import { openCashDrawer, printReceipt } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 interface PosSuccessScreenProps {
   mode: "new_order" | "checkout";
   result: {
@@ -17,6 +20,11 @@ interface PosSuccessScreenProps {
   paymentMethod: PaymentMethod;
   onNewOrder: () => void;
 }
+
+function showToast(message: string, type: "success" | "error") {
+  window.dispatchEvent(new CustomEvent("pos:toast", { detail: { message, type } }));
+}
+
 export default function PosSuccessScreen({
   mode,
   result,
@@ -28,6 +36,34 @@ export default function PosSuccessScreen({
   const {
     t
   } = useTranslation();
+  const [printing, setPrinting] = useState(false);
+  const [kicking, setKicking] = useState(false);
+
+  const handlePrintReceipt = async () => {
+    if (!result.order_id || printing) return;
+    setPrinting(true);
+    try {
+      await printReceipt(result.order_id);
+      showToast(t("pos.receipt_sent_to_printer"), "success");
+    } catch (err: unknown) {
+      showToast(parseApiError(err, t("pos.print_failed")), "error");
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handleOpenDrawer = async () => {
+    if (kicking) return;
+    setKicking(true);
+    try {
+      await openCashDrawer();
+      showToast(t("pos.drawer_kick_sent"), "success");
+    } catch (err: unknown) {
+      showToast(parseApiError(err, t("pos.drawer_kick_failed")), "error");
+    } finally {
+      setKicking(false);
+    }
+  };
 
   return <div style={{
     padding: 24,
@@ -89,10 +125,10 @@ export default function PosSuccessScreen({
       }} onClick={onNewOrder}>
           <ShoppingCart size={18} />{t("pos.new_order")}</button>
         {mode === "checkout" && <>
-            <button type="button" className="btn btn-outline" disabled={!FEATURE_FLAGS.printer} title={t("pos.printer_integration_pending")}>
-              <Printer size={16} />{t("pos.print_receipt")}</button>
-            {paymentMethod === "cash" && <button type="button" className="btn btn-outline" disabled={!FEATURE_FLAGS.cashDrawer} title={t("pos.cash_drawer_integration_pending")}>
-                <Archive size={16} />{t("pos.open_cash_drawer")}</button>}
+            <button type="button" className="btn btn-outline" disabled={printing || !result.order_id} onClick={handlePrintReceipt}>
+              <Printer size={16} />{printing ? t("common.sending") : t("pos.print_receipt")}</button>
+            {paymentMethod === "cash" && <button type="button" className="btn btn-outline" disabled={kicking} onClick={handleOpenDrawer}>
+                <Archive size={16} />{kicking ? t("common.sending") : t("pos.open_cash_drawer")}</button>}
           </>}
         {mode === "new_order" && <button type="button" className="btn btn-outline" disabled={!FEATURE_FLAGS.kitchenTicketPrinter} title={t("pos.kitchen_ticket_printing_pending")}>
             <Receipt size={16} />{t("pos.print_kitchen_ticket")}</button>}

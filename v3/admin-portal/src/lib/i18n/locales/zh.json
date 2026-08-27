@@ -84,5 +84,18 @@
   "admin.table.actions": "Actions",
   "admin.table.status": "Status",
   "notFound.message": "The requested record could not be found. It may have been removed or the link might be incorrect.",
-  "notFound.title": "Not Found"
+  "notFound.title": "Not Found",
+  "reports.profit_margin": "利润与毛利",
+  "reports.margin_item": "商品",
+  "reports.margin_qty": "销量",
+  "reports.margin_cogs": "食材成本 (COGS)",
+  "reports.gross_margin": "毛利",
+  "reports.margin_pct": "毛利率",
+  "reports.margin_total": "合计",
+  "reports.margin_no_data": "所选期间没有已付款订单。",
+  "reports.untracked_revenue": "未追踪收入",
+  "reports.untracked": "未追踪",
+  "reports.untracked_note": "{{amount}} 的收入（{{count}} 个商品）没有配方/食材成本——不计入成本与毛利。",
+  "reports.margin_daily": "每日明细",
+  "reports.margin_date": "日期"
 }

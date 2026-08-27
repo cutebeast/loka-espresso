@@ -617,6 +617,14 @@ async def process_order_payment(
             await auto_issue_on_payment(db, order, payment)
         except Exception:
             logger.exception("e-invoice auto-issue failed for order %s", order.id)
+        # Receipt email (self-gated on email.receipts_enabled, idempotent,
+        # failure-swallowing).
+        from app.services.email import send_order_receipt_email
+        await send_order_receipt_email(db, order, payment)
+        # Receipt/drawer print jobs (self-gated on print.*, idempotent,
+        # failure-swallowing).
+        from app.services.printing import auto_print_on_payment
+        await auto_print_on_payment(db, order, payment)
 
     response_data: dict = {
         "id": order.id,
@@ -1091,6 +1099,14 @@ async def pay_with_wallet(
             await auto_issue_on_payment(db, order, payment)
         except Exception:
             logging.getLogger(__name__).exception("e-invoice auto-issue failed for order %s", order.id)
+        # Receipt email (self-gated on email.receipts_enabled, idempotent,
+        # failure-swallowing).
+        from app.services.email import send_order_receipt_email
+        await send_order_receipt_email(db, order, payment)
+        # Receipt/drawer print jobs (self-gated on print.*, idempotent,
+        # failure-swallowing).
+        from app.services.printing import auto_print_on_payment
+        await auto_print_on_payment(db, order, payment)
 
     return APIResponse(
         data={

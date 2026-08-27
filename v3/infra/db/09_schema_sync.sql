@@ -114,12 +114,21 @@ CREATE TABLE IF NOT EXISTS notification_templates (
 	notification_type VARCHAR(50) NOT NULL, 
 	audience_segment VARCHAR(50) NOT NULL, 
 	image_url VARCHAR(500), 
+	event_key VARCHAR(50), 
+	is_enabled BOOLEAN NOT NULL, 
+	channels JSONB NOT NULL, 
+	variables JSONB NOT NULL, 
+	priority VARCHAR(10) NOT NULL, 
+	action_url_template VARCHAR(500), 
 	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	updated_at TIMESTAMP WITH TIME ZONE NOT NULL, 
 	PRIMARY KEY (id), 
 	CONSTRAINT ck_notification_templates_type CHECK (notification_type IN ('general','order','reward','wallet','loyalty','promo','info','event')), 
-	CONSTRAINT ck_notification_templates_audience CHECK (audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members') OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$' OR audience_segment ~ '^event:[0-9]{1,10}$')
+	CONSTRAINT ck_notification_templates_audience CHECK (audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members') OR audience_segment ~ '^tier:[A-Za-z0-9_-]{1,45}$' OR audience_segment ~ '^event:[0-9]{1,10}$'), 
+	CONSTRAINT ck_notification_templates_priority CHECK (priority IN ('low','normal','high','urgent'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_notification_templates_event_key ON notification_templates (event_key) WHERE event_key IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS tax_categories (
 	id SERIAL NOT NULL, 
@@ -384,6 +393,23 @@ CREATE TABLE IF NOT EXISTS menu_item_dietary_tags (
 	FOREIGN KEY(dietary_tag_id) REFERENCES dietary_tags (id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS notification_events_log (
+	id BIGSERIAL NOT NULL, 
+	event_key VARCHAR(50) NOT NULL, 
+	entity_type VARCHAR(50) NOT NULL, 
+	entity_id VARCHAR(64) NOT NULL, 
+	customer_id BIGINT NOT NULL, 
+	message_id BIGINT, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_notification_events_once UNIQUE (event_key, entity_type, entity_id, customer_id), 
+	FOREIGN KEY(customer_id) REFERENCES customers (id) ON DELETE CASCADE, 
+	FOREIGN KEY(message_id) REFERENCES notification_messages (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_notification_events_log_customer_id ON notification_events_log (customer_id);
+CREATE INDEX IF NOT EXISTS ix_notification_events_log_event_key ON notification_events_log (event_key);
+
 CREATE TABLE IF NOT EXISTS pos_sessions (
 	id BIGSERIAL NOT NULL, 
 	terminal_id BIGINT NOT NULL, 
@@ -498,6 +524,30 @@ CREATE TABLE IF NOT EXISTS lucky_draw_segments (
 );
 
 CREATE INDEX IF NOT EXISTS ix_lucky_draw_segments_campaign_id ON lucky_draw_segments (campaign_id);
+
+CREATE TABLE IF NOT EXISTS print_jobs (
+	id BIGSERIAL NOT NULL, 
+	store_id INTEGER NOT NULL, 
+	printer_token VARCHAR(64) NOT NULL, 
+	type VARCHAR(20) NOT NULL, 
+	status VARCHAR(10) NOT NULL, 
+	payload TEXT NOT NULL, 
+	content_type VARCHAR(100) NOT NULL, 
+	order_id BIGINT, 
+	attempts INTEGER NOT NULL, 
+	error TEXT, 
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL, 
+	printed_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_print_jobs_type CHECK (type IN ('receipt','drawer_kick','kitchen_ticket')), 
+	CONSTRAINT ck_print_jobs_status CHECK (status IN ('queued','printed','failed')), 
+	FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE, 
+	FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_print_jobs_token_status ON print_jobs (printer_token, status);
+CREATE INDEX IF NOT EXISTS ix_print_jobs_order_id ON print_jobs (order_id);
+CREATE INDEX IF NOT EXISTS ix_print_jobs_store_id ON print_jobs (store_id);
 
 CREATE TABLE IF NOT EXISTS wastage_reports (
 	id BIGSERIAL NOT NULL, 
@@ -697,6 +747,8 @@ ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS addon_discount_type VARCHAR(20);
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS addon_discount_value NUMERIC(10, 4);
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS eligible_bundle_ids JSONB;
 
+ALTER TABLE notification_messages ADD COLUMN IF NOT EXISTS template_id INTEGER REFERENCES notification_templates (id);
+
 ALTER TABLE order_fulfillment ADD COLUMN IF NOT EXISTS delivery_dispatched_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE order_fulfillment ADD COLUMN IF NOT EXISTS delivery_dispatched_by BIGINT REFERENCES staff_profiles (id);
 
@@ -777,4 +829,4 @@ CREATE INDEX IF NOT EXISTS ix_voucher_definitions_minimum_tier_id ON voucher_def
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY);
-INSERT INTO alembic_version (version_num) SELECT 'd1e2f3a4b5c6' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
+INSERT INTO alembic_version (version_num) SELECT 'b6c7d8e9f0a1' WHERE NOT EXISTS (SELECT 1 FROM alembic_version);

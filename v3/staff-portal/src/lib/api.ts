@@ -703,6 +703,20 @@ export function dispatchDeliveryOrder(
   });
 }
 
+export interface PrintJobResult {
+  enqueued: number;
+  job_ids: number[];
+  order_id?: number;
+}
+
+export function printReceipt(id: string | number) {
+  return api.post<PrintJobResult>(`/staff/orders/${id}/print-receipt`);
+}
+
+export function openCashDrawer() {
+  return api.post<PrintJobResult>(`/staff/pos/drawer-kick`);
+}
+
 export function updateOrderStatus(id: string | number, status: OrderStatus, reason?: string) {
   // Backend takes status/reason as QUERY params (PATCH has no body schema) —
   // sending them in the JSON body 422s with "Field required".

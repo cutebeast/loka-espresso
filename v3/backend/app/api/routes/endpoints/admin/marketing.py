@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Query, status
-from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, enum_filter_or_400
@@ -14,7 +13,6 @@ from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount, LoyaltyTier
 from app.models.marketing import CampaignAnalytics, MarketingCampaign
 from app.models.notification import NotificationMessage
-from app.models.platform import PlatformConfig
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.marketing import (
     MarketingCampaignCreate,
@@ -23,81 +21,16 @@ from app.schemas.marketing import (
 )
 from app.services.translation import auto_translate_record, schedule_auto_translate, delete_translations
 from app.services.messaging import get_twilio_credentials, send_sms_via_twilio
+from app.services.email import (
+    get_resend_api_url as _get_resend_api_url,
+    send_email_via_resend as _send_email_via_resend,
+)
 
 logger = logging.getLogger(__name__)
 
 admin_router = APIRouter(prefix="/admin/marketing", tags=["admin — marketing"])
 
 
-async def _get_resend_api_url(db) -> str:
-    """Get Resend API URL from platform_config."""
-    result = await db.execute(
-        select(PlatformConfig).where(PlatformConfig.config_key == "integration.resend_api_url")
-    )
-    row = result.scalar_one_or_none()
-    if row and row.config_value:
-        return str(row.config_value).strip().strip('"')
-    return "https://api.resend.com/emails"
-
-
-async def _send_email_via_resend(
-    to_email: str,
-    subject: str, body: str,
-    db = None,
-    api_key: str | None = None,
-    from_email: str | None = None,
-    tags: dict[str, str] | None = None,
-) -> bool:
-    """Send an email via Resend API. Returns True on success.
-
-    If api_key/from_email are not provided, reads from platform_config and
-    respects the integration.resend_use_test_credentials toggle.
-
-    ``tags`` is a flat mapping of tag names to values. Resend expects an array
-    of ``{"name": ..., "value": ...}`` objects, so the mapping is converted
-    automatically. Tags are returned in webhook events and are used to map
-    delivery events back to a campaign.
-    """
-    if not to_email:
-        return False
-
-    if db is not None and (api_key is None or from_email is None):
-        use_test_result = await db.execute(
-            select(PlatformConfig).where(PlatformConfig.config_key == "integration.resend_use_test_credentials")
-        )
-        use_test_row = use_test_result.scalar_one_or_none()
-        use_test = bool(
-            use_test_row and str(use_test_row.config_value).lower() in ("true", "1", "yes", "on")
-        )
-        api_key_key = "integration.resend_test_api_key" if use_test else "integration.resend_api_key"
-        from_email_key = "integration.resend_test_from_email" if use_test else "integration.resend_from_email"
-        resend_result = await db.execute(
-            select(PlatformConfig).where(PlatformConfig.config_key.in_([api_key_key, from_email_key]))
-        )
-        resend_rows = {r.config_key: str(r.config_value or "") for r in resend_result.scalars().all()}
-        api_key = api_key or resend_rows.get(api_key_key, "")
-        from_email = from_email or resend_rows.get(from_email_key, "")
-
-    if not api_key or not from_email:
-        return False
-
-    url = await _get_resend_api_url(db) if db else "https://api.resend.com/emails"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    payload = {
-        "from": from_email,
-        "to": [to_email],
-        "subject": subject,
-        "html": f"<p>{body.replace(chr(10), '<br>')}</p>" if body else f"<p>{subject}</p>",
-    }
-    if tags:
-        payload["tags"] = [{"name": k, "value": v} for k, v in tags.items()]
-    try:
-        async with AsyncClient(timeout=15) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            return resp.status_code in (200, 201)
-    except Exception:
-        logger.error("Marketing email delivery failed via Resend", exc_info=True)
-        return False
 async def _resolve_audience_customers(db, segment: str) -> list[int]:
     """Get customer IDs matching an audience segment (excluding opt-outs)."""
     stmt = select(Customer.id).where(

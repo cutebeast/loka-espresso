@@ -454,6 +454,14 @@ async def process_staff_order_payment(
             await auto_issue_on_payment(db, order, payment)
         except Exception:
             logger.exception("e-invoice auto-issue failed for order %s", order.id)
+        # Receipt email (self-gated on email.receipts_enabled, idempotent,
+        # failure-swallowing).
+        from app.services.email import send_order_receipt_email
+        await send_order_receipt_email(db, order, payment)
+        # Receipt/drawer print jobs (self-gated on print.*, idempotent,
+        # failure-swallowing).
+        from app.services.printing import auto_print_on_payment
+        await auto_print_on_payment(db, order, payment)
 
     response_data: dict = {
         "id": order.id,
@@ -1227,6 +1235,14 @@ async def staff_pay_with_wallet(
             await auto_issue_on_payment(db, order, payment)
         except Exception:
             logger.exception("e-invoice auto-issue failed for order %s", order.id)
+        # Receipt email (self-gated on email.receipts_enabled, idempotent,
+        # failure-swallowing).
+        from app.services.email import send_order_receipt_email
+        await send_order_receipt_email(db, order, payment)
+        # Receipt/drawer print jobs (self-gated on print.*, idempotent,
+        # failure-swallowing).
+        from app.services.printing import auto_print_on_payment
+        await auto_print_on_payment(db, order, payment)
 
     return APIResponse(
         data={
@@ -2007,3 +2023,34 @@ async def staff_transfer_table(
 
     await db.commit()
     return APIResponse(data={"id": order.id, "table_id": new_table_id})
+
+
+@router.post("/{order_id}/print-receipt", response_model=APIResponse[dict])
+async def print_order_receipt(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+):
+    """Enqueue a receipt reprint to the store's active printers (manual action).
+
+    Never kicks the drawer — the automatic cash-payment hook owns that.
+    """
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    from app.services.printing import build_receipt_payload, enqueue_to_store_printers
+
+    body = await build_receipt_payload(db, order, reprint=True)
+    jobs = await enqueue_to_store_printers(db, order.store_id, "receipt", body, order_id=order.id)
+    if not jobs:
+        raise HTTPException(status_code=400, detail="No active printers configured for this store")
+    await db.commit()
+    return APIResponse(
+        data={"order_id": order.id, "enqueued": len(jobs), "job_ids": [j.id for j in jobs]},
+        message="Receipt sent to printer",
+    )

@@ -13,6 +13,7 @@ from app.api.routes.endpoints.admin import menu as admin_menu
 from app.api.routes.endpoints.admin import inventory as admin_inventory
 from app.api.routes.endpoints.admin import staff as admin_staff
 from app.api.routes.endpoints.admin import dashboard as admin_dashboard
+from app.api.routes.endpoints.admin import reports as admin_reports
 from app.api.routes.endpoints.admin import wallet as admin_wallet
 from app.api.routes.endpoints.admin import vouchers as admin_vouchers
 from app.api.routes.endpoints.admin import rewards as admin_rewards
@@ -25,6 +26,7 @@ from app.api.routes.endpoints.customer import profile as customer_profile
 from app.api.routes.endpoints import translation as translation_endpoints
 from app.api.routes.endpoints import payment as payment_endpoints
 from app.api.routes.endpoints import webhooks as webhooks_endpoints
+from app.api.routes.endpoints import print_cloudprnt as print_cloudprnt_endpoints
 from app.api.routes.endpoints.admin import loyalty as admin_loyalty
 from app.api.routes.endpoints.admin import reservations as admin_reservations
 from app.api.routes.endpoints.admin import time_events as admin_time_events
@@ -114,6 +116,7 @@ api_router.include_router(admin_tips.router, tags=["admin — staff"])
 
 api_router.include_router(admin_staff.router, tags=["admin — staff"])
 api_router.include_router(admin_dashboard.router, tags=["admin — dashboard"])
+api_router.include_router(admin_reports.router, tags=["admin — reports"])
 
 # Wallets
 api_router.include_router(admin_wallet.admin_router, tags=["admin — wallets"])
@@ -286,3 +289,10 @@ api_router.include_router(admin_bundle_types.router, tags=["admin — bundle typ
 api_router.include_router(admin_event_categories.router, tags=["admin — event categories"])
 api_router.include_router(public_categories.router, tags=["public — categories"])
 api_router.include_router(public_bundle_types.router, tags=["public — bundle types"])
+
+# Print queue (CloudPRNT server-pull; per-printer token auth, no customer auth)
+api_router.include_router(
+    print_cloudprnt_endpoints.router,
+    prefix="/print/cloudprnt",
+    tags=["print"],
+)

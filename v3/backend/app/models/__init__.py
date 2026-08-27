@@ -104,6 +104,7 @@ from app.models.payment import (
     Refund,
 )
 from app.models.einvoice import EinvoiceDocument
+from app.models.print_job import PrintJob
 from app.models.loyalty import (
     LoyaltyTier,
     LoyaltyAccount,

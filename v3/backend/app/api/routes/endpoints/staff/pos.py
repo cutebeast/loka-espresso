@@ -568,6 +568,14 @@ async def staff_pos_create_order(
                 await auto_issue_on_payment(db, order, payment)
             except Exception:
                 logger.exception("e-invoice auto-issue failed for order %s", order.id)
+            # Receipt email (self-gated on email.receipts_enabled, idempotent,
+            # failure-swallowing).
+            from app.services.email import send_order_receipt_email
+            await send_order_receipt_email(db, order, payment)
+            # Receipt/drawer print jobs (self-gated on print.*, idempotent,
+            # failure-swallowing).
+            from app.services.printing import auto_print_on_payment
+            await auto_print_on_payment(db, order, payment)
     except IntegrityError as exc:
         await db.rollback()
         if data.idempotency_key:
@@ -738,3 +746,26 @@ async def get_pos_display_state(
     if state.get("phase") in ("payment", "qr_payment"):
         state["payment_pending"] = True
     return APIResponse(data=state)
+
+
+@router.post("/staff/pos/drawer-kick", response_model=APIResponse[dict])
+async def pos_drawer_kick(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+):
+    """Enqueue a drawer-kick job to the store's active printers (manual open).
+
+    The cash drawer hangs off the receipt printer's DK port, so opening it is
+    a print job containing just a [drawer] command.
+    """
+    from app.services.printing import enqueue_to_store_printers
+    from app.services.receipt import compose_drawer_kick
+
+    jobs = await enqueue_to_store_printers(db, staff.store_id, "drawer_kick", compose_drawer_kick())
+    if not jobs:
+        raise HTTPException(status_code=400, detail="No active printers configured for this store")
+    await db.commit()
+    return APIResponse(
+        data={"enqueued": len(jobs), "job_ids": [j.id for j in jobs]},
+        message="Drawer kick sent to printer",
+    )

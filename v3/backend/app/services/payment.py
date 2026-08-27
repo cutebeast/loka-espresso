@@ -1017,6 +1017,14 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
         if order is not None:
             from app.services.einvoice import auto_issue_on_payment
             await auto_issue_on_payment(db, order, payment)
+            # Receipt email (self-gated on email.receipts_enabled, idempotent,
+            # failure-swallowing) — same fire-and-forget pattern as e-invoice.
+            from app.services.email import send_order_receipt_email
+            await send_order_receipt_email(db, order, payment)
+            # Receipt/drawer print jobs (self-gated on print.*, idempotent,
+            # failure-swallowing) — same fire-and-forget pattern.
+            from app.services.printing import auto_print_on_payment
+            await auto_print_on_payment(db, order, payment)
     return payment
 
 
@@ -1405,6 +1413,12 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
     if order is not None:
         from app.services.einvoice import auto_issue_on_payment
         await auto_issue_on_payment(db, order, payment)
+        # Receipt email (self-gated on email.receipts_enabled, idempotent).
+        from app.services.email import send_order_receipt_email
+        await send_order_receipt_email(db, order, payment)
+        # Receipt/drawer print jobs (self-gated on print.*, idempotent).
+        from app.services.printing import auto_print_on_payment
+        await auto_print_on_payment(db, order, payment)
     return payment
 
 
@@ -2677,5 +2691,12 @@ async def process_webhook_event(
             if order is not None:
                 from app.services.einvoice import auto_issue_on_payment
                 await auto_issue_on_payment(db, order, payment)
+                # Receipt email — same gating: never for flagged/dead-order
+                # or duplicate captures; idempotent per payment.
+                from app.services.email import send_order_receipt_email
+                await send_order_receipt_email(db, order, payment)
+                # Receipt/drawer print jobs — same gating and idempotency.
+                from app.services.printing import auto_print_on_payment
+                await auto_print_on_payment(db, order, payment)
 
     return payment

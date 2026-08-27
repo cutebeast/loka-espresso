@@ -770,3 +770,74 @@ async def download_table_qr(
         return Response(content=buf.getvalue(), media_type="image/png")
     except ImportError:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="qrcode package not installed")
+
+
+# ---------------------------------------------------------------------------
+# Receipt printers (CloudPRNT registry — print.printers in store_configuration)
+# ---------------------------------------------------------------------------
+
+
+class PrinterCreate(BaseSchema):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class PrinterUpdate(BaseSchema):
+    name: str | None = Field(default=None, max_length=100)
+    active: bool | None = None
+
+
+@router.get("/{store_id}/printers", response_model=APIResponse[list[dict]])
+async def list_store_printers(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int,
+):
+    """List a store's registered printers with last-seen / last-job status."""
+    await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
+    from app.services.printing import printer_statuses
+
+    return APIResponse(data=await printer_statuses(db, store_id))
+
+
+@router.post("/{store_id}/printers", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def add_store_printer(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int,
+    data: PrinterCreate,
+):
+    """Register a printer and return its CloudPRNT pairing token (shown once).
+
+    Point the printer's CloudPRNT URL at /api/print/cloudprnt/{token}.
+    """
+    await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
+    from app.services.printing import PrintError, add_store_printer
+
+    try:
+        entry = await add_store_printer(db, store_id, data.name)
+    except PrintError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    await db.commit()
+    return APIResponse(data=entry, message="Printer registered — configure its CloudPRNT URL with this token")
+
+
+@router.patch("/{store_id}/printers/{token}", response_model=APIResponse[dict])
+async def update_store_printer(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int,
+    token: str,
+    data: PrinterUpdate,
+):
+    """Rename or enable/disable a registered printer."""
+    await _get_store_or_404(db, store_id)
+    await require_store_admin(db, admin, store_id)
+    from app.services.printing import update_store_printer as _update
+
+    entry = await _update(db, store_id, token, name=data.name, active=data.active)
+    if entry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Printer not found")
+    await db.commit()
+    return APIResponse(data=entry)
