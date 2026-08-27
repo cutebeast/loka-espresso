@@ -961,6 +961,7 @@
     "lokaWallet": "Loka 钱包",
     "openEinvoice": "打开电子发票",
     "orderCancelled": "此订单已取消",
+    "orderRefunded": "此订单已退款",
     "orderItems": "订单商品",
     "orderNumber": "订单编号 #{{number}}",
     "orderProcessing": "您的订单正在处理中",
@@ -1007,7 +1008,8 @@
       "outForDelivery": "外送中",
       "pending": "待处理",
       "preparing": "准备中",
-      "ready": "已就绪"
+      "ready": "已就绪",
+      "refunded": "已退款"
     },
     "steps": {
       "completed": "已完成",

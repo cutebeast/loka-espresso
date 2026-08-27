@@ -98,11 +98,16 @@ async def test_staff_get_order_detail(client: httpx.AsyncClient, admin_headers: 
 @pytest.mark.asyncio
 async def test_staff_update_order_status(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
     """Staff/admin can update order status."""
-    r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=1", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=50", headers=admin_headers)
     items = r.json()["data"]["items"]
     assert len(items) > 0, "Seed data must include orders"
-    order_id = items[0]["id"]
-    original_status = items[0]["status"]
+    # Pick a non-terminal order — refunded/cancelled/delivered orders are
+    # terminal and cannot transition to confirmed (refund closes orders).
+    TERMINAL = {"cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed", "delivered"}
+    candidates = [o for o in items if o["status"] not in TERMINAL]
+    assert candidates, "Need at least one non-terminal order"
+    order_id = candidates[0]["id"]
+    original_status = candidates[0]["status"]
 
     try:
         # Update status to confirmed

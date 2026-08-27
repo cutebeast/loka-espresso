@@ -132,6 +132,25 @@ async def customer_register(request: Request, response: Response, db: DBDependen
             customer.display_name = data.display_name
         if data.email_address and not customer.email_address:
             customer.email_address = data.email_address
+        # Attach referral: accounts are auto-created at first OTP login, so the
+        # profile-setup register call (which carries the ?ref= code) always lands
+        # in this existing-account branch — without this the code was silently
+        # dropped and the referrer never got the event.
+        if data.referral_code and customer.referred_by_customer_id is None:
+            from app.models.customer import ReferralEvent
+            ref_code = data.referral_code.strip().upper()
+            referrer_result = await db.execute(
+                select(Customer).where(Customer.referral_code == ref_code, Customer.deleted_at.is_(None))
+            )
+            referrer = referrer_result.scalar_one_or_none()
+            if referrer is not None and referrer.id != customer.id:
+                customer.referred_by_customer_id = referrer.id
+                db.add(ReferralEvent(
+                    referrer_customer_id=referrer.id,
+                    invitee_customer_id=customer.id,
+                    referral_code=ref_code,
+                    status="pending",  # converted on the invitee's first paid order
+                ))
         customer.phone_verified_at = datetime.now(timezone.utc)
         await db.commit()
         tokens = await create_customer_tokens(customer)

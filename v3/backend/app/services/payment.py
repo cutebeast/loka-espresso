@@ -1743,6 +1743,29 @@ async def refund_payment(
         db, payment, refund_amount, is_full_refund=(new_status == "refunded")
     )
 
+    # A full refund ends the order — it must leave the customer's active
+    # orders and the kitchen/queue views (was: order stayed 'confirmed'
+    # forever after a full refund). Partial refunds keep the order alive.
+    if new_status == "refunded":
+        order_row_to_close = await db.get(Order, payment.order_id, with_for_update=True)
+        if order_row_to_close is not None and order_row_to_close.status not in (
+            "refunded", "cancelled_by_customer", "cancelled_by_merchant", "delivered", "completed",
+        ):
+            from app.models.order import OrderStatusLog
+            db.add(OrderStatusLog(
+                order_id=order_row_to_close.id,
+                from_status=order_row_to_close.status,
+                to_status="refunded",
+                reason=f"Fully refunded: {reason}",
+                # actor_type constraint allows customer/staff/system/webhook —
+                # admin-approved refunds log as 'system' (the AuditLog row
+                # above carries the actual admin/staff principal).
+                actor_type="staff" if approved_by_staff else "system",
+                actor_id=approved_by_staff,
+            ))
+            order_row_to_close.status = "refunded"
+            order_row_to_close.updated_at = datetime.now(timezone.utc)
+
     await _sync_order_payment_status(db, payment)
     await db.commit()
     await db.refresh(refund)

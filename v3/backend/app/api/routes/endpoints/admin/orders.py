@@ -60,7 +60,10 @@ VALID_STATUS_TRANSITIONS: dict[str, list[str]] = {
     # the cancel-time reversal (stock/vouchers/points/order_count).
     "cancelled_by_customer": ["refunded"],
     "cancelled_by_merchant": ["refunded"],
-    "refunded": [],
+    # Refunded orders may still be formally cancelled (refund reverses money
+    # and benefits; the cancel restores stock/seats/table — reverse_order_effects
+    # is safe here: points already zeroed, voucher release is status-guarded).
+    "refunded": ["cancelled_by_merchant"],
     "partially_refunded": [],
     "disputed": ["refunded", "partially_refunded"],
 }

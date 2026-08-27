@@ -278,6 +278,7 @@ export default function OrderDetailPage() {
   const current = stepIdx(order.status, order.order_type);
   const statusKey = `orders.status.${order.status?.toLowerCase()}`;
   const displayStatus = t(statusKey) !== statusKey ? t(statusKey) : (order.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const isCancelledOrRefunded = (order.status || '').startsWith('cancelled') || order.status === 'refunded';
 
   return (
     <div className="order-detail-screen">
@@ -308,10 +309,10 @@ export default function OrderDetailPage() {
           <div className="od-status-wrap">
             <div className="od-status-label">{displayStatus}</div>
             <div className="text-xs text-muted mt-1">
-              {order.status === 'completed' ? t('orderDetail.enjoyOrder') : (order.status || '').startsWith('cancelled') ? t('orderDetail.orderCancelled') : t('orderDetail.orderProcessing')}
+              {order.status === 'completed' ? t('orderDetail.enjoyOrder') : order.status === 'refunded' ? t('orderDetail.orderRefunded') : isCancelledOrRefunded ? t('orderDetail.orderCancelled') : t('orderDetail.orderProcessing')}
             </div>
           </div>
-          {!(order.status || '').startsWith('cancelled') ? (
+          {!isCancelledOrRefunded ? (
             <div className="od-progress-track">
               {steps.map((step, i) => {
                 const done = i < current;

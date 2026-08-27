@@ -69,7 +69,10 @@ export default function ReferralPage() {
         const profile = rawMe?.profile;
         const refsData = refsRes.data as { items?: Array<{ invitee_name?: string | null; status?: string; created_at?: string }> } | Array<{ invitee_name?: string | null; status?: string; created_at?: string }> | undefined;
         const refs = Array.isArray(refsData) ? refsData : (refsData?.items ?? []);
-        const referrals = profile?.referral_count ?? rawMe?.referral_count ?? refs.length;
+        // referral_count only counts CONVERTED referrals (first paid order);
+        // refs.length includes pending signups — show the larger so a fresh
+        // invite shows up immediately instead of a confusing 0.
+        const referrals = Math.max(profile?.referral_count ?? rawMe?.referral_count ?? 0, refs.length);
         const pointsEarned = profile?.referral_earnings_total ?? rawMe?.referral_earnings_total ?? 0;
         setStats({
           code: profile?.referral_code ?? rawMe?.referral_code ?? '',

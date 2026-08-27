@@ -861,6 +861,7 @@
     "lokaWallet": "Loka Wallet",
     "openEinvoice": "Open e-invoice",
     "orderCancelled": "This order was cancelled",
+    "orderRefunded": "This order was refunded",
     "orderItems": "Order Items",
     "orderNumber": "Order #{number}",
     "orderProcessing": "Your order is being processed",
@@ -907,7 +908,8 @@
       "outForDelivery": "Out for delivery",
       "pending": "Pending",
       "preparing": "Preparing",
-      "ready": "Ready"
+      "ready": "Ready",
+      "refunded": "Refunded"
     },
     "steps": {
       "completed": "Completed",
