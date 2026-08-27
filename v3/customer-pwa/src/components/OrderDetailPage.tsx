@@ -199,7 +199,13 @@ export default function OrderDetailPage() {
     finally { setCancelling(false); }
   };
 
-  const canPayOnline = order && (
+  // Terminal order states — never offer payment on them (payment_status can
+  // stay 'pending'/'initiated' forever on a cancelled order).
+  const TERMINAL_STATUSES = ['cancelled_by_customer', 'cancelled_by_merchant', 'cancelled', 'refunded', 'disputed', 'delivered', 'completed'];
+  // No gateway configured → pay-later is impossible; don't offer a button
+  // that can only fail with a misleading toast.
+  const hasOnlineProvider = Boolean(stripePublishableKey) || hitpayEnabled || eghlEnabled;
+  const canPayOnline = order && hasOnlineProvider && !TERMINAL_STATUSES.includes(order.status?.toLowerCase() || '') && (
     (order.status?.toLowerCase() === 'awaiting_payment' || order.status?.toLowerCase() === 'pending') ||
     ['pending', 'initiated', 'pending_authorization'].includes(order.payment_status?.toLowerCase() || '')
   );

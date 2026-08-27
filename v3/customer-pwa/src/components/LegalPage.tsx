@@ -31,10 +31,12 @@ export default function LegalPage({
   } = useTranslation();
   const {
     setPage,
-    pageParams
+    pageParams,
+    isGuest
   } = useUIStore();
   const key = legalKey || pageParams.legalKey as 'terms' | 'privacy' || 'terms';
-  const backTo = pageParams.backTo as 'profile' | 'settings' || 'profile';
+  // Guests have no profile page — default their back target to home.
+  const backTo = pageParams.backTo as 'profile' | 'settings' || (isGuest ? 'home' : 'profile');
   const [content, setContent] = useState<LegalContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

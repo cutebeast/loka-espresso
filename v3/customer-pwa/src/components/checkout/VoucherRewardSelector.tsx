@@ -120,9 +120,6 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
           )}
         </>
       )}
-      {voucherError && (
-        <p id="voucher-error-inline" className="text-xs text-danger mb-2">{voucherError}</p>
-      )}
 
       {availableVouchers.length > 0 && (
         <div className="mb-3">

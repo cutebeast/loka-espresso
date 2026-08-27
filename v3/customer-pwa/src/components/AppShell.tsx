@@ -201,6 +201,12 @@ export default function AppShell() {
   const onQRScanClick = useCallback(() => setShowQRScanner(true), []);
   const onBackHome = useCallback(() => setPage('home'), [setPage]);
   const onBackProfile = useCallback(() => setPage('profile'), [setPage]);
+  // Pages reachable from both home tiles and profile rows (events, promotions)
+  // must return to wherever the user actually came from — the profile rows
+  // pass origin:'profile' in pageParams.
+  const onBackOriginAware = useCallback(() => {
+    setPage(pageParams.origin === 'profile' ? 'profile' : 'home');
+  }, [pageParams.origin, setPage]);
 
   // Handle auth expiration from API layer
   useEffect(() => {
@@ -321,7 +327,7 @@ export default function AppShell() {
         return <LazyRenderer pageKey="history" />;
       case 'promotions':
         return <HubLayout page={page} onNavigate={handleNavClick}>
-          <LazyRenderer pageKey="promotions" onBack={onBackHome} preselectedId={pageParams.selectedPromoId as number | undefined} />
+          <LazyRenderer pageKey="promotions" onBack={onBackOriginAware} preselectedId={pageParams.selectedPromoId as number | undefined} />
         </HubLayout>;
       case 'information':
         return <LazyRenderer pageKey="information" onBack={onBackHome} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} contentType={pageParams.selectedInfoContentType as string | undefined} />;
@@ -354,7 +360,7 @@ export default function AppShell() {
       case 'reservations':
         return <LazyRenderer pageKey="reservations" onBack={onBackProfile} />;
       case 'events':
-        return <LazyRenderer pageKey="events" onBack={onBackHome} />;
+        return <LazyRenderer pageKey="events" onBack={onBackOriginAware} />;
       case 'workshops':
         return <LazyRenderer pageKey="workshops" onBack={onBackHome} />;
       case 'checkin':
@@ -495,6 +501,14 @@ export default function AppShell() {
           setSelectedStore(store);
           setShowStoreModal(false);
           setShowStorePicker(false);
+          // Resume a checkout intent that was interrupted by the store pick
+          // (post-login continuation — useAuthFlow leaves it in storage).
+          try {
+            if (sessionStorage.getItem('loka:postLogin') === 'checkout') {
+              sessionStorage.removeItem('loka:postLogin');
+              setPage('checkout');
+            }
+          } catch { /* private mode */ }
         }} onClose={() => {
           setShowStoreModal(false);
           setShowStorePicker(false);

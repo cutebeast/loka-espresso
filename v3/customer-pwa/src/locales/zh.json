@@ -1256,9 +1256,9 @@
   "settings": {
     "about": "关于我们",
     "aboutFallback": "Loka Espresso源于对正宗土耳其咖啡文化的热爱，将流传数百年的咖啡传统与温暖融入每一杯咖啡。我们精选优质产区的咖啡豆，小批量烘焙以匠心传承咖啡文化。",
-    "appearance": "卖相",
+    "appearance": "外观",
     "attribution": "由 LOKA Espresso 精心打造",
-    "darkMode": "Dark Mode（暗夜特调）",
+    "darkMode": "深色模式",
     "enable_notifications": "开启通知",
     "language": "语言",
     "languages": {

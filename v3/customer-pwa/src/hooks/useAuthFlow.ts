@@ -12,12 +12,17 @@ import { storeReferralCode } from '@/lib/referral';
 import { scanTableQr } from '@/lib/tableScan';
 import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
-const PUBLIC_PAGES: PageId[] = [
+// Guest-accessible pages — kept in sync with PUBLIC_PAGES in
+// hooks/useAuthFlow.ts (exported so the guest-browse button can preserve
+// deep-linked destinations).
+export const GUEST_PUBLIC_PAGES: PageId[] = [
   'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings', 'events', 'workshops', 'guest-pay', 'lucky-draw',
   // feedback POST is public (round 32) and check-in viewing is guest-allowed
   // (only the action needs login) — guests must not get the login sheet here.
   'feedback', 'checkin',
 ];
+
+const PUBLIC_PAGES: PageId[] = GUEST_PUBLIC_PAGES;
 
 function isPublicPage(page: PageId): boolean {
   return PUBLIC_PAGES.includes(page);
@@ -247,6 +252,9 @@ export function useAuthFlow() {
       if (target === 'checkout') {
         const ui = useUIStore.getState();
         if (!ui.selectedStore && ui.orderMode !== 'dine_in') {
+          // Leave a resumable intent — AppShell's store picker resumes it
+          // after the user picks a store (was: flow dropped back to cart).
+          try { sessionStorage.setItem('loka:postLogin', 'checkout'); } catch { /* private mode */ }
           ui.setShowStorePicker(true);
           return;
         }
@@ -258,12 +266,13 @@ export function useAuthFlow() {
     try {
       const intent = sessionStorage.getItem('loka:postLogin');
       if (intent === 'checkout') {
-        sessionStorage.removeItem('loka:postLogin');
         const ui = useUIStore.getState();
         if (!ui.selectedStore && ui.orderMode !== 'dine_in') {
+          // Keep the intent in storage — the store picker resumes it.
           ui.setShowStorePicker(true);
           return;
         }
+        sessionStorage.removeItem('loka:postLogin');
         setTimeout(() => setPage('checkout'), 100);
       }
     } catch { /* private mode — fall through */ }

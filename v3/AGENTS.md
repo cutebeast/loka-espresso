@@ -2360,3 +2360,15 @@ Verified live: member order at store 2 (then cancelled); tablet hash+query URLs;
 - Browser return `GET|POST /api/payments/eghl/return` 303s into the PWA hash page (UX only); server callback `POST /api/webhooks/eghl` (form-encoded, HashValue-verified, plain "OK" response) is authoritative — `confirm_payment`'s eghl branch is a deliberate no-op.
 - Config keys `eghl.*` seeded in migration `f3a4b5c6d7e8` (head) + `seed_platform.py`; refunds are manual (refund row stays pending, `eghl_manual_{id}` ref); wallet top-up return loses the `?returnTo=` param vs HitPay (session table has no metadata column).
 
+
+### Round 44 — return-navigation audit fixes (2026-08-27)
+
+Two live audits (return-navigation flows + 26-page back-button sweep, both personas) → 10 confirmed issues, all fixed and re-verified live:
+- **HIGH — top-up simulator stranded users**: Chrome enforces CSP `form-action` across the form submission's redirect chain; the simulator's 303 back to a cross-origin PWA (dev :13810 vs prod-domain simulator) was blocked after Pay AND Cancel. `SecurityHeadersMiddleware` now exempts `/api/wallet/topup/simulator*` from `form-action 'self'`. Production same-origin deploys were never affected; dev/white-label were. Verified: cross-origin pay → back on `#wallet?status=success`, cancel → `status=cancel`, zero CSP violations.
+- **Login → store picker dropped the checkout intent** (fresh accounts): `loka:postLogin` was consumed before the picker intervened. Intent now survives; AppShell's StorePickerModal resumes it (`#checkout`) on selection. Verified live with a fresh account.
+- **Pay Now hidden when no gateway is enabled** (was a misleading "Payment failed" toast), and no longer rendered on cancelled orders (payment_status stays 'initiated' on cancels).
+- **Origin-aware back for events/promotions**: profile rows pass `origin:'profile'` → back returns to profile; home tiles still go home.
+- **Guest back from settings/help-support/legal** went to the member-only profile wall → now home for guests, profile for members.
+- **"Browse as Guest" preserves deep links** (was unconditional setPage('home')) — guest lands on the requested public page.
+- Voucher error no longer rendered twice; zh copy: appearance 外观, dark mode 深色模式.
+- Gates: unit 145/145 · tsc clean · E2E 251/251 · customer-pwa rebuilt.

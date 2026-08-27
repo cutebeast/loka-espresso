@@ -142,13 +142,15 @@ export default function ProfilePage() {
     icon: CalendarCheck,
     label: t('profile.events'),
     iconClass: 'profile-icon-notif',
-    onClick: () => setPage('events')
+    // origin param lets the events page's back button return here (profile)
+    // instead of always going home
+    onClick: () => setPage('events', { origin: 'profile' })
   }, {
     id: 'promotions',
     icon: Tag,
     label: t('profile.promotions'),
     iconClass: 'profile-icon-reward',
-    onClick: () => setPage('promotions')
+    onClick: () => setPage('promotions', { origin: 'profile' })
   }];
   const menuItems2 = [{
     id: 'settings',

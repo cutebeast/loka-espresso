@@ -3,6 +3,7 @@
 import { useCallback, useState, useMemo } from 'react';
 import { Search, X, ChevronDown, Calendar } from 'lucide-react';
 import { normalizePhone, formatPhoneForDisplay } from '@/lib/phone';
+import { GUEST_PUBLIC_PAGES } from '@/hooks/useAuthFlow';
 import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries } from '@/lib/countries';
 import CountryFlag from './CountryFlag';
 import type { Country } from '@/lib/countries';
@@ -197,8 +198,11 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
             className="pi-guest-btn"
             onClick={() => {
               const ui = useUIStore.getState();
-              ui.setPage('home');
               ui.setIsGuest(true);
+              // Stay on the page the user actually asked for (deep links like
+              // #menu) — only fall back to home when the current page needs a
+              // member account.
+              if (!GUEST_PUBLIC_PAGES.includes(ui.page)) ui.setPage('home');
             }}
           >
             {t('auth.guestBrowse')}

@@ -10,7 +10,8 @@ import api from '@/lib/api';
 export default function SettingsPage() {
   const {
     setPage,
-    showToast
+    showToast,
+    isGuest
   } = useUIStore();
   const {
     t,
@@ -73,7 +74,7 @@ export default function SettingsPage() {
   return <div className="settings-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
+          <button className="sub-back-btn" onClick={() => setPage(isGuest ? 'home' : 'profile')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
           <h1 className="sub-page-title">{t('settings.title')}</h1>

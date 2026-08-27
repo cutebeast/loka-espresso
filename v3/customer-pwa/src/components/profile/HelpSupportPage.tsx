@@ -26,7 +26,7 @@ const SUBJECTS = [
 
 export default function HelpSupportPage() {
   const { user } = useAuthStore();
-  const { setPage, showToast, selectedStore } = useUIStore();
+  const { setPage, showToast, selectedStore, isGuest } = useUIStore();
   const { t } = useTranslation();
   const storeId = selectedStore?.id;
 
@@ -89,7 +89,7 @@ export default function HelpSupportPage() {
     <div className="support-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
+          <button className="sub-back-btn" onClick={() => setPage(isGuest ? 'home' : 'profile')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
           <h1 className="sub-page-title">{t('helpSupport.title')}</h1>

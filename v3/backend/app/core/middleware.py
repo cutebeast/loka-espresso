@@ -84,7 +84,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        # The dev/staging checkout simulator completes with a 303 back to the
+        # customer app — a different origin in dev (PWA :13810 vs API :13800 or
+        # a prod-domain simulator against a local PWA). Chrome enforces
+        # form-action across the submission's redirect chain, so 'self'
+        # strands the customer on the simulator page. Exempt just these paths.
+        if request.url.path.startswith("/api/wallet/topup/simulator"):
+            csp = csp.replace("form-action 'self';", "form-action *;")
+        response.headers["Content-Security-Policy"] = csp
         return response
 
 
