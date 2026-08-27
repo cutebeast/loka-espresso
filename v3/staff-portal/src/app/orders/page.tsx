@@ -119,7 +119,7 @@ export default function OrdersPage() {
     maxWidth: 1400,
     margin: "0 auto"
   }}>
-      <PageHeader title={t("orders.order_queue")} subtitle={`${orders.filter(o => !o.status.includes("delivered") && !o.status.includes("cancelled")).length} ${t("orders.active")}`} action={<button onClick={fetchOrders} className="btn btn-ghost btn-sm">
+      <PageHeader title={t("orders.order_queue")} subtitle={`${orders.filter(o => !o.status.includes("delivered") && !o.status.includes("cancelled") && !o.status.includes("refunded") && o.status !== "disputed").length} ${t("orders.active")}`} action={<button onClick={fetchOrders} className="btn btn-ghost btn-sm">
             <RefreshCw size={14} />{t("orders.refresh")}</button>} />
 
       {storeMissing && <Alert variant="error" onDismiss={() => setStoreMissing(false)}>{t("orders.err_store_not_selected")}</Alert>}

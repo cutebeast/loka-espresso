@@ -65,6 +65,11 @@ interface PosCheckoutPanelProps {
   onSetError: (e: string) => void;
   onSetMsg: (m: string) => void;
   onScanCustomer: () => void;
+  /** Phone/name search fallback for camera-less tills (checkout attach). */
+  customerSearchQ: string;
+  customerSearchResults: Customer[];
+  onCustomerSearchChange: (q: string) => void;
+  onSelectSearchedCustomer: (c: Customer) => void;
   onApplyVoucher: (code: string) => void;
   onApplyReward: (id: number) => void;
   onWalletPayment: (amount: number) => void;
@@ -103,6 +108,10 @@ export default function PosCheckoutPanel({
   onSetError,
   onSetMsg,
   onScanCustomer,
+  customerSearchQ,
+  customerSearchResults,
+  onCustomerSearchChange,
+  onSelectSearchedCustomer,
   onApplyVoucher,
   onApplyReward,
   onWalletPayment,
@@ -200,11 +209,50 @@ export default function PosCheckoutPanel({
             setRefundReason("");
           }}>
               <RotateCcw size={14} />{t("pos.refund")}</button>}
-            <span style={{
-          fontSize: 12,
-          color: "var(--color-text-muted)",
-          alignSelf: "center"
-        }}>{t("pos.or_search_to_apply_rewards_vouchers")}</span>
+          </div>
+          {/* Phone/name search fallback — camera-less tills can't scan, and
+              without this the hint below pointed at a search that didn't exist. */}
+          <div style={{ position: "relative", marginTop: 8 }}>
+            <input
+              value={customerSearchQ}
+              onChange={e => onCustomerSearchChange(e.target.value)}
+              placeholder={t("pos.search_customer")}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid var(--color-border, #d1d5db)",
+                borderRadius: 8,
+                fontSize: 13,
+              }}
+            />
+            {customerSearchResults.length > 0 && <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              background: "var(--color-bg-white, #fff)",
+              border: "1px solid var(--color-border, #d1d5db)",
+              borderRadius: 8,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+              zIndex: 20,
+              marginTop: 4,
+            }}>
+              {customerSearchResults.map(c => (
+                <button key={c.id} type="button" onClick={() => onSelectSearchedCustomer(c)} style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: "1px solid var(--color-border-light, #eee)",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}>
+                  <strong>{c.display_name}</strong> <span style={{ color: "var(--color-text-muted)" }}>{c.phone_number}</span>
+                </button>
+              ))}
+            </div>}
           </div>
         </div> : <div className="card" style={{
       marginBottom: 16,

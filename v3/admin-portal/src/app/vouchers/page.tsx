@@ -74,8 +74,10 @@ export default function VouchersPage() {
     }
   };
   const discountLabel = (v: Voucher) => {
-    if (v.voucher_type === "percentage_off") return `${(v.discount_value * 100).toFixed(0)}% off`;
-    if (v.voucher_type === "free_item") return `Free (up to ${symbol} ${v.discount_value})`;
+    // discount_value is already whole-percent for percentage vouchers
+    // (15 = 15% — multiplying by 100 showed "1500% off").
+    if (v.voucher_type === "percentage_off") return `${Number(v.discount_value).toFixed(0)}% off`;
+    if (v.voucher_type === "free_item") return v.discount_value > 0 ? `Free (up to ${symbol} ${v.discount_value})` : "Free item";
     return `${symbol} ${v.discount_value} off`;
   };
   const typeBadge = (t: string) => {

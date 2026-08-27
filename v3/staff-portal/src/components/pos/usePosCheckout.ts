@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { getOrderById, applyOrderVoucher, applyOrderReward, payWithWallet, getCustomerWallet, scanCustomerCode, updateOrderPayment } from "@/lib/api";
+import { getOrderById, applyOrderVoucher, applyOrderReward, payWithWallet, getCustomerWallet, scanCustomerCode, updateOrderPayment, attachOrderCustomer } from "@/lib/api";
 import type { Customer, CustomerWallet, Order, OrderDetail, OrderStatus } from "@/lib/api";
 
 export function usePosCheckout(checkoutOrderId: string | null) {
@@ -41,14 +41,23 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     } catch (e) { console.error("Failed to load checkout wallet:", e); setCheckoutWalletData(null); }
   }, []);
 
+  // Attach the customer to the ORDER server-side (not just local state) —
+  // voucher/reward/wallet endpoints validate ownership against
+  // order.customer_id, so a local-only attach made them unusable at checkout.
+  const attachCheckoutCustomer = useCallback(async (customer: Customer) => {
+    if (!checkoutOrderId) throw new Error("No order selected");
+    await attachOrderCustomer(checkoutOrderId, customer.id);
+    await loadCheckoutCustomerData(customer);
+  }, [checkoutOrderId, loadCheckoutCustomerData]);
+
   const handleCheckoutCustomerQrScan = useCallback(async (code: string) => {
     try {
       const data = await scanCustomerCode(code);
       const customer: Customer = { id: data.customer_id, display_name: data.customer_name, phone_number: data.customer_phone };
-      await loadCheckoutCustomerData(customer);
+      await attachCheckoutCustomer(customer);
       return customer;
     } catch (e: unknown) { throw e; }
-  }, [loadCheckoutCustomerData]);
+  }, [attachCheckoutCustomer]);
 
   const handleApplyCheckoutVoucher = useCallback(async (voucherCode: string) => {
     if (!checkoutOrderId) throw new Error("No order selected");
@@ -165,6 +174,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     unpaidLoading, setUnpaidLoading,
     loadCheckoutOrder,
     loadCheckoutCustomerData,
+    attachCheckoutCustomer,
     handleCheckoutCustomerQrScan,
     handleApplyCheckoutVoucher,
     handleApplyCheckoutReward,

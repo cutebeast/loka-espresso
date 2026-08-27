@@ -246,7 +246,7 @@ export default function OrderDetailPage() {
           {(order.line_items || []).map((li: any, i: number) => <tr key={li.id ?? i}>
               <td style={{
               fontWeight: 600
-            }}>{li.item_name || "—"}</td>
+            }}>{li.item_snapshot?.item_name || li.name || li.item_name || "—"}</td>
               <td style={{
               textAlign: "center"
             }}>{li.quantity}</td>
@@ -255,7 +255,7 @@ export default function OrderDetailPage() {
             }}>{format(li.unit_price)}</td>
               <td style={{
               textAlign: "right"
-            }}>{format(li.total_price)}</td>
+            }}>{format(li.line_total ?? li.total_price)}</td>
             </tr>)}
         </tbody>
       </table></div>
@@ -384,9 +384,9 @@ export default function OrderDetailPage() {
       }}>{t("orders_[id].status_log")}</h4>
         <div className="table-container"><table className="data-table">
           <thead><tr><th>{t("orders_[id].status_2")}</th><th>{t("orders_[id].date_2")}</th><th>{t("orders_[id].reason_2")}</th></tr></thead>
-          <tbody>{order.status_log.map((sl: any, i: number) => <tr key={sl.id ?? i}><td>{sb(sl.status)}</td><td style={{
+          <tbody>{order.status_log.map((sl: any, i: number) => <tr key={sl.id ?? i}><td>{sl.from_status ? `${sb(sl.from_status)} → ${sb(sl.to_status)}` : sb(sl.to_status ?? sl.status)}</td><td style={{
                 fontSize: 12
-              }}>{dt(sl.changed_at)}</td><td style={{
+              }}>{dt(sl.created_at ?? sl.changed_at)}</td><td style={{
                 fontSize: 12
               }}>{sl.reason || "—"}</td></tr>)}</tbody>
         </table></div>

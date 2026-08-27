@@ -703,6 +703,13 @@ export function dispatchDeliveryOrder(
   });
 }
 
+export function attachOrderCustomer(id: string | number, customerId: number) {
+  return api.patch<{ order_id: number; customer_id: number; customer_name: string; customer_phone: string }>(
+    `/staff/orders/${id}/customer`,
+    { customer_id: customerId }
+  );
+}
+
 export interface PrintJobResult {
   enqueued: number;
   job_ids: number[];

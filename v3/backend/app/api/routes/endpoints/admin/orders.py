@@ -261,6 +261,10 @@ async def get_order_detail(admin: CurrentAdmin, db: DBDependency, order_id: int)
     await require_store_admin(db, admin, order.store_id)
 
     order_out = _build_order_out(order)
+    # Customer identity for the detail header (walk-in guests show as "Walk-in")
+    if order.customer is not None:
+        order_out.customer_name = order.customer.display_name
+        order_out.customer_phone = order.customer.phone_number
 
     # Line items
     li_result = await db.execute(

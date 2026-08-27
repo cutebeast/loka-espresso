@@ -149,6 +149,9 @@ class OrderOut(BaseSchema):
     cancelled_by: str | None
     store_name: str | None = None
     store_address: str | None = None
+    # Denormalized for staff/admin detail views (the order's customer row)
+    customer_name: str | None = None
+    customer_phone: str | None = None
     payment_method: str | None = None
     line_items: list[OrderLineItemOut] = []
     fulfillment: OrderFulfillmentOut | None = None

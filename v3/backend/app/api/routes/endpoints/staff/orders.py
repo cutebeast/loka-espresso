@@ -145,6 +145,58 @@ async def _resync_payment_status_after_total_change(db, order: Order) -> None:
         await _sync_order_payment_status(db, paid)
 
 
+class AttachCustomerRequest(BaseSchema):
+    customer_id: int = Field(..., gt=0)
+
+
+@router.patch("/{order_id}/customer", response_model=APIResponse[dict])
+async def staff_attach_order_customer(
+    staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],
+    db: DBDependency,
+    order_id: int,
+    data: AttachCustomerRequest,
+):
+    """Attach/replace the customer on an unpaid order (POS checkout).
+
+    Required before their vouchers/rewards/wallet can be applied — those
+    endpoints validate ownership against order.customer_id. Attaching also
+    means loyalty points accrue to this customer on payment.
+    """
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await _require_store_order(staff, order)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot attach a customer to a completed/cancelled order")
+    if order.payment_status in ("captured", "settled"):
+        raise HTTPException(status_code=400, detail="Cannot change the customer on a paid order")
+
+    customer_result = await db.execute(
+        select(Customer).where(
+            Customer.id == data.customer_id,
+            Customer.deleted_at.is_(None),
+            Customer.is_active.is_(True),
+        )
+    )
+    customer = customer_result.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found or inactive")
+
+    order.customer_id = customer.id
+    order.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    return APIResponse(data={
+        "order_id": order.id,
+        "customer_id": customer.id,
+        "customer_name": customer.display_name,
+        "customer_phone": customer.phone_number,
+    })
+
+
 @router.patch("/{order_id}/payment", response_model=APIResponse[dict])
 async def process_staff_order_payment(
     staff: Annotated[StaffProfile, Depends(RequireStaffRole("cashier", "server", "shift_supervisor", "store_manager"))],

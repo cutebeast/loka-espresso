@@ -20,6 +20,7 @@ import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 import { broadcastDisplay, broadcastReset, openCustomerDisplay } from "@/components/pos/usePosBroadcast";
 import { api, findOrCreateCustomer, getOrderEinvoice } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { pwaBaseUrl } from "@/lib/pwaBase";
 export default function PosPage() {
   return <RoleGuard allowed={canUsePOS}>
@@ -215,10 +216,22 @@ function PosPageContent() {
 
   // ── Checkout Mode ──
   if (pos.mode === "checkout" && pos.checkoutOrder) {
-    return <PosCheckoutPanel order={pos.checkoutOrder} orderId={pos.checkoutOrderId} customer={pos.checkoutCustomer} walletData={pos.checkoutWalletData} paymentMethod={pos.paymentMethod} amountTendered={pos.amountTendered} discountAmount={pos.discountAmount} discountType={pos.discountType} tipAmount={pos.tipAmount} saving={pos.saving} applyingDiscount={pos.applyingDiscount} discountsApplied={pos.checkoutDiscountsApplied} error={pos.error} msg={pos.msg} showDiscounts={pos.showCheckoutDiscounts} itemImages={Object.fromEntries((pos.items || []).map(i => [i.id, i.image_url]))} onSetPaymentMethod={pos.setPaymentMethod} onSetAmountTendered={pos.setAmountTendered} onSetDiscountAmount={pos.setDiscountAmount} onSetDiscountType={pos.setDiscountType} onSetTipAmount={pos.setTipAmount} onSetShowDiscounts={pos.setShowCheckoutDiscounts} onSetCustomer={pos.setCheckoutCustomer} onSetWalletData={pos.setCheckoutWalletData} onSetError={pos.setError} onSetMsg={pos.setMsg} onScanCustomer={() => {
+    return <>
+      <PosCheckoutPanel order={pos.checkoutOrder} orderId={pos.checkoutOrderId} customer={pos.checkoutCustomer} walletData={pos.checkoutWalletData} paymentMethod={pos.paymentMethod} amountTendered={pos.amountTendered} discountAmount={pos.discountAmount} discountType={pos.discountType} tipAmount={pos.tipAmount} saving={pos.saving} applyingDiscount={pos.applyingDiscount} discountsApplied={pos.checkoutDiscountsApplied} error={pos.error} msg={pos.msg} showDiscounts={pos.showCheckoutDiscounts} itemImages={Object.fromEntries((pos.items || []).map(i => [i.id, i.image_url]))} onSetPaymentMethod={pos.setPaymentMethod} onSetAmountTendered={pos.setAmountTendered} onSetDiscountAmount={pos.setDiscountAmount} onSetDiscountType={pos.setDiscountType} onSetTipAmount={pos.setTipAmount} onSetShowDiscounts={pos.setShowCheckoutDiscounts} onSetCustomer={pos.setCheckoutCustomer} onSetWalletData={pos.setCheckoutWalletData} onSetError={pos.setError} onSetMsg={pos.setMsg} onScanCustomer={() => {
       pos.setQrScanMode("customer");
       pos.startScanner();
-    }} onApplyVoucher={pos.handleApplyCheckoutVoucher} onApplyReward={pos.handleApplyCheckoutReward} onWalletPayment={pos.handleCheckoutWalletPayment} onCheckout={pos.handleCheckout} stripeEnabled={pos.stripeEnabled} offline={!pos.online} onSplitDisplayChange={setSplitDisplay} />;
+    }} customerSearchQ={pos.searchQ} customerSearchResults={pos.searchResults} onCustomerSearchChange={q => {
+      pos.setSearchQ(q);
+      pos.searchCustomersDebounced(q);
+    }} onSelectSearchedCustomer={c => {
+      pos.attachCheckoutCustomer(c).catch((err: unknown) => pos.setError(parseApiError(err, t("pos.customer_link_failed"))));
+      pos.setSearchQ("");
+      pos.setSearchResults([]);
+    }} onApplyVoucher={pos.handleApplyCheckoutVoucher} onApplyReward={pos.handleApplyCheckoutReward} onWalletPayment={pos.handleCheckoutWalletPayment} onCheckout={pos.handleCheckout} stripeEnabled={pos.stripeEnabled} offline={!pos.online} onSplitDisplayChange={setSplitDisplay} />
+      {/* Scanner must render in checkout mode too — without this the
+          "Scan Customer" button set state into a void (dead button). */}
+      <PosQrScannerModal open={pos.showQrScanner} mode={pos.qrScanMode} scannerError={pos.scannerError} onClose={pos.stopScanner} />
+    </>;
   }
 
   // ── New Order Mode ──

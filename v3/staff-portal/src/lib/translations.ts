@@ -739,6 +739,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "pos.stripe_not_configured": "Stripe is not configured",
   "pos.order_parked": "Order parked successfully",
   "pos.customer_linked": "Customer linked for checkout",
+  "pos.customer_link_failed": "Failed to link customer to this order",
   "pos.table_selected": "Table {number} selected",
   "pos.bundle_added": "{title} added",
   "pos.bundle_unavailable": "Cannot add {title}: {items} unavailable",

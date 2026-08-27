@@ -122,7 +122,9 @@ export function usePosState() {
   // Scanner callbacks
   const handleCustomerScannerCb = useCallback((customer: Customer) => {
     if (mode === "checkout") {
-      checkoutHook.loadCheckoutCustomerData(customer);
+      checkoutHook.attachCheckoutCustomer(customer).catch((err: unknown) => {
+        setError(parseApiError(err, t("pos.customer_link_failed")));
+      });
       setMsg(t("pos.customer_linked"));
     } else {
       cartHook.setSelectedCustomer(customer);
@@ -728,6 +730,7 @@ export function usePosState() {
     // Checkout (from usePosCheckout)
     checkoutOrder: checkoutHook.checkoutOrder, setCheckoutOrder: checkoutHook.setCheckoutOrder,
     checkoutCustomer: checkoutHook.checkoutCustomer, setCheckoutCustomer: checkoutHook.setCheckoutCustomer,
+    attachCheckoutCustomer: checkoutHook.attachCheckoutCustomer,
     checkoutWalletData: checkoutHook.checkoutWalletData, setCheckoutWalletData: checkoutHook.setCheckoutWalletData,
     showCheckoutDiscounts: checkoutHook.showCheckoutDiscounts, setShowCheckoutDiscounts: checkoutHook.setShowCheckoutDiscounts,
     checkoutDiscountsApplied: checkoutHook.checkoutDiscountsApplied, setCheckoutDiscountsApplied: checkoutHook.setCheckoutDiscountsApplied,

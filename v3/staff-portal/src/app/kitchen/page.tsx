@@ -195,7 +195,11 @@ function KitchenPageContent() {
     ready_for_pickup: t("kitchen.column_done"),
   };
   const counts = statusFilters.reduce((acc, s) => {
-    acc[s.value] = s.value === "all" ? orders.length : orders.filter(o => o.status === s.value).length;
+    // "All" must count what the board can actually show (kitchen statuses),
+    // not every order in the fetch window (incl. delivered/refunded).
+    acc[s.value] = s.value === "all"
+      ? orders.filter(o => ["confirmed", "preparing", "ready_for_pickup"].includes(o.status)).length
+      : orders.filter(o => o.status === s.value).length;
     return acc;
   }, {} as Record<string, number>);
   const activeOrders = filteredOrders.filter(o => o.status !== "ready_for_pickup");
