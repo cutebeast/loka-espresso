@@ -31,6 +31,10 @@ CONFIGS = [
     ("otp.bypass_code", '"000000"', "string", "all", True, True),
     ("otp.expiry_minutes", "5", "integer", "all", False, True),
     ("otp.max_send_per_hour", "5", "integer", "all", False, True),
+    # Time clock: auto-close stale open shifts so a forgotten clock-out never
+    # blocks the next clock-in (threshold hours, backdated for payroll).
+    ("timeclock.auto_clockout_enabled", "true", "boolean", "all", False, True),
+    ("timeclock.auto_clockout_hours", "16", "integer", "all", False, True),
     ("order.auto_confirm", "true", "boolean", "all", False, True),
     ("order.preparation_time_minutes", "10", "integer", "all", False, True),
     ("store.default_pickup_lead_minutes", "15", "integer", "all", False, True),

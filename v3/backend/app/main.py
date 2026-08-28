@@ -153,6 +153,42 @@ async def _sweep_stale_orders() -> None:
     except Exception:
         logger.warning("Wallet item expiry sweep failed", exc_info=True)
 
+    # Auto clock-out stale open shifts — staff who never clocked out (e.g.
+    # went home clocked in) would otherwise be permanently blocked from
+    # clocking in. The clock-out is backdated to last_event + threshold hours
+    # for payroll accuracy.
+    from app.models.staff import StaffTimeEvent
+    from app.services.platform_config import PlatformConfigService
+    from sqlalchemy import func
+
+    try:
+        async with AsyncSessionLocal() as db:
+            config = PlatformConfigService(db)
+            if await config.get_bool("timeclock.auto_clockout_enabled", default=True):
+                max_hours = await config.get_int("timeclock.auto_clockout_hours", default=16)
+                cutoff = now - timedelta(hours=max_hours)
+                # Latest event per staff member
+                latest_ids = (
+                    select(func.max(StaffTimeEvent.id))
+                    .group_by(StaffTimeEvent.staff_id)
+                    .scalar_subquery()
+                )
+                result = await db.execute(
+                    select(StaffTimeEvent).where(StaffTimeEvent.id.in_(latest_ids))
+                )
+                for ev in result.scalars().all():
+                    if ev.event_type in ("clock_in", "break_start", "break_end", "overtime_start") and ev.event_timestamp < cutoff:
+                        db.add(StaffTimeEvent(
+                            staff_id=ev.staff_id,
+                            store_id=ev.store_id,
+                            event_type="clock_out",
+                            event_timestamp=ev.event_timestamp + timedelta(hours=max_hours),
+                            notes=f"Auto clock-out — no clock-out recorded within {max_hours}h",
+                        ))
+                await db.commit()
+    except Exception:
+        logger.warning("Auto clock-out sweep failed", exc_info=True)
+
 
 async def _periodic_order_sweep() -> None:
     """Run the stale-order sweep + transactional reminders every 5 minutes."""

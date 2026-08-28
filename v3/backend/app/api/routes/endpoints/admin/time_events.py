@@ -1,6 +1,6 @@
 """Staff time event endpoints (admin + staff-facing)."""
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.core.business_time import day_start_utc, day_end_utc
+from app.services.platform_config import PlatformConfigService
 from app.api.routes.deps import CurrentAdmin, DBDependency, CurrentStaff, require_store_admin
 from app.models.staff import StaffProfile, StaffTimeEvent
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
@@ -275,10 +276,30 @@ async def staff_clock_event(
     }
     if current_state not in ALLOWED[event_type]:
         state_label = {"out": "not clocked in", "in": "already clocked in", "break": "on break"}[current_state]
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot record '{event_type}' while {state_label}",
-        )
+        # Self-heal a stale open shift: staff forgot to clock out (e.g. left
+        # yesterday still clocked in) and can never clock in again without
+        # this. Auto-close the stale shift at last_event + threshold hours
+        # (payroll-accurate, not "now"), then let the new clock-in proceed.
+        if event_type == "clock_in" and current_state in ("in", "break") and last is not None:
+            config = PlatformConfigService(db)
+            enabled = await config.get_bool("timeclock.auto_clockout_enabled", default=True)
+            max_hours = await config.get_int("timeclock.auto_clockout_hours", default=16)
+            stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=max_hours)
+            if enabled and last.event_timestamp < stale_cutoff:
+                auto_out = StaffTimeEvent(
+                    staff_id=staff.id,
+                    store_id=staff.store_id,
+                    event_type="clock_out",
+                    event_timestamp=last.event_timestamp + timedelta(hours=max_hours),
+                    notes=f"Auto clock-out — no clock-out recorded within {max_hours}h",
+                )
+                db.add(auto_out)
+                current_state = "out"
+        if current_state not in ALLOWED[event_type]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot record '{event_type}' while {state_label}",
+            )
 
     event = StaffTimeEvent(
         staff_id=staff.id,

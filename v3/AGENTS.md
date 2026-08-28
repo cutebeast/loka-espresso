@@ -2404,3 +2404,12 @@ Full crawl of staff portal + admin portal + KDS + guest-pay (the last un-audited
 
 - **Status-log double logging resolved**: `trigger_log_order_status_change` (infra/db/06_triggers.sql + live function) now skips when a row for the same transition already exists — the richer app-inserted row (reason + actor) wins. Reordered the two offenders to log-before-update: staff status PATCH and order merge. Dispatch/refund/admin paths were already correct. Purged 1,872 historical duplicate rows (kept the non-system row). Verified: every transition now logs exactly once.
 - **Admin portal mobile fixed**: the outer layout was flex-row, so the mobile header rendered as a side column ("sidebar never collapses"). `.admin-layout` now stacks vertically ≤767px; the aside is a 280px overlay behind the hamburger (nav clicks already closed it). Tables already scroll-x. Verified at 390×844: top bar, hidden-by-default sidebar, full-width content.
+
+### Round 48 — time-clock auto clock-out (2026-08-28)
+
+Tester report: some staff could clock in, others couldn't. Root cause: the time-event state machine rejected clock_in while "already clocked in" — a forgotten clock-out (went home clocked in) permanently blocked the next clock-in.
+- **Self-heal at clock-in**: a clock_in attempt against a stale open shift (> threshold) auto-inserts a clock_out (backdated to last_event + threshold for payroll accuracy, noted "Auto clock-out") and proceeds.
+- **Periodic sweep**: the 5-min sweeper (also runs at startup) auto-closes any open shift older than the threshold, same backdating.
+- Config: `timeclock.auto_clockout_enabled` (default true), `timeclock.auto_clockout_hours` (default 16) — seeded via migration c8d9e0f1a2b3 + seed_platform.py, editable in Admin → Settings.
+- Verified live: staff 99 had a real forgotten shift from 8/18 — the startup sweep auto-closed it (backdated correctly) and the next clock-in succeeded; a current (non-stale) open shift still correctly rejects a double clock-in.
+- E2E 251/251.
