@@ -29,6 +29,24 @@ function getAuthHeaders(): HeadersInit {
   return { "Content-Type": "application/json" };
 }
 
+/** Turn an error response body into a clean message — never a raw JSON blob
+ * ({"detail":"..."} or FastAPI's 422 array form). Used at every !ok throw. */
+function parseErrorText(text: string, status: number): string {
+  const fallback = text || `Request failed: ${status}`;
+  try {
+    const errJson = JSON.parse(text);
+    const detail = errJson?.detail ?? errJson?.message;
+    if (typeof detail === "string" && detail.trim()) return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail
+        .map((d: { loc?: (string | number)[]; msg?: string }) =>
+          d?.msg ? `${Array.isArray(d.loc) && d.loc.length > 1 ? d.loc[d.loc.length - 1] + ": " : ""}${d.msg}` : String(d))
+        .join("; ");
+    }
+  } catch { /* not JSON — keep the raw text */ }
+  return fallback;
+}
+
 let _refreshPromise: Promise<boolean> | null = null;
 
 export async function refreshToken(): Promise<boolean> {
@@ -118,14 +136,14 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
           throw new Error("Session expired");
         }
         const text = await retry.text();
-        throw new Error(text || `Request failed: ${retry.status}`);
+        throw new Error(parseErrorText(text, retry.status));
       } finally { clear(); }
     }
     clearSession();
     if (typeof window !== "undefined") window.location.replace("/login");
     throw new Error("Session expired");
   }
-  if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+  if (!res.ok) { const text = await res.text(); throw new Error(parseErrorText(text, res.status)); }
   if (res.status === 204) return undefined as unknown as T;
   const ct = res.headers.get("content-type");
   if (ct && ct.includes("application/json")) {
@@ -180,14 +198,14 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, timeo
           throw new Error("Session expired");
         }
         const text = await retry.text();
-        throw new Error(text || `Request failed: ${retry.status}`);
+        throw new Error(parseErrorText(text, retry.status));
       } finally { clear(); }
     }
     clearSession();
     if (typeof window !== "undefined") window.location.replace("/login");
     throw new Error("Session expired");
   }
-  if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+  if (!res.ok) { const text = await res.text(); throw new Error(parseErrorText(text, res.status)); }
   if (res.status === 204) return {} as T;
   const ct = res.headers.get("content-type");
   if (ct && ct.includes("application/json")) {
@@ -233,7 +251,7 @@ export const api = {
           throw new Error("Session expired");
         }
       }
-      if (!res.ok) { const text = await res.text(); throw new Error(text || `Upload failed: ${res.status}`); }
+      if (!res.ok) { const text = await res.text(); throw new Error(parseErrorText(text, res.status)); }
       const json = await res.json();
       return (json?.data ?? json) as T;
     } finally { clear(); }
@@ -262,7 +280,7 @@ export const api = {
           throw new Error("Session expired");
         }
       }
-      if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+      if (!res.ok) { const text = await res.text(); throw new Error(parseErrorText(text, res.status)); }
       return res;
     } finally { c1(); }
   },
