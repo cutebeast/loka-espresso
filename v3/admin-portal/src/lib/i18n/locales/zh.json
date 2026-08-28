@@ -97,5 +97,8 @@
   "reports.untracked": "未追踪",
   "reports.untracked_note": "{{amount}} 的收入（{{count}} 个商品）没有配方/食材成本——不计入成本与毛利。",
   "reports.margin_daily": "每日明细",
-  "reports.margin_date": "日期"
+  "reports.margin_date": "日期",
+  "loyalty_tiers_new.no_expiry_hint": "留空表示不过期",
+  "loyalty_tiers_new.downgrade_hint": "续期不达标时降级到的等级",
+  "admin.floatingHelp.title": "查看本页指南"
 }

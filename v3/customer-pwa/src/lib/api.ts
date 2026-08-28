@@ -63,6 +63,13 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh')) {
+      // "Authentication required" = no credentials were presented at all
+      // (anonymous guest) — a refresh call is guaranteed to fail the same
+      // way, so skip it (kills the pointless 422 on every guest boot).
+      const detail = (error.response?.data as { detail?: string } | undefined)?.detail;
+      if (detail === 'Authentication required') {
+        return Promise.reject(error);
+      }
       originalRequest._retry = true;
       let tokens: { access_token?: string; refresh_token?: string } | undefined;
       let currentPromise: Promise<{ access_token?: string; refresh_token?: string } | undefined>;

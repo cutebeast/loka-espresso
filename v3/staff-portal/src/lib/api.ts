@@ -132,7 +132,22 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   const res = await makeRequest();
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `Request failed: ${res.status}`);
+    // Surface a clean message, not a raw JSON blob: {"detail":"..."} or
+    // FastAPI's 422 array form {"detail":[{"loc":..,"msg":".."}]}.
+    let message = text || `Request failed: ${res.status}`;
+    try {
+      const errJson = JSON.parse(text);
+      const detail = errJson?.detail ?? errJson?.message;
+      if (typeof detail === "string" && detail.trim()) {
+        message = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        message = detail
+          .map((d: { loc?: (string | number)[]; msg?: string }) =>
+            d?.msg ? `${Array.isArray(d.loc) && d.loc.length > 1 ? d.loc[d.loc.length - 1] + ": " : ""}${d.msg}` : String(d))
+          .join("; ");
+      }
+    } catch { /* not JSON — keep the raw text */ }
+    throw new Error(message);
   }
   if (res.status === 204) return {} as T;
   const contentType = res.headers.get("content-type");

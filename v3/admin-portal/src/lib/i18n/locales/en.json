@@ -205,5 +205,8 @@
   "reports.untracked": "untracked",
   "reports.untracked_note": "{{amount}} revenue across {{count}} item(s) has no recipe/ingredient cost — excluded from COGS & margin.",
   "reports.margin_daily": "Daily Breakdown",
-  "reports.margin_date": "Date"
+  "reports.margin_date": "Date",
+  "loyalty_tiers_new.no_expiry_hint": "Leave empty for no expiry",
+  "loyalty_tiers_new.downgrade_hint": "Tier to downgrade to if renewal not met",
+  "admin.floatingHelp.title": "View guide for this page"
 }
