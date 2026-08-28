@@ -2399,3 +2399,8 @@ Full crawl of staff portal + admin portal + KDS + guest-pay (the last un-audited
 - **LOW batch**: order-queue subtitle no longer counts refunded/disputed; KDS "All" chip counts only kitchen-relevant statuses; staff wallet PIN placeholder corrected to 6-digit (DB overlay); payment-gateway subtitle mentions eGHL (DB overlay); admin-i18n "Status 2/Date 2/Reason 2/Amount 2" auto-translate artifacts fixed in DB.
 - Known/deferred: order status transitions double-log (DB trigger trg_orders_status_log + manual inserts in staff endpoints — cosmetic, data correct); admin portal not mobile-responsive (desktop tool).
 - Verified working by the audit: guest-pay full cycle, KDS advance chain, POS cash + change + drawer Z-report, wallet top-up with PIN, all 76 admin routes render, Profit & Margin loads with real numbers.
+
+### Round 47b — deferred items processed (2026-08-28)
+
+- **Status-log double logging resolved**: `trigger_log_order_status_change` (infra/db/06_triggers.sql + live function) now skips when a row for the same transition already exists — the richer app-inserted row (reason + actor) wins. Reordered the two offenders to log-before-update: staff status PATCH and order merge. Dispatch/refund/admin paths were already correct. Purged 1,872 historical duplicate rows (kept the non-system row). Verified: every transition now logs exactly once.
+- **Admin portal mobile fixed**: the outer layout was flex-row, so the mobile header rendered as a side column ("sidebar never collapses"). `.admin-layout` now stacks vertically ≤767px; the aside is a 280px overlay behind the hamburger (nav clicks already closed it). Tables already scroll-x. Verified at 390×844: top bar, hidden-by-default sidebar, full-width content.

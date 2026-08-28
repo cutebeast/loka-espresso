@@ -103,6 +103,15 @@ DECLARE
     _actor_type VARCHAR(20);
 BEGIN
     IF OLD.status IS DISTINCT FROM NEW.status THEN
+        -- Skip when the application already logged this transition itself
+        -- (staff endpoints insert richer rows with reason + actor) — without
+        -- this every manual status change was logged twice.
+        IF EXISTS (
+            SELECT 1 FROM order_status_log
+            WHERE order_id = NEW.id AND from_status = OLD.status AND to_status = NEW.status
+        ) THEN
+            RETURN NEW;
+        END IF;
         _actor_type := COALESCE(current_setting('app.current_actor_type', true), 'system');
         IF _actor_type NOT IN ('customer','staff','system','webhook') THEN
             _actor_type := 'system';

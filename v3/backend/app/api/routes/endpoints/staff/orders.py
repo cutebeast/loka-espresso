@@ -1656,15 +1656,9 @@ async def merge_staff_order(
             snap.updated_at = datetime.now(timezone.utc)
 
     # Cancel the (now empty) source order — no reverse_order_effects: seats
-    # and loyalty stay attached to the moved line items.
+    # and loyalty stay attached to the moved line items. Log BEFORE the status
+    # change so the status-log trigger dedupes instead of double-logging.
     source_status_before = source.status
-    source.status = "cancelled_by_merchant"
-    source.cancellation_reason = f"Merged into order {target.order_number}"
-    source.cancelled_by = "merchant"
-    source.cancelled_at = datetime.now(timezone.utc)
-    source.updated_at = datetime.now(timezone.utc)
-    cancelled_payment_ids = await cancel_pending_order_payments(db, source.id)
-
     db.add(OrderStatusLog(
         order_id=source.id,
         from_status=source_status_before,
@@ -1681,6 +1675,14 @@ async def merge_staff_order(
         actor_type="staff",
         actor_id=staff.id,
     ))
+    await db.flush()
+    source.status = "cancelled_by_merchant"
+    source.cancellation_reason = f"Merged into order {target.order_number}"
+    source.cancelled_by = "merchant"
+    source.cancelled_at = datetime.now(timezone.utc)
+    source.updated_at = datetime.now(timezone.utc)
+    cancelled_payment_ids = await cancel_pending_order_payments(db, source.id)
+
     await db.commit()
 
     return APIResponse(data={
@@ -1986,11 +1988,9 @@ async def staff_update_order_status(
         )
 
     from_status = order.status
-    order.status = status
-    if status == "delivered":
-        order.completed_at = datetime.now(timezone.utc)
-    elif status == "preparing":
-        order.prepared_at = datetime.now(timezone.utc)
+    # Insert the status log BEFORE the status update and flush it — the
+    # trg_orders_status_log trigger dedupes against existing rows for the
+    # same transition, so a later insert would log twice.
     db.add(OrderStatusLog(
         order_id=order.id,
         from_status=from_status,
@@ -1999,6 +1999,12 @@ async def staff_update_order_status(
         actor_type="staff",
         actor_id=staff.id,
     ))
+    await db.flush()
+    order.status = status
+    if status == "delivered":
+        order.completed_at = datetime.now(timezone.utc)
+    elif status == "preparing":
+        order.prepared_at = datetime.now(timezone.utc)
     await db.commit()
     # Transactional notification (savepoint-isolated; never blocks the status change).
     from app.services.transactional_notifications import notify_order_status

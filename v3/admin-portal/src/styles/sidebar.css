@@ -147,6 +147,11 @@
 
 /* ── Responsive ── */
 @media (max-width: 767px) {
+  /* Stack the mobile top bar ABOVE the content — a row layout here would
+     render the mobile header as a side column (the "sidebar never
+     collapses" bug). */
+  .admin-layout { flex-direction: column; }
+  .admin-layout > main { height: calc(100vh - 49px); }
   .sb-aside {
     position: fixed; top: 0; left: 0; bottom: 0; z-index: 150;
     width: 280px; box-shadow: var(--shadow-lg);
