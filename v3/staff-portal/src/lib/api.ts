@@ -448,6 +448,7 @@ export interface OrderItem {
   modifiers_label?: string;
   menu_item_id?: number;
   item_name?: string;
+  image_url?: string | null;
   unit_price?: number;
 }
 

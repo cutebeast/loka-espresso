@@ -19,6 +19,7 @@ interface PosCheckoutLineItem {
   quantity: number;
   unit_price?: number;
   price?: number;
+  image_url?: string | null;
 }
 interface PosCheckoutOrder {
   order_number: string;
@@ -304,15 +305,15 @@ export default function PosCheckoutPanel({
                 alignItems: "center",
                 gap: 8
               }}>
-                      {li.menu_item_id && itemImages[Number(li.menu_item_id)] ?
+                      {(() => { const thumb = li.image_url || (li.menu_item_id ? itemImages[Number(li.menu_item_id)] : null); return thumb ?
                 /* plain img: /uploads paths are served by the backend, not next/image */
-                <img src={itemImages[Number(li.menu_item_id)]} alt="" style={{
+                <img src={thumb} alt="" style={{
                   width: 36,
                   height: 36,
                   borderRadius: 8,
                   objectFit: "cover",
                   flexShrink: 0
-                }} /> : null}
+                }} /> : null; })()}
                       <span>{li.item_name || li.name}{li.modifiers_label ? <span style={{
                   fontSize: 12,
                   color: "var(--color-text-muted)",
