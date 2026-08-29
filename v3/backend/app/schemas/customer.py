@@ -180,6 +180,17 @@ class SetTierRequest(BaseSchema):
     reason: str = "Admin override"
 
 
+class AdminWorkshopBookingRequest(BaseSchema):
+    """Admin books a workshop/class seat on behalf of a customer (VIPs promised
+    by management, walk-in class sales, phone-assisted bookings)."""
+    store_id: int = Field(..., gt=0)
+    menu_item_id: int = Field(..., gt=0)
+    class_session_id: int = Field(..., gt=0)
+    quantity: int = Field(1, ge=1, le=20)
+    variant_id: int | None = Field(None, gt=0)
+    payment: Literal["complimentary", "cash"] = "complimentary"
+
+
 class AvatarUpdateRequest(BaseSchema):
     """Request to update the customer's avatar image URL."""
     avatar_url: str = Field(..., max_length=500)

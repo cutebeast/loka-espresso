@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.routes.deps import CurrentAdmin, DBDependency, require_hq_write_admin
+from app.api.routes.deps import CurrentAdmin, DBDependency, require_hq_write_admin, require_store_admin
 from app.models.customer import Customer, CustomerAddress, CustomerConsent, CustomerDevice
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.models.order import Order
@@ -17,8 +17,10 @@ from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.platform import AuditLog
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.services.platform_config import PlatformConfigService
 from app.schemas.customer import (
     AdjustPointsRequest,
+    AdminWorkshopBookingRequest,
     AwardVoucherRequest,
     CustomerCreate,
     CustomerUpdate,
@@ -597,3 +599,152 @@ async def customer_wallet_items(admin: CurrentAdmin, db: DBDependency, customer_
         wallet_balance = float(balance_result.scalar() or 0)
 
     return APIResponse(data={"balance": wallet_balance, "rewards": rewards, "vouchers": vouchers})
+
+
+@router.post("/{customer_id}/workshop-bookings", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def book_workshop_for_customer(
+    admin: CurrentAdmin,
+    db: DBDependency,
+    customer_id: int,
+    data: AdminWorkshopBookingRequest,
+):
+    """Book a workshop/class seat on behalf of a customer (management-promised
+    VIP bookings, phone-assisted counter bookings). Creates a real order with
+    the session line item, consumes the seat (shared session rule), and
+    optionally records a cash payment; complimentary bookings record the full
+    value but move no money (net revenue stays 0 — no Payment row)."""
+    from uuid import uuid4
+
+    from app.core.money import money_round, to_decimal
+    from app.models.class_session import ClassSession
+    from app.models.menu import MenuCategory, MenuItem, MenuVariant
+    from app.models.order import Order, OrderLineItem
+    from app.models.payment import Payment
+    from app.models.store import StoreConfiguration
+    from app.services.class_sessions import ClassSessionError, consume_session_seats
+    from app.services.transactional_notifications import notify_event
+
+    await require_store_admin(db, admin, data.store_id)
+
+    cust_r = await db.execute(
+        select(Customer).where(Customer.id == customer_id, Customer.deleted_at.is_(None))
+    )
+    customer = cust_r.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(404, "Customer not found")
+    if customer.phone_number == "+0000000000":
+        raise HTTPException(400, "The walk-in profile cannot hold class bookings — use a real customer")
+
+    item_r = await db.execute(
+        select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.deleted_at.is_(None))
+    )
+    item = item_r.scalar_one_or_none()
+    if item is None:
+        raise HTTPException(404, "Menu item not found")
+    cat_r = await db.execute(select(MenuCategory.id).where(MenuCategory.slug == "experiences"))
+    exp_cat_id = cat_r.scalar_one_or_none()
+    if item.category_id != exp_cat_id:
+        raise HTTPException(400, "This item is not a workshop — book workshops via Events & Classes")
+
+    # Unit price = base + optional variant delta (mirrors the customer path).
+    unit_price = to_decimal(item.base_price)
+    if data.variant_id is not None:
+        var_r = await db.execute(
+            select(MenuVariant).where(MenuVariant.id == data.variant_id, MenuVariant.parent_item_id == item.id)
+        )
+        variant = var_r.scalar_one_or_none()
+        if variant is None:
+            raise HTTPException(400, "Variant does not belong to this class")
+        unit_price += to_decimal(variant.price_adjustment or 0)
+
+    # Consume the seat (locked; validates active/match/not-past/capacity).
+    try:
+        await consume_session_seats(
+            db, menu_item_id=item.id, class_session_id=data.class_session_id, quantity=data.quantity
+        )
+    except ClassSessionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+    store_r = await db.execute(select(Store).where(Store.id == data.store_id))
+    store = store_r.scalar_one_or_none()
+    if store is None:
+        raise HTTPException(404, "Store not found")
+    cfg_r = await db.execute(
+        select(StoreConfiguration).where(
+            StoreConfiguration.store_id == data.store_id,
+            StoreConfiguration.config_key.in_(["order.service_charge", "order.tax_rate"]),
+        )
+    )
+    config_map = {c.config_key: c.config_value for c in cfg_r.scalars().all()}
+    service_charge = to_decimal(config_map.get("order.service_charge", 0))
+    tax_rate = to_decimal(config_map.get("order.tax_rate", 0))
+
+    subtotal = money_round(unit_price * data.quantity, precision, rounding_mode)
+    tax_amount = money_round(subtotal * tax_rate, precision, rounding_mode)
+    total = money_round(subtotal + service_charge + tax_amount, precision, rounding_mode)
+
+    order_number = f"POS-{datetime.now(timezone.utc).strftime('%m%d')}-{uuid4().hex[:8].upper()}"
+    order = Order(
+        customer_id=customer_id,
+        store_id=data.store_id,
+        order_number=order_number,
+        order_type="takeaway",
+        order_channel="pos",  # outlet/back-office assisted booking
+        fulfillment_type="counter_pickup",
+        status="confirmed",
+        payment_status="captured",  # paid/comped — seats are secured
+        payment_flow="prepaid",
+        item_count=data.quantity,
+        items_subtotal=subtotal,
+        service_charge=service_charge,
+        tax_amount=tax_amount,
+        discount_amount=0,
+        total_amount=total,
+        total_amount_currency=store.currency_code,
+    )
+    db.add(order)
+    await db.flush()
+
+    db.add(OrderLineItem(
+        order_id=order.id,
+        menu_item_id=item.id,
+        menu_variant_id=data.variant_id,
+        class_session_id=data.class_session_id,
+        quantity=data.quantity,
+        unit_price=unit_price,
+        line_total=subtotal,
+        item_snapshot={"item_name": item.item_name, "image_url": item.image_url},
+    ))
+
+    if data.payment == "cash" and total > 0:
+        db.add(Payment(
+            order_id=order.id,
+            provider="cash",
+            payment_method_type="cash",
+            idempotency_key=f"admin-workshop-{order.id}-cash-{total:.2f}",
+            amount=total,
+            currency_code=store.currency_code,
+            status="captured",
+            captured_amount=total,
+            net_amount=total,
+        ))
+
+    await db.commit()
+
+    # Tell the customer their seat is booked (savepoint-isolated; never blocks).
+    await notify_event(
+        db, "order_confirmed", customer_id,
+        context={"order_number": order_number, "store_name": store.store_name},
+        entity_type="order", entity_id=order.id,
+    )
+
+    return APIResponse(data={
+        "order_id": order.id,
+        "order_number": order_number,
+        "total": float(total),
+        "payment": data.payment,
+        "message": "Workshop seat booked" if data.payment == "cash" else "Workshop seat booked (complimentary)",
+    }, status_code=201)

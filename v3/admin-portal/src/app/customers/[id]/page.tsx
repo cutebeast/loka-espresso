@@ -100,6 +100,11 @@ interface ActionData {
   voucher_id?: number | string;
   tier?: string;
   amount?: number | string;
+  store_id?: number | string;
+  menu_item_id?: number | string;
+  class_session_id?: number | string;
+  quantity?: number;
+  payment?: string;
 }
 interface ActionResponse {
   message?: string;
@@ -149,6 +154,13 @@ export default function CustomerDetailPage() {
   const [vouchers, setVouchers] = useState<VoucherOption[]>([]);
   const [selVoucher, setSelVoucher] = useState("");
   const [voucherReason, setVoucherReason] = useState("");
+  const [wsItems, setWsItems] = useState<any[]>([]);
+  const [selWorkshop, setSelWorkshop] = useState("");
+  const [selSession, setSelSession] = useState("");
+  const [wsQty, setWsQty] = useState(1);
+  const [wsPayment, setWsPayment] = useState("complimentary");
+  const [stores, setStores] = useState<any[]>([]);
+  const [selStore, setSelStore] = useState("");
   const [actionLoading, setActionLoading] = useState("");
   const [orders, setOrders] = useState<PaginatedResponse<OrderItem>>(emptyPaginated());
   const [loyalty, setLoyalty] = useState<PaginatedResponse<LoyaltyEventItem>>(emptyPaginated());
@@ -181,6 +193,13 @@ export default function CustomerDetailPage() {
         items: VoucherOption[];
       }).items || []);
     }).catch(e => { console.error('vouchers preload:', e); setError(e.message || t("admin.errors.loadFailed")); });
+    // Workshop booking preload: workshop items (with sessions) + stores.
+    api.get<any[]>("/menu/workshops").then(d => {
+      if (!cancelled) setWsItems(Array.isArray(d) ? d : []);
+    }).catch(() => {});
+    api.get<any[]>("/stores").then(d => {
+      if (!cancelled) setStores(Array.isArray(d) ? d : ((d as any)?.items || []));
+    }).catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -256,6 +275,14 @@ export default function CustomerDetailPage() {
         });
       } else if (action === "tier") {
         res = await api.post<ActionResponse>(`/admin/customers/${id}/set-tier`, data);
+      } else if (action === "workshop") {
+        res = await api.post<ActionResponse>(`/admin/customers/${id}/workshop-bookings`, {
+          store_id: Number(data.store_id),
+          menu_item_id: Number(data.menu_item_id),
+          class_session_id: Number(data.class_session_id),
+          quantity: Number(data.quantity),
+          payment: data.payment,
+        });
       } else if (action === "approve") {
         res = await api.post<ActionResponse>(`/admin/customers/${id}/approve-profile`, {});
         load();
@@ -669,6 +696,94 @@ export default function CustomerDetailPage() {
             tier: tierVal,
             reason: tierReason
           })} disabled={!!actionLoading} className="btn btn-sm btn-primary">{actionLoading === "tier" ? "..." : t("common.set")}</button>
+            </div>
+          </div>
+
+          <div className="card" style={{
+        padding: 16
+      }}>
+            <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12
+        }}><h4 style={{
+            margin: 0
+          }}>{t("customers_[id].book_workshop")}</h4><span style={{
+            fontSize: 13,
+            color: "var(--color-text-muted)"
+          }}>{t("customers_[id].book_workshop_hint")}</span></div>
+            <div style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "end",
+          flexWrap: "wrap"
+        }}>
+              <div style={{
+            flex: 1,
+            minWidth: 130
+          }}><label htmlFor="cust-mgmt-ws-store" style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              display: "block",
+              marginBottom: 4
+            }}>{t("customers_[id].store")}</label><select id="cust-mgmt-ws-store" value={selStore} onChange={e => setSelStore(e.target.value)} style={{
+              width: "100%"
+            }}><option value="">{t("customers_[id].select")}</option>{stores.map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+              <div style={{
+            flex: 1.5,
+            minWidth: 150
+          }}><label htmlFor="cust-mgmt-ws-item" style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              display: "block",
+              marginBottom: 4
+            }}>{t("customers_[id].workshop")}</label><select id="cust-mgmt-ws-item" value={selWorkshop} onChange={e => {
+            setSelWorkshop(e.target.value);
+            setSelSession("");
+          }} style={{
+              width: "100%"
+            }}><option value="">{t("customers_[id].select")}</option>{wsItems.map((w: any) => <option key={w.id} value={w.id}>{w.item_name}</option>)}</select></div>
+              <div style={{
+            flex: 1.5,
+            minWidth: 150
+          }}><label htmlFor="cust-mgmt-ws-session" style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              display: "block",
+              marginBottom: 4
+            }}>{t("customers_[id].session")}</label><select id="cust-mgmt-ws-session" value={selSession} onChange={e => setSelSession(e.target.value)} style={{
+              width: "100%"
+            }}><option value="">{t("customers_[id].select")}</option>{(wsItems.find((w: any) => String(w.id) === String(selWorkshop))?.sessions || []).map((s: any) => <option key={s.id} value={s.id}>{s.session_date} {s.start_time} · {s.remaining}{t("customers_[id].seats_left")}</option>)}</select></div>
+              <div style={{
+            flex: 0.5,
+            minWidth: 70
+          }}><label htmlFor="cust-mgmt-ws-qty" style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              display: "block",
+              marginBottom: 4
+            }}>{t("customers_[id].quantity")}</label><input id="cust-mgmt-ws-qty" type="number" min={1} max={20} value={wsQty} onChange={e => setWsQty(parseInt(e.target.value || "1", 10))} style={{
+              width: "100%"
+            }} /></div>
+              <div style={{
+            flex: 1,
+            minWidth: 130
+          }}><label htmlFor="cust-mgmt-ws-payment" style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              display: "block",
+              marginBottom: 4
+            }}>{t("customers_[id].payment")}</label><select id="cust-mgmt-ws-payment" value={wsPayment} onChange={e => setWsPayment(e.target.value)} style={{
+              width: "100%"
+            }}><option value="complimentary">{t("customers_[id].complimentary")}</option><option value="cash">{t("customers_[id].cash")}</option></select></div>
+              <button type="button" onClick={() => doAction("workshop", {
+            store_id: selStore,
+            menu_item_id: selWorkshop,
+            class_session_id: selSession,
+            quantity: wsQty,
+            payment: wsPayment
+          })} disabled={!!actionLoading || !selStore || !selWorkshop || !selSession} className="btn btn-sm btn-primary">{actionLoading === "workshop" ? "..." : t("common.book")}</button>
             </div>
           </div>
         </div>}
