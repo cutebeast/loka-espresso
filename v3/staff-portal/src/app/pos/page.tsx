@@ -358,6 +358,12 @@ function PosPageContent() {
           <button className={`btn btn-sm ${pos.activeCat === null && !pos.menuSearch ? "btn-primary" : "btn-ghost"}`} onClick={() => { pos.setActiveCat(null); pos.setMenuSearch(""); }}>
             {t("pos.all")} ({pos.items.length})
           </button>
+          {/* Bundles carry bundle_category_id, not category_id — without a
+              dedicated tab they only show under All and vanish under any
+              category. The Combos tab uses -1, which no category id can be. */}
+          {pos.bundleProducts.length > 0 && <button className={`btn btn-sm ${pos.activeCat === -1 ? "btn-primary" : "btn-ghost"}`} onClick={() => { pos.setActiveCat(-1); pos.setMenuSearch(""); }}>
+            {t("pos.combo")} ({pos.bundleProducts.length})
+          </button>}
           {pos.categories.filter(c => pos.items.some(i => i.category_id === c.id)).map(c => {
             const count = pos.items.filter(i => i.category_id === c.id).length;
             return <button key={c.id} className={`btn btn-sm ${pos.activeCat === c.id ? "btn-primary" : "btn-ghost"}`} onClick={() => { pos.setActiveCat(c.id); pos.setMenuSearch(""); }}>
@@ -405,8 +411,10 @@ function PosPageContent() {
           gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
           gap: 12
         }}>
-            {/* Bundle products shown inline in the grid, like regular menu items */}
-            {pos.bundleProducts.filter(bp => pos.activeCat === null || bp.category_id === pos.activeCat).map(bp => <button key={`bp-${bp.id}`} onClick={() => pos.addBundleToCart(bp)} className="card" style={{
+            {/* Bundle products shown inline in the grid, like regular menu items.
+                Show under All (activeCat null) and the Combos tab (activeCat -1);
+                bundle category_id is null so a category-tab match never applies. */}
+            {pos.bundleProducts.filter(() => pos.activeCat === null || pos.activeCat === -1).map(bp => <button key={`bp-${bp.id}`} onClick={() => pos.addBundleToCart(bp)} className="card" style={{
             padding: 0,
             textAlign: "left",
             cursor: "pointer",

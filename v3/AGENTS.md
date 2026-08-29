@@ -2413,3 +2413,12 @@ Tester report: some staff could clock in, others couldn't. Root cause: the time-
 - Config: `timeclock.auto_clockout_enabled` (default true), `timeclock.auto_clockout_hours` (default 16) — seeded via migration c8d9e0f1a2b3 + seed_platform.py, editable in Admin → Settings.
 - Verified live: staff 99 had a real forgotten shift from 8/18 — the startup sweep auto-closed it (backdated correctly) and the next clock-in succeeded; a current (non-stale) open shift still correctly rejects a double clock-in.
 - E2E 251/251.
+
+### Round 49 — POS bundle ordering dead end (2026-08-30)
+
+Owner report: can't place bundle orders on the POS. Root cause: `allow_duplicates` (a pick_x concept) was `true` on multi_course bundles in the DB — the POS BundlePickerModal no-op'd card clicks (`if (allowDuplicates) return`) and its qty steppers capped at `pick_count=null → 0`, so the bundle could never be completed and Add to Cart stayed disabled forever.
+- Modal: `allowDuplicates` now scoped to non-multi_course (`!isMultiCourse && flag`); broken group-header copy ("Pick 1 up to 1)") fixed.
+- POS menu: bundles only rendered under All (their `category_id` is null — bundles use bundle_category_id) → new **Combos tab** (sentinel activeCat -1) when bundles exist.
+- Data: 3 multi_course bundles had allow_duplicates=true → set false (the admin form already normalizes this on save).
+- PWA/kiosk were never affected: kiosk scopes the flag per mechanic; the PWA routes multi_course to MultiCourseBundleSheet which ignores the flag.
+- Verified live: Combos tab → Breakfast Duo → bread + 2 drinks → Add to Cart enabled → cart at RM 39.00. E2E 251/251.

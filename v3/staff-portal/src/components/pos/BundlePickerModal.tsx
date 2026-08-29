@@ -33,9 +33,12 @@ export default function BundlePickerModal({
     t
   } = useTranslation();
   const isMultiCourse = bundle?.bundle_type === "multi_course";
+  // allow_duplicates is a pick_x concept — a multi_course bundle with the flag
+  // set (the admin form default) used to break selection entirely: card clicks
+  // no-op'd and the qty steppers capped at pick_count=null → 0.
+  const allowDuplicates = !isMultiCourse && (bundle?.allow_duplicates ?? false);
   const groups = bundle?.groups || [];
   const pickCount = bundle?.pick_count ?? 0;
-  const allowDuplicates = bundle?.allow_duplicates ?? false;
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentGroupIdx, setCurrentGroupIdx] = useState(0);
@@ -279,7 +282,7 @@ export default function BundlePickerModal({
               fontSize: 11,
               color: "var(--color-text-muted)",
               margin: "2px 0 0"
-            }}>{t("pos.pick")}{groups[currentGroupIdx].pick_count}{t("pos.up_to")}{groups[currentGroupIdx].max_pick})
+            }}>{t("pos.pick")} {groups[currentGroupIdx].pick_count}{groups[currentGroupIdx].max_pick !== groups[currentGroupIdx].pick_count ? ` (${t("pos.up_to")} ${groups[currentGroupIdx].max_pick})` : ""}
                 </p>
               </div>
               <div style={{
