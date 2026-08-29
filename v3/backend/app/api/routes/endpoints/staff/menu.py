@@ -1,7 +1,7 @@
 """Staff menu and branding read endpoints."""
 
 from fastapi import APIRouter, Query
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentStaff, DBDependency
@@ -74,11 +74,11 @@ async def staff_list_menu_categories(
 ):
     """List menu categories for the staff member's store.
 
-    Includes the experiences category: workshops are sellable at POS, but the
-    order endpoint enforces a session + attached customer for them."""
+    Excludes the Experiences & Workshops category — workshops are PWA-only
+    (booked by registered customers on the mobile app, never sold at POS)."""
     result = await db.execute(
         select(MenuCategory)
-        .where(MenuCategory.deleted_at.is_(None))
+        .where(MenuCategory.deleted_at.is_(None), MenuCategory.slug != "experiences")
         .order_by(MenuCategory.display_order)
         .limit(per_page)
     )
@@ -93,10 +93,21 @@ async def staff_list_menu_items(
     per_page: int = Query(500, ge=1, le=1000),
     category_id: int | None = Query(None),
 ):
-    """List menu items for the staff member's store (full POS shape)."""
+    """List menu items for the staff member's store (full POS shape).
+
+    Excludes Experiences & Workshops items (PWA-only); uncategorized items
+    (category_id NULL) are kept."""
+    exp_subq = select(MenuCategory.id).where(MenuCategory.slug == "experiences")
     stmt = (
         select(MenuItem)
-        .where(MenuItem.deleted_at.is_(None), MenuItem.is_available.is_(True))
+        .where(
+            MenuItem.deleted_at.is_(None),
+            MenuItem.is_available.is_(True),
+            or_(
+                MenuItem.category_id.is_(None),
+                MenuItem.category_id.notin_(exp_subq),
+            ),
+        )
         .order_by(MenuItem.category_id, MenuItem.display_order)
         .limit(per_page)
     )

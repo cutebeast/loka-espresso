@@ -159,32 +159,17 @@ async def staff_pos_create_order(
     if not line_items_data:
         raise HTTPException(status_code=400, detail="At least one line item required")
 
-    # Workshops/classes (experiences category) at POS: every workshop line
-    # needs a session AND a real customer attached (phone is the identity
-    # anchor) — the anonymous walk-in profile can't hold class bookings.
+    # Workshops/classes (experiences category) are PWA-ONLY — booked by
+    # registered customers on the mobile app, never at POS or kiosk.
     exp_cat_r = await db.execute(select(MenuCategory.id).where(MenuCategory.slug == "experiences"))
     exp_cat_id = exp_cat_r.scalar_one_or_none()
-    workshop_item_ids: set[int] = set()
     if exp_cat_id is not None:
         li_ids = {li.menu_item_id for li in line_items_data}
         wr = await db.execute(
             select(MenuItem.id).where(MenuItem.id.in_(li_ids), MenuItem.category_id == exp_cat_id)
         )
-        workshop_item_ids = set(wr.scalars().all())
-    has_workshop = bool(workshop_item_ids)
-
-    if has_workshop:
-        if not customer_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Customer phone number is required for workshop bookings — attach a customer first",
-            )
-        for li in line_items_data:
-            if li.menu_item_id in workshop_item_ids and not li.class_session_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Please select a session for the workshop item",
-                )
+        if wr.scalars().first() is not None:
+            raise HTTPException(status_code=400, detail="Workshops are booked on the mobile app only")
 
     # Validate customer if provided
     if customer_id:
@@ -252,25 +237,10 @@ async def staff_pos_create_order(
             modifier_total=modifier_total,
             selected_modifiers={"modifier_ids": modifier_ids},
             special_instructions=special,
-            bundle_product_id=li.bundle_product_id,
-            bundle_component_id=li.bundle_component_id,
-            class_session_id=li.class_session_id,
-        ))
-
-    # Consume workshop session seats (locked; whole order fails when full)
-    if has_workshop:
-        from app.services.class_sessions import ClassSessionError, consume_session_seats
-        for li in line_items_data:
-            if li.menu_item_id in workshop_item_ids and li.class_session_id:
-                try:
-                    await consume_session_seats(
-                        db,
-                        menu_item_id=li.menu_item_id,
-                        class_session_id=li.class_session_id,
-                        quantity=max(1, li.quantity),
-                    )
-                except ClassSessionError as e:
-                    raise HTTPException(status_code=e.status_code, detail=e.detail)
+             bundle_product_id=li.bundle_product_id,
+             bundle_component_id=li.bundle_component_id,
+             class_session_id=li.class_session_id,
+         ))
 
     # Compute fees from store config
     config_r = await db.execute(

@@ -14,7 +14,7 @@ View and manage **table reservations** (dine-in bookings) for your store: confir
 | Where customers book | Customer app → Reservations | Customer app → Workshops / Events |
 | Where staff manage them | **This page** | Sold at the **POS** (Experiences category); sessions and event content are set up in the **Admin Portal** |
 
-Workshop bookings do **not** appear on this page. A paid workshop seat comes through as a POS order tied to a session. To sell a seat in-store, use the POS — see [POS Checkout](pos-checkout.md#selling-a-workshop--experience-seat). Session dates and capacity are managed by an admin.
+Workshop bookings do **not** appear on this page. A paid workshop seat comes through as a customer **order** (booked in the PWA Workshops page — workshops are PWA-only, not sold at the POS). Session dates and capacity are managed by an admin.
 
 ## Where bookings come from
 
@@ -56,8 +56,7 @@ Customers book tables in the customer app (Reservations → pick store, date, ti
 
 ## Workshop and event questions from guests
 
-- Selling a workshop seat in-store: use the POS (Experiences category), attach the customer's phone number, and pick a session — see [POS Checkout](pos-checkout.md#selling-a-workshop--experience-seat).
-- A guest's paid workshop booking shows up as an **order**, not as a reservation — check the orders list if they ask about it.
+- A customer's paid workshop booking (made in the PWA Workshops page) shows up as an **order**, not as a reservation — check the orders list if they ask about it.
 - Event RSVPs (free or invite-only gatherings) are managed in the Admin Portal under content/events; there is no staff-portal events page.
 
 ## Seat a party

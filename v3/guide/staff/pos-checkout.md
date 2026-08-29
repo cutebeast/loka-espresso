@@ -4,7 +4,7 @@
 `/pos`
 
 ## Purpose
-Create dine-in and takeaway orders, sell workshop/experience seats, take payments, and send orders to the kitchen.
+Create dine-in and takeaway orders, sell combo bundles, take payments, and send orders to the kitchen. **Workshops/experiences are PWA-only** — customers book their own seats in the app (they are not sold at the POS).
 
 ## Order types
 
@@ -36,7 +36,7 @@ This means food preparation never waits for payment.
 8. Add an order note or tick the **BYOT** (bring-your-own-tumbler) eco option if applicable.
 9. Tap **Send to Kitchen**.
 
-## Attach a customer (optional — except workshops)
+## Attach a customer (optional)
 
 Attaching a customer links the order to their loyalty account so they earn points and can pay with wallet, vouchers, and rewards.
 
@@ -46,16 +46,9 @@ Attaching a customer links the order to their loyalty account so they earn point
 
 Walk-in guests are fine for normal menu orders — no phone needed.
 
-## Selling a workshop / experience seat
+## Workshops / experiences (PWA-only)
 
-Workshop items (e.g. the Coffee Omakase Experience) live in the **Experiences** category and sell seats to dated sessions.
-
-1. Attach a customer **first** — a phone number is **required** for workshop bookings. The customer search box is highlighted with a warning while a workshop line is in the cart without a customer.
-2. Tap the workshop item. A session drawer opens listing upcoming sessions with date, start time, location, and seats left. Full sessions are disabled.
-3. Pick a session. The item enters the cart linked to that session.
-4. Send the order and take payment as usual. Seats are reserved when the order is sent; if the session fills up before you send, the whole order is rejected — pick another session.
-
-If you try to send a workshop order without a customer attached, the POS blocks it with "Customer phone number is required for workshop bookings".
+Workshop items (e.g. the Coffee Omakase Experience) are **not sold at the POS** — the Experiences category does not appear in the POS menu. Customers book their own seats on the mobile app (Workshops page), where the session and payment flow lives. If a customer asks, direct them to the app.
 
 ## Park / recall an order
 

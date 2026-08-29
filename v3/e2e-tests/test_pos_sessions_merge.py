@@ -12,6 +12,16 @@ def _money(v) -> float:
     return round(float(v), 2)
 
 
+async def _register_customer(client: httpx.AsyncClient, base_url: str) -> dict:
+    r = await client.post(f"{base_url}/auth/register", json={
+        "email_address": f"e2e-merge-{uuid.uuid4().hex[:8]}@test.com",
+        "display_name": "E2E Merge",
+    })
+    assert r.status_code == 201, r.text
+    data = r.json()
+    return {"id": data["user_id"], "headers": {"Authorization": f"Bearer {data['tokens']['access_token']}"}}
+
+
 async def _pick_item(client: httpx.AsyncClient, base_url: str):
     r = await client.get(f"{base_url}/menu/stores/1")
     assert r.status_code == 200, r.text
@@ -141,7 +151,10 @@ async def test_merge_orders(client: httpx.AsyncClient, base_url: str, staff_head
 
 @pytest.mark.asyncio
 async def test_merge_preserves_workshop_seats(client: httpx.AsyncClient, base_url: str, staff_headers: dict, admin_headers: dict):
-    """Merging an order with a workshop line must NOT release the booked seats."""
+    """Merging an order with a workshop line must NOT release the booked seats.
+
+    Workshop orders are PWA-only now, so the workshop order is created via the
+    customer cart path, then merged into a POS order by staff."""
     r = await client.get(f"{base_url}/menu/stores/1")
     workshop = next(i for i in r.json()["data"]["items"] if i["item_code"] == "EX-TURKISH-SAND-BREW")
 
@@ -154,27 +167,23 @@ async def test_merge_preserves_workshop_seats(client: httpx.AsyncClient, base_ur
     assert r.status_code in (200, 201), r.text
     session_id = r.json()["data"]["id"]
 
-    r = await client.post(
-        f"{base_url}/staff/customers/find-or-create",
-        headers=staff_headers,
-        json={"phone_number": f"017{uuid.uuid4().int % 10**8:08d}", "display_name": "E2E Merge"},
-    )
-    assert r.status_code == 201, r.text
-    customer_id = r.json()["data"]["id"]
-
+    # register a customer and book the workshop via the PWA cart path
+    cust = await _register_customer(client, base_url)
     try:
-        # Workshop line needs customer + session on the LINE ITEM
         r = await client.post(
-            f"{base_url}/staff/pos/orders",
-            headers=staff_headers,
-            json={
-                "order_type": "takeaway",
-                "customer_id": customer_id,
-                "line_items": [{"menu_item_id": workshop["id"], "quantity": 2, "class_session_id": session_id}],
-            },
+            f"{base_url}/cart/items?store_id=1",
+            headers=cust["headers"],
+            json={"menu_item_id": workshop["id"], "quantity": 2, "class_session_id": session_id, "selected_modifiers": []},
         )
-        assert r.status_code == 201, r.text
-        src = r.json()["data"].get("order_id") or r.json()["data"]["id"]
+        assert r.status_code == 200, r.text
+        cart = (await client.get(f"{base_url}/cart?store_id=1", headers=cust["headers"])).json()["data"]
+        r = await client.post(
+            f"{base_url}/orders",
+            headers=cust["headers"],
+            json={"store_id": 1, "order_type": "takeaway", "cart_id": cart["id"], "fulfillment_type": "counter_pickup"},
+        )
+        assert r.status_code in (200, 201), r.text
+        src = r.json()["data"].get("id")
 
         item = await _pick_item(client, base_url)
         tgt = await _create_order(client, base_url, staff_headers, item["id"], 1)
@@ -183,26 +192,21 @@ async def test_merge_preserves_workshop_seats(client: httpx.AsyncClient, base_ur
             return next(s for s in sess_list if s["id"] == session_id)["booked_pax"]
 
         r = await client.get(f"{base_url}/admin/menu/items/{workshop['id']}/sessions", headers=admin_headers)
-        before = _booked(r.json()["data"])
-        assert before == 2
+        assert _booked(r.json()["data"]) == 2
 
         r = await client.post(f"{base_url}/staff/orders/{src}/merge", headers=staff_headers, json={"target_order_id": tgt})
         assert r.status_code == 200, r.text
 
-        # Seats still booked after merge
         r = await client.get(f"{base_url}/admin/menu/items/{workshop['id']}/sessions", headers=admin_headers)
         assert _booked(r.json()["data"]) == 2
 
-        # Cleanup: cancel merged target → seats released
         r = await client.post(f"{base_url}/staff/orders/{tgt}/cancel", headers=staff_headers, json={"reason": "e2e"})
         assert r.status_code == 200, r.text
         r = await client.get(f"{base_url}/admin/menu/items/{workshop['id']}/sessions", headers=admin_headers)
         assert _booked(r.json()["data"]) == 0
     finally:
-        # Delete the test session — leaving it pollutes the customer-facing
-        # workshops page with "E2E merge" session rows (round-40 guest audit).
         await client.delete(f"{base_url}/admin/class-sessions/{session_id}", headers=admin_headers)
-        await client.delete(f"{base_url}/admin/customers/{customer_id}", headers=admin_headers)
+        await client.delete(f"{base_url}/admin/customers/{cust['id']}", headers=admin_headers)
 
 
 @pytest.mark.asyncio

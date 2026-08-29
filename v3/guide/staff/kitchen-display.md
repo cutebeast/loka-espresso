@@ -27,7 +27,7 @@ Orders appear in columns by status:
 The **All / Bar / Kitchen** tabs above the columns route each order's items to the right station:
 
 - **Bar** — drink categories only (specialty coffee, beyond coffee, frappes, juices, bottled drinks, signature drinks).
-- **Kitchen** — everything else (food, pastries, workshops).
+- **Kitchen** — everything else (food, pastries).
 - **All** — the full queue.
 
 A station tab shows **only its items**: an order with a latte and a sandwich appears in both tabs — the Bar tab shows the latte, the Kitchen tab shows the sandwich. Routing comes from the `kds.station_map` platform config, which an admin can edit in **Settings → Kitchen Display (KDS)**.
