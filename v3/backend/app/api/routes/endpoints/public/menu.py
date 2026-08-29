@@ -1,12 +1,13 @@
 """Public menu endpoints (no auth required)."""
 
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import DBDependency, OptionalLocale
+from app.core.business_time import BUSINESS_TZ
 from app.services.translation import SOURCE_LOCALE, merge_translations, translate_menu_response, translate_single
 from app.models.menu import (
     Allergen,
@@ -481,13 +482,18 @@ async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
 async def get_item_sessions(item_id: int, db: DBDependency):
     """Available class sessions for an experience item (active, not past, with remaining seats)."""
     from app.models.class_session import ClassSession
-    today = datetime.now(timezone.utc).date()
+    now = datetime.now(BUSINESS_TZ)
+    today = now.date()
+    now_time = now.time()
     result = await db.execute(
         select(ClassSession)
         .where(
             ClassSession.menu_item_id == item_id,
             ClassSession.is_active.is_(True),
-            ClassSession.session_date >= today,
+            or_(
+                ClassSession.session_date > today,
+                and_(ClassSession.session_date == today, ClassSession.start_time >= now_time),
+            ),
         )
         .order_by(ClassSession.session_date, ClassSession.start_time)
     )
@@ -549,13 +555,18 @@ async def list_workshops(db: DBDependency, locale: OptionalLocale):
         for v in variants_result.scalars().all():
             variants_map.setdefault(v.parent_item_id, []).append(v)
 
-    today = datetime.now(timezone.utc).date()
+    now = datetime.now(BUSINESS_TZ)
+    today = now.date()
+    now_time = now.time()
     sessions_result = await db.execute(
         select(ClassSession)
         .where(
             ClassSession.menu_item_id.in_(item_ids),
             ClassSession.is_active.is_(True),
-            ClassSession.session_date >= today,
+            or_(
+                ClassSession.session_date > today,
+                and_(ClassSession.session_date == today, ClassSession.start_time >= now_time),
+            ),
         )
         .order_by(ClassSession.session_date, ClassSession.start_time)
     ) if item_ids else None
