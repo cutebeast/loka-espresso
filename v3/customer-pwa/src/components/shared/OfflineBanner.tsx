@@ -32,8 +32,9 @@ export default function OfflineBanner() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearTimer();
-          const shouldReload = window.confirm("Connection lost. Reload page to retry?");
-          if (shouldReload) window.location.reload();
+          // No blocking window.confirm here — on flaky connections that
+          // fired a native dialog every 15s (one per offline event). The
+          // banner itself offers the reload action instead.
           return 0;
         }
         return prev - 1;
@@ -88,11 +89,18 @@ export default function OfflineBanner() {
           <span className="flex-1">
             {t('toast.offline')}
           </span>
-          {countdown > 0 && (
+          {countdown > 0 ? (
             <span className="flex items-center gap-1 text-xs opacity-85">
               <RefreshCw size={12} />
               {t('common.retryingIn', { seconds: countdown })}
             </span>
+          ) : (
+            <button
+              className="offline-reload-btn"
+              onClick={() => window.location.reload()}
+            >
+              {t('common.reload')}
+            </button>
           )}
         </>
       )}

@@ -321,7 +321,8 @@
     "year": "年",
     "yes": "是",
     "yesterday": "昨天",
-    "yourCode": "您的会员码"
+    "yourCode": "您的会员码",
+    "reload": "重新加载"
   },
   "errorBoundary": {
     "message": "发生意外错误，请重试。",

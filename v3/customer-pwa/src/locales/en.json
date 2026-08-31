@@ -321,7 +321,8 @@
     "reward": "Reward",
     "welcome": "Welcome",
     "codeCopyFailed": "Failed to copy code",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "reload": "Reload"
   },
   "errorBoundary": {
     "message": "An unexpected error occurred. Please try again.",
