@@ -9,21 +9,30 @@ const swPath = path.join(__dirname, "..", "public", "sw.js");
 
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const version = pkg.version || "0.1.0";
-const timestamp = Date.now();
+// Stable per code change (git commit time), NOT per build — a wall-clock
+// timestamp here regenerated the SW script on every rebuild and made the
+// client show the "new version available" banner in a loop.
+let timestamp;
+try {
+  const { execSync } = require("child_process");
+  timestamp = Number(execSync("git log -1 --format=%ct", { cwd: path.join(__dirname, ".."), encoding: "utf8" }).trim()) * 1000;
+} catch {
+  timestamp = Date.now();
+}
 const cacheVersion = `v${version}.${timestamp}`;
 
 let sw = fs.readFileSync(swPath, "utf8");
 
-// Replace CACHE_VERSION declaration
+// Replace CACHE_VERSION declaration (let or const)
 sw = sw.replace(
-  /const CACHE_VERSION = ['"].*?['"];/,
-  `const CACHE_VERSION = '${cacheVersion}';`
+  /(let|const) CACHE_VERSION = ['"].*?['"];/,
+  `$1 CACHE_VERSION = '${cacheVersion}';`
 );
 
 // Replace header comment version
 sw = sw.replace(
   /Version: .*/,
-  `Version: ${version} (build ${new Date().toISOString()})`
+  `Version: ${version} (commit ${timestamp})`
 );
 
 fs.writeFileSync(swPath, sw, "utf8");

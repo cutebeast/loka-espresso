@@ -25,7 +25,10 @@ const version = {
   version: pkg.version || "0.1.0",
   commit: git.hash,
   branch: git.branch,
-  builtAt: Date.now(),
+  // Stable across rebuilds of the SAME code — a wall-clock timestamp here
+  // made every rebuild look like a new release and triggered the service
+  // worker update banner loop (keep-asking-for-refresh bug).
+  builtAt: git.commitTime,
   commitAt: git.commitTime,
   environment: process.env.NODE_ENV || "production",
 };

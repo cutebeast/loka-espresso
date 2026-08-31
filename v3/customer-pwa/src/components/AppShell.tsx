@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -277,7 +277,19 @@ export default function AppShell() {
 
   // Listen for SW update notifications
   useEffect(() => {
-    const handler = () => setSwUpdateAvailable(true);
+    const handler = () => {
+      // Dedupe: only prompt once per NEW worker (its scriptURL changes on
+      // every rebuild). A dismissed update must not re-prompt on the 60s
+      // version-check poll — the next NEW build still prompts.
+      const key = 'loka-sw-update-dismissed';
+      navigator.serviceWorker?.getRegistration().then((reg) => {
+        const scriptURL = reg?.waiting?.scriptURL || '';
+        try {
+          if (scriptURL && localStorage.getItem(key) === scriptURL) return;
+        } catch { /* ignore */ }
+        setSwUpdateAvailable(true);
+      }).catch(() => setSwUpdateAvailable(true));
+    };
     window.addEventListener('sw-update-available', handler);
     return () => window.removeEventListener('sw-update-available', handler);
   }, []);
@@ -410,6 +422,17 @@ export default function AppShell() {
         window.location.reload();
       }}>
             {t('common.refresh')}
+          </button>
+          <button className="sw-update-dismiss" aria-label={t('common.close')} onClick={() => {
+        // Remember THIS worker version so the 60s poll stops re-prompting;
+        // a future NEW build still prompts.
+        navigator.serviceWorker?.getRegistration().then((reg) => {
+          const scriptURL = reg?.waiting?.scriptURL || '';
+          try { localStorage.setItem('loka-sw-update-dismissed', scriptURL); } catch { /* ignore */ }
+        }).catch(() => {});
+        setSwUpdateAvailable(false);
+      }}>
+            <X size={16} />
           </button>
         </motion.div>}
       {page === 'home' && authDone && <PromotionPopup />}
