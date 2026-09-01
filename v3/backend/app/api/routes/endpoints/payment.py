@@ -1184,7 +1184,7 @@ async def eghl_checkout_page(
     return HTMLResponse(html)
 
 
-@router.api_route("/eghl/return", methods=["GET", "POST"], response_class=None)
+@router.api_route("/eghl/return", methods=["GET", "POST"], response_class=RedirectResponse)
 async def eghl_return(request: Request, db: DBDependency):
     """Browser return from the eGHL hosted page — 303 into the PWA.
 

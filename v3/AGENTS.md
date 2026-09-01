@@ -2460,3 +2460,10 @@ Each payment provider (Stripe / eGHL / HitPay) now holds SEPARATE live + sandbox
 - Overview page subtitle updated (`settings_payment-gateway.subtitle_2`, EN+zh seeded — 49 keys × 2 locales now).
 - New unit test `test_eghl_base_url_raises_when_active_env_unconfigured` (503 instead of a form posting to an empty URL).
 - Unit 197/197 · webhook E2E 7/7 · admin tsc/eslint clean · 4 payment-gateway pages browser-verified (0 console errors) · backend healthy.
+
+## Project-wide check pass (2026-09-02) — route validation harness + PWA lint fixed
+
+- **Route-validation gate was broken (false ❌)**: `scripts/validate-routes.py` generates OpenAPI from code, but three routes declared `response_class=None` (wallet top-up simulator GET/POST from round 40, eGHL `/eghl/return` from round 43) made `app.openapi()` raise "A response class is needed to generate OpenAPI" → the validator reported 0 backend routes and 59 phantom "UNMATCHED" frontend calls. Fixed at the source: simulator GET → `HTMLResponse`, simulator POST + eGHL return → `RedirectResponse` (all runtime-safe — these routes return Response objects or raise). Route validation now passes: "All frontend API calls match backend routes" (399 OpenAPI paths).
+- **KioskPage.tsx lint errors fixed** (pre-existing since the round-40 kiosk store-picker work): `resetMemberSession` referenced before declaration in the inactivity timer (moved above it — all its state deps are declared at lines 164-175) + one unescaped apostrophe in JSX text (`device&apos;s`). All 3 portals back to 0 eslint errors.
+- `check-all.sh` now passes end-to-end ("=== All checks passed ==="): alembic clean · unit 197/197 · form-schema contract 0 drops ×2 · route validation ✅ · 3 portals lint 0 errors.
+- Full E2E 252 passed / 3 skipped. PWA rebuilt (kiosk-v3/pos-disp-v3 restarted by rebuild-portal.sh), backend restarted; all 6 public endpoints healthy.

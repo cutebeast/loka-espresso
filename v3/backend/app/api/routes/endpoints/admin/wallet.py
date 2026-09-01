@@ -7,6 +7,7 @@ from decimal import Decimal
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Form, HTTPException, Query, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -654,7 +655,7 @@ _SIM_PAGE = """<!DOCTYPE html><html><head><meta charset="utf-8">
 </div></body></html>"""
 
 
-@public_router.get("/topup/simulator", response_class=None)
+@public_router.get("/topup/simulator", response_class=HTMLResponse)
 async def wallet_topup_simulator(
     db: DBDependency,
     session_id: int = Query(0),
@@ -697,7 +698,7 @@ async def wallet_topup_simulator(
     ))
 
 
-@public_router.post("/topup/simulator/complete", response_class=None)
+@public_router.post("/topup/simulator/complete", response_class=RedirectResponse)
 async def wallet_topup_simulator_complete(
     db: DBDependency,
     session_id: int = Form(0),

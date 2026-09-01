@@ -298,6 +298,24 @@ export default function KioskPage() {
     loadData();
   }, [storeId, t]);
 
+  // ── Member session helpers ──
+  // End the member session: best-effort backend logout (clears the HttpOnly
+  // cookie the login set on this shared device) + local state wipe.
+  // Declared ABOVE the inactivity timer which references it (use-before-define).
+  const resetMemberSession = (logout: boolean) => {
+    if (logout && memberToken) {
+      api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${memberToken}` } }).catch(() => {});
+    }
+    setMemberToken(null);
+    setMemberPhone('');
+    setMemberVouchers([]);
+    setMemberRewards([]);
+    setSelectedRedemption(null);
+    setRedeemPhoneInput('');
+    setRedeemOtpInput('');
+    setRedeemBusy(false);
+  };
+
   // ── Inactivity timer with warning ──
   const resetInactivity = useCallback(() => {
     if (inactivityRef.current) clearTimeout(inactivityRef.current);
@@ -621,22 +639,6 @@ export default function KioskPage() {
   }, [cart]);
 
   // ── Member session helpers ──
-  // End the member session: best-effort backend logout (clears the HttpOnly
-  // cookie the login set on this shared device) + local state wipe.
-  const resetMemberSession = (logout: boolean) => {
-    if (logout && memberToken) {
-      api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${memberToken}` } }).catch(() => {});
-    }
-    setMemberToken(null);
-    setMemberPhone('');
-    setMemberVouchers([]);
-    setMemberRewards([]);
-    setSelectedRedemption(null);
-    setRedeemPhoneInput('');
-    setRedeemOtpInput('');
-    setRedeemBusy(false);
-  };
-
   const startRedeemSignIn = () => {
     setRedeemPhoneInput('');
     setRedeemOtpInput('');
@@ -833,7 +835,7 @@ export default function KioskPage() {
               ))}
             </div>
             <p style={{ fontSize: fs(14, 12), color: '#999', marginTop: fs(20, 16), maxWidth: 420, textAlign: 'center' }}>
-              Staff: pick this device's store once. The choice is saved on this device.
+              Staff: pick this device&apos;s store once. The choice is saved on this device.
               Override anytime with ?store=N in the URL.
             </p>
           </motion.div>
