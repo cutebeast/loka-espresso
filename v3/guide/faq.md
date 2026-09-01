@@ -32,7 +32,7 @@ Staff profiles can be deactivated. Deleting a profile may break historical order
 Cashier is a Staff Portal role, not an Admin Portal role. Staff roles cannot authenticate to the Admin Portal.
 
 ### Where do I configure payment gateways?
-Go to **Settings → Payment Gateway**. You can enable Stripe and HitPay, enter test/live keys, and set the public URL.
+Go to **Settings → Payment Gateway**. Each provider (Stripe, eGHL, HitPay) has its own page with separate Live and Sandbox credential cards plus an Active Mode selector; the overview page hosts the public URLs.
 
 ### How do translations work?
 UI translations are managed under **Translations**. Content translations (menu items, rewards, help articles) are stored per record and can be auto-translated when the record is saved.

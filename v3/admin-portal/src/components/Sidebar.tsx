@@ -102,6 +102,9 @@ const navItems: NavItem[] = [
     children: [
       { id: "settingsApp", labelKey: "admin.nav.settings.app", href: "/settings" },
       { id: "settingsPayment", labelKey: "admin.nav.settings.paymentGateway", href: "/settings/payment-gateway" },
+      { id: "settingsPaymentStripe", labelKey: "admin.nav.settings.paymentGatewayStripe", href: "/settings/payment-gateway/stripe" },
+      { id: "settingsPaymentEghl", labelKey: "admin.nav.settings.paymentGatewayEghl", href: "/settings/payment-gateway/eghl" },
+      { id: "settingsPaymentHitpay", labelKey: "admin.nav.settings.paymentGatewayHitpay", href: "/settings/payment-gateway/hitpay" },
       { id: "settingsTwilioVerify", labelKey: "admin.nav.settings.twilioVerify", href: "/settings/twilio-verify" },
       { id: "settingsVersion", labelKey: "admin.nav.settings.versionControl", href: "/settings/version-control" },
     ],

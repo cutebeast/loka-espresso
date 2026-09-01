@@ -1,710 +1,193 @@
 "use client";
 
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useTranslation } from "@/lib/i18n";
-import { useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
-import { parseApiError } from "@/lib/errors";
-import { CreditCard, Wallet, Globe, Save, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
-interface ConfigItem {
-  id: number;
-  config_key: string;
-  config_value: unknown;
-  value_type: string;
-  is_sensitive: boolean;
-  is_editable: boolean;
-}
-const STRIPE_KEYS = [{
-  key: "stripe.enabled",
-  label: "Enable Stripe",
-  type: "boolean"
-}, {
-  key: "stripe.checkout_mode",
-  label: "Checkout Mode",
-  type: "select",
-  options: [{
-    value: "stripe",
-    label: "Stripe (live checkout)"
-  }, {
-    value: "simulator",
-    label: "Simulator (local test page)"
-  }]
-}, {
-  key: "stripe.automatic_tax_enabled",
-  label: "Enable Stripe Automatic Tax",
-  type: "boolean"
-}, {
-  key: "stripe.secret_key",
-  label: "Secret Key",
-  type: "password"
-}, {
-  key: "stripe.publishable_key",
-  label: "Publishable Key",
-  type: "password"
-}, {
-  key: "stripe.webhook_secret",
-  label: "Webhook Secret",
-  type: "password"
-}, {
-  key: "stripe.checkout_success_url",
-  label: "Checkout Success URL",
-  type: "text"
-}, {
-  key: "stripe.checkout_cancel_url",
-  label: "Checkout Cancel URL",
-  type: "text"
-}];
-const HITPAY_KEYS = [{
-  key: "hitpay.enabled",
-  label: "Enable HitPay",
-  type: "boolean"
-}, {
-  key: "hitpay.api_key",
-  label: "API Key",
-  type: "password"
-}, {
-  key: "hitpay.salt",
-  label: "Webhook Salt",
-  type: "password"
-}, {
-  key: "hitpay.api_base_url",
-  label: "API Base URL",
-  type: "text"
-}];
-const EGHL_KEYS = [{
-  key: "eghl.enabled",
-  label: "Enable eGHL",
-  type: "boolean"
-}, {
-  key: "eghl.merchant_code",
-  label: "Merchant Code",
-  type: "text"
-}, {
-  key: "eghl.merchant_key",
-  label: "Merchant Key (HMAC-SHA512 signing key)",
-  type: "password"
-}, {
-  key: "eghl.base_url",
-  label: "Base URL",
-  type: "text",
-  hint: "ADAPTIS {BaseURL} from the merchant-approval email (no trailing path — e.g. https://ndes-stg.ghl.com)"
-}];
-const PUBLIC_URL_KEYS = [{
-  key: "app.public_url",
-  label: "Customer App Public URL",
-  type: "text"
-}, {
-  key: "admin.public_url",
-  label: "Admin Portal Public URL",
-  type: "text"
-}, {
-  key: "staff.public_url",
-  label: "Staff Portal Public URL",
-  type: "text"
-}];
-const STRIPE_METHOD_OPTIONS = ["card", "fpx", "alipay", "wechat_pay"];
-const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "fpx", "card"];
-const EGHL_METHOD_OPTIONS = ["card", "fpx", "boost", "tng", "shopeepay", "setel", "maybank_payqr"];
-const LABEL_MAP: Record<string, string> = Object.fromEntries([...STRIPE_KEYS, ...HITPAY_KEYS, ...EGHL_KEYS, ...PUBLIC_URL_KEYS].map(cfg => [cfg.key, cfg.label]));
-function normalizeValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  return JSON.stringify(value);
-}
-function parseBoolean(value: string): boolean {
-  return value.toLowerCase() === "true" || value === "1" || value.toLowerCase() === "yes";
-}
-function Toggle({
-  checked,
-  onChange,
-  label
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  return <label style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    cursor: "pointer"
-  }}>
-      <span onClick={() => onChange(!checked)} style={{
-      position: "relative",
-      width: 44,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: checked ? "var(--color-primary, #2563eb)" : "var(--color-border, #d1d5db)",
-      transition: "background-color 0.2s"
-    }}>
-        <span style={{
-        position: "absolute",
-        top: 2,
-        left: checked ? 22 : 2,
-        width: 20,
-        height: 20,
-        borderRadius: "50%",
-        backgroundColor: "white",
-        transition: "left 0.2s"
-      }} />
-      </span>
-      <span style={{
-      fontSize: 14,
-      fontWeight: 500
-    }}>{label}</span>
-    </label>;
-}
-function WebhookHint({
-  provider
-}: {
-  provider: "stripe" | "hitpay" | "eghl";
-}) {
+import { AlertCircle, CheckCircle2, ChevronRight, CreditCard, Globe, Save, Wallet } from "lucide-react";
+import {
+  ConfigCard,
+  GatewayField,
+  parseBoolean,
+  useGatewayConfigs,
+} from "./gateway-shared";
+
+const PROVIDERS = [
+  { id: "stripe", enabledKey: "stripe.enabled", modeKey: "stripe.mode", href: "/settings/payment-gateway/stripe", icon: CreditCard },
+  { id: "eghl", enabledKey: "eghl.enabled", modeKey: "eghl.mode", href: "/settings/payment-gateway/eghl", icon: CreditCard },
+  { id: "hitpay", enabledKey: "hitpay.enabled", modeKey: "hitpay.mode", href: "/settings/payment-gateway/hitpay", icon: Wallet },
+] as const;
+
+const PUBLIC_URL_KEYS = [
+  { key: "app.public_url", label: "Customer App Public URL", type: "text" },
+  { key: "admin.public_url", label: "Admin Portal Public URL", type: "text" },
+  { key: "staff.public_url", label: "Staff Portal Public URL", type: "text" },
+];
+
+export default function PaymentGatewayOverviewPage() {
+  const { t } = useTranslation();
   const {
-    t
-  } = useTranslation();
-  const [origin, setOrigin] = useState("");
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(process.env.NEXT_PUBLIC_ADMIN_DOMAIN || (typeof window !== "undefined" ? window.location.origin : ""));
-    }
-  }, []);
-  const hintText = provider === "stripe"
-    ? "Register this URL in your Stripe dashboard under Developers → Webhook Endpoints. Subscribe to: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled, checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, charge.dispute.created."
-    : provider === "hitpay"
-      ? "Register this URL in your HitPay dashboard under Developers → Webhook Endpoints."
-      : "Configure this as the Backend URL (success JSON post) and Response URL (browser return) in your eGHL merchant portal (ADAPTIS). The browser return URL is configured automatically — no action needed.";
-  return <div style={{
-    background: "var(--color-bg-soft, #f9fafb)",
-    borderRadius: "var(--radius-sm)",
-    padding: 12,
-    fontSize: 13
-  }}>
-      <strong>{t("settings_payment-gateway.webhook_url")}</strong>
-      <code style={{
-      display: "block",
-      marginTop: 4,
-      wordBreak: "break-all"
-    }}>
-        {origin}{t("settings_payment-gateway.api_webhooks")}{provider}
-      </code>
-      <p style={{
-      fontSize: 12,
-      color: "var(--color-text-muted)",
-      marginTop: 6
-    }}>
-        {hintText}
-      </p>
-    </div>;
-}
-function MethodChips({
-  options,
-  selected,
-  onChange
-}: {
-  options: string[];
-  selected: string[];
-  onChange: (v: string[]) => void;
-}) {
-  return <div style={{
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8
-  }}>
-      {options.map(method => {
-      const isSelected = selected.includes(method);
-      return <button key={method} type="button" onClick={() => {
-        const next = isSelected ? selected.filter(m => m !== method) : [...selected, method];
-        onChange(next);
-      }} style={{
-        padding: "6px 12px",
-        borderRadius: "var(--radius-md, 6px)",
-        border: `1px solid ${isSelected ? "var(--color-primary, #2563eb)" : "var(--color-border-light, #e5e7eb)"}`,
-        backgroundColor: isSelected ? "var(--color-primary-soft, #eff6ff)" : "white",
-        color: isSelected ? "var(--color-primary, #2563eb)" : "var(--color-text, #374151)",
-        fontSize: 13,
-        cursor: "pointer"
-      }}>
-            {method}
-          </button>;
-    })}
-    </div>;
-}
-export default function PaymentGatewaySettingsPage() {
-  const {
-    t
-  } = useTranslation();
-  const [configs, setConfigs] = useState<Record<string, ConfigItem>>({});
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [methodValues, setMethodValues] = useState<Record<string, string[]>>({});
-  const [visibleSecrets, setVisibleSecrets] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [isError, setIsError] = useState(false);
-  useEffect(() => {
-    api.get<ConfigItem[]>("/admin/config").then(data => {
-      const list = Array.isArray(data) ? data : [];
-      const map: Record<string, ConfigItem> = {};
-      const initialValues: Record<string, string> = {};
-      const initialMethods: Record<string, string[]> = {};
-      list.forEach(item => {
-        map[item.config_key] = item;
-        if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods" || item.config_key === "eghl.payment_methods") {
-          initialMethods[item.config_key] = Array.isArray(item.config_value) ? item.config_value.map(String) : [];
-        } else if (item.is_sensitive && normalizeValue(item.config_value) === "***") {
-          initialValues[item.config_key] = "";
-        } else {
-          initialValues[item.config_key] = normalizeValue(item.config_value);
-        }
-      });
-      setConfigs(map);
-      setValues(initialValues);
-      setMethodValues(initialMethods);
-    }).catch(e => showMsg(e.message, true)).finally(() => setLoading(false));
-  }, []);
-  const hasChanges = useMemo(() => {
-    for (const key of Object.keys(values)) {
-      if (values[key] !== normalizeValue(configs[key]?.config_value)) return true;
-    }
-    for (const key of Object.keys(methodValues)) {
-      const selected = methodValues[key] ?? [];
-      const original = Array.isArray(configs[key]?.config_value) ? configs[key].config_value.map(String) : [];
-      if (selected.length !== original.length || selected.some((m, i) => m !== original[i])) return true;
-    }
-    return false;
-  }, [values, methodValues, configs]);
-  const {
-    validationErrors,
-    invalidKeys
-  } = useMemo(() => {
+    configs,
+    values,
+    visibleSecrets,
+    setValues,
+    setVisibleSecrets,
+    loading,
+    saving,
+    msg,
+    isError,
+    hasChanges,
+    saveAll,
+  } = useGatewayConfigs();
+  const [attempted, setAttempted] = useState(false);
+
+  const { validationErrors, invalidKeys } = useMemo(() => {
     const errors: string[] = [];
     const invalid = new Set<string>();
-    const required: string[] = ["app.public_url", "admin.public_url", "staff.public_url"];
-    if (parseBoolean(values["stripe.enabled"] || "false")) {
-      required.push("stripe.secret_key", "stripe.publishable_key", "stripe.webhook_secret");
-      if (!methodValues["stripe.payment_method_types"]?.length) {
-        invalid.add("stripe.payment_method_types");
-        errors.push("Select at least one Stripe payment method");
+    for (const cfg of PUBLIC_URL_KEYS) {
+      if (!(values[cfg.key] || "").trim()) {
+        invalid.add(cfg.key);
+        errors.push(`${cfg.label} is required`);
       }
     }
-    if (parseBoolean(values["hitpay.enabled"] || "false")) {
-      required.push("hitpay.api_key", "hitpay.salt", "hitpay.api_base_url");
-      if (!methodValues["hitpay.payment_methods"]?.length) {
-        invalid.add("hitpay.payment_methods");
-        errors.push("Select at least one HitPay payment method");
-      }
-    }
-    if (parseBoolean(values["eghl.enabled"] || "false")) {
-      required.push("eghl.merchant_code", "eghl.merchant_key", "eghl.base_url");
-      if (!methodValues["eghl.payment_methods"]?.length) {
-        invalid.add("eghl.payment_methods");
-      }
-    }
-    for (const key of required) {
-      if (!(values[key] || "").trim()) {
-        invalid.add(key);
-        errors.push(`${LABEL_MAP[key] || key} is required`);
-      }
-    }
-    return {
-      validationErrors: errors,
-      invalidKeys: invalid
-    };
-  }, [values, methodValues]);
-  const showMsg = (text: string, error = false) => {
-    setMsg(text);
-    setIsError(error);
-    setTimeout(() => setMsg(""), 4000);
-  };
-  const saveAll = async () => {
-    if (validationErrors.length > 0) {
-      showMsg(`Please complete all required fields before saving`, true);
-      return;
-    }
-    setSaving(true);
-    setIsError(false);
-    try {
-      const updates: {
-        key: string;
-        value: string;
-      }[] = [];
-      for (const [key, val] of Object.entries(values)) {
-        const item = configs[key];
-        const rawOriginal = normalizeValue(item?.config_value);
-        // If the backend redacted a sensitive value, we cannot tell whether it changed,
-        // so avoid overwriting it with an empty value.
-        const original = item?.is_sensitive && rawOriginal === "***" ? val : rawOriginal;
-        if (val !== original) {
-          updates.push({
-            key,
-            value: val
-          });
-        }
-      }
-      for (const [key, methods] of Object.entries(methodValues)) {
-        const original = Array.isArray(configs[key]?.config_value) ? configs[key].config_value : [];
-        if (methods.length !== original.length || methods.some((m, i) => m !== original[i])) {
-          updates.push({
-            key,
-            value: JSON.stringify(methods)
-          });
-        }
-      }
-      for (const {
-        key,
-        value
-      } of updates) {
-        await api.put("/admin/config", {
-          key,
-          value
-        });
-      }
+    return { validationErrors: errors, invalidKeys: invalid };
+  }, [values]);
 
-      // Refresh state from server so any type-cast values match
-      const refreshed = await api.get<ConfigItem[]>("/admin/config");
-      const list = Array.isArray(refreshed) ? refreshed : [];
-      const map: Record<string, ConfigItem> = {};
-      const refreshedValues: Record<string, string> = {};
-      const refreshedMethods: Record<string, string[]> = {};
-      list.forEach(item => {
-        map[item.config_key] = item;
-        if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods" || item.config_key === "eghl.payment_methods") {
-          refreshedMethods[item.config_key] = Array.isArray(item.config_value) ? item.config_value.map(String) : [];
-        } else {
-          refreshedValues[item.config_key] = normalizeValue(item.config_value);
-        }
-      });
-      setConfigs(map);
-      setValues(refreshedValues);
-      setMethodValues(refreshedMethods);
-      showMsg(`${updates.length} setting(s) saved`);
-    } catch (err: unknown) {
-      showMsg(parseApiError(err, "Failed to save settings"), true);
-    } finally {
-      setSaving(false);
-    }
-  };
-  const renderField = (cfg: {
-    key: string;
-    label: string;
-    type: string;
-    options?: { value: string; label: string }[];
-  }) => {
-    const item = configs[cfg.key];
-    if (!item) return null;
-    if (cfg.type === "boolean") {
-      return <Toggle checked={parseBoolean(values[cfg.key] || "false")} onChange={v => setValues(prev => ({
-        ...prev,
-        [cfg.key]: v ? "true" : "false"
-      }))} label={cfg.label} />;
-    }
-    if (cfg.type === "select" && cfg.options) {
-      return <div style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6
-      }}>
-        <label style={{
-          fontSize: 13,
-          fontWeight: 500
-        }}>{cfg.label}</label>
-        <select value={values[cfg.key] || cfg.options[0]?.value || ""} onChange={e => setValues(prev => ({
-          ...prev,
-          [cfg.key]: e.target.value
-        }))} style={{
-          border: "1px solid var(--color-border-light)",
-          borderRadius: "var(--radius-sm)",
-          padding: "8px 10px",
-          fontSize: 13,
-          background: "var(--color-bg-white, #fff)"
-        }}>
-          {cfg.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        {cfg.key === "stripe.checkout_mode" && values[cfg.key] === "simulator" && <p style={{
-          fontSize: 12,
-          color: "var(--color-warning-dark, #8A6D1F)",
-          margin: 0
-        }}>Hosted checkouts (wallet top-up, pay links) open the local simulated checkout page. No real payments are made.</p>}
-      </div>;
-    }
-    const isSecret = cfg.type === "password" || item.is_sensitive;
-    const visible = visibleSecrets[cfg.key];
-    return <div style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: 6
-    }}>
-        <label style={{
-        fontSize: 13,
-        fontWeight: 500
-      }}>{cfg.label}</label>
-        <div style={{
-        display: "flex",
-        gap: 8,
-        alignItems: "center"
-      }}>
-          <input type={isSecret && !visible ? "password" : "text"} value={values[cfg.key] || ""} onChange={e => setValues(prev => ({
-          ...prev,
-          [cfg.key]: e.target.value
-        }))} style={{
-          flex: 1,
-          border: `1px solid ${invalidKeys.has(cfg.key) ? "var(--color-error, #ef4444)" : "var(--color-border-light)"}`,
-          borderRadius: "var(--radius-sm)",
-          padding: "8px 10px",
-          fontSize: 13
-        }} />
-          {isSecret && <button type="button" onClick={() => setVisibleSecrets(prev => ({
-          ...prev,
-          [cfg.key]: !prev[cfg.key]
-        }))} className="btn btn-sm btn-outline" style={{
-          padding: "6px 8px"
-        }} title={visible ? "Hide" : "Show"}>
-              {visible ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>}
-        </div>
-      </div>;
-  };
   if (loading) {
-    return <div style={{
-      padding: 32
-    }}>
+    return (
+      <div style={{ padding: 32 }}>
         <h1 className="page-title">{t("settings_payment-gateway.payment_gateway")}</h1>
-        <p style={{
-        color: "var(--color-text-muted)"
-      }}>{t("settings_payment-gateway.loading_settings")}</p>
-      </div>;
+        <p style={{ color: "var(--color-text-muted)" }}>{t("settings_payment-gateway.loading_settings")}</p>
+      </div>
+    );
   }
-  return <div style={{
-    padding: 32
-  }}>
-      <div className="page-header" style={{
-      marginBottom: 24
-    }}>
+
+  return (
+    <div style={{ padding: 32 }}>
+      <div className="page-header" style={{ marginBottom: 24 }}>
         <div>
           <h1 className="page-title">{t("settings_payment-gateway.payment_gateway_2")}</h1>
-          <p className="page-subtitle">{t("settings_payment-gateway.manage_stripe_and_hitpay_credentials_enabled")}</p>
+          <p className="page-subtitle">{t("settings_payment-gateway.subtitle_2")}</p>
         </div>
       </div>
 
-      {msg && <div className={`alert ${isError ? "alert-error" : "alert-success"}`} style={{
-      marginBottom: 16,
-      display: "flex",
-      alignItems: "center",
-      gap: 8
-    }}>
+      {msg && (
+        <div
+          className={`alert ${isError ? "alert-error" : "alert-success"}`}
+          style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}
+        >
           {isError ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           {msg}
-        </div>}
+        </div>
+      )}
 
-      <div style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: 24,
-      maxWidth: 720
-    }}>
-        {/* Stripe */}
-        <div className="card" style={{
-        padding: 24
-      }}>
-          <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 20
-        }}>
-            <CreditCard size={22} />
-            <h2 style={{
-            fontSize: 17,
-            fontWeight: 600
-          }}>{t("settings_payment-gateway.stripe")}</h2>
-          </div>
-          <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16
-        }}>
-            {STRIPE_KEYS.map(cfg => <div key={cfg.key}>{renderField(cfg)}</div>)}
-            <div>
-              <label style={{
-              fontSize: 13,
-              fontWeight: 500,
-              display: "block",
-              marginBottom: 8
-            }}>{t("settings_payment-gateway.payment_methods")}</label>
-              <MethodChips options={STRIPE_METHOD_OPTIONS} selected={methodValues["stripe.payment_method_types"] || []} onChange={v => setMethodValues(prev => ({
-              ...prev,
-              "stripe.payment_method_types": v
-            }))} />
-              <p style={{
-              fontSize: 12,
-              color: "var(--color-text-muted)",
-              marginTop: 8
-            }}>{t("settings_payment-gateway.select_the_stripe_enabled_methods_for")}</p>
-              <WebhookHint provider="stripe" />
-            </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 720 }}>
+        {/* Provider hub */}
+        <div className="card" style={{ padding: 24 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 600, margin: "0 0 16px" }}>{t("settings_payment-gateway.providers")}</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {PROVIDERS.map((p) => {
+              const Icon = p.icon;
+              const enabled = parseBoolean(values[p.enabledKey] || "false");
+              const mode = values[p.modeKey] === "sandbox" ? "sandbox" : "live";
+              return (
+                <Link
+                  key={p.id}
+                  href={p.href}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 16px",
+                    border: "1px solid var(--color-border-light, #e5e7eb)",
+                    borderRadius: "var(--radius-md, 8px)",
+                    textDecoration: "none",
+                    color: "var(--color-text, #374151)",
+                    background: "var(--color-bg-white, #fff)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <Icon size={20} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{p.id === "eghl" ? "eGHL" : p.id === "hitpay" ? "HitPay" : "Stripe"}</div>
+                      <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                        {enabled
+                          ? `${t("settings_payment-gateway.enabled")} · ${mode === "sandbox" ? t("settings_payment-gateway.mode_sandbox") : t("settings_payment-gateway.mode_live")}`
+                          : t("settings_payment-gateway.disabled")}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "3px 10px",
+                        borderRadius: 999,
+                        background: enabled ? "var(--color-success-soft, #ecfdf5)" : "var(--color-bg-soft, #f9fafb)",
+                        color: enabled ? "var(--color-success, #16a34a)" : "var(--color-text-muted)",
+                      }}
+                    >
+                      {enabled ? t("settings_payment-gateway.enabled") : t("settings_payment-gateway.disabled")}
+                    </span>
+                    <ChevronRight size={16} style={{ color: "var(--color-text-muted)" }} />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
         {/* Public URLs */}
-        <div className="card" style={{
-        padding: 24
-      }}>
-          <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 20
-        }}>
-            <Globe size={22} />
-            <h2 style={{
-            fontSize: 17,
-            fontWeight: 600
-          }}>{t("settings_payment-gateway.public_urls")}</h2>
-          </div>
-          <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16
-        }}>
-            {PUBLIC_URL_KEYS.map(cfg => <div key={cfg.key}>{renderField(cfg)}</div>)}
-          </div>
-          <p style={{
-          fontSize: 12,
-          color: "var(--color-text-muted)",
-          marginTop: 16
-        }}>{t("settings_payment-gateway.update_these_before_moving_to_a")}</p>
-        </div>
+        <ConfigCard icon={<Globe size={22} />} title={t("settings_payment-gateway.public_urls")}>
+          {PUBLIC_URL_KEYS.map((cfg) => (
+            <GatewayField
+              key={cfg.key}
+              cfg={cfg}
+              configs={configs}
+              values={values}
+              setValues={setValues}
+              visibleSecrets={visibleSecrets}
+              setVisibleSecrets={setVisibleSecrets}
+              invalidKeys={invalidKeys}
+            />
+          ))}
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
+            {t("settings_payment-gateway.update_these_before_moving_to_a")}
+          </p>
+        </ConfigCard>
 
-        {/* eGHL (GHL Systems Malaysia) */}
-        <div className="card" style={{
-        padding: 24
-      }}>
-          <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 20
-        }}>
-            <CreditCard size={22} />
-            <h2 style={{
-            fontSize: 17,
-            fontWeight: 600
-          }}>eGHL</h2>
-          </div>
-          <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16
-        }}>
-            {EGHL_KEYS.map(cfg => <div key={cfg.key}>{renderField(cfg)}</div>)}
-            <p style={{
-            fontSize: 12,
-            color: "var(--color-text-muted)",
-            marginTop: 0
-          }}>Gateway URL — test: https://test2pay.ghl.com/IPGSG/Payment.aspx · live: https://pay.e-ghl.com/IPGSG/Payment.aspx</p>
-            <div>
-              <label style={{
-              fontSize: 13,
-              fontWeight: 500,
-              display: "block",
-              marginBottom: 8
-            }}>{t("settings_payment-gateway.payment_methods_2")}</label>
-              <MethodChips options={EGHL_METHOD_OPTIONS} selected={methodValues["eghl.payment_methods"] || []} onChange={v => setMethodValues(prev => ({
-              ...prev,
-              "eghl.payment_methods": v
-            }))} />
-              <p style={{
-              fontSize: 12,
-              color: "var(--color-text-muted)",
-              marginTop: 8
-            }}>Preferred Malaysia gateway (hosted page: card + FPX online banking).</p>
-            </div>
-            <WebhookHint provider="eghl" />
-          </div>
-        </div>
-
-        {/* HitPay */}
-        <div className="card" style={{
-        padding: 24
-      }}>
-          <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 20
-        }}>
-            <Wallet size={22} />
-            <h2 style={{
-            fontSize: 17,
-            fontWeight: 600
-          }}>{t("settings_payment-gateway.hitpay")}</h2>
-          </div>
-          <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 16
-        }}>
-            {HITPAY_KEYS.map(cfg => <div key={cfg.key}>{renderField(cfg)}</div>)}
-            <div>
-              <label style={{
-              fontSize: 13,
-              fontWeight: 500,
-              display: "block",
-              marginBottom: 8
-            }}>{t("settings_payment-gateway.payment_methods_2")}</label>
-              <MethodChips options={HITPAY_METHOD_OPTIONS} selected={methodValues["hitpay.payment_methods"] || []} onChange={v => setMethodValues(prev => ({
-              ...prev,
-              "hitpay.payment_methods": v
-            }))} />
-              <p style={{
-              fontSize: 12,
-              color: "var(--color-text-muted)",
-              marginTop: 8
-            }}>{t("settings_payment-gateway.recommended_for_malaysia_singapore_local_methods")}</p>
-            </div>
-            <WebhookHint provider="hitpay" />
-          </div>
-        </div>
-
-        {validationErrors.length > 0 && <div className="alert alert-error" style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6
-      }}>
-            <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8
-        }}>
+        {attempted && validationErrors.length > 0 && (
+          <div className="alert alert-error" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <AlertCircle size={18} />
               <strong>{t("settings_payment-gateway.please_complete_all_required_fields_before")}</strong>
             </div>
-            <ul style={{
-          margin: 0,
-          paddingLeft: 24,
-          fontSize: 13
-        }}>
-              {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
+            <ul style={{ margin: 0, paddingLeft: 24, fontSize: 13 }}>
+              {validationErrors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
             </ul>
-          </div>}
+          </div>
+        )}
 
-        <div style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "center"
-      }}>
-          <button type="button" className="btn btn-primary" onClick={saveAll} disabled={saving || !hasChanges}>
-            <Save size={16} style={{
-            marginRight: 6
-          }} />
-            {saving ? "Saving..." : "Save Payment Gateway Settings"}
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={async () => {
+              setAttempted(true);
+              await saveAll(validationErrors);
+            }}
+            disabled={saving || !hasChanges}
+          >
+            <Save size={16} style={{ marginRight: 6 }} />
+            {saving ? "Saving..." : t("settings_payment-gateway.save_settings")}
           </button>
-          {!hasChanges && <span style={{
-          fontSize: 13,
-          color: "var(--color-text-muted)"
-        }}>{t("settings_payment-gateway.no_changes")}</span>}
+          {!hasChanges && (
+            <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>{t("settings_payment-gateway.no_changes")}</span>
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }

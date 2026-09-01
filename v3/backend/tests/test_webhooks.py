@@ -197,13 +197,14 @@ async def test_eghl_rejected_invalid_signature(webhook_client, monkeypatch):
     """eGHL callback must reject a bad HMAC-SHA512 signature."""
     from app.services.platform_config import PlatformConfigService
 
-    async def fake_config(*args, **kwargs):
-        key = args[1] if len(args) > 1 else kwargs.get("key", "")
-        if key == "eghl.merchant_code":
-            return "MM99900005"
-        return "eghl_merchant_key"
+    async def fake_config(self, keys, environment=None):
+        return {
+            "eghl.mode": "live",
+            "eghl.merchant_code": "MM99900005",
+            "eghl.merchant_key": "eghl_merchant_key",
+        }
 
-    monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
+    monkeypatch.setattr(PlatformConfigService, "get_many", fake_config)
 
     payload = _eghl_callback_fields()
     payload["Verification"]["Signature"] = "0" * 128
@@ -217,13 +218,14 @@ async def test_eghl_callback_success_returns_plain_ok(webhook_client, monkeypatc
     """A valid ADAPTIS success callback is processed and acknowledged with OK."""
     from app.services.platform_config import PlatformConfigService
 
-    async def fake_config(*args, **kwargs):
-        key = args[1] if len(args) > 1 else kwargs.get("key", "")
-        if key == "eghl.merchant_code":
-            return "MM99900005"
-        return "eghl_merchant_key"
+    async def fake_config(self, keys, environment=None):
+        return {
+            "eghl.mode": "live",
+            "eghl.merchant_code": "MM99900005",
+            "eghl.merchant_key": "eghl_merchant_key",
+        }
 
-    monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
+    monkeypatch.setattr(PlatformConfigService, "get_many", fake_config)
 
     res = await webhook_client.post("/api/webhooks/eghl", json=_eghl_callback_fields())
     assert res.status_code == 200
@@ -235,18 +237,79 @@ async def test_eghl_webhook_deduplicates_replays(webhook_client, monkeypatch):
     """A duplicate eGHL callback should be acknowledged without reprocessing."""
     from app.services.platform_config import PlatformConfigService
 
-    async def fake_config(*args, **kwargs):
-        key = args[1] if len(args) > 1 else kwargs.get("key", "")
-        if key == "eghl.merchant_code":
-            return "MM99900005"
-        return "eghl_merchant_key"
+    async def fake_config(self, keys, environment=None):
+        return {
+            "eghl.mode": "live",
+            "eghl.merchant_code": "MM99900005",
+            "eghl.merchant_key": "eghl_merchant_key",
+        }
 
-    monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
+    monkeypatch.setattr(PlatformConfigService, "get_many", fake_config)
     monkeypatch.setattr("app.api.routes.endpoints.payment.is_event_processed", AsyncMock(return_value=True))
 
     res = await webhook_client.post("/api/webhooks/eghl", json=_eghl_callback_fields())
     assert res.status_code == 200
     assert res.text == "OK"
+
+
+@pytest.mark.asyncio
+async def test_eghl_checkout_page_token_accepts_sandbox_key(monkeypatch):
+    """The checkout-page anti-enumeration token must verify against BOTH
+    environments' merchant keys (the token is signed with the mode-active
+    key at creation; a mode flip must not 404 the browser return)."""
+    from types import SimpleNamespace
+
+    from app.api.routes.endpoints.payment import eghl_checkout_page
+    from app.services.eghl import eghl_checkout_token
+    from app.services.platform_config import PlatformConfigService
+
+    async def fake_get_many(self, keys, environment=None):
+        return {
+            "eghl.mode": "sandbox",
+            "eghl.merchant_code": "LIVE1",
+            "eghl.merchant_key": "live_key",
+            "eghl.sandbox_merchant_code": "TEST1",
+            "eghl.sandbox_merchant_key": "test_key",
+        }
+
+    monkeypatch.setattr(PlatformConfigService, "get_many", fake_get_many)
+    monkeypatch.setattr(
+        "app.api.routes.endpoints.payment.build_eghl_checkout_page",
+        AsyncMock(return_value="<html>ok</html>"),
+    )
+
+    class FakeResult:
+        def scalar_one_or_none(self): return None
+        def scalars(self): return self
+        def all(self): return []
+        def scalar(self): return None
+        def first(self): return None
+
+    class FakeSession:
+        async def commit(self): pass
+        async def rollback(self): pass
+        async def close(self): pass
+        async def refresh(self, *args, **kwargs): pass
+        async def flush(self): pass
+        async def execute(self, *args, **kwargs): return FakeResult()
+        def get(self, *args, **kwargs): return None
+
+    request = SimpleNamespace(
+        headers={"x-forwarded-for": "1.2.3.4"},
+        client=SimpleNamespace(host="1.2.3.4"),
+    )
+
+    # Token signed with the SANDBOX key must pass even though mode is sandbox.
+    sandbox_token = eghl_checkout_token("EGT1", "test_key")
+    res = await eghl_checkout_page("EGT1", request, FakeSession(), t=sandbox_token)
+    assert res.status_code == 200
+    assert res.body == b"<html>ok</html>"
+
+    # A token signed with an UNKNOWN key must still 404.
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc_info:
+        await eghl_checkout_page("EGT1", request, FakeSession(), t=eghl_checkout_token("EGT1", "bogus_key"))
+    assert exc_info.value.status_code == 404
 
 
 
@@ -260,10 +323,10 @@ async def test_hitpay_webhook_deduplicates_replays(webhook_client, monkeypatch):
 
     secret = "hitpay_salt"
 
-    async def fake_config(*args, **kwargs):
-        return secret
+    async def fake_config(self, keys, environment=None):
+        return {"hitpay.mode": "live", "hitpay.salt": secret}
 
-    monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
+    monkeypatch.setattr(PlatformConfigService, "get_many", fake_config)
 
     payload = {
         "id": "hpr_123",

@@ -29,20 +29,31 @@ from seed_help_articles import seed as seed_help_articles
 
 
 async def seed_translations():
-    """Seed UI translations from the root scripts directory."""
+    """Seed UI translations from the root scripts directory + backend feature seeds."""
+    env = {**os.environ, "DATABASE_URL": SETTINGS.database_url_sync or SETTINGS.database_url}
     script = Path(__file__).resolve().parent.parent.parent / "scripts" / "seed_admin_ui_translations.py"
-    if not script.exists():
-        print("  [translations] skip — script not found")
-        return
-    proc = await asyncio.create_subprocess_exec(
-        sys.executable, str(script),
-        env={**os.environ, "DATABASE_URL": SETTINGS.database_url_sync or SETTINGS.database_url},
-    )
-    await proc.wait()
-    if proc.returncode == 0:
-        print("  [translations] done")
+    if script.exists():
+        proc = await asyncio.create_subprocess_exec(sys.executable, str(script), env=env)
+        await proc.wait()
+        if proc.returncode == 0:
+            print("  [translations] done")
+        else:
+            print(f"  [translations] failed (exit {proc.returncode})")
     else:
-        print(f"  [translations] failed (exit {proc.returncode})")
+        print("  [translations] skip — script not found")
+    # Feature UI-key seeds (payment-gateway split etc.) live beside the backend
+    # seeders — run them so fresh deploys never render raw admin-ui keys.
+    # NOTE: these use the async engine, so they must receive the ASYNC URL
+    # (the sync psycopg2 URL breaks asyncpg).
+    feature_script = Path(__file__).resolve().parent / "seed_payment_gateway_ui_translations.py"
+    if feature_script.exists():
+        feature_env = {**os.environ, "DATABASE_URL": SETTINGS.database_url or SETTINGS.database_url_sync}
+        proc = await asyncio.create_subprocess_exec(sys.executable, str(feature_script), env=feature_env)
+        await proc.wait()
+        if proc.returncode == 0:
+            print("  [translations:payment-gateway] done")
+        else:
+            print(f"  [translations:payment-gateway] failed (exit {proc.returncode})")
 
 
 PARTS = {

@@ -34,7 +34,7 @@ The Admin Portal is the back-office control centre for the Loka Espresso platfor
 | [Content](content.md) | Info Cards, Products, Events, System Pages, PWA Splash | Manage in-app content and legal pages. |
 | [Notifications](notifications.md) | Notifications, Templates, Reports | Create and send push notifications to customers. |
 | [Reports & Audit](reports-and-audit.md) | Reports, Audit Log | Sales reports and account activity logs. |
-| [Settings](settings.md) | App Settings, Payment Gateway, Twilio Verify, Version Control | Platform configuration. |
+| [Settings](settings.md) | App Settings, Payment Gateway (Stripe / eGHL / HitPay), Twilio Verify, Version Control | Platform configuration. |
 | [Translations](translations.md) | Translations | Manage UI and content translations. |
 
 ## Ordering journey from the admin view

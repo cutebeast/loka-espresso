@@ -54,30 +54,63 @@ async def _get_config(db: AsyncSession) -> PlatformConfigService:
     return PlatformConfigService(db)
 
 
+async def _hitpay_mode(db: AsyncSession) -> str:
+    """Active credential environment for HitPay: 'live' | 'sandbox'."""
+    mode = await (await _get_config(db)).get_str("hitpay.mode", default="live")
+    return "sandbox" if mode == "sandbox" else "live"
+
+
 async def _hitpay_enabled(db: AsyncSession) -> bool:
     config = await _get_config(db)
     enabled = await config.get_bool("hitpay.enabled", default=False)
     if not enabled:
         return False
-    api_key = await config.get_str("hitpay.api_key", default="")
-    return bool(api_key)
+    return bool(await _get_api_key(db))
 
 
 async def _get_api_key(db: AsyncSession) -> str | None:
-    return await (await _get_config(db)).get_str("hitpay.api_key", default="") or None
+    key = "hitpay.sandbox_api_key" if await _hitpay_mode(db) == "sandbox" else "hitpay.api_key"
+    return await (await _get_config(db)).get_str(key, default="") or None
 
 
 async def _get_salt(db: AsyncSession) -> str | None:
     config = await _get_config(db)
-    return (
-        await config.get_str("hitpay.webhook_secret", default="")
-        or await config.get_str("hitpay.salt", default="")
-        or None
+    key = "hitpay.sandbox_salt" if await _hitpay_mode(db) == "sandbox" else "hitpay.salt"
+    value = await config.get_str(key, default="")
+    if not value:
+        value = await config.get_str("hitpay.webhook_secret", default="")
+    return value or None
+
+
+async def _get_salts_all(db: AsyncSession) -> tuple[list[str], str | None]:
+    """ALL configured HitPay salts (live + sandbox + legacy webhook_secret) —
+    webhook verification accepts a signature from either environment.
+
+    Returns (salts, active_salt) where active_salt is the ACTIVE mode's salt
+    (for audit logging when an event verifies against the other env's salt)."""
+    config = await _get_config(db)
+    values = await config.get_many(
+        ["hitpay.mode", "hitpay.salt", "hitpay.sandbox_salt", "hitpay.webhook_secret"]
     )
+    mode = "sandbox" if values.get("hitpay.mode") == "sandbox" else "live"
+    live = str(values.get("hitpay.salt") or "").strip()
+    sandbox = str(values.get("hitpay.sandbox_salt") or "").strip()
+    legacy = str(values.get("hitpay.webhook_secret") or "").strip()
+    active = sandbox if mode == "sandbox" else (live or legacy)
+    salts: list[str] = []
+    for v in (live, sandbox, legacy):
+        if v and v not in salts:
+            salts.append(v)
+    return salts, active or None
 
 
 async def _get_base_url(db: AsyncSession) -> str:
     config = await _get_config(db)
+    if await _hitpay_mode(db) == "sandbox":
+        base = await config.get_str("hitpay.sandbox_api_base_url", default="")
+        if base:
+            return base.rstrip("/")
+        return DEFAULT_SANDBOX_BASE_URL
     base = (
         await config.get_str("hitpay.api_base_url", default="")
         or await config.get_str("hitpay.base_url", default="")

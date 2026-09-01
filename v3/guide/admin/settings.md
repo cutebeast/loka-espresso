@@ -77,21 +77,25 @@ Exact keys vary as features ship — the page renders whatever is configured.
 
 ## Payment Gateway (`/settings/payment-gateway`)
 
-Two providers are supported: **Stripe** (cards and local payment methods) and **HitPay**. Keys are validated when you enable a provider, so fill in the credentials first, then toggle it on.
+Three providers are supported: **Stripe**, **eGHL** (ADAPTIS — card + FPX, the preferred Malaysia gateway), and **HitPay** (DuitNow / TnG / Boost / ShopeePay). Each provider has its own page; the overview page shows the enabled state + active mode of each provider and hosts the public URLs.
 
-### Stripe
-- **Enabled** toggle — requires the fields below plus at least one payment method type.
-- **Secret key**, **Publishable key**, **Webhook secret** — sensitive; shown as `***` once saved.
-- **Automatic tax** toggle.
-- **Checkout success / cancel URLs** — where customers return after paying.
-- **Payment method types** — at least one must be selected.
+### Provider pages (`/settings/payment-gateway/stripe`, `/eghl`, `/hitpay`)
 
-### HitPay
-- **Enabled** toggle — requires API key, salt, base URL, and at least one payment method.
-- **API key**, **Salt** (sensitive), **API base URL**.
-- **Payment methods**.
+Each provider page has three cards:
 
-### Public URLs
+- **Live credentials** — production keys. Required to enable the provider when the mode is Live.
+- **Sandbox credentials** — test keys (Stripe `sk_test_`/`pk_test_`, HitPay `sandbox_` API key, eGHL sandbox merchant pair). Used only when the mode is Sandbox.
+- **Gateway settings** — the **Enabled** toggle, **Active Mode** (Live / Sandbox), payment method chips, and (Stripe only) checkout mode + automatic tax.
+
+Rules:
+
+- Enabling a provider requires the ACTIVE mode's credentials plus at least one payment method type — validation blocks the save otherwise (nothing is half-saved).
+- Sandbox mode uses the test keys and points at the test endpoints (Stripe test mode, HitPay sandbox API, eGHL test gateway). Webhook events from either environment are accepted at the same webhook URL, so you can test end-to-end without touching live keys.
+- Sensitive fields are masked once saved; type a new value over the field to rotate it.
+- Stripe checkout success / cancel URLs are optional (the backend falls back to portal defaults).
+
+### Public URLs (overview page)
+
 - **App public URL** — the customer-facing site used in payment redirects and webhooks.
 - **Admin public URL** and **Staff public URL**.
 
@@ -99,6 +103,7 @@ Two providers are supported: **Stripe** (cards and local payment methods) and **
 - Webhook endpoints must be publicly reachable or payment-capture callbacks never arrive and orders stay unpaid.
 - Enabling a provider without its required fields fails validation — nothing is half-saved.
 - Rotate live keys by typing the new value over the masked field and saving.
+- After switching modes, run one test payment to confirm the gateway endpoints match the active credential set.
 
 ## Twilio Verify (`/settings/twilio-verify`)
 

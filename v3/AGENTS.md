@@ -2422,3 +2422,41 @@ Owner report: can't place bundle orders on the POS. Root cause: `allow_duplicate
 - Data: 3 multi_course bundles had allow_duplicates=true → set false (the admin form already normalizes this on save).
 - PWA/kiosk were never affected: kiosk scopes the flag per mechanic; the PWA routes multi_course to MultiCourseBundleSheet which ignores the flag.
 - Verified live: Combos tab → Breakfast Duo → bread + 2 drinks → Add to Cart enabled → cart at RM 39.00. E2E 251/251.
+
+## Round 50 — payment gateway live/sandbox credential split (2026-09-02)
+
+Each payment provider (Stripe / eGHL / HitPay) now holds SEPARATE live + sandbox credentials with a selector, instead of one credential set:
+
+- **Config rows** (seeded in `seed_platform.py` + live DB): `<provider>.mode` = `live` (default) | `sandbox`; Stripe `stripe.sandbox_secret_key/sandbox_publishable_key/sandbox_webhook_secret`; HitPay `hitpay.sandbox_api_key/sandbox_salt/sandbox_api_base_url` (default https://api.sandbox.hit-pay.com); eGHL `eghl.sandbox_merchant_code/sandbox_merchant_key/sandbox_base_url`.
+- **Backend getters are mode-aware**: `_pg_mode` (payment.py), `_hitpay_mode`/`_get_api_key`/`_get_salt`/`_get_base_url` (hitpay.py), `_eghl_mode`/`_get_merchant_code`/`_get_merchant_key`/`_get_base_url` (eghl.py). `.env` fallback only applies to the LIVE Stripe keys (env holds live keys; sandbox keys are DB-only).
+- **Webhooks accept EITHER environment** (both endpoints post to the same URL): `_get_stripe_webhook_secrets_all`, `_get_salts_all` (hitpay), `_get_credential_pairs_all` (eghl — tuple order is `(merchant_code, merchant_key)`, the eGHL verifier loop unpacks `for merchant_code, merchant_key in pairs`).
+- **Admin UI split**: `/settings/payment-gateway` = overview hub (provider status cards + Public URLs) + `/settings/payment-gateway/stripe|eghl|hitpay` per-provider pages (Live card + Sandbox card + shared settings + Active Mode selector). Shared components in `admin-portal/src/app/settings/payment-gateway/gateway-shared.tsx` (`useGatewayConfigs`, `GatewayField`, `ConfigCard`) + `provider-page.tsx` (`ProviderSettingsPage`, config-driven per provider). Sidebar Settings group has 4 payment children (`admin.nav.settings.paymentGateway{,Stripe,Eghl,Hitpay}`).
+- **i18n**: 48 new admin-ui keys seeded by `backend/scripts/seed_payment_gateway_ui_translations.py` (EN+zh, DO NOTHING — manual, protected). GOTCHA: admin-ui has no en.json fallback — new page keys MUST be seeded to the DB.
+- **Tests**: `tests/test_pg_sandbox_modes.py` (5 unit — mode-aware getters + all-secrets dedupe). Full E2E 252 passed / 3 skipped.
+- Verified live: Stripe page mode toggle save round-trip persists (`stripe.mode` live↔sandbox), sandbox hint renders, webhook E2E 7/7.
+- RULE: new provider credential config keys = seed row + mode-aware getter + webhook-verifier both-env acceptance + Settings page section.
+
+### Round 50 review fixes (2026-09-02)
+- `_eghl_enabled` made mode-aware (was reading live keys only — sandbox mode with only sandbox creds disabled eGHL entirely).
+- Admin mask literal fixed: `"***"` → `"********"` (backend `SENSITIVE_MASK`) — masked secrets no longer render as asterisks in fields, and required-credential validation now correctly rejects empty secrets (verified live: enabling Stripe with no keys blocks save).
+- Stripe checkout success/cancel URLs are optional again (`FieldSpec.optional`).
+- `seed_payment_gateway_ui_translations.py` wired into `seed_all.py` translations step (NOTE: it needs the ASYNC `SETTINGS.database_url`, not the sync psycopg2 URL — the sync URL breaks asyncpg).
+- Webhook "all secrets" helpers now batch reads via new `PlatformConfigService.get_many()` (one query) and return `(values, active_env_value)`; verifiers log a WARNING when an event verifies against the NON-active environment's secret (audit visibility for the widened trust boundary — both envs still accepted by design).
+- Dead code removed: `get_stripe_webhook_secret` wrapper + import, `GatewayState.invalidKeys`/`validationErrors`, unused gateway-shared exports.
+- Unit 195/195, full E2E 252 passed / 3 skipped.
+
+### Round 50 re-audit (2026-09-02) — one gap found & fixed
+- **eGHL checkout-page token gate was live-key-only**: `eghl_checkout_page` (payment.py) verified the anti-enumeration token `t` against `eghl.merchant_key` directly, while `create_eghl_checkout` signs it with the MODE-AWARE `_get_merchant_key` — sandbox mode 404'd every checkout page. Now verifies against ALL configured merchant keys (live + sandbox, deduped) via `_get_credential_pairs_all`. Unit test `test_eghl_checkout_page_token_accepts_sandbox_key` + live probe (sandbox-key token passes gate → 503 disabled, bogus → 404; dev config restored).
+- Verified clean: no other direct `stripe.*/hitpay.*/eghl.*` key reads outside the service getters; `_use_simulator`, `get_payment_gateway_config`, `build_eghl_checkout_page`, requery/refund all mode-aware; infra/db seed SQL carries no PG rows (seed_all.py is the single source, wired); form-schema contract checker 0 drops; alembic clean; unit 196/196; E2E 252/3.
+
+### Round 50 re-audit pass 2 (2026-09-02)
+- **HitPay sandbox URL misalignment**: seed + admin hint said `https://sandbox.hitpay.com.my` but the service fallback constant (pre-existing, from HitPay docs) is `https://api.sandbox.hit-pay.com`. Aligned seed + page hint + live DB row (seeder is DO NOTHING — stale row corrected explicitly).
+- **eGHL empty-base guard**: `_get_base_url` now raises EGHLError 503 when the ACTIVE mode's base URL is unconfigured (was: silently rendered a form posting to an empty URL). All four callers (create/build/requery/refund) are behind `_eghl_enabled` so disabled dev is unaffected.
+- Re-verified: every Stripe key read in the codebase goes through the mode-aware getters (14 call sites incl. guest-pay, POS QR, wallet topup, saved cards); guest-pay summary flags report the raw enabled intent by design (money path enforces mode-aware checks). Unit 196/196 · webhook E2E 7/7.
+
+### Round 50 re-audit pass 3 (2026-09-02) — docs + residue
+- Help guide updated for the split layout (`guide/admin/settings.md` Payment Gateway section rewritten: 3 providers, Live/Sandbox cards, Active Mode; `guide/faq.md` + `guide/admin/index.md` synced); re-seeded (47 articles) — DB verified contains the new content. zh fill runs via the daily translate cron (long help bodies retry against deepseek-v4-pro; nightly backstop).
+- Removed dead `grabpay: 523` entry from eGHL `PAYMENT_ID_MAP` (provider enum has no grabpay since round 43).
+- Overview page subtitle updated (`settings_payment-gateway.subtitle_2`, EN+zh seeded — 49 keys × 2 locales now).
+- New unit test `test_eghl_base_url_raises_when_active_env_unconfigured` (503 instead of a form posting to an empty URL).
+- Unit 197/197 · webhook E2E 7/7 · admin tsc/eslint clean · 4 payment-gateway pages browser-verified (0 console errors) · backend healthy.

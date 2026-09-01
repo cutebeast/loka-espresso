@@ -89,10 +89,22 @@ CONFIGS = [
     ("stripe.secret_key", '""', "string", "all", True, True),
     ("stripe.publishable_key", '""', "string", "all", False, True),
     ("stripe.webhook_secret", '""', "string", "all", True, True),
+    # Stripe sandbox (test-mode) credentials — a separate environment with its
+    # own keys. `<provider>.mode` = 'live' | 'sandbox' selects which set the
+    # services use. Webhooks from EITHER environment are accepted (both
+    # endpoints post to the same URL).
+    ("stripe.mode", '"live"', "string", "all", False, True),
+    ("stripe.sandbox_secret_key", '""', "string", "all", True, True),
+    ("stripe.sandbox_publishable_key", '""', "string", "all", False, True),
+    ("stripe.sandbox_webhook_secret", '""', "string", "all", True, True),
     ("hitpay.enabled", "false", "boolean", "all", False, True),
     ("hitpay.api_key", '""', "string", "all", True, True),
     ("hitpay.salt", '""', "string", "all", True, True),
     ("hitpay.api_base_url", '"https://api.hitpay.com.my"', "string", "all", False, True),
+    ("hitpay.mode", '"live"', "string", "all", False, True),
+    ("hitpay.sandbox_api_key", '""', "string", "all", True, True),
+    ("hitpay.sandbox_salt", '""', "string", "all", True, True),
+    ("hitpay.sandbox_api_base_url", '"https://api.sandbox.hit-pay.com"', "string", "all", False, True),
     # eGHL (ADAPTIS — iPay88 NDes) payment gateway — preferred MY gateway
     # (card + FPX + eWallets via the ADAPTIS hosted page). `eghl.merchant_key`
     # is sensitive (HMAC-SHA512 signing key). `eghl.base_url` is the ADAPTIS
@@ -103,6 +115,10 @@ CONFIGS = [
     ("eghl.merchant_key", '""', "string", "all", True, True),
     ("eghl.base_url", '""', "string", "all", False, True),
     ("eghl.payment_methods", '["card", "fpx"]', "json", "all", False, True),
+    ("eghl.mode", '"live"', "string", "all", False, True),
+    ("eghl.sandbox_merchant_code", '""', "string", "all", False, True),
+    ("eghl.sandbox_merchant_key", '""', "string", "all", True, True),
+    ("eghl.sandbox_base_url", '""', "string", "all", False, True),
     # GrabPay removed 2026-08-17 (never launched — simulator-only).
     # Web Push (VAPID) — DB-first since round 38 pass 8; seeded empty so they
     # appear in Admin → Settings → Web Push. Env vars remain the bootstrap

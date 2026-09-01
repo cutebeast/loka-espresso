@@ -42,7 +42,6 @@ PAYMENT_ID_MAP: dict[str, int] = {
     "card": 2,           # Credit Card (single sale)
     "fpx": 16,           # FPX: all banks
     "boost": 210,        # Boost Wallet Online
-    "grabpay": 523,      # GrabPay Online
     "tng": 538,          # Touch 'n Go eWallet
     "maybank_payqr": 542,  # Maybank PayQR Online
     "shopeepay": 801,    # ShopeePay Online
@@ -71,17 +70,57 @@ async def _get_config(db: AsyncSession) -> PlatformConfigService:
     return PlatformConfigService(db)
 
 
+async def _eghl_mode(db: AsyncSession) -> str:
+    """Active credential environment for eGHL: 'live' | 'sandbox'."""
+    mode = await (await _get_config(db)).get_str("eghl.mode", default="live")
+    return "sandbox" if mode == "sandbox" else "live"
+
+
 async def _get_merchant_code(db: AsyncSession) -> str:
-    return await (await _get_config(db)).get_str("eghl.merchant_code", default="")
+    key = "eghl.sandbox_merchant_code" if await _eghl_mode(db) == "sandbox" else "eghl.merchant_code"
+    return await (await _get_config(db)).get_str(key, default="")
 
 
 async def _get_merchant_key(db: AsyncSession) -> str:
-    return await (await _get_config(db)).get_str("eghl.merchant_key", default="")
+    key = "eghl.sandbox_merchant_key" if await _eghl_mode(db) == "sandbox" else "eghl.merchant_key"
+    return await (await _get_config(db)).get_str(key, default="")
 
 
 async def _get_base_url(db: AsyncSession) -> str:
-    """ADAPTIS {BaseURL} (no trailing path — endpoints append their own)."""
-    return await (await _get_config(db)).get_str("eghl.base_url", default="")
+    """ADAPTIS {BaseURL} (no trailing path — endpoints append their own).
+
+    Raises EGHLError when the ACTIVE mode's base URL is unconfigured — a
+    checkout/requery/refund with an empty base URL silently renders a form
+    that posts nowhere."""
+    key = "eghl.sandbox_base_url" if await _eghl_mode(db) == "sandbox" else "eghl.base_url"
+    base = await (await _get_config(db)).get_str(key, default="")
+    if not base.strip():
+        raise EGHLError(f"eGHL {key} is not configured", 503)
+    return base.strip()
+
+
+async def _get_credential_pairs_all(db: AsyncSession) -> tuple[list[tuple[str, str]], tuple[str, str] | None]:
+    """ALL configured (merchant_code, merchant_key) pairs — live + sandbox —
+    for backend-post signature verification (both environments post to the
+    same URL). Tuple order: (merchant_code, merchant_key).
+
+    Returns (pairs, active_pair) where active_pair is the ACTIVE mode's pair
+    (for audit logging when an event verifies against the other env's pair)."""
+    config = await _get_config(db)
+    values = await config.get_many(
+        ["eghl.mode", "eghl.merchant_code", "eghl.merchant_key",
+         "eghl.sandbox_merchant_code", "eghl.sandbox_merchant_key"]
+    )
+    mode = "sandbox" if values.get("eghl.mode") == "sandbox" else "live"
+    live_pair = (str(values.get("eghl.merchant_code") or "").strip(), str(values.get("eghl.merchant_key") or "").strip())
+    sandbox_pair = (str(values.get("eghl.sandbox_merchant_code") or "").strip(), str(values.get("eghl.sandbox_merchant_key") or "").strip())
+    active = sandbox_pair if mode == "sandbox" else live_pair
+    pairs: list[tuple[str, str]] = []
+    for code, key in (live_pair, sandbox_pair):
+        if code and key and (code, key) not in pairs:
+            pairs.append((code, key))
+    active = active if (active[0] and active[1]) else None
+    return pairs, active
 
 
 async def _get_payment_methods(db: AsyncSession) -> list[str]:
@@ -100,9 +139,11 @@ async def _get_payment_methods(db: AsyncSession) -> list[str]:
 async def _eghl_enabled(db: AsyncSession) -> bool:
     config = await _get_config(db)
     enabled = await config.get_bool("eghl.enabled", default=False)
-    merchant_code = await config.get_str("eghl.merchant_code", default="")
-    merchant_key = await config.get_str("eghl.merchant_key", default="")
-    return bool(enabled and merchant_code and merchant_key)
+    if not enabled:
+        return False
+    # Mode-aware: the ACTIVE environment's credentials gate availability
+    # (sandbox mode must not require live keys, and vice versa).
+    return bool(await _get_merchant_code(db) and await _get_merchant_key(db))
 
 
 async def _api_base_url(db: AsyncSession) -> str:

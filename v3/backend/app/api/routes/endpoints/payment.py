@@ -72,7 +72,7 @@ from app.services.payment import (
     create_payment_intent,
     create_stripe_checkout_session,
     get_payment_gateway_config,
-    get_stripe_webhook_secret,
+    get_stripe_webhook_secrets_all,
     process_webhook_event,
     refund_payment,
 )
@@ -1159,9 +1159,15 @@ async def eghl_checkout_page(
     t: str = Query("", description="Anti-enumeration token (HMAC of the PaymentID)"),
 ):
     """Render the auto-submitting eGHL form for a PaymentID (EG*/EGT*)."""
-    config_service = PlatformConfigService(db)
-    merchant_key = await config_service.get_str("eghl.merchant_key", default="")
-    if not merchant_key or not hmac.compare_digest(eghl_checkout_token(payment_id_str, merchant_key), t):
+    # Verify the anti-enumeration token against ALL configured merchant keys
+    # (live + sandbox) — the token is signed with the mode-active key at
+    # checkout creation, and a mode flip must not break the browser return.
+    from app.services.eghl import _get_credential_pairs_all
+    _pairs, _active = await _get_credential_pairs_all(db)
+    merchant_keys = list(dict.fromkeys(key for _code, key in _pairs))
+    if not merchant_keys or not any(
+        hmac.compare_digest(eghl_checkout_token(payment_id_str, key), t) for key in merchant_keys
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Checkout session not found")
 
     # Customer IP for the eGHL CustIP field (behind Caddy / the PWA proxy the
@@ -1226,24 +1232,40 @@ async def stripe_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe-Signature header")
 
     payload_bytes = await request.body()
-    webhook_secret = await get_stripe_webhook_secret(db)
-    if not webhook_secret:
+    # Accept signatures from EITHER credential environment (live + sandbox
+    # webhook endpoints post to the same URL). The active mode's secret is
+    # returned alongside for audit visibility when the OTHER environment's
+    # secret verifies an event.
+    webhook_secrets, active_secret = await get_stripe_webhook_secrets_all(db)
+    if not webhook_secrets:
         logger.error("Stripe webhook rejected: signing secret not configured")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Stripe webhook signing secret not configured",
         )
 
-    try:
-        event = await anyio.to_thread.run_sync(
-            stripe.Webhook.construct_event,
-            payload_bytes,
-            sig_header,
-            webhook_secret,
-        )
-    except (ValueError, SignatureVerificationError) as exc:
+    event = None
+    matched_secret: str | None = None
+    for webhook_secret in webhook_secrets:
+        try:
+            event = await anyio.to_thread.run_sync(
+                stripe.Webhook.construct_event,
+                payload_bytes,
+                sig_header,
+                webhook_secret,
+            )
+            matched_secret = webhook_secret
+            break
+        except (ValueError, SignatureVerificationError):
+            continue
+    if event is None:
         logger.warning("Stripe webhook rejected: invalid signature")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
+    if active_secret and matched_secret != active_secret:
+        logger.warning(
+            "Stripe webhook verified with the NON-ACTIVE mode's signing secret "
+            "(active mode secret not matched) — event still accepted"
+        )
 
     # Include the event id — extract_event_id reads payload["id"], without it
     # the Stripe dedup net (is_event_processed) never engages. Stripe always
@@ -1278,21 +1300,26 @@ async def hitpay_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Hitpay-Signature header")
 
     payload_bytes = await request.body()
-    config_service = PlatformConfigService(db)
-    salt = (
-        await config_service.get_str("hitpay.salt", default="")
-        or await config_service.get_str("hitpay.webhook_secret", default="")
-    )
-    if not salt:
+    # Accept signatures from EITHER credential environment (live + sandbox
+    # webhook endpoints post to the same URL).
+    from app.services.hitpay import _get_salts_all
+    salts, active_salt = await _get_salts_all(db)
+    if not salts:
         logger.error("HitPay webhook rejected: salt/webhook_secret not configured")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="HitPay salt/webhook_secret not configured",
         )
 
-    if not verify_hitpay_signature(payload_bytes, sig_header, salt):
+    matched_salt = next((salt for salt in salts if verify_hitpay_signature(payload_bytes, sig_header, salt)), None)
+    if matched_salt is None:
         logger.warning("HitPay webhook rejected: invalid signature")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid HitPay signature")
+    if active_salt and matched_salt != active_salt:
+        logger.warning(
+            "HitPay webhook verified with the NON-ACTIVE mode's salt "
+            "(active mode salt not matched) — event still accepted"
+        )
 
     try:
         body = json.loads(payload_bytes)
@@ -1334,10 +1361,9 @@ async def eghl_webhook(
     HMAC-SHA512 signature (MerchantKey + MerchantCode + RefNo +
     Amount(stripped)); eGHL expects a plain "OK" 200 response.
     """
-    config_service = PlatformConfigService(db)
-    merchant_key = await config_service.get_str("eghl.merchant_key", default="")
-    merchant_code = await config_service.get_str("eghl.merchant_code", default="")
-    if not merchant_key or not merchant_code:
+    from app.services.eghl import _get_credential_pairs_all
+    credential_pairs, active_pair = await _get_credential_pairs_all(db)
+    if not credential_pairs:
         logger.error("eGHL callback rejected: eghl.merchant_code/merchant_key not configured")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1358,10 +1384,24 @@ async def eghl_webhook(
         except Exception:
             pass
 
-    valid, reason = verify_eghl_backend_post(payload, merchant_key, merchant_code)
+    # Accept signatures from EITHER credential environment (live + sandbox
+    # callbacks post to the same URL).
+    valid = False
+    reason = "no matching merchant credentials"
+    matched_pair: tuple[str, str] | None = None
+    for merchant_code, merchant_key in credential_pairs:
+        valid, reason = verify_eghl_backend_post(payload, merchant_key, merchant_code)
+        if valid:
+            matched_pair = (merchant_code, merchant_key)
+            break
     if not valid:
         logger.warning("eGHL callback rejected: %s", reason)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid eGHL signature ({reason})")
+    if active_pair and matched_pair != active_pair:
+        logger.warning(
+            "eGHL callback verified with the NON-ACTIVE mode's merchant pair "
+            "(active mode pair not matched) — event still accepted"
+        )
 
     status_id = str(payload.get("TransactionStatusID") or payload.get("TransactionStatusId") or "")
     if status_id != "1300":

@@ -61,28 +61,70 @@ def _from_cents(cents: int) -> Decimal:
     return Decimal(cents) / Decimal(100)
 
 
+async def _pg_mode(db: AsyncSession, provider: str) -> str:
+    """Active credential environment for a payment provider: 'live' | 'sandbox'.
+
+    Every gateway (Stripe / eGHL / HitPay) keeps SEPARATE live + sandbox
+    credentials; one selector picks which set the services use."""
+    mode = await PlatformConfigService(db).get_str(f"{provider}.mode", default="live")
+    return "sandbox" if mode == "sandbox" else "live"
+
+
 async def _get_stripe_secret_key(db: AsyncSession) -> str | None:
-    """Read Stripe secret key from platform_config, falling back to .env."""
-    value = await PlatformConfigService(db).get_str("stripe.secret_key", default="")
+    """Read the ACTIVE environment's Stripe secret key, falling back to .env."""
+    key = "stripe.sandbox_secret_key" if await _pg_mode(db, "stripe") == "sandbox" else "stripe.secret_key"
+    value = await PlatformConfigService(db).get_str(key, default="")
     if value:
         return value
-    return get_settings().stripe_secret_key or None
+    if key == "stripe.secret_key":
+        return get_settings().stripe_secret_key or None
+    return None
 
 
 async def _get_stripe_publishable_key(db: AsyncSession) -> str | None:
-    """Read Stripe publishable key from platform_config, falling back to .env."""
-    value = await PlatformConfigService(db).get_str("stripe.publishable_key", default="")
+    """Read the ACTIVE environment's Stripe publishable key, falling back to .env."""
+    key = "stripe.sandbox_publishable_key" if await _pg_mode(db, "stripe") == "sandbox" else "stripe.publishable_key"
+    value = await PlatformConfigService(db).get_str(key, default="")
     if value:
         return value
-    return get_settings().stripe_publishable_key or None
+    if key == "stripe.publishable_key":
+        return get_settings().stripe_publishable_key or None
+    return None
 
 
 async def _get_stripe_webhook_secret(db: AsyncSession) -> str | None:
-    """Read Stripe webhook secret from platform_config, falling back to .env."""
-    value = await PlatformConfigService(db).get_str("stripe.webhook_secret", default="")
+    """Read the ACTIVE environment's Stripe webhook secret, falling back to .env."""
+    key = "stripe.sandbox_webhook_secret" if await _pg_mode(db, "stripe") == "sandbox" else "stripe.webhook_secret"
+    value = await PlatformConfigService(db).get_str(key, default="")
     if value:
         return value
-    return get_settings().stripe_webhook_secret or None
+    if key == "stripe.webhook_secret":
+        return get_settings().stripe_webhook_secret or None
+    return None
+
+
+async def _get_stripe_webhook_secrets_all(db: AsyncSession) -> tuple[list[str], str | None]:
+    """ALL configured Stripe webhook secrets (live + sandbox) — webhook
+    verification accepts a signature from either environment, since both
+    endpoints post to the same URL.
+
+    Returns (secrets, active_secret) where active_secret is the ACTIVE mode's
+    configured secret (for audit logging when an event verifies against the
+    inactive environment's secret)."""
+    config = PlatformConfigService(db)
+    values = await config.get_many(
+        ["stripe.mode", "stripe.webhook_secret", "stripe.sandbox_webhook_secret"]
+    )
+    mode = "sandbox" if values.get("stripe.mode") == "sandbox" else "live"
+    live = str(values.get("stripe.webhook_secret") or "").strip()
+    sandbox = str(values.get("stripe.sandbox_webhook_secret") or "").strip()
+    env_fallback = get_settings().stripe_webhook_secret or ""
+    active = sandbox if mode == "sandbox" else (live or env_fallback)
+    secrets: list[str] = []
+    for v in (live, sandbox, env_fallback):
+        if v and v not in secrets:
+            secrets.append(v)
+    return secrets, active or None
 
 
 async def _get_myr_payment_method_types(db: AsyncSession) -> list[str]:
@@ -168,9 +210,10 @@ async def get_payment_gateway_config(db: AsyncSession) -> dict:
     }
 
 
-async def get_stripe_webhook_secret(db: AsyncSession) -> str | None:
-    """Return the configured Stripe webhook secret, preferring platform_config over .env."""
-    return await _get_stripe_webhook_secret(db)
+async def get_stripe_webhook_secrets_all(db: AsyncSession) -> tuple[list[str], str | None]:
+    """ALL configured Stripe webhook secrets + the ACTIVE mode's secret —
+    see `_get_stripe_webhook_secrets_all`."""
+    return await _get_stripe_webhook_secrets_all(db)
 
 
 async def _create_stripe_intent(

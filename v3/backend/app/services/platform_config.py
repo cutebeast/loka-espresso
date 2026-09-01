@@ -60,6 +60,22 @@ class PlatformConfigService:
             return val.lower() in ("true", "1", "yes", "on")
         return bool(val)
 
+    async def get_many(self, keys: list[str], environment: Optional[str] = None) -> dict[str, Any]:
+        """Fetch several config keys in ONE query. Returns {key: value} for
+        the keys present (missing keys are simply absent from the dict)."""
+        if not keys:
+            return {}
+        stmt = select(PlatformConfig).where(PlatformConfig.config_key.in_(keys))
+        if environment:
+            stmt = stmt.where(
+                (PlatformConfig.environment == environment)
+                | (PlatformConfig.environment == "all")
+            )
+        else:
+            stmt = stmt.where(PlatformConfig.environment == "all")
+        rows = (await self.db.execute(stmt)).scalars().all()
+        return {row.config_key: self._cast_value(row.config_value, row.value_type) for row in rows}
+
     async def get_int(self, key: str, default: int = 0) -> int:
         val = await self.get(key, default)
         try:
