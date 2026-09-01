@@ -170,7 +170,7 @@ async def test_requery_maps_1400_to_failed():
 
 @pytest.mark.asyncio
 async def test_refund_maps_3300_to_completed():
-    payment = SimpleNamespace(provider_transaction_id="TR123", id=1)
+    payment = SimpleNamespace(provider_transaction_id="EG1", id=1, extra_metadata={"eghl_trans_id": "TR123"})
     resp = MagicMock()
     resp.status_code = 200
     resp.headers = {"content-type": "application/json"}
@@ -188,7 +188,7 @@ async def test_refund_maps_3300_to_completed():
 
 @pytest.mark.asyncio
 async def test_refund_maps_3440_to_failed():
-    payment = SimpleNamespace(provider_transaction_id="TR123", id=1)
+    payment = SimpleNamespace(provider_transaction_id="EG1", id=1, extra_metadata={"eghl_trans_id": "TR123"})
     resp = MagicMock()
     resp.status_code = 200
     resp.headers = {"content-type": "application/json"}
@@ -203,6 +203,19 @@ async def test_refund_maps_3440_to_failed():
         result = await refund_eghl_payment(db, payment, refund_id=9, refund_amount=Decimal("1.00"), remark="Refund")
         assert result["status"] == "failed"
         assert result["reason"] == "FP rejected"
+
+
+@pytest.mark.asyncio
+async def test_refund_requires_confirmed_gateway_trans_id():
+    """Refunds must refuse until a gateway TransID is known (provider_transaction_id
+    holds our local EG{id} RefNo, never the ADAPTIS TransID)."""
+    payment = SimpleNamespace(provider_transaction_id="EG1", id=1, extra_metadata={})
+    db = AsyncMock()
+    with patch("app.services.eghl._eghl_enabled", new=AsyncMock(return_value=True)):
+        with pytest.raises(EGHLError) as exc:
+            await refund_eghl_payment(db, payment, refund_id=9, refund_amount=Decimal("1.00"), remark="Refund")
+        assert exc.value.status_code == 400
+        assert "TransID" in exc.value.message
 
 
 def test_payment_id_catalog():

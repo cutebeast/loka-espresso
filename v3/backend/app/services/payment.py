@@ -2485,10 +2485,13 @@ async def process_webhook_event(
                 logger.warning("Wallet top-up session not found for HitPay request %s", transaction_id)
             return None
 
-    # eGHL wallet top-ups have no Payment row either (PaymentID = EGT{session.id}).
+    # eGHL wallet top-ups have no Payment row either (RefNo = EGT{session.id}).
     if payment is None and provider == "eghl":
+        # ADAPTIS backend post: TransactionStatusID 1300 = success (the
+        # endpoint only forwards 1300 posts); legacy TxnStatus "0" tolerated.
+        status_id = str(data.get("TransactionStatusID") or data.get("TransactionStatusId") or "")
         txn_status = str(data.get("TxnStatus", "")).strip()
-        if txn_status == "0":
+        if status_id == "1300" or txn_status == "0":
             result = await db.execute(
                 select(WalletTopupSession)
                 .where(WalletTopupSession.provider_session_id == transaction_id)
@@ -2498,7 +2501,7 @@ async def process_webhook_event(
             if topup_session is not None:
                 await _complete_wallet_topup(db, topup_session, "Online top-up via eGHL")
             else:
-                logger.warning("Wallet top-up session not found for eGHL PaymentID %s", transaction_id)
+                logger.warning("Wallet top-up session not found for eGHL RefNo %s", transaction_id)
         return None
 
     if payment is None:
@@ -2578,27 +2581,32 @@ async def process_webhook_event(
         elif hitpay_status in ("expired", "canceled"):
             new_status = "voided"
     elif provider == "eghl":
-        # eGHL callback fields: TxnStatus "0" = success, "2" = pending,
-        # anything else = failed.
+        # ADAPTIS backend post: TransactionStatusID 1300 = success / 1400 =
+        # fail (the endpoint only forwards success posts, but the requery
+        # path reuses this mapper with both). Legacy TxnStatus tolerated.
+        status_id = str(data.get("TransactionStatusID") or data.get("TransactionStatusId") or "")
         txn_status = str(data.get("TxnStatus", "")).strip()
-        if txn_status == "0":
+        if status_id == "1300" or txn_status == "0":
             new_status = "captured"
             try:
                 payment.captured_amount = to_decimal(data.get("Amount", payment.amount))
             except Exception:
                 payment.captured_amount = payment.amount
-            _cross_check_capture_amount(payment, data.get("CurrencyCode"))
+            _cross_check_capture_amount(payment, data.get("Currency") or data.get("CurrencyCode"))
+            trans_id = data.get("TransID") or data.get("TransId") or data.get("TxnID")
             payment.extra_metadata = {
                 **(payment.extra_metadata or {}),
-                "eghl_txn_id": data.get("TxnID"),
-                "eghl_auth_code": data.get("AuthCode"),
+                "eghl_trans_id": trans_id,  # ADAPTIS transaction id (IpayId for refunds)
             }
-        elif txn_status == "2":
+        elif status_id == "1400" or (not status_id and txn_status not in ("", "0", "2")):
+            new_status = "failed"
+            payment.failure_message = data.get("ErrorDescription") or data.get("TxnMessage") or f"eGHL payment failed (status {status_id or txn_status})"
+        elif txn_status == "2" or not status_id:
             # Still pending at the gateway — wait for the final callback.
             new_status = old_status
         else:
             new_status = "failed"
-            payment.failure_message = data.get("TxnMessage") or f"eGHL payment failed (TxnStatus {txn_status})"
+            payment.failure_message = data.get("ErrorDescription") or data.get("TxnMessage") or f"eGHL payment failed (status {status_id})"
 
     # Guard against late capture events reverting terminal states. Exception:
     # voided → captured means Stripe COMPLETED the session before our expire

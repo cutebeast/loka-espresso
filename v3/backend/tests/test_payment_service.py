@@ -228,7 +228,8 @@ async def test_process_webhook_event_hitpay_completed_records_payment_id(monkeyp
 
 @pytest.mark.asyncio
 async def test_process_webhook_event_eghl_success_captures_payment(monkeypatch, fake_config):
-    """An eGHL callback with TxnStatus=0 should capture the payment and record the txn id."""
+    """An ADAPTIS backend post (TransactionStatusID=1300) should capture the
+    payment and record the gateway TransID."""
     payment = Payment(
         id=3,
         order_id=1,
@@ -260,13 +261,12 @@ async def test_process_webhook_event_eghl_success_captures_payment(monkeypatch, 
             "transaction_id": "EG3",
             "data": {
                 "object": {
-                    "TxnID": "TXN999",
-                    "ServiceID": "SIT",
-                    "PaymentID": "EG3",
-                    "TxnStatus": "0",
+                    "TransID": "TXN999",
+                    "MerchantCode": "MM99900005",
+                    "RefNo": "EG3",
+                    "TransactionStatusID": "1300",
                     "Amount": "25.00",
-                    "CurrencyCode": "MYR",
-                    "AuthCode": "AUTH01",
+                    "Currency": "MYR",
                 }
             },
         },
@@ -274,13 +274,12 @@ async def test_process_webhook_event_eghl_success_captures_payment(monkeypatch, 
 
     assert result.status == "captured"
     assert result.captured_amount == Decimal("25.00")
-    assert result.extra_metadata["eghl_txn_id"] == "TXN999"
-    assert result.extra_metadata["eghl_auth_code"] == "AUTH01"
+    assert result.extra_metadata["eghl_trans_id"] == "TXN999"
 
 
 @pytest.mark.asyncio
 async def test_process_webhook_event_eghl_failure_marks_failed(monkeypatch, fake_config):
-    """An eGHL callback with a non-zero TxnStatus should fail the payment."""
+    """An ADAPTIS backend post with TransactionStatusID=1400 should fail the payment."""
     payment = Payment(
         id=4,
         order_id=1,
@@ -309,13 +308,13 @@ async def test_process_webhook_event_eghl_failure_marks_failed(monkeypatch, fake
             "transaction_id": "EG4",
             "data": {
                 "object": {
-                    "TxnID": "TXN998",
-                    "ServiceID": "SIT",
-                    "PaymentID": "EG4",
-                    "TxnStatus": "1",
+                    "TransID": "TXN998",
+                    "MerchantCode": "MM99900005",
+                    "RefNo": "EG4",
+                    "TransactionStatusID": "1400",
                     "Amount": "25.00",
-                    "CurrencyCode": "MYR",
-                    "TxnMessage": "Declined",
+                    "Currency": "MYR",
+                    "ErrorDescription": "Declined",
                 }
             },
         },

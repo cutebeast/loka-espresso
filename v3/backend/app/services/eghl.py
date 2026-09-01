@@ -479,13 +479,18 @@ async def refund_eghl_payment(db: AsyncSession, payment: Payment, refund_id: int
     """
     if not await _eghl_enabled(db):
         raise EGHLError("eGHL is not enabled", 503)
+
+    # IpayId must be the ADAPTIS transaction id (TransID from the backend
+    # post / requery), NOT our local RefNo (EG{n}) stored on
+    # provider_transaction_id. Refuse until a real gateway id is known —
+    # checked before any config I/O (fail fast, no gateway call possible).
+    trans_id = str((payment.extra_metadata or {}).get("eghl_trans_id") or "")
+    if not trans_id:
+        raise EGHLError("eGHL transaction id missing — the payment has no confirmed gateway TransID yet", 400)
+
     merchant_code = await _get_merchant_code(db)
     merchant_key = await _get_merchant_key(db)
     base_url = await _get_base_url(db)
-
-    trans_id = payment.provider_transaction_id or ""
-    if not trans_id:
-        raise EGHLError("eGHL transaction id missing on the payment", 400)
 
     ref_no = f"RF{refund_id}"
     amount = _fmt_amount(refund_amount)
