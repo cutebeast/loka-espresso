@@ -1,160 +1,216 @@
-"""Unit tests for the eGHL (GHL Systems) payment service."""
+"""Unit tests for the eGHL (ADAPTIS) provider service.
 
-import hashlib
+Covers the HMAC-SHA512 signature constructions (request/backend-post,
+requery, refund), amount stripping, backend-post verification, requery
+response mapping, and the checkout flow enable-gating.
+"""
+
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.services.eghl import (
+    PAYMENT_ID_MAP,
     EGHLError,
     _eghl_enabled,
-    build_eghl_callback_hash,
-    build_eghl_request_hash,
+    _signature_for_payment_request,
+    _signature_for_refund,
+    build_adaptis_signature,
     create_eghl_checkout,
-    verify_eghl_callback_hash,
+    is_eghl_topup_payment_id,
+    refund_eghl_payment,
+    requery_eghl_payment,
+    strip_amount_for_signature,
+    verify_eghl_backend_post,
 )
 
-# ---------------------------------------------------------------------------
-# Request hash (hosted-page form)
-# ---------------------------------------------------------------------------
-
-# Fixed vector, computed by hand from the documented field sequence:
-#   sha256(password + ServiceID + PaymentID + MerchantReturnURL
-#          + MerchantCallbackURL + Amount + CurrencyCode + CustIP + PageTimeout)
-REQUEST_HASH_VECTOR = hashlib.sha256(
-    (
-        "testpass"
-        + "SIT"
-        + "EG123"
-        + "https://app.example/api/payments/eghl/return"
-        + "https://app.example/api/webhooks/eghl"
-        + "10.00"
-        + "MYR"
-        + "1.2.3.4"
-        + "780"
-    ).encode("utf-8")
-).hexdigest()
-
-
-def test_build_eghl_request_hash_matches_known_vector():
-    got = build_eghl_request_hash(
-        password="testpass",
-        service_id="SIT",
-        payment_id="EG123",
-        merchant_return_url="https://app.example/api/payments/eghl/return",
-        merchant_callback_url="https://app.example/api/webhooks/eghl",
-        amount="10.00",
-        currency_code="MYR",
-        cust_ip="1.2.3.4",
-    )
-    assert got == REQUEST_HASH_VECTOR
-    assert got == got.lower()  # documented as lowercase hex
-
 
 # ---------------------------------------------------------------------------
-# Callback hash verification
-# ---------------------------------------------------------------------------
-
-CALLBACK_FIELDS = {
-    "TxnID": "TXN999",
-    "ServiceID": "SIT",
-    "PaymentID": "EG123",
-    "OrderNumber": "ORD-1",
-    "TxnStatus": "0",
-    "Amount": "10.00",
-    "CurrencyCode": "MYR",
-    "AuthCode": "AUTH01",
-    "TxnMessage": "Approved",
-}
-
-
-def _signed_callback_fields(password: str = "testpass") -> dict:
-    fields = dict(CALLBACK_FIELDS)
-    fields["HashValue"] = build_eghl_callback_hash(
-        password=password,
-        txn_id=fields["TxnID"],
-        service_id=fields["ServiceID"],
-        payment_id=fields["PaymentID"],
-        txn_status=fields["TxnStatus"],
-        amount=fields["Amount"],
-        currency_code=fields["CurrencyCode"],
-        auth_code=fields["AuthCode"],
-    )
-    return fields
-
-
-def test_verify_eghl_callback_hash_accepts_valid_signature():
-    assert verify_eghl_callback_hash(_signed_callback_fields(), "testpass") is True
-
-
-def test_verify_eghl_callback_hash_is_case_insensitive():
-    fields = _signed_callback_fields()
-    fields["HashValue"] = fields["HashValue"].upper()
-    assert verify_eghl_callback_hash(fields, "testpass") is True
-
-
-def test_verify_eghl_callback_hash_rejects_tampered_fields():
-    fields = _signed_callback_fields()
-    fields["Amount"] = "999.00"
-    assert verify_eghl_callback_hash(fields, "testpass") is False
-
-
-def test_verify_eghl_callback_hash_rejects_wrong_password():
-    assert verify_eghl_callback_hash(_signed_callback_fields(), "otherpass") is False
-
-
-def test_verify_eghl_callback_hash_rejects_missing_hash():
-    fields = _signed_callback_fields()
-    del fields["HashValue"]
-    assert verify_eghl_callback_hash(fields, "testpass") is False
-
-
-# ---------------------------------------------------------------------------
-# Config gating
+# Signatures
 # ---------------------------------------------------------------------------
 
 
-def _fake_config(monkeypatch, *, enabled: bool, merchant_id: str = "", password: str = ""):
+def test_build_adaptis_signature_is_hmac_sha512_lowercase_hex():
+    sig = build_adaptis_signature("merchantkey123", "merchantkey123", "MM99900005", "REF-1", "100")
+    assert len(sig) == 128
+    assert sig == sig.lower()
+    assert all(c in "0123456789abcdef" for c in sig)
+    # Deterministic + key-sensitive
+    assert sig == build_adaptis_signature("merchantkey123", "merchantkey123", "MM99900005", "REF-1", "100")
+    assert sig != build_adaptis_signature("otherkey123", "merchantkey123", "MM99900005", "REF-1", "100")
+
+
+def test_strip_amount_for_signature():
+    assert strip_amount_for_signature("1.00") == "100"
+    assert strip_amount_for_signature("1,278.99") == "127899"
+    assert strip_amount_for_signature("127899") == "127899"
+
+
+def test_payment_request_signature_matches_doc_construction():
+    # RawSignature = MerchantKey + MerchantCode + RefNo + Amount(stripped)
+    expected = build_adaptis_signature("MK123", "MK123", "MM99900005", "EG1", "100")
+    assert _signature_for_payment_request("MK123", "MM99900005", "EG1", "1.00") == expected
+
+
+def test_refund_signature_matches_doc_construction():
+    # RawSignature = MerchantKey + MerchantCode + IpayId + RefNo +
+    #                RefundAmount(stripped) + RefundCurrency
+    expected = build_adaptis_signature("MK123", "MK123", "MM99900005", "TR123", "RF1", "100", "MYR")
+    assert _signature_for_refund("MK123", "MM99900005", "TR123", "RF1", "1.00", "MYR") == expected
+
+
+# ---------------------------------------------------------------------------
+# Backend-post verification
+# ---------------------------------------------------------------------------
+
+
+def _backend_post(signature: str) -> dict:
+    return {
+        "MerchantCode": "MM99900005",
+        "RefNo": "EG1",
+        "Amount": "1.00",
+        "Currency": "MYR",
+        "TransID": "TR123",
+        "TransactionStatusID": "1300",
+        "Verification": {"SignatureType": "HMACSHA512", "Signature": signature},
+    }
+
+
+def test_verify_backend_post_accepts_valid_signature():
+    sig = _signature_for_payment_request("MK123", "MM99900005", "EG1", "1.00")
+    ok, reason = verify_eghl_backend_post(_backend_post(sig), "MK123", "MM99900005")
+    assert ok, reason
+
+
+def test_verify_backend_post_rejects_tampered_amount():
+    sig = _signature_for_payment_request("MK123", "MM99900005", "EG1", "9.99")
+    ok, _ = verify_eghl_backend_post(_backend_post(sig), "MK123", "MM99900005")
+    assert not ok
+
+
+def test_verify_backend_post_rejects_missing_signature():
+    payload = _backend_post("")
+    payload["Verification"] = {"SignatureType": "HMACSHA512", "Signature": ""}
+    ok, reason = verify_eghl_backend_post(payload, "MK123", "MM99900005")
+    assert not ok and reason == "missing signature"
+
+
+def test_verify_backend_post_rejects_wrong_key():
+    sig = _signature_for_payment_request("MK123", "MM99900005", "EG1", "1.00")
+    ok, _ = verify_eghl_backend_post(_backend_post(sig), "WRONGKEY", "MM99900005")
+    assert not ok
+
+
+# ---------------------------------------------------------------------------
+# Checkout enable-gating (same contract as before, new config keys)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_eghl_enabled_requires_flag_and_credentials():
     config = MagicMock()
-    config.get_bool = AsyncMock(return_value=enabled)
-    config.get_str = AsyncMock(
-        side_effect=lambda key, default="": {
-            "eghl.merchant_id": merchant_id,
-            "eghl.password": password,
-        }.get(key, default)
-    )
-    config.get = AsyncMock(return_value=None)
-    config.get_app_public_url = AsyncMock(return_value="https://app.example")
-    monkeypatch.setattr("app.services.eghl.PlatformConfigService", lambda db: config)
-    return config
+    config.get_bool = AsyncMock(return_value=True)
+    config.get_str = AsyncMock(side_effect=lambda k, default="": "MC" if k.endswith("merchant_code") else ("MK" if k.endswith("merchant_key") else default))
+    db = AsyncMock()
+    with patch("app.services.eghl._get_config", new=AsyncMock(return_value=config)):
+        assert await _eghl_enabled(db) is True
 
 
 @pytest.mark.asyncio
-async def test_eghl_enabled_requires_flag_and_credentials(monkeypatch):
-    _fake_config(monkeypatch, enabled=False, merchant_id="SIT", password="pw")
-    assert await _eghl_enabled(None) is False
-
-    _fake_config(monkeypatch, enabled=True, merchant_id="", password="pw")
-    assert await _eghl_enabled(None) is False
-
-    _fake_config(monkeypatch, enabled=True, merchant_id="SIT", password="")
-    assert await _eghl_enabled(None) is False
-
-    _fake_config(monkeypatch, enabled=True, merchant_id="SIT", password="pw")
-    assert await _eghl_enabled(None) is True
+async def test_create_eghl_checkout_raises_when_disabled():
+    db = AsyncMock()
+    with patch("app.services.eghl._eghl_enabled", new=AsyncMock(return_value=False)):
+        with pytest.raises(EGHLError) as exc:
+            await create_eghl_checkout(db, None, None, amount=Decimal("10.00"), currency="MYR")
+        assert exc.value.status_code == 503
 
 
-@pytest.mark.asyncio
-async def test_create_eghl_checkout_raises_when_disabled(monkeypatch):
-    _fake_config(monkeypatch, enabled=False)
-    with pytest.raises(EGHLError) as exc_info:
-        await create_eghl_checkout(None, None, None, None, amount=Decimal("10.00"), currency="MYR")
-    assert exc_info.value.status_code == 503
+# ---------------------------------------------------------------------------
+# Requery + refund mapping
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_create_eghl_checkout_requires_amount_for_topups(monkeypatch):
-    _fake_config(monkeypatch, enabled=True, merchant_id="SIT", password="pw")
-    with pytest.raises(EGHLError):
-        await create_eghl_checkout(None, None, None, None, topup_session=MagicMock(id=1))
+async def test_requery_maps_1300_to_success():
+    payment = SimpleNamespace(provider_transaction_id="EG1", amount=Decimal("1.00"), id=1)
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.headers = {"content-type": "application/json"}
+    resp.json.return_value = {"MerchantCode": "MM99900005", "RefNo": "EG1", "Amount": 1.00,
+                              "TransactionStatusID": "1300", "TransID": "TR123"}
+    db = AsyncMock()
+    with patch("app.services.eghl._eghl_enabled", new=AsyncMock(return_value=True)), \
+         patch("app.services.eghl._get_merchant_code", new=AsyncMock(return_value="MM99900005")), \
+         patch("app.services.eghl._get_merchant_key", new=AsyncMock(return_value="MK123")), \
+         patch("app.services.eghl._get_base_url", new=AsyncMock(return_value="https://gw.example")), \
+         patch("app.services.eghl.httpx.AsyncClient.post", new=AsyncMock(return_value=resp)):
+        result = await requery_eghl_payment(db, payment)
+        assert result["status"] == "success"
+        assert result["trans_id"] == "TR123"
+
+
+@pytest.mark.asyncio
+async def test_requery_maps_1400_to_failed():
+    payment = SimpleNamespace(provider_transaction_id="EG1", amount=Decimal("1.00"), id=1)
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.headers = {"content-type": "application/json"}
+    resp.json.return_value = {"TransactionStatusID": "1400"}
+    db = AsyncMock()
+    with patch("app.services.eghl._eghl_enabled", new=AsyncMock(return_value=True)), \
+         patch("app.services.eghl._get_merchant_code", new=AsyncMock(return_value="MM99900005")), \
+         patch("app.services.eghl._get_merchant_key", new=AsyncMock(return_value="MK123")), \
+         patch("app.services.eghl._get_base_url", new=AsyncMock(return_value="https://gw.example")), \
+         patch("app.services.eghl.httpx.AsyncClient.post", new=AsyncMock(return_value=resp)):
+        result = await requery_eghl_payment(db, payment)
+        assert result["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_refund_maps_3300_to_completed():
+    payment = SimpleNamespace(provider_transaction_id="TR123", id=1)
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.headers = {"content-type": "application/json"}
+    resp.json.return_value = {"RefundId": "RR1", "RefundStatusId": "3300", "RefundStatusDesc": "Refunded"}
+    db = AsyncMock()
+    with patch("app.services.eghl._eghl_enabled", new=AsyncMock(return_value=True)), \
+         patch("app.services.eghl._get_merchant_code", new=AsyncMock(return_value="MM99900005")), \
+         patch("app.services.eghl._get_merchant_key", new=AsyncMock(return_value="MK123")), \
+         patch("app.services.eghl._get_base_url", new=AsyncMock(return_value="https://gw.example")), \
+         patch("app.services.eghl.httpx.AsyncClient.post", new=AsyncMock(return_value=resp)):
+        result = await refund_eghl_payment(db, payment, refund_id=9, refund_amount=Decimal("1.00"), remark="Refund")
+        assert result["status"] == "completed"
+        assert result["refund_id"] == "RR1"
+
+
+@pytest.mark.asyncio
+async def test_refund_maps_3440_to_failed():
+    payment = SimpleNamespace(provider_transaction_id="TR123", id=1)
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.headers = {"content-type": "application/json"}
+    resp.json.return_value = {"RefundStatusId": "3440", "RefundStatusDesc": "Gateway Failed to Refund",
+                              "ErrorMessage": "FP rejected"}
+    db = AsyncMock()
+    with patch("app.services.eghl._eghl_enabled", new=AsyncMock(return_value=True)), \
+         patch("app.services.eghl._get_merchant_code", new=AsyncMock(return_value="MM99900005")), \
+         patch("app.services.eghl._get_merchant_key", new=AsyncMock(return_value="MK123")), \
+         patch("app.services.eghl._get_base_url", new=AsyncMock(return_value="https://gw.example")), \
+         patch("app.services.eghl.httpx.AsyncClient.post", new=AsyncMock(return_value=resp)):
+        result = await refund_eghl_payment(db, payment, refund_id=9, refund_amount=Decimal("1.00"), remark="Refund")
+        assert result["status"] == "failed"
+        assert result["reason"] == "FP rejected"
+
+
+def test_payment_id_catalog():
+    assert PAYMENT_ID_MAP["card"] == 2
+    assert PAYMENT_ID_MAP["fpx"] == 16
+    assert PAYMENT_ID_MAP["tng"] == 538
+
+
+def test_topup_payment_id_detection():
+    assert is_eghl_topup_payment_id("EGT1") is True
+    assert is_eghl_topup_payment_id("EG1") is False

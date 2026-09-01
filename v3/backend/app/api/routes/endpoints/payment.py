@@ -49,7 +49,7 @@ from app.services.eghl import (
     create_eghl_checkout,
     eghl_checkout_token,
     resolve_eghl_return_redirect,
-    verify_eghl_callback_hash,
+    verify_eghl_backend_post,
 )
 from app.core.rate_limiter import limiter
 from app.services.webhook import (
@@ -1160,8 +1160,8 @@ async def eghl_checkout_page(
 ):
     """Render the auto-submitting eGHL form for a PaymentID (EG*/EGT*)."""
     config_service = PlatformConfigService(db)
-    password = await config_service.get_str("eghl.password", default="")
-    if not password or not hmac.compare_digest(eghl_checkout_token(payment_id_str, password), t):
+    merchant_key = await config_service.get_str("eghl.merchant_key", default="")
+    if not merchant_key or not hmac.compare_digest(eghl_checkout_token(payment_id_str, merchant_key), t):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Checkout session not found")
 
     # Customer IP for the eGHL CustIP field (behind Caddy / the PWA proxy the
@@ -1328,39 +1328,62 @@ async def eghl_webhook(
     request: Request,
     db: DBDependency,
 ):
-    """eGHL server-to-server callback (MerchantCallbackURL).
+    """eGHL ADAPTIS server-to-server backend post (BackendUrl).
 
-    Posts application/x-www-form-urlencoded fields (NOT JSON). Verified via
-    the HashValue sha256 signature; eGHL expects a plain "OK" 200 response.
+    JSON body, sent for SUCCESS transactions only. Verified via the
+    HMAC-SHA512 signature (MerchantKey + MerchantCode + RefNo +
+    Amount(stripped)); eGHL expects a plain "OK" 200 response.
     """
     config_service = PlatformConfigService(db)
-    password = await config_service.get_str("eghl.password", default="")
-    if not password:
-        logger.error("eGHL callback rejected: eghl.password not configured")
+    merchant_key = await config_service.get_str("eghl.merchant_key", default="")
+    merchant_code = await config_service.get_str("eghl.merchant_code", default="")
+    if not merchant_key or not merchant_code:
+        logger.error("eGHL callback rejected: eghl.merchant_code/merchant_key not configured")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="eGHL password not configured",
+            detail="eGHL merchant config not configured",
         )
 
-    form = await request.form()
-    fields = {k: str(v) for k, v in form.items()}
+    try:
+        body = await request.json()
+    except Exception:
+        # ADAPTIS posts JSON; tolerate form encoding defensively.
+        form = await request.form()
+        body = {k: str(v) for k, v in form.items()}
+    payload = dict(body or {})
+    if isinstance(payload.get("Verification"), str):
+        try:
+            import json as _json
+            payload["Verification"] = _json.loads(payload["Verification"])
+        except Exception:
+            pass
 
-    if not verify_eghl_callback_hash(fields, password):
-        logger.warning("eGHL callback rejected: invalid HashValue")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid eGHL HashValue")
+    valid, reason = verify_eghl_backend_post(payload, merchant_key, merchant_code)
+    if not valid:
+        logger.warning("eGHL callback rejected: %s", reason)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid eGHL signature ({reason})")
 
-    event_id = extract_event_id("eghl", fields)
+    status_id = str(payload.get("TransactionStatusID") or payload.get("TransactionStatusId") or "")
+    if status_id != "1300":
+        # Backend post only fires for SUCCESS; a non-success post is unexpected
+        # — acknowledge but do not act (the requery sweep is the fallback).
+        logger.warning("eGHL callback with non-success status %s ignored", status_id or "(missing)")
+        return PlainTextResponse("OK")
+
+    event_id = extract_event_id("eghl", payload)
     if event_id and await is_event_processed("eghl", event_id):
         logger.info("eGHL callback duplicate event ignored: %s", event_id)
         return PlainTextResponse("OK")
 
-    payload = {
+    trans_id = str(payload.get("TransID") or payload.get("TransId") or "")
+    event_payload = {
         "type": "eghl.callback",
-        "data": {"object": fields},
-        "transaction_id": fields.get("PaymentID"),
+        "data": {"object": payload},
+        "transaction_id": payload.get("RefNo"),
+        "provider_transaction_id": trans_id,
     }
     try:
-        payment = await process_webhook_event(db, "eghl", payload)
+        payment = await process_webhook_event(db, "eghl", event_payload)
     except PaymentError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 

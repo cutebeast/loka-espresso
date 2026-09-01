@@ -1679,11 +1679,23 @@ async def refund_payment(
             )
             refund.provider_refund_id = hitpay_refund["id"]
             refund.status = "completed" if hitpay_refund.get("status") == "completed" else "pending"
+        elif payment.provider == "eghl" and await eghl_enabled(db):
+            from app.services.eghl import refund_eghl_payment
+            eghl_refund = await refund_eghl_payment(
+                db, payment, refund.id, refund_amount, refund.reason or "Refund"
+            )
+            if eghl_refund.get("refund_id"):
+                refund.provider_refund_id = eghl_refund["refund_id"]
+            refund.status = {
+                "completed": "completed",
+                "failed": "failed",
+                "pending": "pending",
+            }.get(eghl_refund.get("status"), "pending")
+            if refund.status == "pending":
+                logger.warning("eGHL refund %s pending provider confirmation: %s", refund.id, eghl_refund.get("reason"))
         elif payment.provider == "eghl":
-            # eGHL exposes no refund API — refunds are issued manually in the
-            # eGHL merchant portal. The local row stays "pending" until staff
-            # reconcile it (same manual-settlement shape as a provider without
-            # refund support).
+            # eGHL is not configured — the refund row stays pending for manual
+            # settlement in the eGHL merchant portal.
             refund.provider_refund_id = f"eghl_manual_{refund.id}"
         elif payment.provider in ("internal_wallet", "cash", "store_credit"):
             # Wallet/store-credit/cash refunds are settled the moment they're
@@ -2723,3 +2735,74 @@ async def process_webhook_event(
                 await auto_print_on_payment(db, order, payment)
 
     return payment
+
+
+async def requery_stale_eghl_payments(db) -> int:
+    """Periodic fallback for eGHL payments whose callbacks never arrived.
+
+    ADAPTIS posts the backend callback for SUCCESS only — if neither URL
+    fires (network partition etc.), the payment sits in pending_authorization
+    forever. This sweep requeries eGHL payments stuck >10 min and resolves
+    them through the normal capture pipeline. Respects the ADAPTIS limits
+    (7 requeries/day per transaction, ≤10 days) via extra_metadata.
+    """
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    from app.services.eghl import (
+        REQUERY_MAX_PER_DAY,
+        REQUERY_WINDOW_DAYS,
+        _eghl_enabled,
+        requery_eghl_payment,
+    )
+
+    if not await _eghl_enabled(db):
+        return 0
+
+    now = _dt.now(_tz.utc)
+    result = await db.execute(
+        select(Payment).where(
+            Payment.provider == "eghl",
+            Payment.status == "pending_authorization",
+            Payment.created_at <= now - _td(minutes=10),
+            Payment.created_at >= now - _td(days=REQUERY_WINDOW_DAYS),
+        ).order_by(Payment.id).limit(20)
+    )
+    payments = result.scalars().all()
+    if not payments:
+        return 0
+
+    processed = 0
+    for payment in payments:
+        meta = dict(payment.extra_metadata or {})
+        day_key = now.strftime("%Y-%m-%d")
+        requery_days = meta.get("eghl_requery_days") or {}
+        used_today = requery_days.get(day_key, 0) if isinstance(requery_days, dict) else 0
+        if used_today >= REQUERY_MAX_PER_DAY:
+            continue
+
+        requery = await requery_eghl_payment(db, payment)
+        if requery.get("status") == "unknown":
+            continue  # network/HTTP error — try again next sweep
+
+        if isinstance(requery_days, dict):
+            requery_days[day_key] = used_today + 1
+        else:
+            requery_days = {day_key: 1}
+        meta["eghl_requery_days"] = requery_days
+        if requery.get("trans_id"):
+            meta["eghl_trans_id"] = requery["trans_id"]
+        payment.extra_metadata = meta
+        await db.flush()
+
+        if requery.get("status") == "success":
+            await capture_payment(db, payment.id, webhook_event_id=f"eghl-requery-{payment.id}")
+            processed += 1
+        elif requery.get("status") == "failed":
+            payment.status = "failed"
+            payment.extra_metadata = {**meta, "eghl_failed_via_requery": True}
+            await _sync_order_payment_status(db, payment)
+            processed += 1
+        # "pending" (in-flight at ADAPTIS) — leave for the next sweep.
+
+    await db.commit()
+    return processed

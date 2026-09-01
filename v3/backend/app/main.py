@@ -207,6 +207,14 @@ async def _periodic_order_sweep() -> None:
                     logger.info("Transactional reminders sent: %s", counts)
         except Exception:
             logger.warning("Transactional reminder sweep failed", exc_info=True)
+        try:
+            from app.services.payment import requery_stale_eghl_payments
+            async with AsyncSessionLocal() as db:
+                n = await requery_stale_eghl_payments(db)
+                if n:
+                    logger.info("eGHL requery sweep processed %s payment(s)", n)
+        except Exception:
+            logger.warning("eGHL requery sweep failed", exc_info=True)
 
 
 @asynccontextmanager

@@ -142,45 +142,41 @@ def test_extract_hitpay_event_id_from_wrapped_payload():
 # ---------------------------------------------------------------------------
 
 
-def _eghl_callback_fields(password: str = "eghl_password") -> dict:
-    from app.services.eghl import build_eghl_callback_hash
+def _eghl_callback_fields(merchant_key: str = "eghl_merchant_key") -> dict:
+    """ADAPTIS backend post — JSON success payload with a valid HMAC-SHA512
+    signature over MerchantKey + MerchantCode + RefNo + Amount(stripped)."""
+    from app.services.eghl import _signature_for_payment_request
 
-    fields = {
-        "TxnID": "TXN999",
-        "ServiceID": "SIT",
-        "PaymentID": "EG123",
-        "OrderNumber": "ORD-1",
-        "TxnStatus": "0",
-        "Amount": "10.00",
-        "CurrencyCode": "MYR",
-        "AuthCode": "AUTH01",
-        "TxnMessage": "Approved",
+    merchant_code = "MM99900005"
+    ref_no = "EG123"
+    amount = "10.00"
+    payload = {
+        "MerchantCode": merchant_code,
+        "RefNo": ref_no,
+        "Amount": amount,
+        "Currency": "MYR",
+        "TransID": "TRANS123",
+        "TransactionStatusID": "1300",
+        "Verification": {
+            "SignatureType": "HMACSHA512",
+            "Signature": _signature_for_payment_request(merchant_key, merchant_code, ref_no, amount),
+        },
     }
-    fields["HashValue"] = build_eghl_callback_hash(
-        password=password,
-        txn_id=fields["TxnID"],
-        service_id=fields["ServiceID"],
-        payment_id=fields["PaymentID"],
-        txn_status=fields["TxnStatus"],
-        amount=fields["Amount"],
-        currency_code=fields["CurrencyCode"],
-        auth_code=fields["AuthCode"],
-    )
-    return fields
+    return payload
 
 
-def test_extract_eghl_event_id_uses_payment_id_and_status():
-    """extract_event_id must derive a stable dedup key from flat form fields."""
+def test_extract_eghl_event_id_uses_refno_and_status():
+    """extract_event_id must derive a stable dedup key from the JSON post."""
     from app.services.webhook import extract_event_id
 
-    fields = {"PaymentID": "EG123", "TxnID": "TXN999", "TxnStatus": "0"}
-    assert extract_event_id("eghl", fields) == "EG123:0"
-    assert extract_event_id("eghl", {"TxnStatus": "0"}) is None
+    fields = {"RefNo": "EG123", "TransID": "TRANS123", "TransactionStatusID": "1300"}
+    assert extract_event_id("eghl", fields) == "EG123:1300"
+    assert extract_event_id("eghl", {"TransactionStatusID": "1300"}) is None
 
 
 @pytest.mark.asyncio
-async def test_eghl_rejected_without_password(webhook_client, monkeypatch):
-    """eGHL callback must reject requests when eghl.password is not configured."""
+async def test_eghl_rejected_without_merchant_config(webhook_client, monkeypatch):
+    """eGHL callback must reject requests when merchant creds are unconfigured."""
     from app.services.platform_config import PlatformConfigService
 
     async def empty_config(*args, **kwargs):
@@ -190,40 +186,46 @@ async def test_eghl_rejected_without_password(webhook_client, monkeypatch):
 
     res = await webhook_client.post(
         "/api/webhooks/eghl",
-        data=_eghl_callback_fields(),
+        json=_eghl_callback_fields(),
     )
     assert res.status_code == 400
-    assert "password not configured" in res.text.lower()
+    assert "merchant" in res.text.lower()
 
 
 @pytest.mark.asyncio
-async def test_eghl_rejected_invalid_hash(webhook_client, monkeypatch):
-    """eGHL callback must reject a bad HashValue."""
+async def test_eghl_rejected_invalid_signature(webhook_client, monkeypatch):
+    """eGHL callback must reject a bad HMAC-SHA512 signature."""
     from app.services.platform_config import PlatformConfigService
 
     async def fake_config(*args, **kwargs):
-        return "eghl_password"
+        key = args[1] if len(args) > 1 else kwargs.get("key", "")
+        if key == "eghl.merchant_code":
+            return "MM99900005"
+        return "eghl_merchant_key"
 
     monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
 
-    fields = _eghl_callback_fields()
-    fields["HashValue"] = "0" * 64
-    res = await webhook_client.post("/api/webhooks/eghl", data=fields)
+    payload = _eghl_callback_fields()
+    payload["Verification"]["Signature"] = "0" * 128
+    res = await webhook_client.post("/api/webhooks/eghl", json=payload)
     assert res.status_code == 400
-    assert "invalid eghl hashvalue" in res.text.lower()
+    assert "signature" in res.text.lower()
 
 
 @pytest.mark.asyncio
 async def test_eghl_callback_success_returns_plain_ok(webhook_client, monkeypatch):
-    """A valid eGHL success callback is processed and acknowledged with OK."""
+    """A valid ADAPTIS success callback is processed and acknowledged with OK."""
     from app.services.platform_config import PlatformConfigService
 
     async def fake_config(*args, **kwargs):
-        return "eghl_password"
+        key = args[1] if len(args) > 1 else kwargs.get("key", "")
+        if key == "eghl.merchant_code":
+            return "MM99900005"
+        return "eghl_merchant_key"
 
     monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
 
-    res = await webhook_client.post("/api/webhooks/eghl", data=_eghl_callback_fields())
+    res = await webhook_client.post("/api/webhooks/eghl", json=_eghl_callback_fields())
     assert res.status_code == 200
     assert res.text == "OK"
 
@@ -234,14 +236,18 @@ async def test_eghl_webhook_deduplicates_replays(webhook_client, monkeypatch):
     from app.services.platform_config import PlatformConfigService
 
     async def fake_config(*args, **kwargs):
-        return "eghl_password"
+        key = args[1] if len(args) > 1 else kwargs.get("key", "")
+        if key == "eghl.merchant_code":
+            return "MM99900005"
+        return "eghl_merchant_key"
 
     monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
     monkeypatch.setattr("app.api.routes.endpoints.payment.is_event_processed", AsyncMock(return_value=True))
 
-    res = await webhook_client.post("/api/webhooks/eghl", data=_eghl_callback_fields())
+    res = await webhook_client.post("/api/webhooks/eghl", json=_eghl_callback_fields())
     assert res.status_code == 200
     assert res.text == "OK"
+
 
 
 @pytest.mark.asyncio

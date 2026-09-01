@@ -75,17 +75,18 @@ const EGHL_KEYS = [{
   label: "Enable eGHL",
   type: "boolean"
 }, {
-  key: "eghl.merchant_id",
-  label: "Merchant ID (ServiceID)",
+  key: "eghl.merchant_code",
+  label: "Merchant Code",
   type: "text"
 }, {
-  key: "eghl.password",
-  label: "Merchant Password (hash secret)",
+  key: "eghl.merchant_key",
+  label: "Merchant Key (HMAC-SHA512 signing key)",
   type: "password"
 }, {
-  key: "eghl.api_base_url",
-  label: "Gateway URL",
-  type: "text"
+  key: "eghl.base_url",
+  label: "Base URL",
+  type: "text",
+  hint: "ADAPTIS {BaseURL} from the merchant-approval email (no trailing path — e.g. https://ndes-stg.ghl.com)"
 }];
 const PUBLIC_URL_KEYS = [{
   key: "app.public_url",
@@ -102,7 +103,7 @@ const PUBLIC_URL_KEYS = [{
 }];
 const STRIPE_METHOD_OPTIONS = ["card", "fpx", "alipay", "wechat_pay"];
 const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "fpx", "card"];
-const EGHL_METHOD_OPTIONS = ["card", "fpx"];
+const EGHL_METHOD_OPTIONS = ["card", "fpx", "boost", "tng", "shopeepay", "setel", "maybank_payqr"];
 const LABEL_MAP: Record<string, string> = Object.fromEntries([...STRIPE_KEYS, ...HITPAY_KEYS, ...EGHL_KEYS, ...PUBLIC_URL_KEYS].map(cfg => [cfg.key, cfg.label]));
 function normalizeValue(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -172,7 +173,7 @@ function WebhookHint({
     ? "Register this URL in your Stripe dashboard under Developers → Webhook Endpoints. Subscribe to: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled, checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, charge.dispute.created."
     : provider === "hitpay"
       ? "Register this URL in your HitPay dashboard under Developers → Webhook Endpoints."
-      : "Register this URL as the Merchant Callback URL in your eGHL merchant portal. The browser return URL is configured automatically — no action needed.";
+      : "Configure this as the Backend URL (success JSON post) and Response URL (browser return) in your eGHL merchant portal (ADAPTIS). The browser return URL is configured automatically — no action needed.";
   return <div style={{
     background: "var(--color-bg-soft, #f9fafb)",
     borderRadius: "var(--radius-sm)",
@@ -295,10 +296,9 @@ export default function PaymentGatewaySettingsPage() {
       }
     }
     if (parseBoolean(values["eghl.enabled"] || "false")) {
-      required.push("eghl.merchant_id", "eghl.password", "eghl.api_base_url");
+      required.push("eghl.merchant_code", "eghl.merchant_key", "eghl.base_url");
       if (!methodValues["eghl.payment_methods"]?.length) {
         invalid.add("eghl.payment_methods");
-        errors.push("Select at least one eGHL payment method");
       }
     }
     for (const key of required) {

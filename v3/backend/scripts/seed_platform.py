@@ -93,14 +93,15 @@ CONFIGS = [
     ("hitpay.api_key", '""', "string", "all", True, True),
     ("hitpay.salt", '""', "string", "all", True, True),
     ("hitpay.api_base_url", '"https://api.hitpay.com.my"', "string", "all", False, True),
-    # eGHL (GHL Systems Malaysia) hosted payment page — preferred MY gateway
-    # (card + FPX). `eghl.password` is the merchant hash password (sensitive).
-    # api_base_url points at the test hosted page; switch to
-    # https://pay.e-ghl.com/IPGSG/Payment.aspx at go-live.
+    # eGHL (ADAPTIS — iPay88 NDes) payment gateway — preferred MY gateway
+    # (card + FPX + eWallets via the ADAPTIS hosted page). `eghl.merchant_key`
+    # is sensitive (HMAC-SHA512 signing key). `eghl.base_url` is the ADAPTIS
+    # {BaseURL} from the merchant-approval email (no trailing path — the
+    # service appends /entry/adaptishosted, /merchantrequery, /merchantrefund).
     ("eghl.enabled", "false", "boolean", "all", False, True),
-    ("eghl.merchant_id", '""', "string", "all", False, True),
-    ("eghl.password", '""', "string", "all", True, True),
-    ("eghl.api_base_url", '"https://test2pay.ghl.com/IPGSG/Payment.aspx"', "string", "all", False, True),
+    ("eghl.merchant_code", '""', "string", "all", False, True),
+    ("eghl.merchant_key", '""', "string", "all", True, True),
+    ("eghl.base_url", '""', "string", "all", False, True),
     ("eghl.payment_methods", '["card", "fpx"]', "json", "all", False, True),
     # GrabPay removed 2026-08-17 (never launched — simulator-only).
     # Web Push (VAPID) — DB-first since round 38 pass 8; seeded empty so they
