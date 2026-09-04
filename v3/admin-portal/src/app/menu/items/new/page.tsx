@@ -231,6 +231,12 @@ export default function NewItemPage() {
       setError("Category is required");
       return;
     }
+    // Recipe is mandatory (owner decision 2026-09-03): non-experience items
+    // must have at least one inventory component before they can be saved.
+    if (!isExperience && (form.recipes || []).length === 0) {
+      setError("Add at least one inventory component (recipe) before saving");
+      return;
+    }
     for (const [i, rc] of (form.recipes || []).entries()) {
       if (!rc.inventory_item_id) {
         setError(`Recipe row ${i + 1}: select an inventory item`);

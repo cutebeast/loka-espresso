@@ -407,6 +407,13 @@ export default function ItemEditPage() {
       setMsg("Recipe row 1: select an inventory item");
       return;
     }
+    // Recipe is mandatory (owner decision 2026-09-03): non-experience items
+    // must keep at least one inventory component — the "copy to inventory"
+    // button pre-fills a 1:1 row for retail-style items.
+    if (!isExperience && recipes.length === 0) {
+      setMsg("Add at least one inventory component (recipe) — or use the inventory link button for a 1:1 item");
+      return;
+    }
     setSaving(true);
     try {
       const pl: any = {

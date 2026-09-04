@@ -627,7 +627,15 @@ async def test_menu_item_create_read_update(
     assert len(categories) > 0, "Seed data must include menu categories"
     category_id = categories[0]["id"]
 
-    # 2. CREATE menu item
+    # 2. CREATE menu item — a recipe (inventory component) is mandatory since
+    # the 2026-09-03 owner decision, so fetch an inventory item to link.
+    r_inv = await client.get(f"{base_url}/admin/inventory/items?per_page=1", headers=admin_headers)
+    assert r_inv.status_code == 200
+    inv_items = r_inv.json()["data"]
+    inv_items = inv_items["items"] if isinstance(inv_items, dict) else inv_items
+    assert len(inv_items) > 0, "Seed data must include inventory items"
+    inv_id = inv_items[0]["id"]
+
     create_payload = {
         "item_name": f"E2E Test Item {ts}",
         "item_code": f"E2E-{ts[:8].upper()}",
@@ -636,6 +644,12 @@ async def test_menu_item_create_read_update(
         "base_price": 12.50,
         "is_available": True,
         "description": "Created by E2E round8 test",
+        "recipes": [{
+            "inventory_item_id": inv_id,
+            "quantity_required": 1,
+            "unit_of_measure": "unit",
+            "waste_factor": 0,
+        }],
     }
     try:
         r_create = await client.post(

@@ -82,8 +82,20 @@ async def _ensure_category_id(client: httpx.AsyncClient, base_url: str, admin_he
     return 1
 
 
+async def _first_inventory_item_id(client: httpx.AsyncClient, base_url: str, admin_headers: dict) -> int:
+    """Recipe is mandatory on menu item create (owner decision 2026-09-03) —
+    grab any seeded inventory item to link as the 1:1 recipe component."""
+    r = await client.get(f"{base_url}/admin/inventory/items?per_page=1", headers=admin_headers)
+    assert r.status_code == 200, r.text
+    data = r.json().get("data")
+    rows = data.get("items", []) if isinstance(data, dict) else (data or [])
+    assert rows, "Seed data must include inventory items"
+    return rows[0]["id"]
+
+
 async def _create_test_menu_item(client: httpx.AsyncClient, base_url: str, admin_headers: dict, suffix: str, category_id: int, price: float = 10.0):
     token = f"{suffix}-{uuid.uuid4().hex[:8].upper()}"
+    inv_id = await _first_inventory_item_id(client, base_url, admin_headers)
     r = await client.post(
         f"{base_url}/admin/menu/items",
         headers=admin_headers,
@@ -93,6 +105,7 @@ async def _create_test_menu_item(client: httpx.AsyncClient, base_url: str, admin
             "base_price": price,
             "category_id": category_id,
             "is_available": True,
+            "recipes": [{"inventory_item_id": inv_id, "quantity_required": 1, "unit_of_measure": "unit", "waste_factor": 0}],
         },
     )
     assert r.status_code in (200, 201), f"Menu item creation failed: {r.text}"
@@ -125,7 +138,7 @@ async def _ensure_menu_items(client: httpx.AsyncClient, base_url: str, admin_hea
     if items:
         return items[0]["id"]
 
-    # Create a test menu item
+    # Create a test menu item (recipe mandatory since 2026-09-03)
     r_create = await client.post(
         f"{base_url}/admin/menu/items",
         headers=admin_headers,
@@ -135,6 +148,12 @@ async def _ensure_menu_items(client: httpx.AsyncClient, base_url: str, admin_hea
             "base_price": 12.90,
             "category_id": await _ensure_category_id(client, base_url, admin_headers),
             "is_available": True,
+            "recipes": [{
+                "inventory_item_id": await _first_inventory_item_id(client, base_url, admin_headers),
+                "quantity_required": 1,
+                "unit_of_measure": "unit",
+                "waste_factor": 0,
+            }],
         },
     )
     if r_create.status_code in (200, 201):

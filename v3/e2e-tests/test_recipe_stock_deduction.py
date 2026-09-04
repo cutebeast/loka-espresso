@@ -99,49 +99,56 @@ async def test_cancel_never_inflates_beyond_deduction(client, base_url, staff_he
 
 
 @pytest.mark.asyncio
-async def test_admin_save_auto_creates_inventory_link(client, base_url, admin_headers, staff_headers):
-    """Owner rule (2026-08-17): saving a menu item without inventory ties
-    auto-creates a 1:1 inventory item (LNK-<item_code>) + recipe + 0-stock
-    rows. Idempotent — a second save must not duplicate anything."""
-    code = f"EX-AUTOLNK-{_short_hex()}"
+async def test_admin_save_requires_recipe(client, base_url, admin_headers, staff_headers):
+    """Owner rule (2026-09-03, supersedes the 2026-08-17 silent auto-link):
+    a non-experience menu item can NOT be created without a recipe, and an
+    update that clears all recipes is rejected with the recipes intact."""
+    code = f"EX-NORECIPE-{_short_hex()}"
+
+    # Create without recipes → 400
     r = await client.post(
         f"{base_url}/admin/menu/items",
         headers=admin_headers,
-        json={"item_code": code, "item_name": "Auto Link Probe", "category_id": 1, "base_price": 9.9},
+        json={"item_code": code, "item_name": "No Recipe Probe", "category_id": 1, "base_price": 9.9},
+    )
+    assert r.status_code == 400, r.text
+
+    # Create with a recipe → 201
+    r = await client.get(f"{base_url}/admin/inventory/items?per_page=1", headers=admin_headers)
+    inv_rows = r.json().get("data") or []
+    inv_rows = inv_rows if isinstance(inv_rows, list) else inv_rows.get("items", [])
+    inv_id = inv_rows[0]["id"]
+    r = await client.post(
+        f"{base_url}/admin/menu/items",
+        headers=admin_headers,
+        json={"item_code": code, "item_name": "No Recipe Probe", "category_id": 1, "base_price": 9.9,
+              "recipes": [{"inventory_item_id": inv_id, "quantity_required": 1,
+                           "unit_of_measure": "unit", "waste_factor": 0}]},
     )
     assert r.status_code == 201, r.text
     item_id = r.json()["data"]["id"]
+    assert len(r.json()["data"].get("recipes") or []) == 1
 
-    # The create response already carries the auto-created recipe
-    recipes = r.json()["data"].get("recipes") or []
-    assert len(recipes) == 1, f"expected 1 auto recipe, got {recipes}"
-    inv_id = recipes[0]["inventory_item_id"]
-
-    # Inventory item exists with the LNK code
-    r = await client.get(f"{base_url}/admin/inventory/items?per_page=500", headers=admin_headers)
-    inv_list = r.json().get("data") or []
-    rows = inv_list if isinstance(inv_list, list) else inv_list.get("items", [])
-    lnk = next((x for x in rows if x.get("id") == inv_id), None)
-    assert lnk is not None, "auto-created inventory item not found"
-    assert lnk["item_code"].startswith("LNK-"), lnk["item_code"]
-
-    # Second save (no recipe payload) must NOT duplicate the link
+    # Clearing all recipes → 400, and the recipe survives the rejected save
     r = await client.patch(
         f"{base_url}/admin/menu/items/{item_id}",
         headers=admin_headers,
-        json={"item_name": "Auto Link Probe v2"},
+        json={"recipes": []},
+    )
+    assert r.status_code == 400, r.text
+    r = await client.get(f"{base_url}/admin/menu/items/{item_id}", headers=admin_headers)
+    assert len(r.json()["data"].get("recipes") or []) == 1, "rejected clear must not drop recipes"
+
+    # Name-only update still works
+    r = await client.patch(
+        f"{base_url}/admin/menu/items/{item_id}",
+        headers=admin_headers,
+        json={"item_name": "No Recipe Probe v2"},
     )
     assert r.status_code == 200, r.text
-    recipes2 = r.json()["data"].get("recipes") or []
-    assert len(recipes2) == 1, f"auto-link duplicated: {recipes2}"
 
-    # The 0-stock rows exist for every active store (item appears in Inventory > Stock)
-    r = await client.get(f"{base_url}/staff/inventory?store_id=1", headers=staff_headers)
-    inv_data = r.json().get("data") or {}
-    inv_rows = inv_data.get("items", []) if isinstance(inv_data, dict) else inv_data
-    row = next((x for x in inv_rows if x.get("item_code") == f"LNK-{code}"), None)
-    assert row is not None, "0-stock row not created for auto-linked item"
-    assert float(row.get("current_stock") or 0) == 0.0
+    # Cleanup
+    await client.delete(f"{base_url}/admin/menu/items/{item_id}", headers=admin_headers)
 
 
 def _short_hex():

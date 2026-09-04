@@ -26,7 +26,6 @@ from app.models.menu import (
     MenuVariant,
     TaxCategory,
 )
-from app.services.inventory_link import ensure_auto_inventory_link
 from app.schemas.base import APIResponse, BaseSchema, PaginatedResponse, TimestampedSchema
 from app.schemas.menu import (
     AllergenOut,
@@ -100,6 +99,20 @@ class _MenuItemRecipeInline(BaseSchema):
     unit_of_measure: str = "unit"
     is_primary_component: bool = False
     waste_factor: float = Field(0.05, ge=0, le=1)
+
+
+async def _is_experience_category(db, category_id: int | None) -> bool:
+    """Workshop/class items (experiences category) are exempt from the recipe
+    requirement — they sell seats, not ingredients."""
+    if category_id is None:
+        return False
+    result = await db.execute(
+        select(MenuCategory.id).where(
+            MenuCategory.id == category_id,
+            MenuCategory.slug == "experiences",
+        )
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def _validate_recipe_payloads(
@@ -512,6 +525,18 @@ async def create_item(
     )
     if dup.scalar_one_or_none() is not None:
         raise HTTPException(status_code=409, detail=f"Item code '{data.item_code}' already exists")
+
+    # Recipe required (owner decision 2026-09-03, supersedes the 2026-08-17
+    # silent 1:1 auto-link on save): every non-experience menu item must save
+    # with at least one inventory component so stock deduction is deliberate,
+    # not implicit. The edit page's "copy to inventory" button pre-fills a
+    # 1:1 row for retail-style items.
+    if not data.recipes and not await _is_experience_category(db, data.category_id):
+        raise HTTPException(
+            status_code=400,
+            detail="A recipe (at least one inventory component) is required — add components or use the inventory link button",
+        )
+
     item_data = data.model_dump(
         exclude={"modifier_groups", "variants", "allergen_ids", "dietary_tag_ids", "recipes"},
         exclude_unset=False,
@@ -598,10 +623,9 @@ async def create_item(
         )
         for r_data in recipe_dicts:
             db.add(MenuItemRecipe(menu_item_id=item.id, **r_data))
-    else:
-        # Auto-tie to inventory (owner request 2026-08-17): items without an
-        # explicit recipe get a 1:1 inventory link so sales deduct stock.
-        await ensure_auto_inventory_link(db, item)
+    # No else-branch: recipe-less creation is rejected up front for
+    # non-experience items (owner decision 2026-09-03). Experiences have no
+    # inventory footprint, so they legitimately save without recipes.
 
     await db.commit()
     await db.refresh(item)
@@ -828,10 +852,20 @@ async def update_item(
         for r_data in recipes_data:
             db.add(MenuItemRecipe(menu_item_id=item.id, **r_data))
 
-    # Auto-tie to inventory (owner request 2026-08-17): when the save leaves
-    # the item with no recipe rows (never linked, or recipes explicitly
-    # cleared), create a 1:1 inventory link so sales deduct stock.
-    await ensure_auto_inventory_link(db, item)
+    # Recipe required (owner decision 2026-09-03, supersedes the 2026-08-17
+    # silent 1:1 auto-link on save): a save must never leave a non-experience
+    # item with zero recipe rows — the user adds components or uses the
+    # "copy to inventory" button for a 1:1 link. Legacy rows keep whatever
+    # recipes they already have (recipes_data=None leaves them untouched).
+    await db.flush()  # sessions run autoflush=False — make the deletes/adds visible
+    remaining = await db.execute(
+        select(MenuItemRecipe.id).where(MenuItemRecipe.menu_item_id == item.id).limit(1)
+    )
+    if remaining.scalar_one_or_none() is None and not await _is_experience_category(db, item.category_id):
+        raise HTTPException(
+            status_code=400,
+            detail="A recipe (at least one inventory component) is required — add components or use the inventory link button",
+        )
 
     await db.commit()
     await db.refresh(item)

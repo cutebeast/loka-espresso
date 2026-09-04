@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
@@ -113,7 +113,12 @@ async def create_order(
     for k in extra_keys:
         raw_dict.pop(k, None)
 
-    data = OrderCreate(**raw_dict)
+    # Malformed payloads (missing/wrong-typed required fields) must 422, not
+    # 500 — pydantic errors raised here escape FastAPI's dependency validation.
+    try:
+        data = OrderCreate(**raw_dict)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors(include_url=False)) from exc
 
     try:
         # ── Auto-cancel stale unpaid orders (>2 hours) ──

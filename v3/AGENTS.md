@@ -2467,3 +2467,76 @@ Each payment provider (Stripe / eGHL / HitPay) now holds SEPARATE live + sandbox
 - **KioskPage.tsx lint errors fixed** (pre-existing since the round-40 kiosk store-picker work): `resetMemberSession` referenced before declaration in the inactivity timer (moved above it — all its state deps are declared at lines 164-175) + one unescaped apostrophe in JSX text (`device&apos;s`). All 3 portals back to 0 eslint errors.
 - `check-all.sh` now passes end-to-end ("=== All checks passed ==="): alembic clean · unit 197/197 · form-schema contract 0 drops ×2 · route validation ✅ · 3 portals lint 0 errors.
 - Full E2E 252 passed / 3 skipped. PWA rebuilt (kiosk-v3/pos-disp-v3 restarted by rebuild-portal.sh), backend restarted; all 6 public endpoints healthy.
+
+## Pre-live audit + fixes (2026-09-03) — lokaespresso.com cutover prep
+
+Full pre-live audit (domain/security/DB/payments). Fixes applied:
+
+- **eGHL requery sweep could never capture**: `requery_stale_eghl_payments` called `capture_payment(db, id, webhook_event_id=…)` — wrong signature AND capture requires status `authorized` while eGHL payments sit in `pending_authorization` (TypeError swallowed by the 5-min sweep → stuck-forever payments). Now routes success/failure through `process_webhook_event` with a synthesized ADAPTIS payload (TransactionStatusID 1300/1400) — the same pipeline as the real backend post (fees, order sync, loyalty, e-invoice, payment events). This sweep is the ONLY missed-callback fallback (ADAPTIS posts success-only).
+- **Table QR hardcoded fallback domain**: `admin/stores.py` + `staff/tables.py` fell back to `https://app.loyaltysystem.uk` via a `pwa.public_url` key that seeders never wrote. Both now use `get_app_public_url()` (`app.public_url`, seeded by alembic + seed_platform) — fails loud instead of silently minting dead-domain QRs on a fresh DB.
+- **HitPay live API URL was wrong**: `https://api.hitpay.com.my` → `https://api.hit-pay.com` (seed_platform.py + live DB row corrected).
+- **`seed_platform.py` public URLs** now seed `*.lokaespresso.com` (was loyaltysystem.uk, contradicting alembic e72c53010130). Current dev DB rows intentionally left on loyaltysystem.uk until cutover.
+- **New `PAYMENTS_LIVE` env flag** (default false; config.py `payments_live`): set `PAYMENTS_LIVE=true` on the live host at cutover. It (a) hard-disables the hosted-checkout simulator (`_use_simulator` → False, which also 404s the public `/api/wallet/topup/simulator*` pages) and (b) refuses `sk_test_` keys in Stripe LIVE mode (gateway treated as unconfigured). Needed because the dev server also runs ENVIRONMENT=production, so `is_production` can't guard these.
+- **Staff cash wallet top-up cap**: `/staff/wallets/topup` (no payment captured) — non-manager roles (cashier/server/shift_supervisor) now capped at `wallet.staff_topup_max_amount` (new platform_config row, seeded 200.00, editable; admins in staff context count as manager). Store managers uncapped.
+
+Audit findings intentionally NOT changed (cutover config tasks): `otp.bypass_enabled=true`/code 000000 in DB, `.env` `sk_test_` key removal, CORS/TRUSTED_HOSTS + portal .env domains, Caddy `*_DOMAIN`/TLS vars, external webhook repointing (Stripe/HitPay/Resend), e-invoice preprod→prod + real TIN/SST, wiping ~2.2k synthetic orders/payments/refunds + 24+ test accounts (incl. 325 orphan iam_principals), table-QR reprint (stored `qr_code_image_url` values still carry app.loyaltysystem.uk — regenerate or redirect after DNS cutover).
+
+Unit 197/197 · backend restarted healthy · simulator verified still active in dev (PAYMENTS_LIVE unset).
+
+### eGHL spec-conformance pass (2026-09-03) — re-verified against the 4 ADAPTIS docs
+
+Re-fetched the Client-Initiate (Hosted), Merchant Requery and Refund specs and diffed against `services/eghl.py`. Verified already-correct: requery/refund endpoint paths + JSON shapes, both signature constructions (HMAC-SHA512, MerchantKey-prefixed, amount stripped), 1300/1400 + 3300/3440 status mapping, 7/day + 10-day requery limits, idempotent RF{id} refund RefNo, IpayId=TransID gating, success-only backend post + requery fallback. Fixed deviations:
+
+- **Amount formatting split**: hosted payment request + Refund now send thousand-separated amounts (`1,278.99` — `_fmt_amount_grouped`); Merchant Requery keeps the plain form (`1278.99` — separators forbidden there) and now sends it as a JSON number per the doc sample. Signatures strip separators either way — unchanged.
+- **Customer.Name sanitized** (`_sanitize_adaptis_name`): spec prohibits digits/emojis/most symbols — a phone-number-named customer would risk rejection. Keeps letters, space, `- ' . @`; collapses whitespace; falls back to `-`.
+- **BillingAddress added to the hosted form** (`Address.BillingAddressLine1/Line2/State/City/PostalCode/Country`) — spec marks them Mandatory; populated from the customer's default address, placeholders (`-`, `00000`, `MY`) when none saved.
+- 3 new unit tests (formatters + name sanitizer). Unit 200/200.
+
+Still open — MUST verify in UAT with real merchant creds (untestable anonymously; carried over from the migration plan's open items A/B/C):
+1. **Backend-post signature composition** — we verify `MerchantKey+MerchantCode+RefNo+Amount(stripped)`; the doc's Signature section was truncated in the anonymous view. If ADAPTIS signs extra fields (TransID/status), every live callback 400s.
+2. **PaymentId** — doc says optional (omitted → merchant default payment set; current behavior, matches `eghl.payment_methods=["card","fpx"]` multi-method intent), but the merchant onboarding email says "each payment request requires a Payment ID". Confirm with eGHL; if truly required per request, a per-method selection UI is needed (PaymentId pre-selects one method on the hosted page).
+3. **Field naming convention** — we post nested fields as dotted names (`Customer.Name`, `Address.BillingAddressLine1`) per the doc's structure notation; the doc's request sample was not visible anonymously. First UAT checkout will confirm.
+4. Full TransactionStatusID appendix (beyond 1300/1400).
+
+### eGHL false-positive re-verification (2026-09-03)
+
+Re-verified every claim + fix with live code-path exercises (not just reading):
+- **Checkout render harness** (mocked config, real builder): form posts to `{BaseURL}/entry/adaptishosted` with Amount `1,278.99` grouped, phone-number customer name sanitized to `-`, all 6 BillingAddress fields populated from default address, and the signature is IDENTICAL whether computed from the plain or grouped amount (callback-amount-format-proof).
+- **Sweep success path, real DB**: synthetic eGHL payment (EG900001, pending_authorization) run through the exact payload the sweep builds → `captured`, amount 12.00, TransID stored in metadata, order payment_status synced, payment event recorded, no duplicate/dead-order flags.
+- **Sweep failure path, real sweep function** (only HTTP + enabled-flag mocked): payment → `failed`, `eghl_failed_via_requery` annotated, 7/day counter incremented, event recorded.
+- Sweep hardened further during re-check: RefNo fallback when `provider_transaction_id` is NULL, and the failed-annotation now writes to the post-commit object returned by `process_webhook_event` (avoid stale-instance writes after its internal commit).
+- Synthetic rows (order 900001, payments 900001/900002, 2 payment_events) fully deleted afterwards — verified zero residue, no loyalty/print/e-invoice side effects.
+- `PAYMENTS_LIVE=true` env → `settings.payments_live` parses correctly (default false).
+- Unit 200/200, backend restarted healthy.
+
+### Delivery flow audit + fixes (2026-09-03) — manual courier dispatch (Lalamove/GrabExpress/Foodpanda)
+
+Verified the manual-entries delivery flow end-to-end against the live stack: customer places delivery order → appears in staff queue → staff pays/confirmed → kitchen chain → `POST /staff/orders/{id}/delivery-dispatch` (provider + booking ref + tracking URL) → `out_for_delivery` → `delivered`. Customer sees provider/ref/tracking under `fulfillment` on their PWA order page. Found + fixed:
+
+- **Fulfillment record never advanced**: dispatch/delivered left `order_fulfillment.status` at `pending_assignment` forever (customer-visible). Dispatch now sets `in_transit` (+`started_at`); staff status → `out_for_delivery`/`delivered` syncs the fulfillment to `in_transit`/`completed` (+`actual_delivery_at`, `completed_at`).
+- **Prepaid-only delivery policy (owner decision 2026-09-03 — anti-prank)**: previously an UNPAID delivery order could be advanced all the way to `delivered`, after which payment could never be recorded ("Cannot pay for a completed/cancelled order") — stuck unpaid forever. Now: `delivery-dispatch` returns 400 unless `payment_status ∈ (captured, partially_refunded)`, and `PATCH /staff/orders/{id}/status` blocks ALL forward transitions for unpaid delivery orders (counter/pay-at-pickup order types unaffected). Payment capture auto-confirms (pending → confirmed) as before.
+- **Foodpanda added to the staff dispatch dropdown** (backend Literal already allowed it) + `orders.provider_foodpanda` EN/zh translation rows (sync_staff_ui_translations.py is the master from translations.ts).
+- e2e `test_delivery_dispatch.py` updated for the prepaid policy (unpaid dispatch/advance → 400, then pay and proceed); list assertion now queries `status=out_for_delivery` (paid+dispatched orders no longer sit at pending).
+- Verified live: unpaid dispatch+advance 400 → cash pay 200 → preparing/ready → dispatch (out_for_delivery) → delivered → customer fulfillment `completed` with all timestamps; dispatch after delivered 400; invalid provider 422; re-key updates ref idempotently.
+- e2e delivery 2/2 · unit 200/200 · staff-portal tsc clean + rebuilt.
+
+### Recipe required on menu item save (2026-09-03) — owner decision
+
+Supersedes the 2026-08-17 silent 1:1 auto-link on save: **non-experience menu items can no longer be created or saved without at least one recipe (inventory component)** — stock deduction must be deliberate, not implicit.
+- Backend `admin/menu.py`: create → 400 when `recipes` empty and category is not `experiences`; update → 400 when the save would leave zero recipe rows. **Gotcha: sessions run `autoflush=False` — the post-replace recipe count needs an explicit `db.flush()` first** (without it the count sees un-flushed deletes and the guard silently passes).
+- `ensure_auto_inventory_link` removed from the create/update paths (dead under the new rule); the service remains for `backfill_inventory_links.py` and `seed_menu.py --with-recipes`.
+- The escape hatch for 1:1 retail items is the edit page's **"copy to inventory & link"** button (`copyToInventoryAndLink` in `menu/items/[id]/page.tsx`): creates inventory item `MI-<id>` and pre-fills a 1:1 recipe row (qty 1/unit).
+- Admin UI: both new + edit item pages block save client-side with an explicit error when recipes are empty (experiences exempt — recipe section is already hidden for them).
+- Verified live: create-without-recipe 400 · create-with-recipe 201 · clear-recipes 400 with recipes intact after rollback · name-only update 200 · zero existing items recipe-less in DB (LNK backfill covered them) · e2e menu CRUD updated to send a recipe (7 passed/1 skipped) · unit 200/200.
+
+### Re-audit pass (2026-09-04) — prepaid guard extended to admin + e2e alignment
+
+- **Admin order-status endpoint had no prepaid guard**: `PATCH /admin/orders/{id}/status` could advance unpaid delivery orders, bypassing the staff-side anti-prank rule. Now applies the same block (forward moves only; cancellations always allowed). Verified live: admin advance unpaid delivery → 400, admin cancel → 200.
+- Status-mutation sweep: every `order.status =` site reviewed — the two `pending→confirmed` shortcuts (staff payment capture + admin cash capture) only fire when `payment_status == "captured"`, consistent with the policy.
+- e2e alignment with the recipe-mandatory rule: `test_bundle_products.py` item factories now link a recipe (new `_first_inventory_item_id` helper); `test_recipe_stock_deduction.py::test_admin_save_auto_creates_inventory_link` rewritten as `test_admin_save_requires_recipe` (create-without-recipe 400 · create-with-recipe 201 · clear-recipes 400 with recipes intact · name-only update 200).
+- Gates: check-all.sh all passed (0 lint errors) · unit 200/200 · full e2e 252 passed / 3 skipped.
+
+### Live-domain audit (2026-09-04) — loyaltysystem.uk all green + one 500 fixed
+
+Full live check on the current dev domain: all 6 vhosts answering (app/kiosk/pos-disp 200, admin/staff 307→login, api 404 on root by design), API proxying through app/kiosk/api domains OK, health v3.0.0 production, customer OTP + staff + admin logins 200 through the real domains, Redis ping OK, translation/loyalty/voucher/push crons installed, pm2 v3 services all online, backend logs show only correct fail-closed rejections (unsigned Stripe/eGHL webhook probes, DeepSeek retry noise).
+- **Fixed: recurring 500 on `POST /api/orders`** — `OrderCreate(**raw_dict)` in `customer/order.py` escaped pydantic ValidationError as an unhandled 500 (bots/malformed clients with `store_id: null`). Now caught → 422 with field details. Verified live through app.loyaltysystem.uk: 422.
