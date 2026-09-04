@@ -15,6 +15,9 @@ from app.services.eghl import (
     PAYMENT_ID_MAP,
     EGHLError,
     _eghl_enabled,
+    _fmt_amount,
+    _fmt_amount_grouped,
+    _sanitize_adaptis_name,
     _signature_for_payment_request,
     _signature_for_refund,
     build_adaptis_signature,
@@ -227,3 +230,33 @@ def test_payment_id_catalog():
 def test_topup_payment_id_detection():
     assert is_eghl_topup_payment_id("EGT1") is True
     assert is_eghl_topup_payment_id("EG1") is False
+
+
+# ---------------------------------------------------------------------------
+# Amount formatting + name sanitization (spec conformance, round 2026-09-03)
+# ---------------------------------------------------------------------------
+
+
+def test_fmt_amount_plain_for_requery():
+    # Merchant Requery spec: two decimals, NO thousand separators.
+    assert _fmt_amount(Decimal("1278.99")) == "1278.99"
+    assert _fmt_amount("19.8") == "19.80"
+
+
+def test_fmt_amount_grouped_for_hosted_and_refund():
+    # Hosted request + Refund spec: two decimals WITH thousand separators.
+    assert _fmt_amount_grouped(Decimal("1278.99")) == "1,278.99"
+    assert _fmt_amount_grouped("19.8") == "19.80"
+    # Signature strips separators — both forms sign identically.
+    assert strip_amount_for_signature(_fmt_amount(Decimal("1278.99"))) == strip_amount_for_signature(
+        _fmt_amount_grouped(Decimal("1278.99"))
+    )
+
+
+def test_sanitize_adaptis_name_strips_prohibited_chars():
+    # Spec prohibits digits, emojis and symbols other than - ' . @
+    assert _sanitize_adaptis_name("Ahmad123") == "Ahmad"
+    assert _sanitize_adaptis_name("O'Brien-Smith Jr.") == "O'Brien-Smith Jr."
+    assert _sanitize_adaptis_name("+60123456001") == "-"
+    assert _sanitize_adaptis_name("") == "-"
+    assert _sanitize_adaptis_name("Tan #1 / Ah Ka") == "Tan Ah Ka"

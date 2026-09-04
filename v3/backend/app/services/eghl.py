@@ -192,7 +192,27 @@ def _signature_for_refund(merchant_key: str, merchant_code: str, ipay_id: str, r
 
 
 def _fmt_amount(amount: Decimal | str) -> str:
+    """Plain two-decimal amount — Merchant Requery (spec: NO thousand
+    separators, e.g. ``1278.99``)."""
     return f"{Decimal(str(amount)):.2f}"
+
+
+def _fmt_amount_grouped(amount: Decimal | str) -> str:
+    """Two-decimal amount WITH thousand separators — Hosted payment request
+    and Refund (spec example: ``1,278.99``). Signature strips separators,
+    so signing is unaffected."""
+    return f"{Decimal(str(amount)):,.2f}"
+
+
+def _sanitize_adaptis_name(name: str) -> str:
+    """ADAPTIS Customer.Name: letters, spaces and - ' . @ only — digits,
+    emojis and other symbols are prohibited by the spec."""
+    import re
+
+    cleaned = re.sub(r"[^A-Za-z \-',.@]", "", name or "")
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned or "-"
+
 
 
 # ---------------------------------------------------------------------------
@@ -362,10 +382,23 @@ async def build_eghl_checkout_page(
     cust_name = ""
     cust_email = ""
     cust_phone = ""
+    address = None
     if customer is not None:
         cust_name = customer.display_name or ""
         cust_email = customer.email_address or ""
         cust_phone = customer.phone_number or ""
+        from app.models.customer import CustomerAddress
+        address = (
+            await db.execute(
+                select(CustomerAddress)
+                .where(
+                    CustomerAddress.customer_id == customer.id,
+                    CustomerAddress.deleted_at.is_(None),
+                )
+                .order_by(CustomerAddress.is_default.desc(), CustomerAddress.id)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
 
     signature = _signature_for_payment_request(merchant_key, merchant_code, payment_id_str, amount)
 
@@ -375,12 +408,20 @@ async def build_eghl_checkout_page(
         "RequestType": "10",
         "Remark": payment_desc,
         "Language": "UTF-8",
-        "Amount": amount,
+        "Amount": _fmt_amount_grouped(amount),
         "Currency": currency_code,
         "ProdDesc": payment_desc,
-        "Customer.Name": cust_name or "-",
+        "Customer.Name": _sanitize_adaptis_name(cust_name),
         "Customer.Email": cust_email or "customer@example.com",
         "Customer.ContactNumber": cust_phone or "0",
+        # Billing address is Mandatory in the hosted-request spec; fall back
+        # to placeholders when the customer has no saved address.
+        "Address.BillingAddressLine1": (address.address_line_1 if address else "-")[:200],
+        "Address.BillingAddressLine2": ((address.address_line_2 or "") if address else "")[:200],
+        "Address.BillingAddressState": ((address.state_province or "-") if address else "-")[:100],
+        "Address.BillingAddressCity": (address.city if address else "-")[:100],
+        "Address.BillingAddressPostalCode": (address.postal_code if address else "00000")[:10],
+        "Address.BillingAddressCountry": (address.country_code if address else "MY")[:100],
         "ResponseUrl": response_url,
         "BackendUrl": backend_url,
         "SignatureType": "HMACSHA512",
@@ -481,7 +522,9 @@ async def requery_eghl_payment(db: AsyncSession, payment: Payment) -> dict:
     payload = {
         "MerchantCode": merchant_code,
         "RefNo": ref_no,
-        "Amount": amount,
+        # Spec sample sends Amount as a JSON number (no thousand separators);
+        # the signature still signs the stripped string form.
+        "Amount": float(amount),
         "Verification": {"SignatureType": "HMACSHA512", "Signature": signature},
     }
     try:
@@ -542,7 +585,7 @@ async def refund_eghl_payment(db: AsyncSession, payment: Payment, refund_id: int
         "RequestType": "10",
         "IpayId": trans_id,
         "RefNo": ref_no,
-        "RefundAmount": amount,
+        "RefundAmount": _fmt_amount_grouped(refund_amount),
         "RefundCurrency": "MYR",
         "Remark": remark or "Refund",
         "Verification": {"SignatureType": "HMACSHA512", "Signature": signature},

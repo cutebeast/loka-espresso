@@ -74,11 +74,16 @@ async def _get_stripe_secret_key(db: AsyncSession) -> str | None:
     """Read the ACTIVE environment's Stripe secret key, falling back to .env."""
     key = "stripe.sandbox_secret_key" if await _pg_mode(db, "stripe") == "sandbox" else "stripe.secret_key"
     value = await PlatformConfigService(db).get_str(key, default="")
-    if value:
-        return value
-    if key == "stripe.secret_key":
-        return get_settings().stripe_secret_key or None
-    return None
+    candidate = value or (get_settings().stripe_secret_key or "" if key == "stripe.secret_key" else "")
+    if not candidate:
+        return None
+    if key == "stripe.secret_key" and getattr(get_settings(), "payments_live", False) and candidate.startswith("sk_test_"):
+        logger.error(
+            "Stripe LIVE mode resolved to a test key (sk_test_…) while PAYMENTS_LIVE=true — "
+            "refusing to use it; gateway treated as unconfigured"
+        )
+        return None
+    return candidate
 
 
 async def _get_stripe_publishable_key(db: AsyncSession) -> str | None:
@@ -188,7 +193,11 @@ async def _stripe_enabled(db: AsyncSession) -> bool:
 async def _use_simulator(db: AsyncSession) -> bool:
     """Hosted checkouts go to the local simulator page instead of Stripe when
     stripe.checkout_mode = 'simulator' (admin toggle) or when no real Stripe
-    keys are configured at all."""
+    keys are configured at all. Hard-disabled when PAYMENTS_LIVE=true (real
+    production host) so a missing/misconfigured key can never silently route
+    real customers through a fake checkout."""
+    if getattr(get_settings(), "payments_live", False):
+        return False
     config = PlatformConfigService(db)
     mode = (await config.get_str("stripe.checkout_mode", default="stripe")).lower()
     if mode == "simulator":
@@ -2803,6 +2812,7 @@ async def requery_stale_eghl_payments(db) -> int:
         REQUERY_MAX_PER_DAY,
         REQUERY_WINDOW_DAYS,
         _eghl_enabled,
+        _payment_id_for_order,
         requery_eghl_payment,
     )
 
@@ -2845,13 +2855,37 @@ async def requery_stale_eghl_payments(db) -> int:
         payment.extra_metadata = meta
         await db.flush()
 
-        if requery.get("status") == "success":
-            await capture_payment(db, payment.id, webhook_event_id=f"eghl-requery-{payment.id}")
-            processed += 1
-        elif requery.get("status") == "failed":
-            payment.status = "failed"
-            payment.extra_metadata = {**meta, "eghl_failed_via_requery": True}
-            await _sync_order_payment_status(db, payment)
+        if requery.get("status") in ("success", "failed"):
+            # Route through the same pipeline as the real backend post so the
+            # capture books fees, syncs the order, accrues loyalty, fires the
+            # e-invoice and records a payment event. capture_payment() cannot
+            # be used here — it only accepts status 'authorized', while eGHL
+            # payments sit in 'pending_authorization' until the callback.
+            raw = dict(requery.get("raw") or {})
+            raw.setdefault(
+                "TransactionStatusID",
+                "1300" if requery["status"] == "success" else "1400",
+            )
+            if requery.get("trans_id"):
+                raw.setdefault("TransID", requery["trans_id"])
+            if requery["status"] == "failed":
+                raw.setdefault("ErrorDescription", "eGHL requery reported failure")
+            event_payload = {
+                "type": f"eghl.requery.{requery['status']}",
+                "data": {"object": raw},
+                "transaction_id": payment.provider_transaction_id or _payment_id_for_order(payment),
+                "provider_transaction_id": requery.get("trans_id") or "",
+            }
+            resolved = await process_webhook_event(db, "eghl", event_payload)
+            if requery["status"] == "failed":
+                # process_webhook_event commits internally — annotate the
+                # (refreshed) object it returned, not our pre-commit instance.
+                target = resolved if resolved is not None else payment
+                target.extra_metadata = {
+                    **(target.extra_metadata or {}),
+                    "eghl_failed_via_requery": True,
+                }
+                await db.commit()
             processed += 1
         # "pending" (in-flight at ADAPTIS) — leave for the next sweep.
 
