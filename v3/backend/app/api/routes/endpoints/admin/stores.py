@@ -722,7 +722,7 @@ async def generate_table_qr(
     store_result = await db.execute(select(Store.slug).where(Store.id == table.store_id, Store.deleted_at.is_(None)))
     store_slug = store_result.scalar_one_or_none() or "store"
     config_service = PlatformConfigService(db)
-    pwa_base = await config_service.get("pwa.public_url", "https://app.loyaltysystem.uk")
+    pwa_base = await config_service.get_app_public_url()
     table.qr_code_image_url = f"{pwa_base}/?store={store_slug}&table={table.id}&t={token}"
     table.qr_generated_at = datetime.now(timezone.utc)
 

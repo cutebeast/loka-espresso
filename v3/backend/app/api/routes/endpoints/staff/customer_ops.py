@@ -376,6 +376,20 @@ async def staff_wallet_topup(staff: Annotated[StaffProfile, Depends(RequireStaff
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
+    # Cash top-ups capture no payment, so large credits need a store manager.
+    # Other roles may top up only up to wallet.staff_topup_max_amount.
+    # (Admins acting in staff context count as manager-level.)
+    is_manager = getattr(staff, "is_staff_context", False) or staff.role == "store_manager"
+    if not is_manager:
+        max_amount = to_decimal(
+            await config_service.get_str("wallet.staff_topup_max_amount", default="200")
+        )
+        if amount > max_amount:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Top-ups above {max_amount} require a store manager",
+            )
+
     customer = await _get_customer_or_404(db, customer_id)
 
     # Lock the wallet row first so concurrent top-ups serialize on it (the

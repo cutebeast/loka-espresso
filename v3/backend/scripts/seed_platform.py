@@ -23,10 +23,9 @@ CONFIGS = [
     ("app.support_phone", '"+60127889314"', "string", "all", False, True),
     ("app.support_email", '"support@lokaespresso.my"', "string", "all", False, True),
     # Public portal URLs — used for payment provider redirect/return URLs.
-    # Update for *.lokaespresso.com at domain migration (see AGENTS.md).
-    ("app.public_url", '"https://app.loyaltysystem.uk"', "string", "all", False, True),
-    ("admin.public_url", '"https://admin.loyaltysystem.uk"', "string", "all", False, True),
-    ("staff.public_url", '"https://staff.loyaltysystem.uk"', "string", "all", False, True),
+    ("app.public_url", '"https://app.lokaespresso.com"', "string", "all", False, True),
+    ("admin.public_url", '"https://admin.lokaespresso.com"', "string", "all", False, True),
+    ("staff.public_url", '"https://staff.lokaespresso.com"', "string", "all", False, True),
     ("otp.bypass_enabled", "true", "boolean", "all", False, True),
     ("otp.bypass_code", '"000000"', "string", "all", True, True),
     ("otp.expiry_minutes", "5", "integer", "all", False, True),
@@ -37,6 +36,9 @@ CONFIGS = [
     ("timeclock.auto_clockout_hours", "16", "integer", "all", False, True),
     ("order.auto_confirm", "true", "boolean", "all", False, True),
     ("order.preparation_time_minutes", "10", "integer", "all", False, True),
+    # Staff cash top-ups capture no payment — non-manager roles are capped at
+    # this amount per top-up (store managers are uncapped).
+    ("wallet.staff_topup_max_amount", '"200.00"', "decimal", "all", False, True),
     ("store.default_pickup_lead_minutes", "15", "integer", "all", False, True),
     ("store.default_delivery_radius_km", "10.0", "decimal", "all", False, True),
     ("store.default_base_delivery_fee", "5.00", "decimal", "all", False, True),
@@ -100,7 +102,7 @@ CONFIGS = [
     ("hitpay.enabled", "false", "boolean", "all", False, True),
     ("hitpay.api_key", '""', "string", "all", True, True),
     ("hitpay.salt", '""', "string", "all", True, True),
-    ("hitpay.api_base_url", '"https://api.hitpay.com.my"', "string", "all", False, True),
+    ("hitpay.api_base_url", '"https://api.hit-pay.com"', "string", "all", False, True),
     ("hitpay.mode", '"live"', "string", "all", False, True),
     ("hitpay.sandbox_api_key", '""', "string", "all", True, True),
     ("hitpay.sandbox_salt", '""', "string", "all", True, True),

@@ -158,6 +158,12 @@ class Settings(BaseSettings):
     # placeholder was a dead URL (AccessDenied) that broke dev top-ups.
     stripe_simulator_checkout_url: str | None = None
 
+    # Flip to true on the real production host (lokaespresso.com): hard-disables
+    # the hosted-checkout payment simulator and refuses Stripe test (sk_test_)
+    # keys in live mode. The dev server runs ENVIRONMENT=production too, so
+    # is_production alone cannot guard these.
+    payments_live: bool = False
+
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
