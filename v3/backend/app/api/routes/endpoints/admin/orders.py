@@ -340,6 +340,24 @@ async def update_order_status(
                 detail=f"Invalid status transition: {from_status} → {status_value}. Allowed from {from_status}: {allowed}",
             )
 
+    # Prepaid-only delivery (anti-prank policy, same guard as the staff
+    # endpoint): an unpaid delivery order must not move forward — payment
+    # capture confirms it. Cancellations are always allowed.
+    is_cancellation_target = status_value in ("cancelled_by_customer", "cancelled_by_merchant")
+    is_delivery_order = order.order_type == "delivery" or order.fulfillment_type in (
+        "standard_delivery", "express_delivery", "third_party_delivery",
+    )
+    if (
+        not is_cancellation_target
+        and from_status != status_value
+        and is_delivery_order
+        and order.payment_status not in ("captured", "partially_refunded")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery order must be paid before it can be advanced",
+        )
+
     # Update timestamp based on status
     now = datetime.now(timezone.utc)
     if status_value == "confirmed":

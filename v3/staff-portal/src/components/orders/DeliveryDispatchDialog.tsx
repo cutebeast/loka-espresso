@@ -8,6 +8,7 @@ import { Truck, X } from "lucide-react";
 const PROVIDERS = [
   { value: "lalamove", labelKey: "orders.provider_lalamove" },
   { value: "grab_express", labelKey: "orders.provider_grabexpress" },
+  { value: "foodpanda", labelKey: "orders.provider_foodpanda" },
   { value: "in_house", labelKey: "orders.provider_in_house" },
   { value: "third_party", labelKey: "orders.provider_third_party" },
 ];

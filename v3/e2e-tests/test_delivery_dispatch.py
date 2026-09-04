@@ -65,14 +65,37 @@ async def test_staff_delivery_dispatch_roundtrip(
     client: httpx.AsyncClient,
     base_url: str,
     staff_headers: dict,
+    admin_headers: dict,
     store_id: int,
     cleanup_registry: dict,
 ):
     """Dispatch records provider+ref; re-dispatch updates it; list + detail
-    expose the fields; non-delivery orders are rejected."""
+    expose the fields; non-delivery orders are rejected. Prepaid-only:
+    unpaid delivery orders cannot be dispatched or advanced."""
     order = await _create_delivery_order(client, base_url, store_id)
     order_id = order["id"]
     cleanup_registry["orders"].append({"id": order_id})
+
+    # Prepaid-only policy: unpaid delivery order → dispatch 400, advance 400
+    r = await client.post(
+        f"{base_url}/staff/orders/{order_id}/delivery-dispatch",
+        headers=staff_headers,
+        json={"provider": "lalamove", "external_ref": "LAL-UNPAID"},
+    )
+    assert r.status_code == 400, r.text
+    r = await client.patch(
+        f"{base_url}/staff/orders/{order_id}/status?status=confirmed",
+        headers=staff_headers,
+    )
+    assert r.status_code == 400, r.text
+
+    # Pay at the counter (cash capture advances pending → confirmed)
+    r = await client.patch(
+        f"{base_url}/admin/orders/{order_id}/payment",
+        headers=admin_headers,
+        json={"payment_method": "cash", "amount_tendered": float(order["total_amount"])},
+    )
+    assert r.status_code == 200, r.text
 
     # Non-delivery order → 400
     item = (await client.get(f"{base_url}/menu/stores/{store_id}")).json()["data"]["items"][0]
@@ -129,10 +152,10 @@ async def test_staff_delivery_dispatch_roundtrip(
     )
     assert r.status_code == 422, r.text
 
-    # The list exposes dispatch info for the order (pending orders are only
-    # in the queue via an explicit status filter — the default view is live
-    # kitchen orders)
-    r = await client.get(f"{base_url}/staff/orders?timeframe=all&status=pending", headers=staff_headers)
+    # The list exposes dispatch info for the order. The order is now paid +
+    # dispatched, so it sits at out_for_delivery (unpaid orders stay pending
+    # and can no longer be dispatched at all).
+    r = await client.get(f"{base_url}/staff/orders?timeframe=all&status=out_for_delivery", headers=staff_headers)
     rows = [o for o in r.json()["data"] if o["id"] == order_id]
     assert rows and rows[0]["delivery_provider"] == "grab_express"
 

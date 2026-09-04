@@ -257,6 +257,7 @@ export const STAFF_EN_TRANSLATIONS: Record<string, string> = {
   "pos.refund_failed": "Refund failed",
   "orders.provider_lalamove": "Lalamove",
   "orders.provider_grabexpress": "GrabExpress",
+  "orders.provider_foodpanda": "Foodpanda",
   "orders.provider_in_house": "In-house rider",
   "orders.provider_third_party": "Other / Third party",
   "pos.add_on": "ADD-ON",

@@ -780,6 +780,10 @@ async def staff_delivery_dispatch(
         raise HTTPException(status_code=400, detail="This is not a delivery order")
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
         raise HTTPException(status_code=400, detail="Cannot dispatch a completed/cancelled order")
+    # Prepaid-only delivery (anti-prank policy): never send a rider out for
+    # an unpaid order. partially_refunded still counts as paid.
+    if order.payment_status not in ("captured", "partially_refunded"):
+        raise HTTPException(status_code=400, detail="Delivery order must be paid before dispatch")
 
     now = datetime.now(timezone.utc)
     fulfillment = (
@@ -802,6 +806,11 @@ async def staff_delivery_dispatch(
         fulfillment.tracking_url = data.tracking_url.strip()
     fulfillment.delivery_dispatched_at = now
     fulfillment.delivery_dispatched_by = staff.id
+    # Reflect the dispatch on the fulfillment lifecycle too — the customer
+    # sees fulfillment.status, so it must not sit at pending_assignment.
+    fulfillment.status = "in_transit"
+    if fulfillment.started_at is None:
+        fulfillment.started_at = now
     fulfillment.updated_at = now
 
     status_advanced = False
@@ -1988,6 +1997,19 @@ async def staff_update_order_status(
         )
 
     from_status = order.status
+
+    # Prepaid-only delivery (anti-prank policy): an unpaid delivery order
+    # must not move forward at all — payment capture confirms it instead.
+    # partially_refunded still counts as paid.
+    is_delivery_order = order.order_type == "delivery" or order.fulfillment_type in (
+        "standard_delivery", "express_delivery", "third_party_delivery",
+    )
+    if is_delivery_order and order.payment_status not in ("captured", "partially_refunded"):
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery order must be paid before it can be advanced",
+        )
+
     # Insert the status log BEFORE the status update and flush it — the
     # trg_orders_status_log trigger dedupes against existing rows for the
     # same transition, so a later insert would log twice.
@@ -2005,6 +2027,28 @@ async def staff_update_order_status(
         order.completed_at = datetime.now(timezone.utc)
     elif status == "preparing":
         order.prepared_at = datetime.now(timezone.utc)
+
+    # Keep the fulfillment record in step with the order lifecycle for
+    # delivery orders (dispatch sets in_transit; delivery completes it).
+    if status in ("out_for_delivery", "delivered"):
+        fulfillment = (
+            await db.execute(
+                select(OrderFulfillment).where(OrderFulfillment.order_id == order.id).with_for_update()
+            )
+        ).scalar_one_or_none()
+        if fulfillment is not None:
+            now = datetime.now(timezone.utc)
+            if status == "out_for_delivery" and fulfillment.status not in ("completed", "failed"):
+                fulfillment.status = "in_transit"
+                if fulfillment.started_at is None:
+                    fulfillment.started_at = now
+            elif status == "delivered":
+                fulfillment.status = "completed"
+                if fulfillment.completed_at is None:
+                    fulfillment.completed_at = now
+                if fulfillment.actual_delivery_at is None:
+                    fulfillment.actual_delivery_at = now
+            fulfillment.updated_at = now
     await db.commit()
     # Transactional notification (savepoint-isolated; never blocks the status change).
     from app.services.transactional_notifications import notify_order_status
