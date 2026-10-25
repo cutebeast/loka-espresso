@@ -295,6 +295,7 @@
     "processing": "处理中...",
     "promotion": "促销",
     "refresh": "刷新",
+    "reload": "重新加载",
     "remove": "移除",
     "retry": "重试",
     "retrying": "重试中...",
@@ -321,8 +322,7 @@
     "year": "年",
     "yes": "是",
     "yesterday": "昨天",
-    "yourCode": "您的会员码",
-    "reload": "重新加载"
+    "yourCode": "您的会员码"
   },
   "errorBoundary": {
     "message": "发生意外错误，请重试。",
